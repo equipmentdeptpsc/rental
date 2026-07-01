@@ -1,5 +1,5 @@
-import AppLayout from "./app/AppLayout";
-import Dashboard from "./pages/Dashboard";
+import AppLayout from "@/app/AppLayout";
+import Dashboard from "@/pages/Dashboard";
 
 export default function App() {
   return (
