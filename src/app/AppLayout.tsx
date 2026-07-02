@@ -1,7 +1,5 @@
-import type { ReactNode } from "react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-
 import { Outlet } from "react-router-dom";
 
 export default function AppLayout() {
@@ -13,7 +11,7 @@ export default function AppLayout() {
         <Sidebar />
 
         <main className="flex-1 overflow-auto bg-slate-100">
-        <Outlet />
+          <Outlet />
         </main>
       </div>
     </div>

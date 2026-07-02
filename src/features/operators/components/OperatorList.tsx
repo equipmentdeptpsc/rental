@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { OperatorCard } from './OperatorCard';
 import { type Operator } from '../types';
-import type { Assignment } from '../../assignment/AssignmentPanel'; // Added line
+import type { Assignment } from "@/types/enterprise";
+
 interface OperatorListProps {
     operators: Operator[];
     setOperators: React.Dispatch<React.SetStateAction<Operator[]>>;

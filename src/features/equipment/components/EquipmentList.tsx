@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EquipmentCard } from './EquipmentCard';
 import { type Equipment } from '../types';
-import type { Assignment } from '../../assignment/AssignmentPanel';
+import type { Assignment } from "@/types/enterprise";
 
 interface EquipmentListProps {
     inventory: Equipment[];

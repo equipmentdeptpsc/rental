@@ -1,4 +1,3 @@
-export type { Booking };
 export interface Customer {
     id: string;
     name: string;
