@@ -1,7 +1,26 @@
-import { type Equipment } from './types';
+import type { EquipmentRecord } from "./types";
 
-export const mockEquipment: Equipment[] = [
-  { id: 'EQ001', name: 'CAT 320 Hydraulic Excavator', type: 'Excavator', status: 'Available', serialNumber: 'EXC-CAT-9921', hourlyRate: 125 },
-  { id: 'EQ002', name: 'Toyota 8FGU25 Forklift', type: 'Forklift', status: 'Rented', serialNumber: 'FORK-TOY-4412', hourlyRate: 45 },
-  { id: 'EQ003', name: 'Liebherr LTM 1050 Mobile Crane', type: 'Crane', status: 'Maintenance', serialNumber: 'CRAN-LIE-0081', hourlyRate: 275 },
+export const mockEquipment: EquipmentRecord[] = [
+  {
+    id: crypto.randomUUID(),
+    assetNo: "EX-001",
+    equipmentName: "Excavator ZX200",
+    category: "Excavator",
+    maintenanceType: "Engine Hours",
+    currentReading: 3250,
+    project: "Metro Line Extension",
+    operator: "Juan Dela Cruz",
+    status: "Assigned",
+  },
+  {
+    id: crypto.randomUUID(),
+    assetNo: "BD-002",
+    equipmentName: "Bulldozer D85",
+    category: "Bulldozer",
+    maintenanceType: "Engine Hours",
+    currentReading: 1845,
+    project: "North Highway",
+    operator: "Pedro Santos",
+    status: "Available",
+  },
 ];

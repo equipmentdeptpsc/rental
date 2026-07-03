@@ -1,47 +1,43 @@
-export interface EquipmentRecord {
-    id: string;
-    assetNo: string;
-    equipmentName: string;
-    category: string;
-    status: "Available" | "Assigned" | "Maintenance";
-    maintenanceType: "Odometer" | "Engine Hours";
-    currentReading: number;
-    project: string;
-    operator: string;
-  }
-  
-  export const equipmentData: EquipmentRecord[] = [
-    {
-      id: "1",
-      assetNo: "EX-001",
-      equipmentName: "Komatsu PC200",
-      category: "Excavator",
-      status: "Assigned",
-      maintenanceType: "Engine Hours",
-      currentReading: 4235,
-      project: "North Bridge",
-      operator: "Juan Dela Cruz",
-    },
-    {
-      id: "2",
-      assetNo: "WL-002",
-      equipmentName: "CAT 950GC",
-      category: "Wheel Loader",
-      status: "Available",
-      maintenanceType: "Engine Hours",
-      currentReading: 2180,
-      project: "-",
-      operator: "-",
-    },
-    {
-      id: "3",
-      assetNo: "DT-003",
-      equipmentName: "Hino 700",
-      category: "Dump Truck",
-      status: "Maintenance",
-      maintenanceType: "Odometer",
-      currentReading: 81234,
-      project: "-",
-      operator: "-",
-    },
-  ];
+import type { EquipmentRecord } from "../types";
+
+/**
+ * Re-export EquipmentRecord so existing imports continue to work.
+ * This keeps the project compiling while we migrate to ../types.
+ */
+export type { EquipmentRecord };
+
+export const equipmentData: EquipmentRecord[] = [
+  {
+    id: crypto.randomUUID(),
+    assetNo: "EX-001",
+    equipmentName: "Excavator ZX200",
+    category: "Excavator",
+    maintenanceType: "Engine Hours",
+    currentReading: 3250,
+    project: "Metro Line Extension",
+    operator: "Juan Dela Cruz",
+    status: "Assigned",
+  },
+  {
+    id: crypto.randomUUID(),
+    assetNo: "BD-002",
+    equipmentName: "Bulldozer D85",
+    category: "Bulldozer",
+    maintenanceType: "Engine Hours",
+    currentReading: 1845,
+    project: "North Highway",
+    operator: "Pedro Santos",
+    status: "Available",
+  },
+  {
+    id: crypto.randomUUID(),
+    assetNo: "DT-003",
+    equipmentName: "Dump Truck FMX",
+    category: "Dump Truck",
+    maintenanceType: "Odometer",
+    currentReading: 78420,
+    project: "South Road",
+    operator: "Mark Reyes",
+    status: "Maintenance",
+  },
+];

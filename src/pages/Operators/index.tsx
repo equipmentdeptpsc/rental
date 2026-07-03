@@ -1,35 +1,127 @@
-export default function Operators() {
-    return (
-      <div className="p-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-800">
+import { Link } from "react-router-dom";
+
+import Button from "@/components/ui/Button";
+
+import { useOperator } from "@/features/operators/context/OperatorContext";
+
+export default function OperatorsPage() {
+  const {
+    operators,
+    deleteOperator,
+  } = useOperator();
+
+  return (
+    <div className="space-y-6">
+
+      <div className="flex items-center justify-between">
+
+        <div>
+
+          <h1 className="text-3xl font-bold">
             Operators
           </h1>
-  
-          <p className="mt-2 text-slate-500">
-            Manage equipment operators, certifications, availability, and assignments.
+
+          <p className="text-gray-500">
+            Manage certified operators.
           </p>
+
         </div>
-  
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Operator Management Module
-          </h2>
-  
-          <p className="mt-3 text-slate-600">
-            This module will soon include:
-          </p>
-  
-          <ul className="mt-4 list-disc space-y-2 pl-6 text-slate-600">
-            <li>Operator Master List</li>
-            <li>License & Certification Tracking</li>
-            <li>Availability Status</li>
-            <li>Multiple Equipment Assignments</li>
-            <li>Assignment History</li>
-            <li>Daily Operator Logs</li>
-            <li>Performance Dashboard</li>
-          </ul>
-        </div>
+
+        <Link to="/operators/new">
+
+          <Button>
+            New Operator
+          </Button>
+
+        </Link>
+
       </div>
-    );
-  }
+
+      <div className="rounded-lg border bg-white overflow-hidden">
+
+        <table className="min-w-full">
+
+          <thead className="bg-slate-50">
+
+            <tr>
+
+              <th className="p-3 text-left">
+                Name
+              </th>
+
+              <th className="p-3 text-left">
+                Certification
+              </th>
+
+              <th className="p-3 text-left">
+                Status
+              </th>
+
+              <th className="p-3 text-left">
+                Action
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {operators.map((operator) => (
+
+              <tr
+                key={operator.id}
+                className="border-t"
+              >
+
+                <td className="p-3">
+                  {operator.name}
+                </td>
+
+                <td className="p-3">
+                  {operator.certificationType}
+                </td>
+
+                <td className="p-3">
+                  {operator.status}
+                </td>
+
+                <td className="p-3">
+
+                  <div className="flex gap-2">
+
+                    <Link
+                      to={`/operators/edit/${operator.id}`}
+                    >
+                      <Button>
+                        Edit
+                      </Button>
+                    </Link>
+
+                    <Button
+                      onClick={() =>
+                        deleteOperator(
+                          operator.id
+                        )
+                      }
+                    >
+                      Delete
+                    </Button>
+
+                  </div>
+
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+  );
+}
