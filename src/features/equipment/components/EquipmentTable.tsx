@@ -1,108 +1,129 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+
+import { useEquipment } from "../context/EquipmentContext";
+import { useProject } from "@/features/project/context/ProjectContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
+
 import EquipmentStatusBadge from "./EquipmentStatusBadge";
-import Button from "@/components/ui/Button";
 
-import type { EquipmentRecord } from "../data/equipment.mock";
-import { useAuth } from "@/features/auth/AuthContext";
-import { can } from "@/features/auth/role";
+export default function EquipmentTable() {
+  const { equipment } = useEquipment();
 
-interface EquipmentTableProps {
-  equipment: EquipmentRecord[];
-  onView: (equipment: EquipmentRecord) => void;
-}
+  const { projects } = useProject();
 
-export default function EquipmentTable({
-  equipment,
-  onView,
-}: EquipmentTableProps) {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const { operators } = useOperator();
 
-  if (!user) return null;
+  function getProjectName(projectId: string) {
+    return (
+      projects.find(
+        (p) => p.id === projectId
+      )?.projectName ?? "-"
+    );
+  }
+
+  function getOperatorName(operatorId: string) {
+    return (
+      operators.find(
+        (o) => o.id === operatorId
+      )?.name ?? "-"
+    );
+  }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-lg border bg-white">
+
       <table className="min-w-full">
-        <thead className="bg-slate-100">
-          <tr className="text-left">
-            <th className="px-4 py-3">Asset No.</th>
-            <th className="px-4 py-3">Equipment</th>
-            <th className="px-4 py-3">Category</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Tracking</th>
-            <th className="px-4 py-3">Reading</th>
-            <th className="px-4 py-3">Project</th>
-            <th className="px-4 py-3">Operator</th>
-            <th className="px-4 py-3 text-center">Actions</th>
+
+        <thead className="bg-slate-50">
+
+          <tr>
+
+            <th className="px-4 py-3 text-left">
+              Asset No
+            </th>
+
+            <th className="px-4 py-3 text-left">
+              Equipment
+            </th>
+
+            <th className="px-4 py-3 text-left">
+              Category
+            </th>
+
+            <th className="px-4 py-3 text-left">
+              Project
+            </th>
+
+            <th className="px-4 py-3 text-left">
+              Operator
+            </th>
+
+            <th className="px-4 py-3 text-left">
+              Status
+            </th>
+
+            <th className="px-4 py-3 text-right">
+              Action
+            </th>
+
           </tr>
+
         </thead>
 
         <tbody>
+
           {equipment.map((item) => (
-            <tr key={item.id} className="border-t hover:bg-slate-50">
-              <td className="px-4 py-3">{item.assetNo}</td>
-              <td className="px-4 py-3">{item.equipmentName}</td>
-              <td className="px-4 py-3">{item.category}</td>
+
+            <tr
+              key={item.id}
+              className="border-t hover:bg-slate-50"
+            >
 
               <td className="px-4 py-3">
-                <EquipmentStatusBadge status={item.status} />
+                {item.assetNo}
               </td>
-
-              <td className="px-4 py-3">{item.maintenanceType}</td>
 
               <td className="px-4 py-3">
-                {item.currentReading.toLocaleString()}
+                {item.equipmentName}
               </td>
-
-              <td className="px-4 py-3">{item.project}</td>
-              <td className="px-4 py-3">{item.operator}</td>
 
               <td className="px-4 py-3">
-                <div className="flex justify-center gap-2">
-
-                  <button
-                    onClick={() => onView(item)}
-                    className="rounded bg-slate-100 px-2 py-1 text-sm hover:bg-slate-200"
-                  >
-                    View
-                  </button>
-
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      navigate(`/equipment/edit/${item.id}`)
-                    }
-                  >
-                    Edit
-                  </Button>
-
-                  {/* 🔐 RBAC DELETE */}
-                  {can(user.role, "canDelete") && (
-                    <Button
-                      variant="danger"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Delete ${item.equipmentName}?`
-                          )
-                        ) {
-                          alert("Delete coming next phase");
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  )}
-
-                  <button className="rounded bg-amber-100 px-2 py-1 text-sm text-amber-700 hover:bg-amber-200">
-                    PMS
-                  </button>
-                </div>
+                {item.category}
               </td>
+
+              <td className="px-4 py-3">
+                {getProjectName(item.projectId)}
+              </td>
+
+              <td className="px-4 py-3">
+                {getOperatorName(item.operatorId)}
+              </td>
+
+              <td className="px-4 py-3">
+                <EquipmentStatusBadge
+                  status={item.status}
+                />
+              </td>
+
+              <td className="px-4 py-3 text-right">
+
+                <Link
+                  to={`/equipment/${item.id}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  View
+                </Link>
+
+              </td>
+
             </tr>
+
           ))}
+
         </tbody>
+
       </table>
+
     </div>
   );
 }

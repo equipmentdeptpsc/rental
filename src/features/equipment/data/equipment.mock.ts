@@ -2,7 +2,6 @@ import type { EquipmentRecord } from "../types";
 
 /**
  * Re-export EquipmentRecord so existing imports continue to work.
- * This keeps the project compiling while we migrate to ../types.
  */
 export type { EquipmentRecord };
 
@@ -14,8 +13,8 @@ export const equipmentData: EquipmentRecord[] = [
     category: "Excavator",
     maintenanceType: "Engine Hours",
     currentReading: 3250,
-    project: "Metro Line Extension",
-    operator: "Juan Dela Cruz",
+    projectId: "",
+    operatorId: "",
     status: "Assigned",
   },
   {
@@ -25,8 +24,8 @@ export const equipmentData: EquipmentRecord[] = [
     category: "Bulldozer",
     maintenanceType: "Engine Hours",
     currentReading: 1845,
-    project: "North Highway",
-    operator: "Pedro Santos",
+    projectId: "",
+    operatorId: "",
     status: "Available",
   },
   {
@@ -36,8 +35,8 @@ export const equipmentData: EquipmentRecord[] = [
     category: "Dump Truck",
     maintenanceType: "Odometer",
     currentReading: 78420,
-    project: "South Road",
-    operator: "Mark Reyes",
+    projectId: "",
+    operatorId: "",
     status: "Maintenance",
   },
 ];

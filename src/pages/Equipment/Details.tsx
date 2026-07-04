@@ -1,174 +1,137 @@
-import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useRental } from "@/features/rental/context/RentalContext";
+import { useProject } from "@/features/project/context/ProjectContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
 
-export default function EquipmentDetails() {
-  const { id } = useParams();
-
-  const { getEquipment } = useEquipment();
-
-  const { rentals } = useRental();
-
-  const equipment = getEquipment(id ?? "");
-
-  const rentalHistory = useMemo(
-    () =>
-      rentals.filter(
-        (r) => r.equipmentId === id
-      ),
-    [rentals, id]
-  );
-
-  if (!equipment) {
-    return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold">
-          Equipment Not Found
-        </h1>
-
-        <Link to="/equipment">
-          <Button className="mt-6">
-            Back
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8 p-8">
-
-      <div className="flex justify-between">
-
-        <div>
-
-          <h1 className="text-3xl font-bold">
-            {equipment.equipmentName}
-          </h1>
-
-          <p className="text-slate-500">
-            {equipment.assetNo}
-          </p>
-
-        </div>
-
-        <Link to="/equipment">
-          <Button>
-            Back
-          </Button>
-        </Link>
-
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-
-        <div className="rounded-xl bg-white border p-6">
-
-          <h2 className="text-xl font-semibold mb-4">
-            Equipment Information
-          </h2>
-
-          <div className="space-y-3">
-
-            <Row
-              label="Status"
-              value={equipment.status}
-            />
-
-            <Row
-              label="Category"
-              value={equipment.category}
-            />
-
-            <Row
-              label="Operator"
-              value={equipment.operator || "-"}
-            />
-
-            <Row
-              label="Project"
-              value={equipment.project || "-"}
-            />
-
-            <Row
-              label="Maintenance"
-              value={equipment.maintenanceType}
-            />
-
-            <Row
-              label="Current Reading"
-              value={equipment.currentReading.toLocaleString()}
-            />
-
-          </div>
-
-        </div>
-
-        <div className="rounded-xl bg-white border p-6">
-
-          <h2 className="text-xl font-semibold mb-4">
-            Rental History
-          </h2>
-
-          {rentalHistory.length === 0 ? (
-            <p className="text-slate-500">
-              No rental history.
-            </p>
-          ) : (
-            <div className="space-y-4">
-
-              {rentalHistory.map((rental) => (
-                <div
-                  key={rental.id}
-                  className="rounded border p-4"
-                >
-                  <div className="font-medium">
-                    {rental.customer}
-                  </div>
-
-                  <div className="text-sm text-slate-500">
-                    {rental.project}
-                  </div>
-
-                  <div className="text-sm">
-                    {rental.dateOut}
-                  </div>
-
-                  <div className="text-sm">
-                    {rental.status}
-                  </div>
-                </div>
-              ))}
-
-            </div>
-          )}
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-function Row({
+function Info({
   label,
   value,
 }: {
   label: string;
-  value: React.ReactNode;
+  value: string | number;
 }) {
   return (
-    <div className="flex justify-between border-b pb-2">
-      <span className="font-medium">
+    <div className="rounded-lg border bg-white p-4">
+      <div className="text-sm text-slate-500">
         {label}
-      </span>
+      </div>
 
-      <span>{value}</span>
+      <div className="mt-1 font-semibold">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+export default function EquipmentDetails() {
+  const navigate = useNavigate();
+
+  const { id } = useParams();
+
+  const { equipment } = useEquipment();
+
+  const { projects } = useProject();
+
+  const { operators } = useOperator();
+
+  const machine = equipment.find(
+    (e) => e.id === id
+  );
+
+  if (!machine) {
+    return (
+      <div className="p-8">
+        Equipment not found.
+      </div>
+    );
+  }
+
+  const project =
+    projects.find(
+      (p) => p.id === machine.projectId
+    )?.projectName ?? "-";
+
+  const operator =
+    operators.find(
+      (o) => o.id === machine.operatorId
+    )?.name ?? "-";
+
+  return (
+    <div className="space-y-6 p-8">
+
+      <div className="flex items-center justify-between">
+
+        <div>
+
+          <h1 className="text-3xl font-bold">
+            Equipment Details
+          </h1>
+
+          <p className="text-slate-500">
+            {machine.assetNo}
+          </p>
+
+        </div>
+
+        <Button
+          onClick={() =>
+            navigate(
+              `/equipment/edit/${machine.id}`
+            )
+          }
+        >
+          Edit
+        </Button>
+
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+
+        <Info
+          label="Asset No"
+          value={machine.assetNo}
+        />
+
+        <Info
+          label="Equipment"
+          value={machine.equipmentName}
+        />
+
+        <Info
+          label="Category"
+          value={machine.category}
+        />
+
+        <Info
+          label="Tracking"
+          value={machine.maintenanceType}
+        />
+
+        <Info
+          label="Current Reading"
+          value={machine.currentReading}
+        />
+
+        <Info
+          label="Status"
+          value={machine.status}
+        />
+
+        <Info
+          label="Project"
+          value={project}
+        />
+
+        <Info
+          label="Operator"
+          value={operator}
+        />
+
+      </div>
+
     </div>
   );
 }

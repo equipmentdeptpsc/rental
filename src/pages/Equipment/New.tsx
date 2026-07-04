@@ -1,7 +1,11 @@
 import { useNavigate } from "react-router-dom";
 
 import EquipmentForm from "@/features/equipment/components/EquipmentForm";
-import type { EquipmentFormData } from "@/features/equipment/components/EquipmentForm";
+
+import type {
+  EquipmentFormData,
+  EquipmentRecord,
+} from "@/features/equipment/types";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
@@ -13,16 +17,24 @@ export default function NewEquipment() {
   const { logAction } = useAudit();
 
   function handleSubmit(data: EquipmentFormData) {
-    const newRecord = {
+    const newRecord: EquipmentRecord = {
       id: crypto.randomUUID(),
+
       assetNo: data.assetNo,
+
       equipmentName: data.equipmentName,
+
       category: data.category,
+
       maintenanceType: data.maintenanceType,
+
       currentReading: Number(data.currentReading),
-      project: data.project,
-      operator: data.operator,
-      status: "Available" as const,
+
+      projectId: data.projectId,
+
+      operatorId: data.operatorId,
+
+      status: "Available",
     };
 
     addEquipment(newRecord);

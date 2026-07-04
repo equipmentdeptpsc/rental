@@ -8,13 +8,20 @@ import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 import type { RentalRecord } from "@/features/rental/types";
+import type { EquipmentRecord } from "@/features/equipment/types";
 
 export default function NewRental() {
   const navigate = useNavigate();
 
   const { addRental } = useRental();
-  const { equipment, updateEquipment } = useEquipment();
+
+  const {
+    equipment,
+    updateEquipment,
+  } = useEquipment();
+
   const { logAction } = useAudit();
+
   const { showToast } = useToast();
 
   function handleSubmit(data: any) {
@@ -28,47 +35,68 @@ export default function NewRental() {
     }
 
     if (selected.status !== "Available") {
-      showToast("Equipment is not available", "error");
+      showToast(
+        "Equipment is not available",
+        "error"
+      );
       return;
     }
 
     const rental: RentalRecord = {
       id: crypto.randomUUID(),
+
       equipmentId: data.equipmentId,
+
       customer: data.customer,
+
       project: data.project,
+
       rentedBy: data.rentedBy,
-      dateOut: new Date().toISOString().split("T")[0],
+
+      dateOut: new Date()
+        .toISOString()
+        .split("T")[0],
+
       expectedReturn: data.expectedReturn,
+
       status: "Active",
     };
 
     addRental(rental);
 
-    const updatedEquipment = {
+    const updatedEquipment: EquipmentRecord = {
       ...selected,
-      status: "Assigned" as const,
-      project: data.project,
-      operator: data.rentedBy,
+
+      projectId: "",
+
+      operatorId: "",
+
+      status: "Assigned",
     };
 
     updateEquipment(updatedEquipment);
 
     logAction({
       action: "UPDATE",
+
       equipmentId: selected.id,
+
       before: selected,
+
       after: updatedEquipment,
     });
 
-    showToast("Rental created successfully", "success");
+    showToast(
+      "Rental created successfully",
+      "success"
+    );
 
     navigate("/rentals");
   }
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">
+      <h1 className="mb-6 text-2xl font-bold">
         New Rental
       </h1>
 

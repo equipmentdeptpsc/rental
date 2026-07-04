@@ -20,9 +20,9 @@ export interface EquipmentRecord {
 
   currentReading: number;
 
-  project: string;
+  projectId: string;
 
-  operator: string;
+  operatorId: string;
 
   status: EquipmentStatus;
 
@@ -40,9 +40,9 @@ export interface EquipmentFormData {
 
   maintenanceType: MaintenanceType;
 
-  currentReading: number;
+  currentReading: string;
 
-  project: string;
+  projectId: string;
 
-  operator: string;
+  operatorId: string;
 }
