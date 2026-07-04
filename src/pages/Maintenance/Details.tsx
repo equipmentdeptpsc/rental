@@ -21,7 +21,7 @@ export default function MaintenanceDetails() {
 
   const {
     equipment,
-    updateEquipment,
+    updateStatus,
   } = useEquipment();
 
   const { logAction } = useAudit();
@@ -63,18 +63,19 @@ export default function MaintenanceDetails() {
       status: "In Progress",
     });
 
-    const updatedMachine: EquipmentRecord = {
-      ...currentMachine,
-      status: "Maintenance",
-    };
-
-    updateEquipment(updatedMachine);
+    updateStatus(
+      currentMachine.id,
+      "Maintenance"
+    );
 
     logAction({
       action: "UPDATE",
       equipmentId: currentMachine.id,
       before: currentMachine,
-      after: updatedMachine,
+      after: {
+        ...currentMachine,
+        status: "Maintenance",
+      },
     });
   }
 
@@ -88,18 +89,19 @@ export default function MaintenanceDetails() {
           .split("T")[0],
     });
 
-    const updatedMachine: EquipmentRecord = {
-      ...currentMachine,
-      status: "Available",
-    };
-
-    updateEquipment(updatedMachine);
+    updateStatus(
+      currentMachine.id,
+      "Available"
+    );
 
     logAction({
       action: "UPDATE",
       equipmentId: currentMachine.id,
       before: currentMachine,
-      after: updatedMachine,
+      after: {
+        ...currentMachine,
+        status: "Available",
+      },
     });
 
     navigate("/maintenance");

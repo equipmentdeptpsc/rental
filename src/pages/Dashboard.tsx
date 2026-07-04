@@ -11,11 +11,6 @@ import { useRental } from "@/features/rental/context/RentalContext";
 
 import { getFleetAnalytics } from "@/features/equipment/utils/equipmentAnalytics";
 
-import FleetAnalytics from "@/features/equipment/components/FleetAnalytics";
-import MaintenanceDueWidget from "@/features/equipment/components/MaintenanceDueWidget";
-import RecentRentalActivity from "@/features/rental/components/RecentRentalActivity";
-import RecentAuditActivity from "@/features/equipment/audit/components/RecentAuditActivity";
-
 function Card({
   title,
   value,
@@ -59,9 +54,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 p-8">
-
       <div>
-
         <h1 className="text-3xl font-bold">
           Dashboard
         </h1>
@@ -69,11 +62,9 @@ export default function Dashboard() {
         <p className="text-slate-500">
           Fleet Management Overview
         </p>
-
       </div>
 
       <div className="grid gap-6 xl:grid-cols-6">
-
         <Card
           title="Fleet"
           value={analytics.totalEquipment}
@@ -115,25 +106,7 @@ export default function Dashboard() {
           color="bg-red-100"
           icon={<AlertTriangle />}
         />
-
       </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-
-        <FleetAnalytics />
-
-        <MaintenanceDueWidget />
-
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-
-        <RecentRentalActivity />
-
-        <RecentAuditActivity />
-
-      </div>
-
     </div>
   );
 }

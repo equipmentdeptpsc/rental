@@ -1,72 +1,121 @@
 import {
   createContext,
   useContext,
+  useMemo,
   useState,
+  type ReactNode,
 } from "react";
 
-import type { ReactNode } from "react";
-
 import type { EquipmentRecord } from "../types";
-
 import { equipmentRepository } from "../repository";
 
 interface EquipmentContextType {
   equipment: EquipmentRecord[];
 
-  addEquipment: (item: EquipmentRecord) => void;
+  addEquipment(
+    equipment: EquipmentRecord
+  ): void;
 
-  updateEquipment: (item: EquipmentRecord) => void;
+  updateEquipment(
+    equipment: EquipmentRecord
+  ): void;
 
-  deleteEquipment: (id: string) => void;
+  deleteEquipment(
+    id: string
+  ): void;
 
-  getEquipment: (id: string) => EquipmentRecord | undefined;
+  getEquipment(
+    id: string
+  ): EquipmentRecord | undefined;
+
+  updateStatus(
+    id: string,
+    status: EquipmentRecord["status"]
+  ): void;
 }
 
-const EquipmentContext = createContext<
-  EquipmentContextType | undefined
->(undefined);
+const EquipmentContext =
+  createContext<
+    EquipmentContextType | undefined
+  >(undefined);
 
 export function EquipmentProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const [equipment, setEquipment] = useState(
-    equipmentRepository.getAll()
-  );
+  const [equipment, setEquipment] =
+    useState(
+      equipmentRepository.getAll()
+    );
 
   function refresh() {
-    setEquipment(equipmentRepository.getAll());
+    setEquipment(
+      equipmentRepository.getAll()
+    );
   }
 
-  function addEquipment(item: EquipmentRecord) {
+  function addEquipment(
+    item: EquipmentRecord
+  ) {
     equipmentRepository.create(item);
     refresh();
   }
 
-  function updateEquipment(item: EquipmentRecord) {
+  function updateEquipment(
+    item: EquipmentRecord
+  ) {
     equipmentRepository.update(item);
     refresh();
   }
 
-  function deleteEquipment(id: string) {
+  function deleteEquipment(
+    id: string
+  ) {
     equipmentRepository.delete(id);
     refresh();
   }
 
-  function getEquipment(id: string) {
-    return equipmentRepository.getById(id);
+  function getEquipment(
+    id: string
+  ) {
+    return equipment.find(
+      (e) => e.id === id
+    );
   }
+
+  function updateStatus(
+    id: string,
+    status: EquipmentRecord["status"]
+  ) {
+    const machine =
+      equipmentRepository.getById(id);
+
+    if (!machine) return;
+
+    equipmentRepository.update({
+      ...machine,
+      status,
+    });
+
+    refresh();
+  }
+
+  const value = useMemo(
+    () => ({
+      equipment,
+      addEquipment,
+      updateEquipment,
+      deleteEquipment,
+      getEquipment,
+      updateStatus,
+    }),
+    [equipment]
+  );
 
   return (
     <EquipmentContext.Provider
-      value={{
-        equipment,
-        addEquipment,
-        updateEquipment,
-        deleteEquipment,
-        getEquipment,
-      }}
+      value={value}
     >
       {children}
     </EquipmentContext.Provider>
@@ -74,11 +123,12 @@ export function EquipmentProvider({
 }
 
 export function useEquipment() {
-  const context = useContext(EquipmentContext);
+  const context =
+    useContext(EquipmentContext);
 
   if (!context) {
     throw new Error(
-      "useEquipment must be used within EquipmentProvider"
+      "useEquipment must be used inside EquipmentProvider"
     );
   }
 

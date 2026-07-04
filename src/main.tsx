@@ -20,7 +20,7 @@ import { MaintenanceProvider } from "@/features/maintenance/context/MaintenanceC
 
 import { OperatorProvider } from "@/features/operators/context/OperatorContext";
 
-import { AssignmentProvider } from "@/features/assignment/context/AssignmentContext";
+// import { AssignmentProvider } from "@/features/assignment/context/AssignmentContext";
 
 import { ToastProvider } from "@/components/ui/toast/ToastContext";
 
@@ -29,47 +29,23 @@ ReactDOM.createRoot(
 ).render(
   <React.StrictMode>
     <AuthProvider>
-
       <ToastProvider>
-
         <AuditProvider>
-
           <EquipmentProvider>
-
             <OperatorProvider>
-
               <CustomerProvider>
-
                 <ProjectProvider>
-
                   <MaintenanceProvider>
-
-                    <AssignmentProvider>
-
-                      <RentalProvider>
-
-                        <RouterProvider
-                          router={router}
-                        />
-
-                      </RentalProvider>
-
-                    </AssignmentProvider>
-
+                    <RentalProvider>
+                      <RouterProvider router={router} />
+                    </RentalProvider>
                   </MaintenanceProvider>
-
                 </ProjectProvider>
-
               </CustomerProvider>
-
             </OperatorProvider>
-
           </EquipmentProvider>
-
         </AuditProvider>
-
       </ToastProvider>
-
     </AuthProvider>
   </React.StrictMode>
 );

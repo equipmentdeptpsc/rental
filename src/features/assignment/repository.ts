@@ -3,16 +3,31 @@ import type { AssignmentRecord } from "./types";
 const STORAGE_KEY = "assignments";
 
 function load(): AssignmentRecord[] {
-  const data = localStorage.getItem(STORAGE_KEY);
+  try {
+    const data =
+      localStorage.getItem(
+        STORAGE_KEY
+      );
 
-  if (data) {
-    return JSON.parse(data);
+    if (!data) return [];
+
+    const parsed =
+      JSON.parse(data);
+
+    return Array.isArray(parsed)
+      ? parsed
+      : [];
+  } catch {
+    localStorage.removeItem(
+      STORAGE_KEY
+    );
+
+    return [];
   }
-
-  return [];
 }
 
-let assignments = load();
+let assignments =
+  load();
 
 function save() {
   localStorage.setItem(
@@ -21,35 +36,54 @@ function save() {
   );
 }
 
-export const assignmentRepository = {
-  getAll() {
-    return assignments;
-  },
+export const assignmentRepository =
+  {
+    getAll() {
+      return [...assignments];
+    },
 
-  getById(id: string) {
-    return assignments.find(
-      (a) => a.id === id
-    );
-  },
+    getById(id: string) {
+      return assignments.find(
+        (a) => a.id === id
+      );
+    },
 
-  create(item: AssignmentRecord) {
-    assignments.unshift(item);
-    save();
-  },
+    create(
+      assignment: AssignmentRecord
+    ) {
+      assignments.unshift(
+        assignment
+      );
 
-  update(item: AssignmentRecord) {
-    assignments = assignments.map((a) =>
-      a.id === item.id ? item : a
-    );
+      save();
+    },
 
-    save();
-  },
+    update(
+      assignment: AssignmentRecord
+    ) {
+      assignments =
+        assignments.map((a) =>
+          a.id === assignment.id
+            ? assignment
+            : a
+        );
 
-  delete(id: string) {
-    assignments = assignments.filter(
-      (a) => a.id !== id
-    );
+      save();
+    },
 
-    save();
-  },
-};
+    delete(id: string) {
+      assignments =
+        assignments.filter(
+          (a) => a.id !== id
+        );
+
+      save();
+    },
+
+    getActive() {
+      return assignments.filter(
+        (a) =>
+          a.status === "Active"
+      );
+    },
+  };

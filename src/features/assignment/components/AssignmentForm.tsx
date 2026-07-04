@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
+import Input from "@/components/ui/Input";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
@@ -11,6 +12,8 @@ export interface AssignmentFormData {
   equipmentId: string;
   operatorId: string;
   projectId: string;
+  expectedReturn: string;
+  remarks: string;
 }
 
 interface Props {
@@ -36,8 +39,7 @@ export default function AssignmentForm({
       () =>
         equipment.filter(
           (e) =>
-            e.status ===
-            "Available"
+            e.status === "Available"
         ),
       [equipment]
     );
@@ -47,8 +49,7 @@ export default function AssignmentForm({
       () =>
         operators.filter(
           (o) =>
-            o.status ===
-            "Active"
+            o.status === "Active"
         ),
       [operators]
     );
@@ -57,17 +58,18 @@ export default function AssignmentForm({
     useMemo(
       () =>
         projects.filter(
-          (p) =>
-            !p.deleted
+          (p) => !p.deleted
         ),
       [projects]
     );
 
   const [form, setForm] =
-    useState({
+    useState<AssignmentFormData>({
       equipmentId: "",
       operatorId: "",
       projectId: "",
+      expectedReturn: "",
+      remarks: "",
     });
 
   function update(
@@ -84,6 +86,7 @@ export default function AssignmentForm({
     e: React.FormEvent
   ) {
     e.preventDefault();
+
     onSubmit(form);
   }
 
@@ -94,9 +97,7 @@ export default function AssignmentForm({
     >
       <Select
         label="Equipment"
-        value={
-          form.equipmentId
-        }
+        value={form.equipmentId}
         onChange={(e) =>
           update(
             "equipmentId",
@@ -105,8 +106,7 @@ export default function AssignmentForm({
         }
         options={[
           {
-            label:
-              "Select Equipment",
+            label: "Select Equipment",
             value: "",
           },
           ...availableEquipment.map(
@@ -120,9 +120,7 @@ export default function AssignmentForm({
 
       <Select
         label="Operator"
-        value={
-          form.operatorId
-        }
+        value={form.operatorId}
         onChange={(e) =>
           update(
             "operatorId",
@@ -131,8 +129,7 @@ export default function AssignmentForm({
         }
         options={[
           {
-            label:
-              "Select Operator",
+            label: "Select Operator",
             value: "",
           },
           ...availableOperators.map(
@@ -146,9 +143,7 @@ export default function AssignmentForm({
 
       <Select
         label="Project"
-        value={
-          form.projectId
-        }
+        value={form.projectId}
         onChange={(e) =>
           update(
             "projectId",
@@ -157,8 +152,7 @@ export default function AssignmentForm({
         }
         options={[
           {
-            label:
-              "Select Project",
+            label: "Select Project",
             value: "",
           },
           ...activeProjects.map(
@@ -168,6 +162,29 @@ export default function AssignmentForm({
             })
           ),
         ]}
+      />
+
+      <Input
+        label="Expected Return"
+        type="date"
+        value={form.expectedReturn}
+        onChange={(e) =>
+          update(
+            "expectedReturn",
+            e.target.value
+          )
+        }
+      />
+
+      <Input
+        label="Remarks"
+        value={form.remarks}
+        onChange={(e) =>
+          update(
+            "remarks",
+            e.target.value
+          )
+        }
       />
 
       <div className="flex justify-end">
