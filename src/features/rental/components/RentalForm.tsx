@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -17,10 +17,16 @@ export interface RentalFormData {
 
 interface Props {
   onSubmit(data: RentalFormData): void;
+
+  initialEquipmentId?: string;
+
+  lockEquipment?: boolean;
 }
 
 export default function RentalForm({
   onSubmit,
+  initialEquipmentId,
+  lockEquipment = false,
 }: Props) {
   const { equipment } =
     useEquipment();
@@ -29,14 +35,43 @@ export default function RentalForm({
     useCustomer();
 
   const availableEquipment =
-    useMemo(
-      () =>
+    useMemo(() => {
+      const available =
         equipment.filter(
           (e) =>
-            e.status === "Available"
-        ),
-      [equipment]
-    );
+            e.status ===
+            "Available"
+        );
+
+      if (!initialEquipmentId)
+        return available;
+
+      const selected =
+        equipment.find(
+          (e) =>
+            e.id ===
+            initialEquipmentId
+        );
+
+      if (
+        selected &&
+        !available.some(
+          (e) =>
+            e.id ===
+            selected.id
+        )
+      ) {
+        return [
+          selected,
+          ...available,
+        ];
+      }
+
+      return available;
+    }, [
+      equipment,
+      initialEquipmentId,
+    ]);
 
   const equipmentOptions =
     useMemo(
@@ -46,6 +81,7 @@ export default function RentalForm({
           label:
             "Select Equipment",
         },
+
         ...availableEquipment.map(
           (e) => ({
             value: e.id,
@@ -64,9 +100,12 @@ export default function RentalForm({
           label:
             "Select Customer",
         },
+
         ...customers.map((c) => ({
-          value: c.companyName,
-          label: c.companyName,
+          value:
+            c.companyName,
+          label:
+            c.companyName,
         })),
       ],
       [customers]
@@ -74,12 +113,30 @@ export default function RentalForm({
 
   const [form, setForm] =
     useState<RentalFormData>({
-      equipmentId: "",
+      equipmentId:
+        initialEquipmentId ??
+        "",
+
       customer: "",
+
       project: "",
+
       rentedBy: "",
+
       expectedReturn: "",
     });
+
+  useEffect(() => {
+    if (
+      initialEquipmentId
+    ) {
+      setForm((prev) => ({
+        ...prev,
+        equipmentId:
+          initialEquipmentId,
+      }));
+    }
+  }, [initialEquipmentId]);
 
   function update<
     K extends keyof RentalFormData
@@ -103,8 +160,15 @@ export default function RentalForm({
     >
       <Select
         label="Equipment"
-        value={form.equipmentId}
-        options={equipmentOptions}
+        value={
+          form.equipmentId
+        }
+        disabled={
+          lockEquipment
+        }
+        options={
+          equipmentOptions
+        }
         onChange={(e) =>
           update(
             "equipmentId",
@@ -116,7 +180,9 @@ export default function RentalForm({
       <Select
         label="Customer"
         value={form.customer}
-        options={customerOptions}
+        options={
+          customerOptions
+        }
         onChange={(e) =>
           update(
             "customer",

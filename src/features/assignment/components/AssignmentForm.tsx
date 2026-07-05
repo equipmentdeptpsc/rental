@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
@@ -20,10 +20,16 @@ interface Props {
   onSubmit(
     data: AssignmentFormData
   ): void;
+
+  initialEquipmentId?: string;
+
+  lockEquipment?: boolean;
 }
 
 export default function AssignmentForm({
   onSubmit,
+  initialEquipmentId,
+  lockEquipment = false,
 }: Props) {
   const { equipment } =
     useEquipment();
@@ -35,21 +41,51 @@ export default function AssignmentForm({
     useProject();
 
   const availableEquipment =
-    useMemo(
-      () =>
+    useMemo(() => {
+      const available =
         equipment.filter(
           (e) =>
-            e.status === "Available"
-        ),
-      [equipment]
-    );
+            e.status ===
+            "Available"
+        );
+
+      if (!initialEquipmentId)
+        return available;
+
+      const selected =
+        equipment.find(
+          (e) =>
+            e.id ===
+            initialEquipmentId
+        );
+
+      if (
+        selected &&
+        !available.some(
+          (e) =>
+            e.id ===
+            selected.id
+        )
+      ) {
+        return [
+          selected,
+          ...available,
+        ];
+      }
+
+      return available;
+    }, [
+      equipment,
+      initialEquipmentId,
+    ]);
 
   const availableOperators =
     useMemo(
       () =>
         operators.filter(
           (o) =>
-            o.status === "Active"
+            o.status ===
+            "Active"
         ),
       [operators]
     );
@@ -58,19 +94,38 @@ export default function AssignmentForm({
     useMemo(
       () =>
         projects.filter(
-          (p) => !p.deleted
+          (p) =>
+            !p.deleted
         ),
       [projects]
     );
 
   const [form, setForm] =
     useState<AssignmentFormData>({
-      equipmentId: "",
+      equipmentId:
+        initialEquipmentId ??
+        "",
+
       operatorId: "",
+
       projectId: "",
+
       expectedReturn: "",
+
       remarks: "",
     });
+
+  useEffect(() => {
+    if (
+      initialEquipmentId
+    ) {
+      setForm((prev) => ({
+        ...prev,
+        equipmentId:
+          initialEquipmentId,
+      }));
+    }
+  }, [initialEquipmentId]);
 
   function update(
     key: keyof AssignmentFormData,
@@ -97,7 +152,12 @@ export default function AssignmentForm({
     >
       <Select
         label="Equipment"
-        value={form.equipmentId}
+        value={
+          form.equipmentId
+        }
+        disabled={
+          lockEquipment
+        }
         onChange={(e) =>
           update(
             "equipmentId",
@@ -106,9 +166,11 @@ export default function AssignmentForm({
         }
         options={[
           {
-            label: "Select Equipment",
+            label:
+              "Select Equipment",
             value: "",
           },
+
           ...availableEquipment.map(
             (e) => ({
               label: `${e.assetNo} - ${e.equipmentName}`,
@@ -120,7 +182,9 @@ export default function AssignmentForm({
 
       <Select
         label="Operator"
-        value={form.operatorId}
+        value={
+          form.operatorId
+        }
         onChange={(e) =>
           update(
             "operatorId",
@@ -129,9 +193,11 @@ export default function AssignmentForm({
         }
         options={[
           {
-            label: "Select Operator",
+            label:
+              "Select Operator",
             value: "",
           },
+
           ...availableOperators.map(
             (o) => ({
               label: o.name,
@@ -143,7 +209,9 @@ export default function AssignmentForm({
 
       <Select
         label="Project"
-        value={form.projectId}
+        value={
+          form.projectId
+        }
         onChange={(e) =>
           update(
             "projectId",
@@ -152,12 +220,15 @@ export default function AssignmentForm({
         }
         options={[
           {
-            label: "Select Project",
+            label:
+              "Select Project",
             value: "",
           },
+
           ...activeProjects.map(
             (p) => ({
-              label: p.projectName,
+              label:
+                p.projectName,
               value: p.id,
             })
           ),
@@ -167,7 +238,9 @@ export default function AssignmentForm({
       <Input
         label="Expected Return"
         type="date"
-        value={form.expectedReturn}
+        value={
+          form.expectedReturn
+        }
         onChange={(e) =>
           update(
             "expectedReturn",
@@ -178,7 +251,9 @@ export default function AssignmentForm({
 
       <Input
         label="Remarks"
-        value={form.remarks}
+        value={
+          form.remarks
+        }
         onChange={(e) =>
           update(
             "remarks",

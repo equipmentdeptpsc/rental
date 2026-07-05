@@ -1,4 +1,6 @@
 import { LocalEquipmentRepository } from "./LocalEquipmentRepository";
 
-export const equipmentRepository =
+import type { IEquipmentRepository } from "./IEquipmentRepository";
+
+export const equipmentRepository: IEquipmentRepository =
   new LocalEquipmentRepository();

@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import Button from "@/components/ui/Button";
 
@@ -13,6 +16,10 @@ interface Props {
   operators: Operator[];
   projects: ProjectRecord[];
 
+  initialEquipmentId?: string;
+
+  lockEquipment?: boolean;
+
   onSubmit(
     data: DailyLogRecord
   ): void;
@@ -22,10 +29,15 @@ export default function DailyLogForm({
   equipment,
   operators,
   projects,
+  initialEquipmentId,
+  lockEquipment = false,
   onSubmit,
 }: Props) {
+
   const [equipmentId, setEquipmentId] =
-    useState("");
+    useState(
+      initialEquipmentId ?? ""
+    );
 
   const [operatorId, setOperatorId] =
     useState("");
@@ -53,6 +65,17 @@ export default function DailyLogForm({
     useState("");
 
   useEffect(() => {
+    if (
+      initialEquipmentId
+    ) {
+      setEquipmentId(
+        initialEquipmentId
+      );
+    }
+  }, [initialEquipmentId]);
+
+  useEffect(() => {
+
     if (!equipmentId) {
       setStartReading(0);
       setEndReading(0);
@@ -63,7 +86,8 @@ export default function DailyLogForm({
     const machine =
       equipment.find(
         (item) =>
-          item.id === equipmentId
+          item.id ===
+          equipmentId
       );
 
     if (!machine) return;
@@ -77,24 +101,31 @@ export default function DailyLogForm({
     );
 
     setWorkingHours(0);
+
   }, [
     equipmentId,
     equipment,
   ]);
 
   useEffect(() => {
+
     const usage =
-      endReading - startReading;
+      endReading -
+      startReading;
 
     if (usage >= 0) {
-      setWorkingHours(usage);
+      setWorkingHours(
+        usage
+      );
     }
+
   }, [
     startReading,
     endReading,
   ]);
 
   function submit() {
+
     if (!equipmentId) {
       alert(
         "Please select equipment."
@@ -117,16 +148,19 @@ export default function DailyLogForm({
     }
 
     if (
-      endReading < startReading
+      endReading <
+      startReading
     ) {
       alert(
-        "End reading cannot be less than the current equipment reading."
+        "End reading cannot be less than the current reading."
       );
       return;
     }
 
     onSubmit({
-      id: crypto.randomUUID(),
+
+      id:
+        crypto.randomUUID(),
 
       equipmentId,
 
@@ -143,13 +177,16 @@ export default function DailyLogForm({
       workingHours,
 
       remarks,
+
     });
+
   }
 
   return (
     <div className="space-y-5">
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           Equipment
         </label>
@@ -157,29 +194,41 @@ export default function DailyLogForm({
         <select
           className="w-full rounded border p-2"
           value={equipmentId}
+          disabled={lockEquipment}
           onChange={(e) =>
             setEquipmentId(
               e.target.value
             )
           }
         >
+
           <option value="">
             Select Equipment
           </option>
 
-          {equipment.map((item) => (
-            <option
-              key={item.id}
-              value={item.id}
-            >
-              {item.assetNo} -{" "}
-              {item.equipmentName}
-            </option>
-          ))}
+          {equipment.map(
+            (item) => (
+
+              <option
+                key={item.id}
+                value={item.id}
+              >
+
+                {item.assetNo}
+                {" - "}
+                {item.equipmentName}
+
+              </option>
+
+            )
+          )}
+
         </select>
+
       </div>
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           Operator
         </label>
@@ -193,22 +242,30 @@ export default function DailyLogForm({
             )
           }
         >
+
           <option value="">
             Select Operator
           </option>
 
-          {operators.map((item) => (
-            <option
-              key={item.id}
-              value={item.id}
-            >
-              {item.name}
-            </option>
-          ))}
+          {operators.map(
+            (item) => (
+
+              <option
+                key={item.id}
+                value={item.id}
+              >
+                {item.name}
+              </option>
+
+            )
+          )}
+
         </select>
+
       </div>
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           Project
         </label>
@@ -222,22 +279,30 @@ export default function DailyLogForm({
             )
           }
         >
+
           <option value="">
             Select Project
           </option>
 
-          {projects.map((item) => (
-            <option
-              key={item.id}
-              value={item.id}
-            >
-              {item.projectName}
-            </option>
-          ))}
+          {projects.map(
+            (item) => (
+
+              <option
+                key={item.id}
+                value={item.id}
+              >
+                {item.projectName}
+              </option>
+
+            )
+          )}
+
         </select>
+
       </div>
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           Date
         </label>
@@ -252,9 +317,11 @@ export default function DailyLogForm({
             )
           }
         />
+
       </div>
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           Current Reading
         </label>
@@ -265,9 +332,11 @@ export default function DailyLogForm({
           value={startReading}
           readOnly
         />
+
       </div>
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           End Reading
         </label>
@@ -284,9 +353,11 @@ export default function DailyLogForm({
             )
           }
         />
+
       </div>
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           Usage
         </label>
@@ -297,9 +368,11 @@ export default function DailyLogForm({
           value={workingHours}
           readOnly
         />
+
       </div>
 
       <div>
+
         <label className="mb-1 block text-sm font-medium">
           Remarks
         </label>
@@ -314,6 +387,7 @@ export default function DailyLogForm({
             )
           }
         />
+
       </div>
 
       <Button
@@ -324,4 +398,5 @@ export default function DailyLogForm({
 
     </div>
   );
+
 }

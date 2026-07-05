@@ -1,13 +1,13 @@
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 
 import DailyLogForm from "@/features/daily-log/components/DailyLogForm";
 
 import { useDailyLog } from "@/features/daily-log";
-
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-
 import { useOperator } from "@/features/operators/context/OperatorContext";
-
 import { useProject } from "@/features/project/context/ProjectContext";
 
 import {
@@ -18,7 +18,17 @@ import {
 import type { DailyLogRecord } from "@/features/daily-log/types";
 
 export default function NewDailyLog() {
-  const navigate = useNavigate();
+
+  const navigate =
+    useNavigate();
+
+  const [searchParams] =
+    useSearchParams();
+
+  const equipmentId =
+    searchParams.get(
+      "equipment"
+    ) ?? "";
 
   const { addLog } =
     useDailyLog();
@@ -42,6 +52,7 @@ export default function NewDailyLog() {
   function save(
     record: DailyLogRecord
   ) {
+
     addLog(record);
 
     const machine =
@@ -52,14 +63,19 @@ export default function NewDailyLog() {
       );
 
     if (machine) {
+
       updateEquipment({
+
         ...machine,
+
         currentReading:
           record.endReading,
+
       });
 
       log(
         createHistoryEvent(
+
           machine.id,
 
           "Daily Log",
@@ -67,15 +83,20 @@ export default function NewDailyLog() {
           `Daily usage recorded (${record.startReading} → ${record.endReading})`,
 
           "UPDATED"
+
         )
       );
+
     }
 
-    navigate("/daily-logs");
+    navigate(
+      "/daily-logs"
+    );
+
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6 p-8">
 
       <h1 className="text-3xl font-bold">
         New Daily Log
@@ -85,9 +106,17 @@ export default function NewDailyLog() {
         equipment={equipment}
         operators={operators}
         projects={projects}
+        initialEquipmentId={
+          equipmentId ||
+          undefined
+        }
+        lockEquipment={Boolean(
+          equipmentId
+        )}
         onSubmit={save}
       />
 
     </div>
   );
+
 }

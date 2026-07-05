@@ -1,64 +1,31 @@
-import { useNavigate } from "react-router-dom";
+import EquipmentStats from "@/features/equipment/components/EquipmentStats";
+import EquipmentToolbar from "@/features/equipment/components/EquipmentToolbar";
+import EquipmentTable from "@/features/equipment/components/EquipmentTable";
 
-import EquipmentForm from "@/features/equipment/components/EquipmentForm";
-
-import type {
-  EquipmentFormData,
-  EquipmentRecord,
-} from "@/features/equipment/types";
-
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useAudit } from "@/features/equipment/audit/AuditContext";
-
-export default function NewEquipment() {
-  const navigate = useNavigate();
-
-  const { addEquipment } = useEquipment();
-  const { logAction } = useAudit();
-
-  function handleSubmit(data: EquipmentFormData) {
-    const newRecord: EquipmentRecord = {
-      id: crypto.randomUUID(),
-
-      assetNo: data.assetNo,
-
-      equipmentName: data.equipmentName,
-
-      category: data.category,
-
-      maintenanceType: data.maintenanceType,
-
-      currentReading: Number(data.currentReading),
-
-      projectId: data.projectId,
-
-      operatorId: data.operatorId,
-
-      status: "Available",
-    };
-
-    addEquipment(newRecord);
-
-    logAction({
-      action: "CREATE",
-      equipmentId: newRecord.id,
-      after: newRecord,
-    });
-
-    navigate("/equipment");
-  }
-
+export default function Equipment() {
   return (
-    <div className="p-8 space-y-6">
-      <h1 className="text-3xl font-bold">
-        Add Equipment
-      </h1>
+    <div className="space-y-8 p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">
+            Equipment Dashboard
+          </h1>
 
-      <EquipmentForm
-        submitLabel="Create Equipment"
-        onSubmit={handleSubmit}
-        onCancel={() => navigate("/equipment")}
-      />
+          <p className="text-slate-500">
+            Monitor equipment availability, utilization, and maintenance.
+          </p>
+        </div>
+
+        <button className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700">
+          + Add Equipment
+        </button>
+      </div>
+
+      <EquipmentStats />
+
+      <EquipmentToolbar />
+
+<EquipmentTable />
     </div>
   );
 }

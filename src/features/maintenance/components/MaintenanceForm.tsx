@@ -1,30 +1,74 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 
+interface MaintenanceFormData {
+  equipmentId: string;
+  maintenanceType: string;
+  scheduledReading: number;
+  currentReading: number;
+  scheduledDate: string;
+  technician: string;
+  remarks: string;
+  status: string;
+}
+
 interface Props {
-  onSubmit(data: any): void;
+  onSubmit(
+    data: MaintenanceFormData
+  ): void;
+
+  initialEquipmentId?: string;
+
+  lockEquipment?: boolean;
 }
 
 export default function MaintenanceForm({
   onSubmit,
+  initialEquipmentId,
+  lockEquipment = false,
 }: Props) {
+
   const [form, setForm] =
-    useState({
-      equipmentId: "",
+    useState<MaintenanceFormData>({
+      equipmentId:
+        initialEquipmentId ??
+        "",
+
       maintenanceType: "",
+
       scheduledReading: 0,
+
       currentReading: 0,
+
       scheduledDate: "",
+
       technician: "",
+
       remarks: "",
+
       status: "Scheduled",
     });
 
+  useEffect(() => {
+    if (
+      initialEquipmentId
+    ) {
+      setForm((prev) => ({
+        ...prev,
+        equipmentId:
+          initialEquipmentId,
+      }));
+    }
+  }, [initialEquipmentId]);
+
   function update(
-    key: string,
-    value: any
+    key: keyof MaintenanceFormData,
+    value: string | number
   ) {
     setForm((prev) => ({
       ...prev,
@@ -43,7 +87,12 @@ export default function MaintenanceForm({
 
       <Input
         label="Equipment ID"
-        value={form.equipmentId}
+        value={
+          form.equipmentId
+        }
+        disabled={
+          lockEquipment
+        }
         onChange={(e) =>
           update(
             "equipmentId",
@@ -54,7 +103,9 @@ export default function MaintenanceForm({
 
       <Input
         label="Maintenance Type"
-        value={form.maintenanceType}
+        value={
+          form.maintenanceType
+        }
         onChange={(e) =>
           update(
             "maintenanceType",
@@ -72,7 +123,9 @@ export default function MaintenanceForm({
         onChange={(e) =>
           update(
             "scheduledReading",
-            Number(e.target.value)
+            Number(
+              e.target.value
+            )
           )
         }
       />
@@ -86,7 +139,9 @@ export default function MaintenanceForm({
         onChange={(e) =>
           update(
             "currentReading",
-            Number(e.target.value)
+            Number(
+              e.target.value
+            )
           )
         }
       />
@@ -94,7 +149,9 @@ export default function MaintenanceForm({
       <Input
         type="date"
         label="Scheduled Date"
-        value={form.scheduledDate}
+        value={
+          form.scheduledDate
+        }
         onChange={(e) =>
           update(
             "scheduledDate",
@@ -105,7 +162,9 @@ export default function MaintenanceForm({
 
       <Input
         label="Technician"
-        value={form.technician}
+        value={
+          form.technician
+        }
         onChange={(e) =>
           update(
             "technician",
@@ -116,7 +175,9 @@ export default function MaintenanceForm({
 
       <Input
         label="Remarks"
-        value={form.remarks}
+        value={
+          form.remarks
+        }
         onChange={(e) =>
           update(
             "remarks",

@@ -9,13 +9,13 @@ const STORAGE_KEY = "equipment-records";
 export class LocalEquipmentRepository
   implements IEquipmentRepository
 {
-  private data: EquipmentRecord[];
+  private data: EquipmentRecord[] = [];
 
   constructor() {
     const saved =
       storage.get<EquipmentRecord[]>(STORAGE_KEY);
 
-    if (saved) {
+    if (saved && Array.isArray(saved)) {
       this.data = saved;
     } else {
       this.data = [...equipmentData];
@@ -28,39 +28,33 @@ export class LocalEquipmentRepository
   }
 
   getAll(): EquipmentRecord[] {
-    return this.data.filter(
-      (x) => !x.deleted
-    );
+    return this.data.filter((x) => !x.deleted);
   }
 
-  getById(id: string) {
-    return this.data.find(
-      (x) => x.id === id
-    );
+  getById(id: string): EquipmentRecord | undefined {
+    return this.data.find((x) => x.id === id);
   }
 
-  create(item: EquipmentRecord) {
+  create(item: EquipmentRecord): void {
     this.data.push(item);
     this.save();
   }
 
-  update(item: EquipmentRecord) {
-    const index =
-      this.data.findIndex(
-        (x) => x.id === item.id
-      );
+  update(item: EquipmentRecord): void {
+    const index = this.data.findIndex(
+      (x) => x.id === item.id
+    );
 
-    if (index >= 0) {
-      this.data[index] = item;
-      this.save();
-    }
+    if (index === -1) return;
+
+    this.data[index] = item;
+    this.save();
   }
 
-  delete(id: string) {
-    const equipment =
-      this.data.find(
-        (x) => x.id === id
-      );
+  delete(id: string): void {
+    const equipment = this.data.find(
+      (x) => x.id === id
+    );
 
     if (!equipment) return;
 

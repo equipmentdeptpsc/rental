@@ -1,6 +1,13 @@
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 
 import RentalForm from "@/features/rental/components/RentalForm";
+
+import type {
+  RentalFormData,
+} from "@/features/rental/components/RentalForm";
 
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
@@ -11,79 +18,119 @@ import type { RentalRecord } from "@/features/rental/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 
 export default function NewRental() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const { addRental } = useRental();
+  const [searchParams] =
+    useSearchParams();
+
+  const initialEquipmentId =
+    searchParams.get(
+      "equipment"
+    ) ?? "";
+
+  const { addRental } =
+    useRental();
 
   const {
     equipment,
     updateEquipment,
   } = useEquipment();
 
-  const { logAction } = useAudit();
+  const { logAction } =
+    useAudit();
 
-  const { showToast } = useToast();
+  const { showToast } =
+    useToast();
 
-  function handleSubmit(data: any) {
-    const selected = equipment.find(
-      (e) => e.id === data.equipmentId
-    );
+  function handleSubmit(
+    data: RentalFormData
+  ) {
+    const selected =
+      equipment.find(
+        (e) =>
+          e.id ===
+          data.equipmentId
+      );
 
     if (!selected) {
-      showToast("Equipment not found", "error");
+      showToast(
+        "Equipment not found",
+        "error"
+      );
+
       return;
     }
 
-    if (selected.status !== "Available") {
+    if (
+      selected.status !==
+      "Available"
+    ) {
       showToast(
         "Equipment is not available",
         "error"
       );
+
       return;
     }
 
-    const rental: RentalRecord = {
-      id: crypto.randomUUID(),
+    const rental: RentalRecord =
+      {
+        id: crypto.randomUUID(),
 
-      equipmentId: data.equipmentId,
+        equipmentId:
+          data.equipmentId,
 
-      customer: data.customer,
+        customer:
+          data.customer,
 
-      project: data.project,
+        project:
+          data.project,
 
-      rentedBy: data.rentedBy,
+        rentedBy:
+          data.rentedBy,
 
-      dateOut: new Date()
-        .toISOString()
-        .split("T")[0],
+        dateOut:
+          new Date()
+            .toISOString()
+            .split("T")[0],
 
-      expectedReturn: data.expectedReturn,
+        expectedReturn:
+          data.expectedReturn,
 
-      status: "Active",
-    };
+        status:
+          "Active",
+      };
 
     addRental(rental);
 
-    const updatedEquipment: EquipmentRecord = {
-      ...selected,
+    const updatedEquipment: EquipmentRecord =
+      {
+        ...selected,
 
-      projectId: "",
+        projectId: "",
 
-      operatorId: "",
+        operatorId: "",
 
-      status: "Assigned",
-    };
+        status:
+          "Assigned",
+      };
 
-    updateEquipment(updatedEquipment);
+    updateEquipment(
+      updatedEquipment
+    );
 
     logAction({
       action: "UPDATE",
 
-      equipmentId: selected.id,
+      equipmentId:
+        selected.id,
 
-      before: selected,
+      before:
+        selected,
 
-      after: updatedEquipment,
+      after:
+        updatedEquipment,
     });
 
     showToast(
@@ -91,16 +138,39 @@ export default function NewRental() {
       "success"
     );
 
-    navigate("/rentals");
+    navigate(
+      "/rentals"
+    );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="mb-6 text-2xl font-bold">
-        New Rental
-      </h1>
+    <div className="mx-auto max-w-3xl p-6 space-y-6">
 
-      <RentalForm onSubmit={handleSubmit} />
+      <div>
+
+        <h1 className="text-3xl font-bold">
+          New Rental
+        </h1>
+
+        <p className="mt-2 text-gray-500">
+          Create a rental transaction.
+        </p>
+
+      </div>
+
+      <RentalForm
+        onSubmit={
+          handleSubmit
+        }
+        initialEquipmentId={
+          initialEquipmentId ||
+          undefined
+        }
+        lockEquipment={Boolean(
+          initialEquipmentId
+        )}
+      />
+
     </div>
   );
 }

@@ -1,4 +1,7 @@
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 
 import AssignmentForm from "@/features/assignment/components/AssignmentForm";
 
@@ -10,9 +13,13 @@ import type {
   AssignmentRecord,
 } from "@/features/assignment/types";
 
-import { useAssignment } from "@/features/assignment/context/AssignmentContext";
+import {
+  useAssignment,
+} from "@/features/assignment/context/AssignmentContext";
 
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import {
+  useEquipment,
+} from "@/features/equipment/context/EquipmentContext";
 
 import {
   useEquipmentHistory,
@@ -20,7 +27,16 @@ import {
 } from "@/features/equipment/history";
 
 export default function NewAssignment() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
+
+  const [searchParams] =
+    useSearchParams();
+
+  const equipmentId =
+    searchParams.get(
+      "equipment"
+    ) ?? "";
 
   const { addAssignment } =
     useAssignment();
@@ -60,12 +76,22 @@ export default function NewAssignment() {
         remarks:
           data.remarks,
 
-        status: "Active",
+        status:
+          "Active",
       };
 
-    addAssignment(
-      assignment
-    );
+    const success =
+      addAssignment(
+        assignment
+      );
+
+    if (!success) {
+      alert(
+        "Equipment or operator is already assigned."
+      );
+
+      return;
+    }
 
     const equipment =
       getEquipment(
@@ -75,10 +101,13 @@ export default function NewAssignment() {
     if (equipment) {
       updateEquipment({
         ...equipment,
+
         projectId:
           data.projectId,
+
         operatorId:
           data.operatorId,
+
         status:
           "Assigned",
       });
@@ -86,8 +115,11 @@ export default function NewAssignment() {
       log(
         createHistoryEvent(
           equipment.id,
+
           "Assigned",
+
           "Equipment assigned to project.",
+
           "ASSIGNED"
         )
       );
@@ -99,15 +131,32 @@ export default function NewAssignment() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6 p-8">
 
-      <h1 className="text-3xl font-bold">
-        New Assignment
-      </h1>
+      <div>
+
+        <h1 className="text-3xl font-bold">
+          New Assignment
+        </h1>
+
+        <p className="mt-2 text-gray-500">
+          Assign equipment to a project and operator.
+        </p>
+
+      </div>
 
       <AssignmentForm
         onSubmit={
           handleSubmit
+        }
+        initialEquipmentId={
+          equipmentId ||
+          undefined
+        }
+        lockEquipment={
+          Boolean(
+            equipmentId
+          )
         }
       />
 
