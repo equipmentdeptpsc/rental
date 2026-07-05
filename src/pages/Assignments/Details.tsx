@@ -4,186 +4,132 @@ import Button from "@/components/ui/Button";
 
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useAudit } from "@/features/equipment/audit/AuditContext";
+import { useRental } from "@/features/rental/context/RentalContext";
 
-import type { EquipmentRecord } from "@/features/equipment/types";
+import {
+  useEquipmentHistory,
+  createHistoryEvent,
+} from "@/features/equipment/history";
 
 export default function AssignmentDetails() {
+  const navigate = useNavigate();
   const { id } = useParams();
 
-  const navigate = useNavigate();
+  const { assignments, updateAssignment } = useAssignment();
+  const { getEquipment, updateEquipment } = useEquipment();
+  const { rentals, updateRental } = useRental();
+  const { log } = useEquipmentHistory();
 
-  const {
-    assignments,
-    updateAssignment,
-  } = useAssignment();
-
-  const {
-    equipment,
-    updateEquipment,
-  } = useEquipment();
-
-  const { logAction } = useAudit();
-
-  const assignment = assignments.find(
-    (a) => a.id === id
-  );
+  const assignment = assignments.find((a) => a.id === id);
 
   if (!assignment) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold">
-          Assignment Not Found
-        </h1>
-
-        <Button
-          className="mt-4"
-          onClick={() =>
-            navigate("/assignments")
-          }
-        >
-          Back
-        </Button>
+        Assignment not found.
       </div>
     );
   }
 
-  const selectedEquipment =
-    equipment.find(
-      (e) =>
-        e.id ===
-        assignment.equipmentId
+  const equipment = getEquipment(assignment.equipmentId);
+  
+  if (!equipment) {
+    return (
+      <div className="p-8">
+        Equipment not found.
+      </div>
     );
+  }
 
-  function completeAssignment() {
-    if (!selectedEquipment) {
-      return;
-    }
+  function returnEquipment() {
+    if (!equipment || !assignment) return;
+  
+    updateEquipment({
+      ...equipment,
+      projectId: "",
+      operatorId: "",
+      status: "Available",
+    });
 
-    const currentAssignment = assignment;
-
-if (!currentAssignment) {
-  return;
-}
-    const updatedEquipment: EquipmentRecord =
-      {
-        ...selectedEquipment,
-
-        projectId: "",
-
-        operatorId: "",
-
-        status: "Available",
-      };
-
-    updateEquipment(
-      updatedEquipment
+    log(
+      createHistoryEvent(
+        equipment.id,
+        "Equipment Returned",
+        "Equipment returned from assignment.",
+        "RETURNED"
+      )
     );
 
     updateAssignment({
-      ...currentAssignment,
-
+      ...assignment,
+      id: assignment.id,
       status: "Completed",
-
-      returnedDate:
-        new Date()
-          .toISOString()
-          .split("T")[0],
+      returnedDate: new Date().toISOString().split("T")[0],
     });
 
-    logAction({
-      action: "UPDATE",
+    log(
+      createHistoryEvent(
+        equipment.id,
+        "Assignment Completed",
+        "Assignment completed.",
+        "STATUS_CHANGE"
+      )
+    );
 
-      equipmentId:
-        selectedEquipment.id,
+    const rental = rentals.find(
+      (r) =>
+        r.equipmentId === equipment.id &&
+        r.status === "Active"
+    );
 
-      before:
-        selectedEquipment,
-
-      after: updatedEquipment,
-    });
+    if (rental) {
+      updateRental({
+        ...rental,
+        actualReturn: new Date().toISOString().split("T")[0],
+        status: "Returned",
+      });
+    }
 
     navigate("/assignments");
   }
 
   return (
-    <div className="space-y-6 p-8">
-      <div>
-        <h1 className="text-3xl font-bold">
-          Assignment Details
-        </h1>
+    <div className="p-8 space-y-6">
+      <h1 className="text-3xl font-bold">
+        Assignment Details
+      </h1>
 
-        <p className="text-slate-500">
-          Assignment ID:{" "}
-          {assignment.id}
-        </p>
-      </div>
-
-      <div className="rounded-lg border bg-white p-6 space-y-4">
+      <div className="rounded-lg border bg-white p-6 space-y-3">
         <div>
-          <strong>
-            Equipment ID:
-          </strong>{" "}
-          {assignment.equipmentId}
+          <strong>Equipment</strong>
+          <div>{equipment.equipmentName}</div>
         </div>
 
         <div>
-          <strong>
-            Operator ID:
-          </strong>{" "}
-          {assignment.operatorId}
+          <strong>Status</strong>
+          <div>{assignment.status}</div>
         </div>
 
         <div>
-          <strong>
-            Project ID:
-          </strong>{" "}
-          {assignment.projectId}
+          <strong>Assigned Date</strong>
+          <div>{assignment.assignedDate}</div>
         </div>
 
         <div>
-          <strong>
-            Assigned Date:
-          </strong>{" "}
-          {assignment.assignedDate}
+          <strong>Expected Return</strong>
+          <div>{assignment.expectedReturn}</div>
         </div>
 
         <div>
-          <strong>
-            Expected Return:
-          </strong>{" "}
-          {assignment.expectedReturn}
-        </div>
-
-        <div>
-          <strong>Status:</strong>{" "}
-          {assignment.status}
+          <strong>Remarks</strong>
+          <div>{assignment.remarks}</div>
         </div>
       </div>
 
-      <div className="flex gap-3">
-        {assignment.status ===
-          "Active" && (
-          <Button
-            onClick={
-              completeAssignment
-            }
-          >
-            Complete Assignment
-          </Button>
-        )}
-
-        <Button
-          variant="secondary"
-          onClick={() =>
-            navigate(
-              "/assignments"
-            )
-          }
-        >
-          Back
+      {assignment.status === "Active" && (
+        <Button onClick={returnEquipment}>
+          Return Equipment
         </Button>
-      </div>
+      )}
     </div>
   );
 }

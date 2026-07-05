@@ -1,53 +1,24 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import { useEquipment } from "../context/EquipmentContext";
-import { useProject } from "@/features/project/context/ProjectContext";
-import { useOperator } from "@/features/operators/context/OperatorContext";
-
-import EquipmentStatusBadge from "./EquipmentStatusBadge";
+import { useEquipmentView } from "../hooks/useEquipmentView";
 
 export default function EquipmentTable() {
-  const { equipment } = useEquipment();
+  const navigate = useNavigate();
 
-  const { projects } = useProject();
-
-  const { operators } = useOperator();
-
-  function getProjectName(projectId: string) {
-    return (
-      projects.find(
-        (p) => p.id === projectId
-      )?.projectName ?? "-"
-    );
-  }
-
-  function getOperatorName(operatorId: string) {
-    return (
-      operators.find(
-        (o) => o.id === operatorId
-      )?.name ?? "-"
-    );
-  }
+  const equipment =
+    useEquipmentView();
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-white">
-
+    <div className="overflow-hidden rounded-lg border bg-white">
       <table className="min-w-full">
-
-        <thead className="bg-slate-50">
-
+        <thead className="bg-slate-100">
           <tr>
-
             <th className="px-4 py-3 text-left">
-              Asset No
+              Asset
             </th>
 
             <th className="px-4 py-3 text-left">
               Equipment
-            </th>
-
-            <th className="px-4 py-3 text-left">
-              Category
             </th>
 
             <th className="px-4 py-3 text-left">
@@ -65,20 +36,15 @@ export default function EquipmentTable() {
             <th className="px-4 py-3 text-right">
               Action
             </th>
-
           </tr>
-
         </thead>
 
         <tbody>
-
           {equipment.map((item) => (
-
             <tr
               key={item.id}
               className="border-t hover:bg-slate-50"
             >
-
               <td className="px-4 py-3">
                 {item.assetNo}
               </td>
@@ -88,42 +54,33 @@ export default function EquipmentTable() {
               </td>
 
               <td className="px-4 py-3">
-                {item.category}
+                {item.projectName}
               </td>
 
               <td className="px-4 py-3">
-                {getProjectName(item.projectId)}
+                {item.operatorName}
               </td>
 
               <td className="px-4 py-3">
-                {getOperatorName(item.operatorId)}
-              </td>
-
-              <td className="px-4 py-3">
-                <EquipmentStatusBadge
-                  status={item.status}
-                />
+                {item.status}
               </td>
 
               <td className="px-4 py-3 text-right">
-
-                <Link
-                  to={`/equipment/${item.id}`}
+                <button
                   className="text-blue-600 hover:underline"
+                  onClick={() =>
+                    navigate(
+                      `/equipment/${item.id}`
+                    )
+                  }
                 >
                   View
-                </Link>
-
+                </button>
               </td>
-
             </tr>
-
           ))}
-
         </tbody>
-
       </table>
-
     </div>
   );
 }

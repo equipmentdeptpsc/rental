@@ -17,8 +17,7 @@
       "@/*": ["src/*"]
     },
 
-    "ignoreDeprecations": "6.0",
-
+    
     "allowImportingTsExtensions": true,
     "allowArbitraryExtensions": true,
     "verbatimModuleSyntax": true,
@@ -32,7 +31,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "erasableSyntaxOnly": true
+    
   },
 
   "include": ["src"]

@@ -4,16 +4,23 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 
+import type {
+  EquipmentFormData,
+} from "../types";
+
 import { useProject } from "@/features/project/context/ProjectContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
 
-import type { EquipmentFormData } from "../types";
-
 interface Props {
   initialData?: EquipmentFormData;
+
   submitLabel?: string;
-  onSubmit: (data: EquipmentFormData) => void;
-  onCancel?: () => void;
+
+  onSubmit(
+    data: EquipmentFormData
+  ): void;
+
+  onCancel?(): void;
 }
 
 export default function EquipmentForm({
@@ -22,22 +29,33 @@ export default function EquipmentForm({
   onSubmit,
   onCancel,
 }: Props) {
-  const { projects } = useProject();
-  const { operators } = useOperator();
+  const { projects } =
+    useProject();
 
-  const [form, setForm] = useState<EquipmentFormData>(
-    initialData ?? {
-      assetNo: "",
-      equipmentName: "",
-      category: "",
-      maintenanceType: "Engine Hours",
-      currentReading: "",
-      projectId: "",
-      operatorId: "",
-    }
-  );
+  const { operators } =
+    useOperator();
 
-  function setField<K extends keyof EquipmentFormData>(
+  const [form, setForm] =
+    useState<EquipmentFormData>(
+      initialData ?? {
+        assetNo: "",
+
+        equipmentName: "",
+
+        category: "",
+
+        maintenanceType:
+          "Engine Hours",
+
+          currentReading: "",
+
+        projectId: "",
+
+        operatorId: "",
+      }
+    );
+
+  function update<K extends keyof EquipmentFormData>(
     key: K,
     value: EquipmentFormData[K]
   ) {
@@ -47,16 +65,17 @@ export default function EquipmentForm({
     }));
   }
 
-  function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>
+  function submit(
+    e: React.FormEvent
   ) {
     e.preventDefault();
+
     onSubmit(form);
   }
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={submit}
       className="space-y-6"
     >
       <div className="grid grid-cols-2 gap-4">
@@ -65,7 +84,7 @@ export default function EquipmentForm({
           label="Asset No"
           value={form.assetNo}
           onChange={(e) =>
-            setField(
+            update(
               "assetNo",
               e.target.value
             )
@@ -74,9 +93,11 @@ export default function EquipmentForm({
 
         <Input
           label="Equipment Name"
-          value={form.equipmentName}
+          value={
+            form.equipmentName
+          }
           onChange={(e) =>
-            setField(
+            update(
               "equipmentName",
               e.target.value
             )
@@ -87,7 +108,7 @@ export default function EquipmentForm({
           label="Category"
           value={form.category}
           onChange={(e) =>
-            setField(
+            update(
               "category",
               e.target.value
             )
@@ -95,86 +116,99 @@ export default function EquipmentForm({
         />
 
         <Select
-          label="Tracking Method"
-          value={form.maintenanceType}
-          onChange={(e) =>
-            setField(
-              "maintenanceType",
-              e.target.value as
-                | "Odometer"
-                | "Engine Hours"
-            )
+          label="Maintenance Type"
+          value={
+            form.maintenanceType
           }
           options={[
             {
-              label: "Engine Hours",
-              value: "Engine Hours",
+              label:
+                "Engine Hours",
+              value:
+                "Engine Hours",
             },
             {
-              label: "Odometer",
-              value: "Odometer",
+              label:
+                "Odometer",
+              value:
+                "Odometer",
             },
           ]}
-        />
-
-        <Input
-          label="Current Reading"
-          type="number"
-          value={form.currentReading}
           onChange={(e) =>
-            setField(
-              "currentReading",
-              e.target.value
+            update(
+              "maintenanceType",
+              e.target.value as
+                | "Engine Hours"
+                | "Odometer"
             )
           }
         />
+
+<Input
+  label="Current Reading"
+  type="number"
+  value={form.currentReading}
+  onChange={(e) =>
+    update(
+      "currentReading",
+      e.target.value
+    )
+  }
+/>
 
         <Select
           label="Project"
           value={form.projectId}
+          options={[
+            {
+              label:
+                "-- Select Project --",
+              value: "",
+            },
+            ...projects.map(
+              (p) => ({
+                label:
+                  p.projectName,
+                value: p.id,
+              })
+            ),
+          ]}
           onChange={(e) =>
-            setField(
+            update(
               "projectId",
               e.target.value
             )
           }
-          options={[
-            {
-              label: "-- None --",
-              value: "",
-            },
-            ...projects.map((project) => ({
-              label: project.projectName,
-              value: project.id,
-            })),
-          ]}
         />
 
         <Select
           label="Operator"
-          value={form.operatorId}
+          value={
+            form.operatorId
+          }
+          options={[
+            {
+              label:
+                "-- Select Operator --",
+              value: "",
+            },
+            ...operators.map(
+              (o) => ({
+                label: o.name,
+                value: o.id,
+              })
+            ),
+          ]}
           onChange={(e) =>
-            setField(
+            update(
               "operatorId",
               e.target.value
             )
           }
-          options={[
-            {
-              label: "-- None --",
-              value: "",
-            },
-            ...operators.map((operator) => ({
-              label: operator.name,
-              value: operator.id,
-            })),
-          ]}
         />
-
       </div>
 
       <div className="flex justify-end gap-3">
-
         {onCancel && (
           <Button
             type="button"
@@ -188,7 +222,6 @@ export default function EquipmentForm({
         <Button type="submit">
           {submitLabel}
         </Button>
-
       </div>
     </form>
   );

@@ -11,16 +11,19 @@ import { AuthProvider } from "@/features/auth/AuthContext";
 import { EquipmentProvider } from "@/features/equipment/context/EquipmentContext";
 import { AuditProvider } from "@/features/equipment/audit/AuditContext";
 
+import { EquipmentHistoryProvider } from "@/features/equipment/history";
+
+import { AssignmentProvider } from "@/features/assignment/context/AssignmentContext";
+
 import { RentalProvider } from "@/features/rental/context/RentalContext";
 
 import { CustomerProvider } from "@/features/customer/context/CustomerContext";
+
 import { ProjectProvider } from "@/features/project/context/ProjectContext";
 
 import { MaintenanceProvider } from "@/features/maintenance/context/MaintenanceContext";
 
 import { OperatorProvider } from "@/features/operators/context/OperatorContext";
-
-// import { AssignmentProvider } from "@/features/assignment/context/AssignmentContext";
 
 import { ToastProvider } from "@/components/ui/toast/ToastContext";
 
@@ -32,17 +35,21 @@ ReactDOM.createRoot(
       <ToastProvider>
         <AuditProvider>
           <EquipmentProvider>
-            <OperatorProvider>
-              <CustomerProvider>
-                <ProjectProvider>
-                  <MaintenanceProvider>
-                    <RentalProvider>
-                      <RouterProvider router={router} />
-                    </RentalProvider>
-                  </MaintenanceProvider>
-                </ProjectProvider>
-              </CustomerProvider>
-            </OperatorProvider>
+            <EquipmentHistoryProvider>
+              <OperatorProvider>
+                <CustomerProvider>
+                  <ProjectProvider>
+                    <MaintenanceProvider>
+                      <AssignmentProvider>
+                        <RentalProvider>
+                          <RouterProvider router={router} />
+                        </RentalProvider>
+                      </AssignmentProvider>
+                    </MaintenanceProvider>
+                  </ProjectProvider>
+                </CustomerProvider>
+              </OperatorProvider>
+            </EquipmentHistoryProvider>
           </EquipmentProvider>
         </AuditProvider>
       </ToastProvider>

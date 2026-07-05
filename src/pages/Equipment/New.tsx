@@ -8,56 +8,100 @@ import type {
 } from "@/features/equipment/types";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+
 import { useAudit } from "@/features/equipment/audit/AuditContext";
+
+import {
+  useEquipmentHistory,
+  createHistoryEvent,
+} from "@/features/equipment/history";
 
 export default function NewEquipment() {
   const navigate = useNavigate();
 
-  const { addEquipment } = useEquipment();
-  const { logAction } = useAudit();
+  const { addEquipment } =
+    useEquipment();
 
-  function handleSubmit(data: EquipmentFormData) {
-    const newRecord: EquipmentRecord = {
-      id: crypto.randomUUID(),
+  const { logAction } =
+    useAudit();
 
-      assetNo: data.assetNo,
+  const { log } =
+    useEquipmentHistory();
 
-      equipmentName: data.equipmentName,
+  function handleSubmit(
+    data: EquipmentFormData
+  ) {
+    const newRecord: EquipmentRecord =
+      {
+        id: crypto.randomUUID(),
 
-      category: data.category,
+        assetNo: data.assetNo,
 
-      maintenanceType: data.maintenanceType,
+        equipmentName:
+          data.equipmentName,
 
-      currentReading: Number(data.currentReading),
+        category:
+          data.category,
 
-      projectId: data.projectId,
+        maintenanceType:
+          data.maintenanceType,
 
-      operatorId: data.operatorId,
+        currentReading:
+          Number(
+            data.currentReading
+          ),
 
-      status: "Available",
-    };
+        projectId:
+          data.projectId,
+
+        operatorId:
+          data.operatorId,
+
+        status:
+          "Available",
+      };
 
     addEquipment(newRecord);
 
     logAction({
       action: "CREATE",
-      equipmentId: newRecord.id,
+
+      equipmentId:
+        newRecord.id,
+
       after: newRecord,
     });
+
+    log(
+      createHistoryEvent(
+        newRecord.id,
+
+        "Equipment Created",
+
+        `${newRecord.equipmentName} was added to the fleet.`,
+
+        "CREATED"
+      )
+    );
 
     navigate("/equipment");
   }
 
   return (
     <div className="p-8 space-y-6">
+
       <h1 className="text-3xl font-bold">
         Add Equipment
       </h1>
 
       <EquipmentForm
         submitLabel="Create Equipment"
-        onSubmit={handleSubmit}
-        onCancel={() => navigate("/equipment")}
+        onSubmit={
+          handleSubmit
+        }
+        onCancel={() =>
+          navigate("/equipment")
+        }
       />
     </div>
   );

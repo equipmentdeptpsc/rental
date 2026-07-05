@@ -1,47 +1,40 @@
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useParams,
+} from "react-router-dom";
 
-import Button from "@/components/ui/Button";
+import {
+  useEquipment,
+} from "@/features/equipment/context/EquipmentContext";
 
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useProject } from "@/features/project/context/ProjectContext";
-import { useOperator } from "@/features/operators/context/OperatorContext";
+import {
+  useProject,
+} from "@/features/project/context/ProjectContext";
 
-function Info({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="rounded-lg border bg-white p-4">
-      <div className="text-sm text-slate-500">
-        {label}
-      </div>
+import {
+  useOperator,
+} from "@/features/operators/context/OperatorContext";
 
-      <div className="mt-1 font-semibold">
-        {value}
-      </div>
-    </div>
-  );
-}
+import EquipmentTimeline from "@/features/equipment/history/components/EquipmentTimeline";
 
 export default function EquipmentDetails() {
-  const navigate = useNavigate();
+  const { id } =
+    useParams();
 
-  const { id } = useParams();
+  const { getEquipment } =
+    useEquipment();
 
-  const { equipment } = useEquipment();
+  const equipment =
+    id
+      ? getEquipment(id)
+      : undefined;
 
-  const { projects } = useProject();
+  const { projects } =
+    useProject();
 
-  const { operators } = useOperator();
+  const { operators } =
+    useOperator();
 
-  const machine = equipment.find(
-    (e) => e.id === id
-  );
-
-  if (!machine) {
+  if (!equipment) {
     return (
       <div className="p-8">
         Equipment not found.
@@ -51,86 +44,109 @@ export default function EquipmentDetails() {
 
   const project =
     projects.find(
-      (p) => p.id === machine.projectId
-    )?.projectName ?? "-";
+      (p) =>
+        p.id ===
+        equipment.projectId
+    );
 
   const operator =
     operators.find(
-      (o) => o.id === machine.operatorId
-    )?.name ?? "-";
+      (o) =>
+        o.id ===
+        equipment.operatorId
+    );
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="p-8 space-y-8">
 
-      <div className="flex items-center justify-between">
+      <div className="rounded-lg border bg-white p-6">
 
-        <div>
+        <h1 className="text-3xl font-bold">
+          {equipment.equipmentName}
+        </h1>
 
-          <h1 className="text-3xl font-bold">
-            Equipment Details
-          </h1>
+        <div className="grid grid-cols-2 gap-6 mt-6">
 
-          <p className="text-slate-500">
-            {machine.assetNo}
-          </p>
+          <div>
+            <strong>
+              Asset No
+            </strong>
+
+            <div>
+              {
+                equipment.assetNo
+              }
+            </div>
+          </div>
+
+          <div>
+            <strong>
+              Status
+            </strong>
+
+            <div>
+              {
+                equipment.status
+              }
+            </div>
+          </div>
+
+          <div>
+            <strong>
+              Project
+            </strong>
+
+            <div>
+              {project
+                ?.projectName ??
+                "-"}
+            </div>
+          </div>
+
+          <div>
+            <strong>
+              Operator
+            </strong>
+
+            <div>
+              {operator
+                ?.name ?? "-"}
+            </div>
+          </div>
+
+          <div>
+            <strong>
+              Current Reading
+            </strong>
+
+            <div>
+              {
+                equipment.currentReading
+              }
+            </div>
+          </div>
+
+          <div>
+            <strong>
+              Tracking
+            </strong>
+
+            <div>
+              {
+                equipment.maintenanceType
+              }
+            </div>
+          </div>
 
         </div>
 
-        <Button
-          onClick={() =>
-            navigate(
-              `/equipment/edit/${machine.id}`
-            )
-          }
-        >
-          Edit
-        </Button>
-
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-
-        <Info
-          label="Asset No"
-          value={machine.assetNo}
-        />
-
-        <Info
-          label="Equipment"
-          value={machine.equipmentName}
-        />
-
-        <Info
-          label="Category"
-          value={machine.category}
-        />
-
-        <Info
-          label="Tracking"
-          value={machine.maintenanceType}
-        />
-
-        <Info
-          label="Current Reading"
-          value={machine.currentReading}
-        />
-
-        <Info
-          label="Status"
-          value={machine.status}
-        />
-
-        <Info
-          label="Project"
-          value={project}
-        />
-
-        <Info
-          label="Operator"
-          value={operator}
-        />
-
-      </div>
+      <EquipmentTimeline
+        equipmentId={
+          equipment.id
+        }
+      />
 
     </div>
   );
