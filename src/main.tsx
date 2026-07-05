@@ -23,6 +23,8 @@ import { ProjectProvider } from "@/features/project/context/ProjectContext";
 
 import { MaintenanceProvider } from "@/features/maintenance/context/MaintenanceContext";
 
+import { DailyLogProvider } from "@/features/daily-log";
+
 import { OperatorProvider } from "@/features/operators/context/OperatorContext";
 
 import { ToastProvider } from "@/components/ui/toast/ToastContext";
@@ -40,11 +42,13 @@ ReactDOM.createRoot(
                 <CustomerProvider>
                   <ProjectProvider>
                     <MaintenanceProvider>
-                      <AssignmentProvider>
-                        <RentalProvider>
-                          <RouterProvider router={router} />
-                        </RentalProvider>
-                      </AssignmentProvider>
+                      <DailyLogProvider>
+                        <AssignmentProvider>
+                          <RentalProvider>
+                            <RouterProvider router={router} />
+                          </RentalProvider>
+                        </AssignmentProvider>
+                      </DailyLogProvider>
                     </MaintenanceProvider>
                   </ProjectProvider>
                 </CustomerProvider>

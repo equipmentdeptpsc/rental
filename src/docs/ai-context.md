@@ -1,194 +1,326 @@
-# AI Context
+# Equipment Rental Management System
 
-## Equipment Rental System
+## AI Development Context
 
-Version: MVP 1.0
-
----
-
-# Purpose
-
-This document provides architectural context for AI assistants working on this project.
-
-Always read this document before generating code.
-
-Never assume architecture that is not documented here.
-
-If implementation conflicts with this document, ask for clarification before generating replacements.
-
----
-
-# Project Type
-
-React
-
-TypeScript
-
-Vite
-
-Feature-Based Architecture
-
-Repository Pattern
-
-Context Pattern
-
-TailwindCSS
-
-Strict TypeScript
+> Last Updated: July 2026
 
 ---
 
 # Project Goal
 
-Build a production-quality Equipment Rental Management System.
+Develop a production-ready Equipment Rental Management System using React + TypeScript + Vite.
 
-Current storage uses Local Storage.
+Priority:
 
-The architecture is intentionally designed for future migration to:
+1. Finish MVP
 
-- Firebase
+2. Stabilize
 
-- Supabase
+3. Polish UI
 
-- SQL Server
+4. Optimize
 
-without changing page logic.
+5. Deployment
+
+The AI should ALWAYS prioritize finishing functionality before UI improvements.
 
 ---
 
-# High-Level Architecture
+# Technology Stack
+
+Frontend
+
+- React
+
+- TypeScript
+
+- Vite
+
+- React Router
+
+- TailwindCSS
+
+- Recharts
+
+State
+
+- React Context
+
+Persistence
+
+- Local Storage Repository Pattern
+
+Architecture
+
+Feature → Context → Repository
+
+---
+
+# Project Architecture
+
+The project uses Feature First architecture.
+
+Example
+
+src/
+
+features/
+
+equipment/
+
+assignment/
+
+customer/
+
+dashboard/
+
+maintenance/
+
+operators/
+
+project/
+
+rental/
+
+Each feature owns:
+
+- types
+
+- repository
+
+- context
+
+- hooks
+
+- utils
+
+- services
+
+- components
+
+The AI MUST NEVER redesign this architecture.
+
+---
+
+# Data Flow
 
 Pages
 
 ↓
 
-Context Providers
+Context
 
 ↓
 
-Repositories
+Repository
 
 ↓
 
-Local Storage
+Storage
 
-Pages never communicate directly with Local Storage.
-
-Repositories never import React.
-
----
-
-# Folder Convention
-
-src/
-
-app/
-
-components/
-
-features/
-
-pages/
-
-docs/
-
-Business logic belongs inside feature folders.
+Business logic belongs inside services/utils.
 
 Pages should remain thin.
 
+Repositories own persistence.
+
+Contexts own state.
+
 ---
 
-# Repository Pattern
+# Current Providers
 
-Each business feature owns its own repository.
+main.tsx registers providers in this order:
 
-Example
+AuthProvider
 
-equipment/
+ToastProvider
 
-repository/
+AuditProvider
 
-IEquipmentRepository.ts
+EquipmentProvider
 
-LocalEquipmentRepository.ts
+EquipmentHistoryProvider
+
+OperatorProvider
+
+CustomerProvider
+
+ProjectProvider
+
+MaintenanceProvider
+
+AssignmentProvider
+
+RentalProvider
+
+RouterProvider
+
+Do NOT introduce unnecessary Providers.
+
+---
+
+# Routing
+
+React Router
+
+Pages live under
+
+src/pages
+
+Each page is only a route entry.
+
+Heavy logic belongs inside feature services.
+
+---
+
+# Dashboard Architecture
+
+Dashboard has NO Context.
+
+Dashboard has NO Repository.
+
+Dashboard consumes existing contexts.
+
+Structure
+
+features/dashboard
+
+components/
+
+services/
+
+types.ts
 
 index.ts
 
-Repositories are responsible for:
+Business logic
 
-- create
+dashboard.service.ts
 
-- update
-
-- delete
-
-- getAll
-
-- getById
-
-Repositories are the persistence layer.
+Dashboard page only gathers data from contexts.
 
 ---
 
-# Context Pattern
+# Naming Convention
 
-Repositories are wrapped by Context Providers.
+New files use dot notation.
 
-Pages communicate only with Context Providers.
+Example
 
-Context Providers coordinate repository operations and UI refresh.
+dashboard.service.ts
+
+statistics-grid.tsx
+
+equipment-status-chart.tsx
+
+equipment-category-chart.tsx
+
+statistic-card.tsx
+
+Avoid camelCase filenames for new files.
 
 ---
 
-# Master Entities
+# Current Modules
 
-Equipment
+## Equipment
+
+Completed
+
+Includes
+
+CRUD
+
+Details
+
+Status
+
+History
+
+Assignment integration
+
+Rental integration
+
+Maintenance integration
+
+---
+
+## Customers
+
+Completed
+
+CRUD
+
+---
+
+## Operators
+
+Completed
+
+CRUD
+
+---
+
+## Projects
+
+Completed
+
+CRUD
+
+---
+
+## Assignments
+
+Completed
 
 Assignment
 
-Rental
+Return Equipment
 
-Maintenance
+Equipment Status Update
 
-Project
+History Logging
 
-Operator
-
-Customer
-
-Audit
-
-Equipment History
+Rental Integration
 
 ---
 
-# Equipment
+## Rentals
 
-EquipmentRecord contains
+Completed
 
-- id
+Rental
 
-- assetNo
+Return
 
-- equipmentName
+Status
 
-- category
+Overdue calculation
 
-- maintenanceType
+---
 
-- currentReading
+## Maintenance
 
-- projectId
+Core implementation completed
 
-- operatorId
+CRUD
 
-- status
+Status
 
-- deleted
+Equipment linkage
 
-- deletedAt
+---
 
-Status values
+## Dashboard
+
+Completed
+
+Milestone 1
+
+✔ KPI Cards
+
+Total Equipment
 
 Available
 
@@ -196,200 +328,246 @@ Assigned
 
 Maintenance
 
-Equipment never stores project name or operator name.
+Active Rentals
 
-Relationships always use IDs.
+Active Assignments
 
----
+Overdue Rentals
 
-# Assignment
+Upcoming Returns
 
-Assignments connect
+Milestone 2
 
-Equipment
+✔ Equipment Status Pie Chart
 
-↓
-
-Operator
-
-↓
-
-Project
-
-AssignmentRecord stores
-
-equipmentId
-
-operatorId
-
-projectId
-
-assignedDate
-
-expectedReturn
-
-returnedDate
-
-remarks
-
-status
-
-Status
-
-Active
-
-Completed
-
-Cancelled
+✔ Equipment Category Bar Chart
 
 ---
 
-# Rental
+# Remaining MVP
 
-Rental references Equipment.
+Dashboard
 
-Rental stores customer information.
+Milestone 3
 
-Rental status
+Recent Assignments
 
-Active
+Recent Rentals
 
-Returned
+Upcoming Returns
 
----
+Upcoming Maintenance
 
-# Maintenance
+Recent Equipment History
 
-Maintenance belongs to Equipment.
+Reports
 
-Equipment under Maintenance cannot be assigned.
+Bookings
 
----
+Billing
 
-# Projects
+Daily Logs
 
-Assignments reference Projects through projectId.
+QR Tracking
 
-Soft Delete is supported.
+Settings
 
-Deleted projects should not appear in selectors.
+Authentication
 
----
+Export
 
-# Operators
+Print
 
-Assignments reference Operators through operatorId.
-
-Only Active operators may receive assignments.
-
----
-
-# Customers
-
-Customers are referenced by Rental records.
-
-Historical rentals must remain even if customers are removed.
-
----
-
-# Audit
-
-Every Create
-
-Update
-
-Delete
-
-should generate an Audit Log.
-
-Audit entries are immutable.
+Deployment
 
 ---
 
 # Equipment History
 
-Equipment lifecycle events are stored permanently.
+Equipment history already exists.
 
-Examples
+Context
 
-Created
+EquipmentHistoryContext
 
-Edited
+API
 
-Assigned
+history
 
-Returned
+log()
 
-Maintenance Started
+getHistory()
 
-Maintenance Completed
+History Type
 
-Rental Started
+CREATED
 
-Rental Returned
+UPDATED
 
-History records should never be removed.
+ASSIGNED
+
+RETURNED
+
+RENTED
+
+RENTAL_RETURN
+
+MAINTENANCE_START
+
+MAINTENANCE_END
+
+STATUS_CHANGE
+
+Do NOT create another activity log system.
+
+Reuse Equipment History.
 
 ---
 
-# Soft Delete
+# Important Development Rules
 
-Master records use
+Never redesign architecture.
 
-deleted
+Never introduce unnecessary Contexts.
 
-deletedAt
+Never introduce unnecessary Providers.
 
-instead of physical deletion.
+Never bypass Repositories.
+
+Never duplicate state.
+
+Never move business logic into Pages.
+
+Never replace repositories with hooks.
+
+Never store duplicated computed data.
+
+Always follow existing architecture.
 
 ---
 
-# Build Requirement
+# Development Workflow
 
-Every generated file must compile under
+For every milestone
 
-TypeScript Strict Mode.
+1.
 
-No implicit any.
+Return complete replacement files.
 
-No ignored errors.
+2.
 
-Every replacement should end with
+User pastes files.
+
+3.
+
+Run
 
 npm run build
 
-passing successfully.
+4.
+
+If build succeeds
+
+git add .
+
+git commit
+
+git push
+
+5.
+
+Continue next milestone.
+
+Never stop for UI polishing.
 
 ---
 
-# Working Style
+# Build Rule
 
-When generating replacements:
+The AI should stop ONLY if
 
-1. Respect the existing architecture.
+npm run build
 
-2. Prefer complete file replacements.
+fails.
 
-3. Avoid assuming filenames.
-
-4. Avoid introducing new architectural patterns unless requested.
-
-5. Keep repository, context, and page responsibilities separated.
-
-6. If architecture is unclear, ask before generating code.
+Otherwise continue implementing the MVP.
 
 ---
 
-# Documentation Policy
+# Git
 
-Whenever a major architectural decision is made, update:
+Repository already exists.
 
-[architecture.md](http://architecture.md)
+Current workflow
 
-[domain-rules.md](http://domain-rules.md)
+Feature branch
 
-[development-roadmap.md](http://development-roadmap.md)
+architecture-standardization
 
-[ai-context.md](http://ai-context.md)
+Remote
 
-These four documents are considered the project's single source of truth.
+origin
+
+GitHub
+
+[https://github.com/equipmentdeptpsc/equipment-rental-system](https://github.com/equipmentdeptpsc/equipment-rental-system)
+
+Commit after every successful milestone.
+
+---
+
+# AI Response Rules
+
+Always review existing architecture before generating code.
+
+Never assume interfaces.
+
+Never invent Context APIs.
+
+Never redesign folders.
+
+Return COMPLETE replacement files.
+
+Avoid snippets.
+
+Avoid pseudo code.
+
+Assume user wants production-ready code.
+
+When the response exceeds model limits, split into multiple responses while ensuring each response contains only complete files.
+
+---
+
+# Current Status
+
+Dashboard Milestone 1
+
+Completed
+
+Dashboard Milestone 2
+
+Completed
+
+Assignment return flow
+
+Completed
+
+Equipment History
+
+Completed
+
+Repository architecture
+
+Stable
+
+TypeScript build
+
+Passing
+
+Application Status
+
+Ready to continue MVP development.
+
+Current Priority
+
+Dashboard Milestone 3.

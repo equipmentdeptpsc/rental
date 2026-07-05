@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 
 import AppLayout from "./AppLayout";
 
+// Dashboard
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
 
@@ -26,6 +27,11 @@ import EditOperator from "@/pages/Operators/Edit";
 import Projects from "@/pages/Projects";
 import NewProject from "@/pages/Projects/New";
 
+// Assignments
+import Assignments from "@/pages/Assignments";
+import NewAssignment from "@/pages/Assignments/New";
+import AssignmentDetails from "@/pages/Assignments/Details";
+
 // Rentals
 import RentalPage from "@/pages/Rental";
 import NewRental from "@/pages/Rental/New";
@@ -36,13 +42,15 @@ import MaintenancePage from "@/pages/Maintenance";
 import NewMaintenance from "@/pages/Maintenance/New";
 import MaintenanceDetails from "@/pages/Maintenance/Details";
 
+// Daily Logs
+import DailyLogs from "@/pages/DailyLogs";
+import NewDailyLog from "@/pages/DailyLogs/New";
+
 // Other Modules
 import Bookings from "@/pages/Bookings";
-import DailyLogs from "@/pages/DailyLogs";
 import Billing from "@/pages/Billing";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
-import AssignmentDetails from "@/pages/Assignments/Details";
 
 export const router = createBrowserRouter([
   {
@@ -51,17 +59,17 @@ export const router = createBrowserRouter([
     errorElement: <NotFound />,
 
     children: [
-      // ==========================
+      // ====================================
       // Dashboard
-      // ==========================
+      // ====================================
       {
         index: true,
         element: <Dashboard />,
       },
 
-      // ==========================
+      // ====================================
       // Equipment
-      // ==========================
+      // ====================================
       {
         path: "equipment",
         element: <Equipment />,
@@ -79,9 +87,9 @@ export const router = createBrowserRouter([
         element: <EquipmentDetails />,
       },
 
-      // ==========================
+      // ====================================
       // Customers
-      // ==========================
+      // ====================================
       {
         path: "customers",
         element: <CustomerPage />,
@@ -99,9 +107,9 @@ export const router = createBrowserRouter([
         element: <EditCustomer />,
       },
 
-      // ==========================
+      // ====================================
       // Operators
-      // ==========================
+      // ====================================
       {
         path: "operators",
         element: <Operators />,
@@ -115,9 +123,9 @@ export const router = createBrowserRouter([
         element: <EditOperator />,
       },
 
-      // ==========================
+      // ====================================
       // Projects
-      // ==========================
+      // ====================================
       {
         path: "projects",
         element: <Projects />,
@@ -127,9 +135,25 @@ export const router = createBrowserRouter([
         element: <NewProject />,
       },
 
-      // ==========================
+      // ====================================
+      // Assignments
+      // ====================================
+      {
+        path: "assignments",
+        element: <Assignments />,
+      },
+      {
+        path: "assignments/new",
+        element: <NewAssignment />,
+      },
+      {
+        path: "assignments/:id",
+        element: <AssignmentDetails />,
+      },
+
+      // ====================================
       // Rentals
-      // ==========================
+      // ====================================
       {
         path: "rentals",
         element: <RentalPage />,
@@ -143,9 +167,9 @@ export const router = createBrowserRouter([
         element: <ReturnRental />,
       },
 
-      // ==========================
+      // ====================================
       // Maintenance
-      // ==========================
+      // ====================================
       {
         path: "maintenance",
         element: <MaintenancePage />,
@@ -159,16 +183,24 @@ export const router = createBrowserRouter([
         element: <MaintenanceDetails />,
       },
 
-      // ==========================
-      // Other Modules
-      // ==========================
-      {
-        path: "bookings",
-        element: <Bookings />,
-      },
+      // ====================================
+      // Daily Logs
+      // ====================================
       {
         path: "daily-logs",
         element: <DailyLogs />,
+      },
+      {
+        path: "daily-logs/new",
+        element: <NewDailyLog />,
+      },
+
+      // ====================================
+      // Other Modules
+      // ====================================
+      {
+        path: "bookings",
+        element: <Bookings />,
       },
       {
         path: "billing",
@@ -182,10 +214,6 @@ export const router = createBrowserRouter([
         path: "settings",
         element: <Settings />,
       },
-      {
-        path: "assignments/:id",
-        element: <AssignmentDetails />,
-      }
     ],
   },
 ]);

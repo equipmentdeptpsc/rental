@@ -1,7 +1,9 @@
-import type { EquipmentRecord } from "@/features/equipment/types";
+import type { EquipmentHistoryRecord } from "@/features/equipment/history";
+
 import type { AssignmentRecord } from "@/features/assignment/types";
-import type { RentalRecord } from "@/features/rental/types";
+import type { EquipmentRecord } from "@/features/equipment/types";
 import type { MaintenanceRecord } from "@/features/maintenance/types";
+import type { RentalRecord } from "@/features/rental/types";
 
 import type { DashboardSummary } from "../types";
 
@@ -13,12 +15,17 @@ function isWithinNext7Days(date: string) {
   target.setHours(0, 0, 0, 0);
 
   const diff =
-    target.getTime() - today.getTime();
+    target.getTime() -
+    today.getTime();
 
   const days =
-    diff / (1000 * 60 * 60 * 24);
+    diff /
+    (1000 * 60 * 60 * 24);
 
-  return days >= 0 && days <= 7;
+  return (
+    days >= 0 &&
+    days <= 7
+  );
 }
 
 export function calculateDashboardSummary(
@@ -27,11 +34,14 @@ export function calculateDashboardSummary(
   rentals: RentalRecord[],
   maintenance: MaintenanceRecord[]
 ): DashboardSummary {
-  const today = new Date();
+  const today =
+    new Date();
 
   const activeRentals =
     rentals.filter(
-      (r) => r.status === "Active"
+      (r) =>
+        r.status ===
+        "Active"
     );
 
   return {
@@ -41,31 +51,36 @@ export function calculateDashboardSummary(
     availableEquipment:
       equipment.filter(
         (e) =>
-          e.status === "Available"
+          e.status ===
+          "Available"
       ).length,
 
     assignedEquipment:
       equipment.filter(
         (e) =>
-          e.status === "Assigned"
+          e.status ===
+          "Assigned"
       ).length,
 
     maintenanceEquipment:
       equipment.filter(
         (e) =>
-          e.status === "Maintenance"
+          e.status ===
+          "Maintenance"
       ).length,
 
     activeAssignments:
       assignments.filter(
         (a) =>
-          a.status === "Active"
+          a.status ===
+          "Active"
       ).length,
 
     completedAssignments:
       assignments.filter(
         (a) =>
-          a.status === "Completed"
+          a.status ===
+          "Completed"
       ).length,
 
     activeRentals:
@@ -74,7 +89,8 @@ export function calculateDashboardSummary(
     returnedRentals:
       rentals.filter(
         (r) =>
-          r.status === "Returned"
+          r.status ===
+          "Returned"
       ).length,
 
     overdueRentals:
@@ -88,26 +104,30 @@ export function calculateDashboardSummary(
     scheduledMaintenance:
       maintenance.filter(
         (m) =>
-          m.status === "Scheduled"
+          m.status ===
+          "Scheduled"
       ).length,
 
     maintenanceInProgress:
       maintenance.filter(
         (m) =>
-          m.status === "In Progress"
+          m.status ===
+          "In Progress"
       ).length,
 
     completedMaintenance:
       maintenance.filter(
         (m) =>
-          m.status === "Completed"
+          m.status ===
+          "Completed"
       ).length,
 
     upcomingReturns:
-      activeRentals.filter((r) =>
-        isWithinNext7Days(
-          r.expectedReturn
-        )
+      activeRentals.filter(
+        (r) =>
+          isWithinNext7Days(
+            r.expectedReturn
+          )
       ).length,
   };
 }
@@ -120,21 +140,24 @@ export function getEquipmentStatusData(
       name: "Available",
       value: equipment.filter(
         (e) =>
-          e.status === "Available"
+          e.status ===
+          "Available"
       ).length,
     },
     {
       name: "Assigned",
       value: equipment.filter(
         (e) =>
-          e.status === "Assigned"
+          e.status ===
+          "Assigned"
       ).length,
     },
     {
       name: "Maintenance",
       value: equipment.filter(
         (e) =>
-          e.status === "Maintenance"
+          e.status ===
+          "Maintenance"
       ).length,
     },
   ];
@@ -144,21 +167,129 @@ export function getEquipmentCategoryData(
   equipment: EquipmentRecord[]
 ) {
   const categories =
-    new Map<string, number>();
+    new Map<
+      string,
+      number
+    >();
 
-  equipment.forEach((item) => {
-    categories.set(
-      item.category,
-      (categories.get(
-        item.category
-      ) ?? 0) + 1
-    );
-  });
+  equipment.forEach(
+    (item) => {
+      categories.set(
+        item.category,
+        (categories.get(
+          item.category
+        ) ?? 0) + 1
+      );
+    }
+  );
 
   return Array.from(
     categories.entries()
-  ).map(([name, value]) => ({
-    name,
-    value,
-  }));
+  ).map(
+    ([name, value]) => ({
+      name,
+      value,
+    })
+  );
+}
+
+/* =======================================================
+   Dashboard Operational Widgets
+======================================================= */
+
+export function getRecentAssignments(
+  assignments: AssignmentRecord[],
+  limit = 5
+) {
+  return [...assignments]
+    .sort(
+      (a, b) =>
+        new Date(
+          b.assignedDate
+        ).getTime() -
+        new Date(
+          a.assignedDate
+        ).getTime()
+    )
+    .slice(0, limit);
+}
+
+export function getRecentRentals(
+  rentals: RentalRecord[],
+  limit = 5
+) {
+  return [...rentals]
+    .sort(
+      (a, b) =>
+        new Date(
+          b.dateOut
+        ).getTime() -
+        new Date(
+          a.dateOut
+        ).getTime()
+    )
+    .slice(0, limit);
+}
+
+export function getUpcomingReturns(
+  rentals: RentalRecord[]
+) {
+  return rentals
+    .filter(
+      (r) =>
+        r.status ===
+          "Active" &&
+        isWithinNext7Days(
+          r.expectedReturn
+        )
+    )
+    .sort(
+      (a, b) =>
+        new Date(
+          a.expectedReturn
+        ).getTime() -
+        new Date(
+          b.expectedReturn
+        ).getTime()
+    );
+}
+
+export function getUpcomingMaintenance(
+  maintenance: MaintenanceRecord[]
+) {
+  return maintenance
+    .filter(
+      (m) =>
+        m.status ===
+          "Scheduled" &&
+        isWithinNext7Days(
+          m.scheduledDate
+        )
+    )
+    .sort(
+      (a, b) =>
+        new Date(
+          a.scheduledDate
+        ).getTime() -
+        new Date(
+          b.scheduledDate
+        ).getTime()
+    );
+}
+
+export function getRecentHistory(
+  history: EquipmentHistoryRecord[],
+  limit = 8
+) {
+  return [...history]
+    .sort(
+      (a, b) =>
+        new Date(
+          b.timestamp
+        ).getTime() -
+        new Date(
+          a.timestamp
+        ).getTime()
+    )
+    .slice(0, limit);
 }
