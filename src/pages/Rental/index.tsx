@@ -7,7 +7,9 @@ import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 
 export default function RentalPage() {
   const { rentals } = useRental();
-  const { getEquipment } = useEquipment();
+
+  const { getEquipment } =
+    useEquipment();
 
   return (
     <div className="space-y-6 p-8">
@@ -27,9 +29,13 @@ export default function RentalPage() {
         </div>
 
         <Link to="/rentals/new">
+
           <Button>
+
             New Rental
+
           </Button>
+
         </Link>
 
       </div>
@@ -67,7 +73,7 @@ export default function RentalPage() {
               </th>
 
               <th className="px-4 py-3 text-left">
-                Action
+                Actions
               </th>
 
             </tr>
@@ -94,7 +100,9 @@ export default function RentalPage() {
               rentals.map((rental) => {
 
                 const equipment =
-                  getEquipment(rental.equipmentId);
+                  getEquipment(
+                    rental.equipmentId
+                  );
 
                 return (
 
@@ -131,7 +139,8 @@ export default function RentalPage() {
 
                       <span
                         className={`rounded px-2 py-1 text-xs font-medium ${
-                          rental.status === "Returned"
+                          rental.status ===
+                          "Returned"
                             ? "bg-green-100 text-green-700"
                             : "bg-blue-100 text-blue-700"
                         }`}
@@ -143,16 +152,28 @@ export default function RentalPage() {
 
                     <td className="px-4 py-3">
 
-                      {rental.status === "Active" && (
+                      <div className="flex gap-3">
 
                         <Link
-                          to={`/rentals/return/${rental.id}`}
-                          className="text-blue-600 hover:underline"
+                          to={`/rentals/${rental.id}/workspace`}
+                          className="font-medium text-blue-600 hover:underline"
                         >
-                          Return
+                          Workspace
                         </Link>
 
-                      )}
+                        {rental.status ===
+                          "Active" && (
+
+                          <Link
+                            to={`/rentals/return/${rental.id}`}
+                            className="font-medium text-emerald-600 hover:underline"
+                          >
+                            Return
+                          </Link>
+
+                        )}
+
+                      </div>
 
                     </td>
 

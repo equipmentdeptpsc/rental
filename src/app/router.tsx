@@ -36,6 +36,7 @@ import AssignmentDetails from "@/pages/Assignments/Details";
 import RentalPage from "@/pages/Rental";
 import NewRental from "@/pages/Rental/New";
 import ReturnRental from "@/pages/Rental/Return";
+import RentalWorkspacePage from "@/pages/RentalWorkspace";
 
 // Maintenance
 import MaintenancePage from "@/pages/Maintenance";
@@ -161,6 +162,10 @@ export const router = createBrowserRouter([
       {
         path: "rentals/new",
         element: <NewRental />,
+      },
+      {
+        path: "rentals/:rentalId/workspace",
+        element: <RentalWorkspacePage />,
       },
       {
         path: "rentals/return/:id",

@@ -13,3 +13,6 @@ export { default as RecentRentals } from "./components/recent-rentals";
 export { default as UpcomingReturns } from "./components/upcoming-returns";
 export { default as UpcomingMaintenance } from "./components/upcoming-maintenance";
 export { default as RecentHistory } from "./components/recent-history";
+
+/* Dashboard Milestone 3 */
+export { default as RecentActivity } from "./components/DashboardWidgets/RecentActivity";

@@ -7,6 +7,7 @@ import {
   UpcomingReturns,
   UpcomingMaintenance,
   RecentHistory,
+  RecentActivity,
   calculateDashboardSummary,
   getEquipmentCategoryData,
   getEquipmentStatusData,
@@ -25,34 +26,29 @@ import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useProject } from "@/features/project/context/ProjectContext";
 import { useEquipmentHistory } from "@/features/equipment/history";
 
+import FleetUtilization from "@/features/dashboard/components/DashboardWidgets/FleetUtilization";
+
 export default function Dashboard() {
   const { equipment } = useEquipment();
 
-  const { assignments } =
-    useAssignment();
+  const { assignments } = useAssignment();
 
-  const { rentals } =
-    useRental();
+  const { rentals } = useRental();
 
-  const { maintenance } =
-    useMaintenance();
+  const { maintenance } = useMaintenance();
 
-  const { operators } =
-    useOperator();
+  const { operators } = useOperator();
 
-  const { projects } =
-    useProject();
+  const { projects } = useProject();
 
-  const { history } =
-    useEquipmentHistory();
+  const { history } = useEquipmentHistory();
 
-  const summary =
-    calculateDashboardSummary(
-      equipment,
-      assignments,
-      rentals,
-      maintenance
-    );
+  const summary = calculateDashboardSummary(
+    equipment,
+    assignments,
+    rentals,
+    maintenance
+  );
 
   return (
     <div className="space-y-8 p-8">
@@ -62,67 +58,56 @@ export default function Dashboard() {
         </h1>
 
         <p className="mt-2 text-gray-500">
-          Fleet overview and operational
-          summary.
+          Fleet overview and operational summary.
         </p>
       </div>
 
-      <StatisticsGrid
-        summary={summary}
-      />
+      <StatisticsGrid summary={summary} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <EquipmentStatusChart
-          data={getEquipmentStatusData(
-            equipment
-          )}
+          data={getEquipmentStatusData(equipment)}
         />
 
         <EquipmentCategoryChart
-          data={getEquipmentCategoryData(
-            equipment
-          )}
+          data={getEquipmentCategoryData(equipment)}
         />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <FleetUtilization />
+
+        <RecentActivity history={history} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentAssignments
-          assignments={getRecentAssignments(
-            assignments
-          )}
+          assignments={getRecentAssignments(assignments)}
           equipment={equipment}
           operators={operators}
           projects={projects}
         />
 
         <RecentRentals
-          rentals={getRecentRentals(
-            rentals
-          )}
+          rentals={getRecentRentals(rentals)}
           equipment={equipment}
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <UpcomingReturns
-          rentals={getUpcomingReturns(
-            rentals
-          )}
+          rentals={getUpcomingReturns(rentals)}
           equipment={equipment}
         />
 
         <UpcomingMaintenance
-          maintenance={getUpcomingMaintenance(
-            maintenance
-          )}
+          maintenance={getUpcomingMaintenance(maintenance)}
           equipment={equipment}
         />
       </div>
 
       <RecentHistory
-        history={getRecentHistory(
-          history
-        )}
+        history={getRecentHistory(history)}
         equipment={equipment}
       />
     </div>
