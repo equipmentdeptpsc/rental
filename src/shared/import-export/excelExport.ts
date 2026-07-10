@@ -2,28 +2,9 @@ import * as XLSX from "xlsx";
 
 export interface ExportOptions<T> {
 
-  /**
-   * Worksheet name
-   */
-
-  sheetName?: string;
-
-  /**
-   * Export filename
-   */
-
   fileName: string;
 
-  /**
-   * Optional column mapping.
-   *
-   * Example:
-   *
-   * {
-   *   activityCode: "Activity Code",
-   *   description: "Description"
-   * }
-   */
+  sheetName?: string;
 
   columns?: Partial<
     Record<
@@ -34,7 +15,7 @@ export interface ExportOptions<T> {
 
 }
 
-export function exportToExcel<T extends Record<string, unknown>>(
+export function exportToExcel<T>(
 
   records: T[],
 
@@ -52,100 +33,54 @@ export function exportToExcel<T extends Record<string, unknown>>(
 
   } = options;
 
-  /**
-   * Nothing to export.
-   */
+  if (records.length === 0) {
 
-  if (
-
-    records.length === 0
-
-  ) {
-
-    alert(
-
-      "There is no data to export."
-
-    );
+    alert("There is no data to export.");
 
     return;
 
   }
 
-  let exportRows: Record<string, unknown>[] =
-    [];
+  let exportRows: Record<string, unknown>[] = [];
 
-  /**
-   * Column mapping
-   */
+  if (columns) {
 
-  if (
+    const columnEntries = Object.entries(
+      columns
+    ) as Array<[keyof T, string]>;
 
-    columns
+    exportRows = records.map(record => {
 
-  ) {
+      const source =
+        record as Record<string, unknown>;
 
-    exportRows =
+      const row: Record<string, unknown> = {};
 
-      records.map(
+      columnEntries.forEach(([key, label]) => {
 
-        record => {
+        row[label || String(key)] =
+          source[String(key)];
 
-          const row:
-            Record<string, unknown> =
-            {};
+      });
 
-          Object.entries(
+      return row;
 
-            columns
-
-          ).forEach(
-
-            ([
-
-              key,
-
-              label,
-
-            ]) => {
-
-              row[
-                label ??
-                key
-              ] =
-                record[
-                  key
-                ];
-
-            }
-
-          );
-
-          return row;
-
-        }
-
-      );
+    });
 
   }
 
   else {
 
-    exportRows =
+    exportRows = records.map(record =>
 
-      records as Record<
-        string,
-        unknown
-      >[];
+      record as Record<string, unknown>
+
+    );
 
   }
 
   const worksheet =
-    XLSX.utils.json_to_sheet(
-
-      exportRows
-
-    );
+    XLSX.utils.json_to_sheet(exportRows);
 
   const workbook =
     XLSX.utils.book_new();

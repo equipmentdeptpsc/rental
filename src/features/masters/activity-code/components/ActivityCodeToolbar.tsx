@@ -12,6 +12,19 @@ interface Props {
 
   onCreate(): void;
 
+  /**
+   * Optional until pages/index.tsx
+   * is upgraded.
+   */
+
+  onImport?(): void;
+
+  onExportExcel?(): void;
+
+  onExportCsv?(): void;
+
+  onDownloadTemplate?(): void;
+
 }
 
 export default function ActivityCodeToolbar({
@@ -22,6 +35,14 @@ export default function ActivityCodeToolbar({
 
   onCreate,
 
+  onImport,
+
+  onExportExcel,
+
+  onExportCsv,
+
+  onDownloadTemplate,
+
 }: Props) {
 
   return (
@@ -30,13 +51,19 @@ export default function ActivityCodeToolbar({
 
       keyword={keyword}
 
-      onKeywordChange={
-        onKeywordChange
-      }
+      onKeywordChange={onKeywordChange}
 
       onCreate={onCreate}
 
       createLabel="Activity Code"
+
+      onImport={onImport}
+
+      onExport={onExportExcel}
+
+      onExportCsv={onExportCsv}
+
+      onDownloadTemplate={onDownloadTemplate}
 
     />
 
