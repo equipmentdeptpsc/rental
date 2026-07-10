@@ -1,42 +1,77 @@
 import type { EquipmentRecord } from "../types";
 
-/**
- * Re-export EquipmentRecord so existing imports continue to work.
- */
 export type { EquipmentRecord };
 
 export const equipmentData: EquipmentRecord[] = [
   {
     id: crypto.randomUUID(),
+
+    prefixId: "seed-ex",
+
     assetNo: "EX-001",
+
     equipmentName: "Excavator ZX200",
-    category: "Excavator",
+
+    category: "Non-Moving Equipment",
+
     maintenanceType: "Engine Hours",
+
     currentReading: 3250,
+
     projectId: "",
+
     operatorId: "",
+
     status: "Assigned",
+
+    deleted: false,
   },
+
   {
     id: crypto.randomUUID(),
-    assetNo: "BD-002",
+
+    prefixId: "seed-ex",
+
+    assetNo: "EX-002",
+
     equipmentName: "Bulldozer D85",
-    category: "Bulldozer",
+
+    category: "Non-Moving Equipment",
+
     maintenanceType: "Engine Hours",
+
     currentReading: 1845,
+
     projectId: "",
+
     operatorId: "",
+
     status: "Available",
+
+    deleted: false,
   },
+
   {
     id: crypto.randomUUID(),
+
+    prefixId: "seed-dt",
+
     assetNo: "DT-003",
+
     equipmentName: "Dump Truck FMX",
-    category: "Dump Truck",
-    maintenanceType: "Odometer",
+
+    category: "Moving Equipment",
+
+    maintenanceType: "Kilometers",
+
     currentReading: 78420,
+
     projectId: "",
+
     operatorId: "",
+
     status: "Maintenance",
+
+    deleted: false,
   },
 ];

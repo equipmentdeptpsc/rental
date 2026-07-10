@@ -12,26 +12,35 @@ import type { RentalContractRecord } from "../types/RentalContract";
 import { rentalRepository } from "../repository";
 import { rentalContractRepository } from "../repository/rentalContractRepository";
 
-interface RentalContextType {
-  // ======================================
-  // Rental Transactions
-  // ======================================
+import type { EquipmentRecord } from "@/features/equipment/types";
+import { validateRental } from "../utils/validateRental";
 
+interface RentalContextType {
   rentals: RentalRecord[];
 
-  addRental(item: RentalRecord): void;
+  addRental(
+    item: RentalRecord,
+    equipment?: EquipmentRecord
+  ): {
+    success: boolean;
+    message?: string;
+  };
 
-  updateRental(item: RentalRecord): void;
+  updateRental(
+    item: RentalRecord
+  ): void;
 
-  deleteRental(id: string): void;
+  deleteRental(
+    id: string
+  ): void;
 
-  returnRental(id: string): void;
+  returnRental(
+    id: string
+  ): void;
 
-  getRental(id: string): RentalRecord | undefined;
-
-  // ======================================
-  // Rental Contracts
-  // ======================================
+  getRental(
+    id: string
+  ): RentalRecord | undefined;
 
   contracts: RentalContractRecord[];
 
@@ -52,9 +61,10 @@ interface RentalContextType {
   ): RentalContractRecord | undefined;
 }
 
-const RentalContext = createContext<
-  RentalContextType | undefined
->(undefined);
+const RentalContext =
+  createContext<
+    RentalContextType | undefined
+  >(undefined);
 
 export function RentalProvider({
   children,
@@ -83,34 +93,49 @@ export function RentalProvider({
     ]);
   }
 
-  // ======================================
-  // Rentals
-  // ======================================
-
   function addRental(
-    item: RentalRecord
-  ): void {
+    item: RentalRecord,
+    equipment?: EquipmentRecord
+  ) {
+    const validation =
+      validateRental(equipment);
+
+    if (!validation.valid) {
+      return {
+        success: false,
+        message:
+          validation.message,
+      };
+    }
+
     rentalRepository.create(item);
+
     refreshRentals();
+
+    return {
+      success: true,
+    };
   }
 
   function updateRental(
     item: RentalRecord
-  ): void {
+  ) {
     rentalRepository.update(item);
+
     refreshRentals();
   }
 
   function deleteRental(
     id: string
-  ): void {
+  ) {
     rentalRepository.delete(id);
+
     refreshRentals();
   }
 
   function returnRental(
     id: string
-  ): void {
+  ) {
     const rental =
       rentalRepository.getById(id);
 
@@ -133,10 +158,6 @@ export function RentalProvider({
   ) {
     return rentalRepository.getById(id);
   }
-
-  // ======================================
-  // Contracts
-  // ======================================
 
   function addContract(
     contract: RentalContractRecord
@@ -178,7 +199,6 @@ export function RentalProvider({
 
   const value = useMemo(
     () => ({
-      // Rentals
       rentals,
       addRental,
       updateRental,
@@ -186,7 +206,6 @@ export function RentalProvider({
       returnRental,
       getRental,
 
-      // Contracts
       contracts,
       addContract,
       updateContract,

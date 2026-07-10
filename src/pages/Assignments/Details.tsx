@@ -1,26 +1,54 @@
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 import Button from "@/components/ui/Button";
 
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useRental } from "@/features/rental/context/RentalContext";
+import { useProject } from "@/features/project/context/ProjectContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
 
 import {
   useEquipmentHistory,
   createHistoryEvent,
 } from "@/features/equipment/history";
 
+import { useAudit } from "@/features/equipment/audit/AuditContext";
+
 export default function AssignmentDetails() {
-  const navigate = useNavigate();
   const { id } = useParams();
 
-  const { assignments, updateAssignment } = useAssignment();
-  const { getEquipment, updateEquipment } = useEquipment();
-  const { rentals, updateRental } = useRental();
-  const { log } = useEquipmentHistory();
+  const navigate = useNavigate();
 
-  const assignment = assignments.find((a) => a.id === id);
+  const {
+    assignments,
+    completeAssignment,
+  } = useAssignment();
+
+  const {
+    getEquipment,
+    updateEquipment,
+  } = useEquipment();
+
+  const { projects } =
+    useProject();
+
+  const { operators } =
+    useOperator();
+
+  const { log } =
+    useEquipmentHistory();
+
+  const { logAction } =
+    useAudit();
+
+  const assignment =
+    assignments.find(
+      (a) => a.id === id
+    );
 
   if (!assignment) {
     return (
@@ -30,106 +58,222 @@ export default function AssignmentDetails() {
     );
   }
 
-  const equipment = getEquipment(assignment.equipmentId);
-  
-  if (!equipment) {
-    return (
-      <div className="p-8">
-        Equipment not found.
-      </div>
+  const equipment =
+    getEquipment(
+      assignment.equipmentId
     );
-  }
 
-  function returnEquipment() {
-    if (!equipment || !assignment) return;
-  
+  const operator =
+    operators.find(
+      (o) =>
+        o.id ===
+        assignment.operatorId
+    );
+
+  const project =
+    projects.find(
+      (p) =>
+        p.id ===
+        assignment.projectId
+    );
+
+  function handleCompleteAssignment() {
+    if (!assignment || !equipment) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "Complete this assignment and return the equipment?"
+      );
+
+    if (!confirmed) return;
+
+    const updated =
+      completeAssignment(
+        assignment.id,
+        new Date()
+          .toISOString()
+          .split("T")[0]
+      );
+
+    if (!updated) return;
+
     updateEquipment({
       ...equipment,
+      status: "Available",
       projectId: "",
       operatorId: "",
-      status: "Available",
-    });
-
-    log(
-      createHistoryEvent(
-        equipment.id,
-        "Equipment Returned",
-        "Equipment returned from assignment.",
-        "RETURNED"
-      )
-    );
-
-    updateAssignment({
-      ...assignment,
-      id: assignment.id,
-      status: "Completed",
-      returnedDate: new Date().toISOString().split("T")[0],
     });
 
     log(
       createHistoryEvent(
         equipment.id,
         "Assignment Completed",
-        "Assignment completed.",
-        "STATUS_CHANGE"
+        "Equipment returned and marked Available.",
+        "RETURNED"
       )
     );
 
-    const rental = rentals.find(
-      (r) =>
-        r.equipmentId === equipment.id &&
-        r.status === "Active"
-    );
-
-    if (rental) {
-      updateRental({
-        ...rental,
-        actualReturn: new Date().toISOString().split("T")[0],
-        status: "Returned",
-      });
-    }
+    logAction({
+      action: "UPDATE",
+      equipmentId:
+        equipment.id,
+      before: equipment,
+      after: {
+        ...equipment,
+        status: "Available",
+        projectId: "",
+        operatorId: "",
+      },
+    });
 
     navigate("/assignments");
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <h1 className="text-3xl font-bold">
-        Assignment Details
-      </h1>
+    <div className="space-y-6 p-8">
 
-      <div className="rounded-lg border bg-white p-6 space-y-3">
-        <div>
-          <strong>Equipment</strong>
-          <div>{equipment.equipmentName}</div>
-        </div>
+      <div>
 
-        <div>
-          <strong>Status</strong>
-          <div>{assignment.status}</div>
-        </div>
+        <h1 className="text-3xl font-bold">
+          Assignment Details
+        </h1>
 
-        <div>
-          <strong>Assigned Date</strong>
-          <div>{assignment.assignedDate}</div>
-        </div>
+        <p className="text-slate-500">
+          Operational hub for this assignment.
+        </p>
 
-        <div>
-          <strong>Expected Return</strong>
-          <div>{assignment.expectedReturn}</div>
-        </div>
-
-        <div>
-          <strong>Remarks</strong>
-          <div>{assignment.remarks}</div>
-        </div>
       </div>
 
-      {assignment.status === "Active" && (
-        <Button onClick={returnEquipment}>
-          Return Equipment
+      <div className="rounded-xl border bg-white p-6 shadow-sm">
+
+        <div className="grid gap-6 md:grid-cols-2">
+
+          <Info
+            label="Equipment"
+            value={
+              equipment
+                ? `${equipment.assetNo} - ${equipment.equipmentName}`
+                : "-"
+            }
+          />
+
+          <Info
+            label="Operator"
+            value={
+              operator?.name ??
+              "-"
+            }
+          />
+
+          <Info
+            label="Project"
+            value={
+              project?.projectName ??
+              "-"
+            }
+          />
+
+          <Info
+            label="Status"
+            value={
+              assignment.status
+            }
+          />
+
+          <Info
+            label="Assigned Date"
+            value={
+              assignment.assignedDate
+            }
+          />
+
+          <Info
+            label="Expected Return"
+            value={
+              assignment.expectedReturn
+            }
+          />
+
+        </div>
+
+        <div className="mt-6">
+
+          <div className="text-sm font-medium text-slate-500">
+            Remarks
+          </div>
+
+          <div className="mt-1 rounded-lg bg-slate-50 p-4">
+            {assignment.remarks ||
+              "-"}
+          </div>
+
+        </div>
+
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+
+        <Link
+          to={`/rentals/new?assignment=${assignment.id}`}
+        >
+          <Button>
+            Start Rental
+          </Button>
+        </Link>
+
+        {assignment.status ===
+          "Active" && (
+          <Button
+            onClick={
+              handleCompleteAssignment
+            }
+          >
+            Complete Assignment
+          </Button>
+        )}
+
+        <Button
+          variant="secondary"
+          disabled
+        >
+          Edit Assignment
         </Button>
-      )}
+
+        <Button
+          variant="secondary"
+          disabled
+        >
+          Cancel Assignment
+        </Button>
+
+      </div>
+
+    </div>
+  );
+}
+
+interface InfoProps {
+  label: string;
+  value: string;
+}
+
+function Info({
+  label,
+  value,
+}: InfoProps) {
+  return (
+    <div>
+
+      <div className="text-xs uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+
+      <div className="mt-1 font-medium">
+        {value}
+      </div>
+
     </div>
   );
 }

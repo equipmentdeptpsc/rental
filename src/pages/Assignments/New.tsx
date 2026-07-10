@@ -23,8 +23,21 @@ import {
 
 import {
   useEquipmentHistory,
-  createHistoryEvent,
 } from "@/features/equipment/history";
+
+import {
+  useAudit,
+} from "@/features/equipment/audit/AuditContext";
+
+import {
+  assignEquipment,
+  assignmentHistory,
+  auditAssignment,
+} from "@/features/equipment/application";
+
+import {
+  createAssignmentWorkflow,
+} from "@/features/assignment/application";
 
 export default function NewAssignment() {
   const navigate =
@@ -49,9 +62,34 @@ export default function NewAssignment() {
   const { log } =
     useEquipmentHistory();
 
-  function handleSubmit(
-    data: AssignmentFormData
-  ) {
+  const { logAction } =
+    useAudit();
+
+    async function handleSubmit(
+      data: AssignmentFormData
+    ) {
+      const workflow =
+      await createAssignmentWorkflow(
+        data,
+        {
+          getEquipment,
+          updateEquipment,
+        }
+      );
+      if (!workflow.success) {
+        alert(
+          workflow.message ??
+            "Assignment failed."
+        );
+      
+        return;
+      }
+
+      const equipment =
+  getEquipment(
+    data.equipmentId
+  );
+  
     const assignment: AssignmentRecord =
       {
         id: crypto.randomUUID(),
@@ -93,34 +131,30 @@ export default function NewAssignment() {
       return;
     }
 
-    const equipment =
-      getEquipment(
-        data.equipmentId
+    if (equipment) {
+      const {
+        equipment:
+          updatedEquipment,
+      } = assignEquipment(
+        equipment,
+        data.projectId,
+        data.operatorId
       );
 
-    if (equipment) {
-      updateEquipment({
-        ...equipment,
+      updateEquipment(
+        updatedEquipment
+      );
 
-        projectId:
-          data.projectId,
-
-        operatorId:
-          data.operatorId,
-
-        status:
-          "Assigned",
-      });
+      logAction(
+        auditAssignment(
+          equipment,
+          updatedEquipment
+        )
+      );
 
       log(
-        createHistoryEvent(
-          equipment.id,
-
-          "Assigned",
-
-          "Equipment assigned to project.",
-
-          "ASSIGNED"
+        assignmentHistory(
+          equipment.id
         )
       );
     }

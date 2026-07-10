@@ -1,86 +1,176 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
-import { useEquipmentView } from "../hooks/useEquipmentView";
+import Button from "@/components/ui/Button";
 
-export default function EquipmentTable() {
-  const navigate = useNavigate();
+import { useToast } from "@/components/ui/toast/ToastContext";
 
-  const equipment =
-    useEquipmentView();
+import { useAudit } from "@/features/equipment/audit/AuditContext";
+
+import {
+  useEquipmentHistory,
+  createHistoryEvent,
+} from "@/features/equipment/history";
+
+import type { EquipmentRecord } from "../types";
+
+interface Props {
+  equipment: EquipmentRecord[];
+
+  onDelete(id: string): void;
+}
+
+export default function EquipmentTable({
+  equipment,
+  onDelete,
+}: Props) {
+  const { showToast } =
+    useToast();
+
+  const { logAction } =
+    useAudit();
+
+  const { log } =
+    useEquipmentHistory();
+
+  function confirmDelete(
+    equipment: EquipmentRecord
+  ) {
+    const confirmed =
+      window.confirm(
+        `Move "${equipment.equipmentName}" (${equipment.assetNo}) to Trash?`
+      );
+
+    if (!confirmed) return;
+
+    onDelete(equipment.id);
+
+    logAction({
+      action: "DELETE",
+      equipmentId: equipment.id,
+      before: equipment,
+    });
+
+    log(
+      createHistoryEvent(
+        equipment.id,
+        "Equipment Deleted",
+        `${equipment.equipmentName} moved to Trash.`,
+        "STATUS_CHANGE"
+      )
+    );
+
+    showToast(
+      "Equipment moved to Trash.",
+      "success"
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border bg-white">
+
       <table className="min-w-full">
-        <thead className="bg-slate-100">
+
+        <thead className="bg-gray-100">
           <tr>
-            <th className="px-4 py-3 text-left">
-              Asset
+
+            <th className="p-3 text-left">
+              Asset No.
             </th>
 
-            <th className="px-4 py-3 text-left">
+            <th className="p-3 text-left">
               Equipment
             </th>
 
-            <th className="px-4 py-3 text-left">
-              Project
+            <th className="p-3 text-left">
+              Category
             </th>
 
-            <th className="px-4 py-3 text-left">
-              Operator
-            </th>
-
-            <th className="px-4 py-3 text-left">
+            <th className="p-3 text-left">
               Status
             </th>
 
-            <th className="px-4 py-3 text-right">
-              Action
+            <th className="p-3 text-right">
+              Actions
             </th>
+
           </tr>
         </thead>
 
         <tbody>
+
+          {equipment.length === 0 && (
+            <tr>
+              <td
+                colSpan={5}
+                className="p-6 text-center text-gray-500"
+              >
+                No equipment found.
+              </td>
+            </tr>
+          )}
+
           {equipment.map((item) => (
             <tr
               key={item.id}
-              className="border-t hover:bg-slate-50"
+              className="border-t"
             >
-              <td className="px-4 py-3">
+
+              <td className="p-3">
                 {item.assetNo}
               </td>
 
-              <td className="px-4 py-3">
+              <td className="p-3">
                 {item.equipmentName}
               </td>
 
-              <td className="px-4 py-3">
-                {item.projectName}
+              <td className="p-3">
+                {item.category}
               </td>
 
-              <td className="px-4 py-3">
-                {item.operatorName}
-              </td>
-
-              <td className="px-4 py-3">
+              <td className="p-3">
                 {item.status}
               </td>
 
-              <td className="px-4 py-3 text-right">
-                <button
-                  className="text-blue-600 hover:underline"
-                  onClick={() =>
-                    navigate(
-                      `/equipment/${item.id}`
-                    )
-                  }
-                >
-                  View
-                </button>
+              <td className="p-3">
+
+                <div className="flex justify-end gap-2">
+
+                  <Link
+                    to={`/equipment/${item.id}`}
+                  >
+                    <Button variant="secondary">
+                      View
+                    </Button>
+                  </Link>
+
+                  <Link
+                    to={`/equipment/edit/${item.id}`}
+                  >
+                    <Button variant="secondary">
+                      Edit
+                    </Button>
+                  </Link>
+
+                  <Button
+                    variant="danger"
+                    onClick={() =>
+                      confirmDelete(item)
+                    }
+                  >
+                    Delete
+                  </Button>
+
+                </div>
+
               </td>
+
             </tr>
           ))}
+
         </tbody>
+
       </table>
+
     </div>
   );
 }

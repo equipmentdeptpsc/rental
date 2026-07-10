@@ -1,44 +1,89 @@
 import type { EquipmentRecord } from "../types";
 
+import EquipmentStatusBadge from "./EquipmentStatusBadge";
+
 interface Props {
   item: EquipmentRecord;
 }
-
-const statusStyles = {
-  Available:
-    "bg-green-50 text-green-700 ring-green-600/20",
-
-  Assigned:
-    "bg-blue-50 text-blue-700 ring-blue-600/20",
-
-  Maintenance:
-    "bg-yellow-50 text-yellow-700 ring-yellow-600/20",
-};
 
 export default function EquipmentCard({
   item,
 }: Props) {
   return (
-    <div className="rounded-lg border bg-white p-4 shadow-sm">
-      <div className="space-y-2">
+    <div className="rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md">
 
-        <h3 className="font-semibold">
-          {item.equipmentName}
-        </h3>
+      <div className="flex items-start justify-between">
 
-        <p className="text-sm text-slate-500">
-          {item.assetNo}
-        </p>
+        <div>
 
-        <span
-          className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-            statusStyles[item.status]
-          }`}
-        >
-          {item.status}
-        </span>
+          <h3 className="text-lg font-semibold">
+            {item.equipmentName}
+          </h3>
+
+          <p className="mt-1 text-sm text-slate-500">
+            {item.assetNo}
+          </p>
+
+        </div>
+
+        <EquipmentStatusBadge
+          status={item.status}
+        />
 
       </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
+
+        <div>
+
+          <div className="text-slate-500">
+            Category
+          </div>
+
+          <div className="font-medium">
+            {item.category}
+          </div>
+
+        </div>
+
+        <div>
+
+          <div className="text-slate-500">
+            Tracking
+          </div>
+
+          <div className="font-medium">
+            {item.maintenanceType}
+          </div>
+
+        </div>
+
+        <div>
+
+          <div className="text-slate-500">
+            Current Reading
+          </div>
+
+          <div className="font-medium">
+            {item.currentReading}
+          </div>
+
+        </div>
+
+        <div>
+
+          <div className="text-slate-500">
+            Prefix
+          </div>
+
+          <div className="font-medium">
+            {item.assetNo.split("-")[0]}
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
   );
 }

@@ -1,66 +1,84 @@
-import type { EquipmentRecord } from "../types";
-import type { IEquipmentRepository } from "./IEquipmentRepository";
+import type {
+  EquipmentRecord,
+} from "../types";
 
-import { equipmentData } from "../data/equipment.mock";
-import { storage } from "@/core/storage";
+import type {
+  IEquipmentRepository,
+} from "./IEquipmentRepository";
 
-const STORAGE_KEY = "equipment-records";
+import {
+  equipmentData,
+} from "../data/equipment.mock";
 
 export class LocalEquipmentRepository
   implements IEquipmentRepository
 {
-  private data: EquipmentRecord[] = [];
+  private data =
+    equipmentData;
 
-  constructor() {
-    const saved =
-      storage.get<EquipmentRecord[]>(STORAGE_KEY);
+  getAll() {
+    return this.data.filter(
+      (item) => !item.deleted
+    );
+  }
 
-    if (saved && Array.isArray(saved)) {
-      this.data = saved;
-    } else {
-      this.data = [...equipmentData];
-      this.save();
+  getDeleted() {
+    return this.data.filter(
+      (item) => item.deleted
+    );
+  }
+
+  getById(id: string) {
+    return this.data.find(
+      (item) => item.id === id
+    );
+  }
+
+  create(
+    equipment: EquipmentRecord
+  ) {
+    this.data.push(equipment);
+  }
+
+  update(
+    equipment: EquipmentRecord
+  ) {
+    const index =
+      this.data.findIndex(
+        (x) =>
+          x.id === equipment.id
+      );
+
+    if (index >= 0) {
+      this.data[index] =
+        equipment;
     }
   }
 
-  private save() {
-    storage.set(STORAGE_KEY, this.data);
-  }
-
-  getAll(): EquipmentRecord[] {
-    return this.data.filter((x) => !x.deleted);
-  }
-
-  getById(id: string): EquipmentRecord | undefined {
-    return this.data.find((x) => x.id === id);
-  }
-
-  create(item: EquipmentRecord): void {
-    this.data.push(item);
-    this.save();
-  }
-
-  update(item: EquipmentRecord): void {
-    const index = this.data.findIndex(
-      (x) => x.id === item.id
-    );
-
-    if (index === -1) return;
-
-    this.data[index] = item;
-    this.save();
-  }
-
-  delete(id: string): void {
-    const equipment = this.data.find(
-      (x) => x.id === id
-    );
+  delete(id: string) {
+    const equipment =
+      this.getById(id);
 
     if (!equipment) return;
 
     equipment.deleted = true;
-    equipment.deletedAt = Date.now();
+  }
 
-    this.save();
+  restore(id: string) {
+    const equipment =
+      this.getById(id);
+
+    if (!equipment) return;
+
+    equipment.deleted = false;
+  }
+
+  permanentlyDelete(
+    id: string
+  ) {
+    this.data =
+      this.data.filter(
+        (x) => x.id !== id
+      );
   }
 }

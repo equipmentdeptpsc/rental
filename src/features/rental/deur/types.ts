@@ -63,18 +63,8 @@ export interface DeurRecord {
 
   totalMealBreakMinutes: number;
 
-  /**
-   * Administrative value.
-   * Filled by dispatcher/rental admin,
-   * NOT by the operator.
-   */
   totalMobilizationMinutes: number;
 
-  /**
-   * Operator-triggered.
-   * Begins when equipment leaves
-   * the customer's site.
-   */
   totalDemobilizationMinutes: number;
 
   status: DeurStatus;
@@ -86,6 +76,16 @@ export interface DeurRecord {
   acknowledgementRemarks?: string;
 
   billId?: string;
+
+  /**
+   * Prevents duplicate billing.
+   */
+  billingLocked?: boolean;
+
+  /**
+   * Billing Statement that owns this DEUR.
+   */
+  billingStatementId?: string;
 
   createdAt: string;
 

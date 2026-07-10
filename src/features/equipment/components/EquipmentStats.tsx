@@ -1,50 +1,75 @@
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import type { EquipmentRecord } from "../types";
 
-export default function EquipmentStats() {
-  const { equipment } = useEquipment();
+interface Props {
+  equipment: EquipmentRecord;
 
-  const total = equipment.length;
+  totalAssignments: number;
 
-  const available = equipment.filter(
-    (item) => item.status === "Available"
-  ).length;
+  totalRentals: number;
 
-  const assigned = equipment.filter(
-    (item) => item.status === "Assigned"
-  ).length;
+  totalMaintenance: number;
 
-  const maintenance = equipment.filter(
-    (item) => item.status === "Maintenance"
-  ).length;
+  totalWorkingHours: number;
+}
 
+function StatCard({
+  title,
+  value,
+}: {
+  title: string;
+  value: string | number;
+}) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-xl">
-        <p className="text-xs text-slate-400 uppercase tracking-wider">
-          Total Equipment
-        </p>
-        <p className="text-3xl font-bold text-white mt-1">
-          {total}
-        </p>
+    <div className="rounded-xl border bg-white p-5">
+      <div className="text-sm text-slate-500">
+        {title}
       </div>
 
-      <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-xl">
-        <p className="text-xs text-emerald-400 uppercase tracking-wider">
-          Available
-        </p>
-        <p className="text-3xl font-bold text-emerald-400 mt-1">
-          {available}
-        </p>
+      <div className="mt-2 text-2xl font-bold">
+        {value}
       </div>
+    </div>
+  );
+}
 
-      <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-xl">
-        <p className="text-xs text-rose-400 uppercase tracking-wider">
-          Assigned / Maintenance
-        </p>
-        <p className="text-3xl font-bold text-rose-400 mt-1">
-          {assigned + maintenance}
-        </p>
-      </div>
+export default function EquipmentStats({
+  equipment,
+  totalAssignments,
+  totalRentals,
+  totalMaintenance,
+  totalWorkingHours,
+}: Props) {
+  return (
+    <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <StatCard
+        title="Status"
+        value={equipment.status}
+      />
+
+      <StatCard
+        title="Current Reading"
+        value={equipment.currentReading}
+      />
+
+      <StatCard
+        title="Working Hours"
+        value={totalWorkingHours}
+      />
+
+      <StatCard
+        title="Assignments"
+        value={totalAssignments}
+      />
+
+      <StatCard
+        title="Rentals"
+        value={totalRentals}
+      />
+
+      <StatCard
+        title="Maintenance"
+        value={totalMaintenance}
+      />
     </div>
   );
 }

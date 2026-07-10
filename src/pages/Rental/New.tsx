@@ -10,12 +10,26 @@ import type {
 } from "@/features/rental/components/RentalForm";
 
 import { useRental } from "@/features/rental/context/RentalContext";
+import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
+import {
+  useEquipmentHistory,
+} from "@/features/equipment/history";
+
+import {
+  rentalHistory,
+} from "@/features/equipment/application";
 
 import type { RentalRecord } from "@/features/rental/types";
-import type { EquipmentRecord } from "@/features/equipment/types";
+import {
+  assignEquipment,
+} from "@/features/equipment/application";
+
+import {
+    auditRental,
+} from "@/features/equipment/application";
 
 export default function NewRental() {
   const navigate =
@@ -24,24 +38,54 @@ export default function NewRental() {
   const [searchParams] =
     useSearchParams();
 
-  const initialEquipmentId =
+  const assignmentId =
+    searchParams.get(
+      "assignment"
+    );
+
+  const equipmentParam =
     searchParams.get(
       "equipment"
-    ) ?? "";
+    );
 
-  const { addRental } =
-    useRental();
+  const {
+    assignments,
+    updateAssignment,
+  } = useAssignment();
+
+  const assignment =
+    assignmentId
+      ? assignments.find(
+          (a) =>
+            a.id ===
+            assignmentId
+        )
+      : undefined;
+
+  const initialEquipmentId =
+    assignment?.equipmentId ??
+    equipmentParam ??
+    "";
+
+  const {
+    addRental,
+  } = useRental();
 
   const {
     equipment,
     updateEquipment,
   } = useEquipment();
 
-  const { logAction } =
-    useAudit();
+  const {
+    logAction,
+  } = useAudit();
 
-  const { showToast } =
-    useToast();
+    const {
+    showToast,
+  } = useToast();
+
+  const { log } =
+  useEquipmentHistory();
 
   function handleSubmit(
     data: RentalFormData
@@ -53,30 +97,12 @@ export default function NewRental() {
           data.equipmentId
       );
 
-    if (!selected) {
-      showToast(
-        "Equipment not found",
-        "error"
-      );
-
-      return;
-    }
-
-    if (
-      selected.status !==
-      "Available"
-    ) {
-      showToast(
-        "Equipment is not available",
-        "error"
-      );
-
-      return;
-    }
+    const rentalId =
+      crypto.randomUUID();
 
     const rental: RentalRecord =
       {
-        id: crypto.randomUUID(),
+        id: rentalId,
 
         equipmentId:
           data.equipmentId,
@@ -102,36 +128,67 @@ export default function NewRental() {
           "Active",
       };
 
-    addRental(rental);
+    const result =
+      addRental(
+        rental,
+        selected
+      );
 
-    const updatedEquipment: EquipmentRecord =
-      {
-        ...selected,
+    if (!result.success) {
+      showToast(
+        result.message ??
+          "Unable to create rental.",
+        "error"
+      );
 
-        projectId: "",
+      return;
+    }
 
-        operatorId: "",
+    if (!selected) {
+      return;
+    }
 
-        status:
-          "Assigned",
-      };
-
+    const {
+      equipment: updatedEquipment,
+    } = assignEquipment(
+      selected,
+      assignment?.projectId ?? "",
+      assignment?.operatorId ?? ""
+    );
+    
     updateEquipment(
       updatedEquipment
     );
+    log(
+      rentalHistory(
+        selected.id
+      )
+    );
 
-    logAction({
-      action: "UPDATE",
-
-      equipmentId:
-        selected.id,
-
-      before:
+    logAction(
+      auditRental(
         selected,
+        updatedEquipment
+      )
+    );
 
-      after:
-        updatedEquipment,
-    });
+    if (
+      assignment &&
+      assignment.status ===
+        "Active"
+    ) {
+      updateAssignment({
+        ...assignment,
+
+        status:
+          "Completed",
+
+        returnedDate:
+          new Date()
+            .toISOString()
+            .split("T")[0],
+      });
+    }
 
     showToast(
       "Rental created successfully",
@@ -139,12 +196,12 @@ export default function NewRental() {
     );
 
     navigate(
-      "/rentals"
+      `/rentals/${rentalId}/workspace`
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-6 space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 p-6">
 
       <div>
 
@@ -153,7 +210,11 @@ export default function NewRental() {
         </h1>
 
         <p className="mt-2 text-gray-500">
-          Create a rental transaction.
+
+          {assignment
+            ? "Rental is being created from an existing assignment."
+            : "Create a rental transaction."}
+
         </p>
 
       </div>

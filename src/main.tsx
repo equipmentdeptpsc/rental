@@ -29,6 +29,8 @@ import { OperatorProvider } from "@/features/operators/context/OperatorContext";
 
 import { ToastProvider } from "@/components/ui/toast/ToastContext";
 
+import { PrefixProvider } from "@/features/settings";
+
 ReactDOM.createRoot(
   document.getElementById("root")!
 ).render(
@@ -36,25 +38,51 @@ ReactDOM.createRoot(
     <AuthProvider>
       <ToastProvider>
         <AuditProvider>
-          <EquipmentProvider>
-            <EquipmentHistoryProvider>
-              <OperatorProvider>
-                <CustomerProvider>
-                  <ProjectProvider>
-                    <MaintenanceProvider>
-                      <DailyLogProvider>
-                        <AssignmentProvider>
-                          <RentalProvider>
-                            <RouterProvider router={router} />
-                          </RentalProvider>
-                        </AssignmentProvider>
-                      </DailyLogProvider>
-                    </MaintenanceProvider>
-                  </ProjectProvider>
-                </CustomerProvider>
-              </OperatorProvider>
-            </EquipmentHistoryProvider>
-          </EquipmentProvider>
+
+          <PrefixProvider>
+
+            <EquipmentProvider>
+
+              <EquipmentHistoryProvider>
+
+                <OperatorProvider>
+
+                  <CustomerProvider>
+
+                    <ProjectProvider>
+
+                      <MaintenanceProvider>
+
+                        <DailyLogProvider>
+
+                          <AssignmentProvider>
+
+                            <RentalProvider>
+
+                              <RouterProvider
+                                router={router}
+                              />
+
+                            </RentalProvider>
+
+                          </AssignmentProvider>
+
+                        </DailyLogProvider>
+
+                      </MaintenanceProvider>
+
+                    </ProjectProvider>
+
+                  </CustomerProvider>
+
+                </OperatorProvider>
+
+              </EquipmentHistoryProvider>
+
+            </EquipmentProvider>
+
+          </PrefixProvider>
+
         </AuditProvider>
       </ToastProvider>
     </AuthProvider>

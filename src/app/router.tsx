@@ -52,6 +52,7 @@ import Bookings from "@/pages/Bookings";
 import Billing from "@/pages/Billing";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
+import EquipmentTrash from "@/pages/Equipment/Trash";
 
 export const router = createBrowserRouter([
   {
@@ -82,6 +83,10 @@ export const router = createBrowserRouter([
       {
         path: "equipment/edit/:id",
         element: <EditEquipment />,
+      },
+      {
+        path: "equipment/trash",
+        element: <EquipmentTrash />,
       },
       {
         path: "equipment/:id",

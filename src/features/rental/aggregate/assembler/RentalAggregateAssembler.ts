@@ -30,6 +30,7 @@ export interface RentalAggregateAssemblerData {
   operator?: Operator;
 
   activeDeur?: DeurRecord;
+
 }
 
 export class RentalAggregateAssembler {
@@ -48,6 +49,7 @@ export class RentalAggregateAssembler {
       operator: data.operator,
 
       activeDeur: data.activeDeur,
+
     });
   }
 }

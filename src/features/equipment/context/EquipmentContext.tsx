@@ -6,8 +6,13 @@ import {
   type ReactNode,
 } from "react";
 
-import type { EquipmentRecord } from "../types";
-import { equipmentRepository } from "../repository";
+import type {
+  EquipmentRecord,
+} from "../types";
+
+import {
+  equipmentRepository,
+} from "../repository";
 
 interface EquipmentContextType {
   equipment: EquipmentRecord[];
@@ -24,9 +29,22 @@ interface EquipmentContextType {
     id: string
   ): void;
 
+  restoreEquipment(
+    id: string
+  ): void;
+
+  permanentlyDeleteEquipment(
+    id: string
+  ): void;
+
+  getDeletedEquipment():
+    EquipmentRecord[];
+
   getEquipment(
     id: string
-  ): EquipmentRecord | undefined;
+  ):
+    | EquipmentRecord
+    | undefined;
 
   updateStatus(
     id: string,
@@ -44,10 +62,12 @@ export function EquipmentProvider({
 }: {
   children: ReactNode;
 }) {
-  const [equipment, setEquipment] =
-    useState(
-      equipmentRepository.getAll()
-    );
+  const [
+    equipment,
+    setEquipment,
+  ] = useState(
+    equipmentRepository.getAll()
+  );
 
   function refresh() {
     setEquipment(
@@ -76,11 +96,31 @@ export function EquipmentProvider({
     refresh();
   }
 
+  function restoreEquipment(
+    id: string
+  ) {
+    equipmentRepository.restore(id);
+    refresh();
+  }
+
+  function permanentlyDeleteEquipment(
+    id: string
+  ) {
+    equipmentRepository.permanentlyDelete(
+      id
+    );
+    refresh();
+  }
+
+  function getDeletedEquipment() {
+    return equipmentRepository.getDeleted();
+  }
+
   function getEquipment(
     id: string
   ) {
-    return equipment.find(
-      (e) => e.id === id
+    return equipmentRepository.getById(
+      id
     );
   }
 
@@ -104,10 +144,21 @@ export function EquipmentProvider({
   const value = useMemo(
     () => ({
       equipment,
+
       addEquipment,
+
       updateEquipment,
+
       deleteEquipment,
+
+      restoreEquipment,
+
+      permanentlyDeleteEquipment,
+
+      getDeletedEquipment,
+
       getEquipment,
+
       updateStatus,
     }),
     [equipment]
@@ -124,7 +175,9 @@ export function EquipmentProvider({
 
 export function useEquipment() {
   const context =
-    useContext(EquipmentContext);
+    useContext(
+      EquipmentContext
+    );
 
   if (!context) {
     throw new Error(

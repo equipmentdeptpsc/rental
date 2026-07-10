@@ -10,38 +10,48 @@ import type {
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 
-export default function NewEquipment() {
+export default function EditEquipment() {
   const navigate = useNavigate();
 
-  const { addEquipment } = useEquipment();
-  const { logAction } = useAudit();
+  const { addEquipment } =
+    useEquipment();
 
-  function handleSubmit(data: EquipmentFormData) {
+  const { logAction } =
+    useAudit();
+
+  function handleSubmit(
+    data: EquipmentFormData
+  ) {
     const newRecord: EquipmentRecord = {
       id: crypto.randomUUID(),
-
+    
+      prefixId: data.prefixId,
+    
       assetNo: data.assetNo,
-
+    
       equipmentName: data.equipmentName,
-
-      category: data.category,
-
+    
+      category: data.category as EquipmentRecord["category"],
+    
       maintenanceType: data.maintenanceType,
-
+    
       currentReading: Number(data.currentReading),
-
+    
       projectId: data.projectId,
-
+    
       operatorId: data.operatorId,
-
+    
       status: "Available",
+    
+      deleted: false,
     };
 
     addEquipment(newRecord);
 
     logAction({
       action: "CREATE",
-      equipmentId: newRecord.id,
+      equipmentId:
+        newRecord.id,
       after: newRecord,
     });
 
@@ -57,7 +67,9 @@ export default function NewEquipment() {
       <EquipmentForm
         submitLabel="Create Equipment"
         onSubmit={handleSubmit}
-        onCancel={() => navigate("/equipment")}
+        onCancel={() =>
+          navigate("/equipment")
+        }
       />
     </div>
   );

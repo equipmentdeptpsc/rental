@@ -1,20 +1,31 @@
+export type EquipmentCategory =
+  | "Moving Equipment"
+  | "Non-Moving Equipment"
+  | "Aerial Equipment"
+  | "Light Equipment";
+
+export type MaintenanceType =
+  | "Engine Hours"
+  | "Kilometers"
+  | "Mileage"
+  | "Calendar Days";
+
 export type EquipmentStatus =
   | "Available"
   | "Assigned"
+  | "Rented"
   | "Maintenance";
-
-export type MaintenanceType =
-  | "Odometer"
-  | "Engine Hours";
 
 export interface EquipmentRecord {
   id: string;
+
+  prefixId: string;
 
   assetNo: string;
 
   equipmentName: string;
 
-  category: string;
+  category: EquipmentCategory;
 
   maintenanceType: MaintenanceType;
 
@@ -26,17 +37,22 @@ export interface EquipmentRecord {
 
   status: EquipmentStatus;
 
-  deleted?: boolean;
+  /**
+   * Soft Delete
+   */
+  deleted: boolean;
 
   deletedAt?: number;
 }
 
 export interface EquipmentFormData {
+  prefixId: string;
+
   assetNo: string;
 
   equipmentName: string;
 
-  category: string;
+  category: EquipmentCategory | "";
 
   maintenanceType: MaintenanceType;
 

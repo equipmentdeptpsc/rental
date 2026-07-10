@@ -1,31 +1,55 @@
-import EquipmentStats from "@/features/equipment/components/EquipmentStats";
-import EquipmentToolbar from "@/features/equipment/components/EquipmentToolbar";
+import { Link } from "react-router-dom";
+
+import Button from "@/components/ui/Button";
+
 import EquipmentTable from "@/features/equipment/components/EquipmentTable";
 
-export default function Equipment() {
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+
+export default function EquipmentPage() {
+  const {
+    equipment,
+    deleteEquipment,
+  } = useEquipment();
+
   return (
-    <div className="space-y-8 p-8">
+    <div className="space-y-6 p-8">
+
       <div className="flex items-center justify-between">
+
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">
-            Equipment Dashboard
+          <h1 className="text-3xl font-bold">
+            Equipment
           </h1>
 
-          <p className="text-slate-500">
-            Monitor equipment availability, utilization, and maintenance.
+          <p className="text-gray-500">
+            Manage company equipment.
           </p>
         </div>
 
-        <button className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700">
-          + Add Equipment
-        </button>
+        <div className="flex gap-3">
+
+          <Link to="/equipment/trash">
+            <Button variant="secondary">
+              Trash
+            </Button>
+          </Link>
+
+          <Link to="/equipment/new">
+            <Button>
+              Add Equipment
+            </Button>
+          </Link>
+
+        </div>
+
       </div>
 
-      <EquipmentStats />
+      <EquipmentTable
+        equipment={equipment}
+        onDelete={deleteEquipment}
+      />
 
-      <EquipmentToolbar />
-
-<EquipmentTable />
     </div>
   );
 }

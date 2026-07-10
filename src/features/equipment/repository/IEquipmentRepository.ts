@@ -3,11 +3,29 @@ import type { EquipmentRecord } from "../types";
 export interface IEquipmentRepository {
   getAll(): EquipmentRecord[];
 
-  getById(id: string): EquipmentRecord | undefined;
+  getDeleted(): EquipmentRecord[];
 
-  create(item: EquipmentRecord): void;
+  getById(
+    id: string
+  ): EquipmentRecord | undefined;
 
-  update(item: EquipmentRecord): void;
+  create(
+    equipment: EquipmentRecord
+  ): void;
 
-  delete(id: string): void;
+  update(
+    equipment: EquipmentRecord
+  ): void;
+
+  delete(
+    id: string
+  ): void;
+
+  restore(
+    id: string
+  ): void;
+
+  permanentlyDelete(
+    id: string
+  ): void;
 }

@@ -8,19 +8,27 @@ import type {
 } from "@/features/equipment/types";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 
+import { useToast } from "@/components/ui/toast/ToastContext";
+
 import {
-  useEquipmentHistory,
   createHistoryEvent,
+  useEquipmentHistory,
 } from "@/features/equipment/history";
+
+import { usePrefix } from "@/features/settings";
 
 export default function NewEquipment() {
   const navigate = useNavigate();
 
-  const { addEquipment } =
-    useEquipment();
+  const {
+    equipment,
+    addEquipment,
+  } = useEquipment();
+
+  const { showToast } =
+    useToast();
 
   const { logAction } =
     useAudit();
@@ -28,60 +36,105 @@ export default function NewEquipment() {
   const { log } =
     useEquipmentHistory();
 
+  const {
+    generateAssetNumber,
+  } = usePrefix();
+
+  const formDefaults: EquipmentFormData = {
+    prefixId: "",
+    assetNo: "",
+    equipmentName: "",
+    category: "",
+    maintenanceType: "Engine Hours",
+    currentReading: "",
+    projectId: "",
+    operatorId: "",
+  };
+
   function handleSubmit(
     data: EquipmentFormData
   ) {
-    const newRecord: EquipmentRecord =
-      {
-        id: crypto.randomUUID(),
+    if (!data.category) {
+      showToast(
+        "Equipment Category is required.",
+        "error"
+      );
+      return;
+    }
 
-        assetNo: data.assetNo,
+    const generated =
+      generateAssetNumber(
+        data.category
+      );
 
-        equipmentName:
-          data.equipmentName,
+    if (!generated) {
+      showToast(
+        "No prefix configured for this category.",
+        "error"
+      );
+      return;
+    }
 
-        category:
-          data.category,
+    const duplicate =
+      equipment.some(
+        (e) =>
+          e.assetNo ===
+          generated.assetNo
+      );
 
-        maintenanceType:
-          data.maintenanceType,
+    if (duplicate) {
+      showToast(
+        "Generated Asset Number already exists.",
+        "error"
+      );
+      return;
+    }
 
-        currentReading:
-          Number(
-            data.currentReading
-          ),
-
-        projectId:
-          data.projectId,
-
-        operatorId:
-          data.operatorId,
-
-        status:
-          "Available",
-      };
+    const newRecord: EquipmentRecord = {
+      id: crypto.randomUUID(),
+    
+      prefixId: generated.prefixId,
+    
+      assetNo: generated.assetNo,
+    
+      equipmentName: data.equipmentName.trim(),
+    
+      category: data.category,
+    
+      maintenanceType: data.maintenanceType,
+    
+      currentReading: Number(data.currentReading),
+    
+      projectId: data.projectId,
+    
+      operatorId: data.operatorId,
+    
+      status: "Available",
+    
+      deleted: false,
+    };
 
     addEquipment(newRecord);
 
     logAction({
       action: "CREATE",
-
       equipmentId:
         newRecord.id,
-
       after: newRecord,
     });
 
     log(
       createHistoryEvent(
         newRecord.id,
-
         "Equipment Created",
-
         `${newRecord.equipmentName} was added to the fleet.`,
-
         "CREATED"
       )
+    );
+
+    showToast(
+      "Equipment created successfully.",
+      "success"
     );
 
     navigate("/equipment");
@@ -89,16 +142,14 @@ export default function NewEquipment() {
 
   return (
     <div className="p-8 space-y-6">
-
       <h1 className="text-3xl font-bold">
         Add Equipment
       </h1>
 
       <EquipmentForm
+        initialData={formDefaults}
         submitLabel="Create Equipment"
-        onSubmit={
-          handleSubmit
-        }
+        onSubmit={handleSubmit}
         onCancel={() =>
           navigate("/equipment")
         }

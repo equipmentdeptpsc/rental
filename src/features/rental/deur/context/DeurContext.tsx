@@ -10,6 +10,10 @@ import {
     DeurRecord,
     DeurActivityType,
   } from "../types";
+
+  import {
+    deurRepository,
+  } from "../repository/deurRepository";
   
   import {
     createDeurSession,
@@ -60,9 +64,16 @@ import {
     function loadSession(
       record: DeurRecord
     ) {
-      setSession(
-        createDeurSession(record)
-      );
+      const existing =
+  deurRepository.getById(
+    record.id
+  );
+
+setSession(
+  createDeurSession(
+    existing ?? record
+  )
+);
     }
   
     function start(
@@ -84,6 +95,21 @@ import {
             ...current.deur,
             logs,
           });
+
+          const existing =
+  deurRepository.getById(
+    updated.id
+  );
+
+if (existing) {
+  deurRepository.update(
+    updated
+  );
+} else {
+  deurRepository.create(
+    updated
+  );
+}
   
         return {
           ...current,
@@ -117,19 +143,36 @@ import {
         if (!current) {
           return current;
         }
-  
-        return {
+    
+        const updated = {
           ...current,
           deur: {
             ...current.deur,
             status:
-              "Pending Acknowledgement",
+  "Pending Acknowledgement" as const,
             endOfDay:
               new Date()
                 .toTimeString()
                 .slice(0, 5),
           },
         };
+    
+        const existing =
+          deurRepository.getById(
+            updated.deur.id
+          );
+    
+        if (existing) {
+          deurRepository.update(
+            updated.deur
+          );
+        } else {
+          deurRepository.create(
+            updated.deur
+          );
+        }
+    
+        return updated;
       });
     }
   

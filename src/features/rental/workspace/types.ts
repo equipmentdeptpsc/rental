@@ -1,8 +1,5 @@
 /**
  * Public Workspace API
- *
- * RentalWorkspaceTab remains for backward compatibility.
- * WorkspaceTab is the preferred name going forward.
  */
 
 export type RentalWorkspaceTab =
@@ -12,7 +9,8 @@ export type RentalWorkspaceTab =
   | "deur"
   | "billing"
   | "invoices"
-  | "collections";
+  | "collections"
+  | "closing";
 
 export type WorkspaceTab =
   RentalWorkspaceTab;
@@ -30,34 +28,32 @@ export const WORKSPACE_TABS: WorkspaceTabItem[] = [
     id: "overview",
     label: "Overview",
   },
-
   {
     id: "timeline",
     label: "Timeline",
   },
-
   {
     id: "assignments",
     label: "Assignments",
   },
-
   {
     id: "deur",
     label: "Daily Operations",
   },
-
   {
     id: "billing",
     label: "Billing",
   },
-
   {
     id: "invoices",
     label: "Invoices",
   },
-
   {
     id: "collections",
     label: "Collections",
+  },
+  {
+    id: "closing",
+    label: "Close Rental",
   },
 ];

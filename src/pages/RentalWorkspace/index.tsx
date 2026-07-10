@@ -1,6 +1,4 @@
-import {
-  useParams,
-} from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import {
   RentalWorkspaceProvider,
@@ -10,9 +8,8 @@ import {
 import WorkspaceContent from "@/features/rental/workspace/layout/WorkspaceContent";
 
 export default function RentalWorkspacePage() {
-  const {
-    rentalId,
-  } = useParams();
+  const { rentalId } =
+    useParams();
 
   if (!rentalId) {
     return (

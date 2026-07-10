@@ -34,36 +34,49 @@ const menuGroups = [
         label: "Equipment",
         path: "/equipment",
       },
+
+      {
+        icon: ClipboardList,
+        label: "Assignments",
+        path: "/assignments",
+      },
+
       {
         icon: ClipboardList,
         label: "Rentals",
         path: "/rentals",
       },
+
       {
         icon: Wrench,
         label: "Maintenance",
         path: "/maintenance",
       },
+
       {
         icon: Users,
         label: "Operators",
         path: "/operators",
       },
+
       {
         icon: FolderKanban,
         label: "Projects",
         path: "/projects",
       },
+
       {
         icon: CalendarDays,
         label: "Bookings",
         path: "/bookings",
       },
+
       {
         icon: ClipboardList,
         label: "Daily Logs",
         path: "/daily-logs",
       },
+
       {
         icon: Building2,
         label: "Customers",
@@ -143,7 +156,8 @@ export default function Sidebar() {
                   }
                 >
                   <Icon size={20} />
-                  {item.label}
+
+                  <span>{item.label}</span>
                 </NavLink>
               );
             })}
