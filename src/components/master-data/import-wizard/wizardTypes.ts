@@ -208,13 +208,24 @@ export interface MasterImportWizardProps<T> {
   columns: ImportColumnDefinition<T>[];
 
   /**
-   * Called after successful import
+   * Called after Finish Import.
    */
 
   onImport(
-
     records: T[]
+  ): void;
 
+  /**
+   * NEW (Sprint 5.6B)
+   *
+   * Optional callback fired after the import
+   * has completed successfully.
+   *
+   * Backward compatible.
+   */
+
+  onCompleted?(
+    summary: ImportSummary
   ): void;
 
   /**
@@ -228,11 +239,8 @@ export interface MasterImportWizardProps<T> {
    */
 
   validateRecord?(
-
     record: T,
-
     rowNumber: number
-
   ): string[];
 
 }
@@ -270,9 +278,7 @@ export interface WizardStepProps<T> {
   state: ImportWizardState<T>;
 
   setState(
-
     state: ImportWizardState<T>
-
   ): void;
 
   config: MasterImportWizardProps<T>;
@@ -294,11 +300,8 @@ export interface WizardFooterAction {
   disabled?: boolean;
 
   variant?:
-
     | "primary"
-
     | "secondary"
-
     | "danger";
 
 }
