@@ -5,13 +5,20 @@ import {
 
 import {
   MasterDrawer,
-  MasterImportDialog,
   MasterPageLayout,
 } from "@/components/master-data";
 
-import ActivityCodeToolbar from "../components/ActivityCodeToolbar";
-import ActivityCodeTable from "../components/ActivityCodeTable";
-import ActivityCodeForm from "../components/ActivityCodeForm";
+import MasterImportWizard
+  from "@/components/master-data/import-wizard/MasterImportWizard";
+
+import ActivityCodeToolbar
+  from "../components/ActivityCodeToolbar";
+
+import ActivityCodeTable
+  from "../components/ActivityCodeTable";
+
+import ActivityCodeForm
+  from "../components/ActivityCodeForm";
 
 import {
   useActivityCodes,
@@ -33,6 +40,16 @@ import {
   generateTemplate,
 } from "@/shared/import-export/templateGenerator";
 
+import activityImportConfig
+  from "../import/activityImportConfig";
+
+  import validateActivityCode
+  from "../import/validateActivityCode";
+
+import {
+  bulkCreateActivityCodes,
+} from "../import/bulkCreateActivityCodes";
+
 export default function ActivityCodePage() {
 
   const {
@@ -44,6 +61,8 @@ export default function ActivityCodePage() {
     update,
 
     softDelete,
+
+    refresh,
 
   } = useActivityCodes();
 
@@ -65,67 +84,71 @@ export default function ActivityCodePage() {
 
   const [
 
-    editing,
-
-    setEditing,
-
-  ] = useState<ActivityCodeRecord | null>(null);
-
-  const [
-
     importOpen,
 
     setImportOpen,
 
   ] = useState(false);
 
-  const filtered = useMemo(
+  const [
 
-    () =>
+    editing,
 
-      records.filter(
+    setEditing,
 
-        item =>
-
-          !item.deleted &&
-
-          (
-
-            item.activityCode
-
-              .toLowerCase()
-
-              .includes(
-
-                keyword.toLowerCase()
-
-              )
-
-            ||
-
-            item.description
-
-              .toLowerCase()
-
-              .includes(
-
-                keyword.toLowerCase()
-
-              )
-
-          )
-
-      ),
-
-    [
-
-      records,
-
-      keyword,
-
-    ]
-
+  ] =
+  useState<ActivityCodeRecord | null>(
+    null
   );
+
+  const filtered =
+    useMemo(
+
+      () =>
+
+        records.filter(
+
+          item =>
+
+            !item.deleted &&
+
+            (
+
+              item.activityCode
+
+                .toLowerCase()
+
+                .includes(
+
+                  keyword.toLowerCase()
+
+                )
+
+              ||
+
+              item.description
+
+                .toLowerCase()
+
+                .includes(
+
+                  keyword.toLowerCase()
+
+                )
+
+            )
+
+        ),
+
+      [
+
+        records,
+
+        keyword,
+
+      ]
+
+    );
 
   function openCreate() {
 
@@ -137,7 +160,8 @@ export default function ActivityCodePage() {
 
   function openEdit(
 
-    record: ActivityCodeRecord
+    record:
+      ActivityCodeRecord
 
   ) {
 
@@ -149,7 +173,8 @@ export default function ActivityCodePage() {
 
   function save(
 
-    record: ActivityCodeRecord
+    record:
+      ActivityCodeRecord
 
   ) {
 
@@ -166,6 +191,29 @@ export default function ActivityCodePage() {
     }
 
     setDrawerOpen(false);
+
+  }
+
+  function handleImport(
+
+    imported:
+      any[]
+
+  ) {
+
+    bulkCreateActivityCodes(
+
+      imported
+
+    );
+
+  }
+
+  function handleImportCompleted() {
+
+    refresh();
+
+    setImportOpen(false);
 
   }
 
@@ -289,7 +337,7 @@ export default function ActivityCodePage() {
 
             "Active",
 
-          required: true,
+          required: false,
 
           sample: true,
 
@@ -413,33 +461,99 @@ export default function ActivityCodePage() {
 
       </MasterDrawer>
 
-      <MasterImportDialog
+      <MasterImportWizard
 
         open={importOpen}
 
         title="Import Activity Codes"
+
+        columns={
+
+          activityImportConfig.columns.map(
+
+            column => ({
+
+              field:
+
+                column.key as never,
+
+              header:
+
+                column.label,
+
+              required:
+
+                column.required,
+
+            })
+
+          )
+
+        }
+
+        validateRecord={
+
+          (
+
+            record,
+
+            rowNumber,
+
+          ) => {
+
+            const result =
+
+  validateActivityCode(
+
+    [record]
+
+  );
+
+            return result.errors
+
+            .filter(
+              (
+                error: {
+                  row: number;
+                  message: string;
+                }
+              ) =>
+            
+                error.row === rowNumber
+            )
+
+            .map(
+              (
+                error: {
+                  row: number;
+                  message: string;
+                }
+              ) =>
+            
+                error.message
+            );
+
+          }
+
+        }
+
+        onImport={
+
+          handleImport
+
+        }
+
+        onCompleted={() => {
+
+          handleImportCompleted();
+
+        }}
 
         onClose={() =>
 
           setImportOpen(false)
 
         }
-
-        /**
-         * Batch 1C
-         */
-
-        onImport={() => {
-
-          /**
-           * Sprint 5.6 Batch 1C
-           * Excel parsing and preview
-           * will be connected here.
-           */
-        
-          setImportOpen(false);
-        
-        }}
 
       />
 
