@@ -20,11 +20,52 @@ export default function EquipmentCard({
             {item.equipmentName}
           </h3>
 
+          <div className="mt-2 space-y-1 text-sm text-slate-600">
+
+  {item.manufacturer && (
+    <div>
+      <span className="font-medium">
+        Manufacturer:
+      </span>{" "}
+      {item.manufacturer}
+    </div>
+  )}
+
+  {item.model && (
+    <div>
+      <span className="font-medium">
+        Model:
+      </span>{" "}
+      {item.model}
+    </div>
+  )}
+
+  {item.serialNumber && (
+    <div>
+      <span className="font-medium">
+        Serial No:
+      </span>{" "}
+      {item.serialNumber}
+    </div>
+  )}
+
+</div>
+
           <p className="mt-1 text-sm text-slate-500">
             {item.assetNo}
           </p>
 
         </div>
+
+        {item.plateNumber && (
+
+<div className="text-sm text-slate-500">
+
+  Plate No: {item.plateNumber}
+
+</div>
+
+)}
 
         <EquipmentStatusBadge
           status={item.status}

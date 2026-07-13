@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import EquipmentForm from "@/features/equipment/components/EquipmentForm";
 
@@ -9,50 +9,166 @@ import type {
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
+import { validateDuplicateEquipment } from "@/features/equipment/utils/duplicateValidator";
 
 export default function EditEquipment() {
   const navigate = useNavigate();
 
-  const { addEquipment } =
-    useEquipment();
+  const { id } = useParams();
 
-  const { logAction } =
-    useAudit();
+  const {
+    equipment,
+    updateEquipment,
+  } = useEquipment();
+
+  const { logAction } = useAudit();
+
+  const existing =
+  equipment.find(
+    item => item.id === id
+  );
+
+if (!existing) {
+  return (
+    <div className="p-8">
+      Equipment not found.
+    </div>
+  );
+}
+
+const current: EquipmentRecord = existing;
+
+  const formData: EquipmentFormData = {
+    prefixId: current.prefixId,
+
+    assetNo: current.assetNo,
+
+    equipmentName: current.equipmentName,
+
+    typeId: current.typeId ?? "",
+    type: current.type ?? "",
+
+    manufacturer:
+      current.manufacturer ?? "",
+
+    model:
+      current.model ?? "",
+
+    serialNumber:
+      current.serialNumber ?? "",
+
+    engineNumber:
+      current.engineNumber ?? "",
+
+    chassisNumber:
+      current.chassisNumber ?? "",
+
+    plateNumber:
+      current.plateNumber ?? "",
+
+    yearModel:
+      current.yearModel?.toString() ??
+      "",
+
+    capacity:
+      current.capacity ?? "",
+
+    category: current.category,
+
+    maintenanceType:
+      current.maintenanceType,
+
+    currentReading:
+      current.currentReading.toString(),
+
+    projectId:
+      current.projectId,
+
+    operatorId:
+      current.operatorId,
+  };
 
   function handleSubmit(
     data: EquipmentFormData
   ) {
-    const newRecord: EquipmentRecord = {
-      id: crypto.randomUUID(),
+
+    const updated: EquipmentRecord = {
+      ...current,
     
+      id: current.id,
+    
+      status: current.status,
+
       prefixId: data.prefixId,
-    
+
       assetNo: data.assetNo,
-    
-      equipmentName: data.equipmentName,
-    
-      category: data.category as EquipmentRecord["category"],
-    
-      maintenanceType: data.maintenanceType,
-    
-      currentReading: Number(data.currentReading),
-    
-      projectId: data.projectId,
-    
-      operatorId: data.operatorId,
-    
-      status: "Available",
-    
-      deleted: false,
+
+      equipmentName:
+        data.equipmentName,
+
+      typeId: data.typeId,
+
+      type: data.type,
+
+      manufacturer:
+        data.manufacturer,
+
+      model: data.model,
+
+      serialNumber:
+        data.serialNumber,
+
+      engineNumber:
+        data.engineNumber,
+
+      chassisNumber:
+        data.chassisNumber,
+
+      plateNumber:
+        data.plateNumber,
+
+      yearModel:
+        data.yearModel === ""
+          ? undefined
+          : Number(data.yearModel),
+
+      capacity:
+        data.capacity,
+
+      category:
+        data.category as EquipmentRecord["category"],
+
+      maintenanceType:
+        data.maintenanceType,
+
+      currentReading:
+        Number(data.currentReading),
+
+      projectId:
+        data.projectId,
+
+      operatorId:
+        data.operatorId,
     };
 
-    addEquipment(newRecord);
+    const validation =
+      validateDuplicateEquipment(
+        equipment,
+        updated
+      );
+
+    if (!validation.valid) {
+      alert(validation.message);
+      return;
+    }
+
+    updateEquipment(updated);
 
     logAction({
-      action: "CREATE",
-      equipmentId:
-        newRecord.id,
-      after: newRecord,
+      action: "UPDATE",
+      equipmentId: updated.id,
+      before: current,
+      after: updated,
     });
 
     navigate("/equipment");
@@ -60,17 +176,20 @@ export default function EditEquipment() {
 
   return (
     <div className="p-8 space-y-6">
+
       <h1 className="text-3xl font-bold">
-        Add Equipment
+        Edit Equipment
       </h1>
 
       <EquipmentForm
-        submitLabel="Create Equipment"
+        initialData={formData}
+        submitLabel="Save Changes"
         onSubmit={handleSubmit}
         onCancel={() =>
           navigate("/equipment")
         }
       />
+
     </div>
   );
 }

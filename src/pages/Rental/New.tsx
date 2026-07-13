@@ -14,8 +14,7 @@ import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
-import {
-  useEquipmentHistory,
+import { useEquipmentHistory,
 } from "@/features/equipment/history";
 
 import {
@@ -30,6 +29,10 @@ import {
 import {
     auditRental,
 } from "@/features/equipment/application";
+
+import {
+  canCreateRental,
+} from "@/features/rental/services/AvailabilityService";
 
 export default function NewRental() {
   const navigate =
@@ -67,9 +70,10 @@ export default function NewRental() {
     equipmentParam ??
     "";
 
-  const {
-    addRental,
-  } = useRental();
+    const {
+      addRental,
+      rentals,
+    } = useRental();
 
   const {
     equipment,
@@ -97,35 +101,55 @@ export default function NewRental() {
           data.equipmentId
       );
 
+      const availability =
+  canCreateRental(
+    selected,
+    rentals
+  );
+
+if (!availability.success) {
+
+  showToast(
+    availability.message ??
+      "Equipment is unavailable.",
+    "error"
+  );
+
+  return;
+
+}
+
     const rentalId =
       crypto.randomUUID();
 
-    const rental: RentalRecord =
-      {
+      const rental: RentalRecord = {
         id: rentalId,
-
+      
         equipmentId:
           data.equipmentId,
-
+      
         customer:
           data.customer,
-
+      
         project:
           data.project,
-
+      
         rentedBy:
           data.rentedBy,
-
+      
         dateOut:
           new Date()
             .toISOString()
             .split("T")[0],
-
+      
         expectedReturn:
           data.expectedReturn,
-
+      
+        statusId:
+          data.statusId,
+      
         status:
-          "Active",
+          data.status,
       };
 
     const result =

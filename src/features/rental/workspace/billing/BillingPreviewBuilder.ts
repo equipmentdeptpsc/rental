@@ -3,11 +3,16 @@ import type {
 } from "@/features/rental/deur";
 
 import type {
+  RentalContractRecord,
+} from "@/features/rental/types/RentalContract";
+
+import type {
   BillingPreviewLine,
 } from "./types";
 
 export function buildBillingPreview(
   deurs: DeurRecord[],
+  contract: RentalContractRecord,
   from: string,
   to: string
 ): BillingPreviewLine[] {
@@ -27,12 +32,26 @@ export function buildBillingPreview(
 
     .map(deur => {
 
-      const hours =
+      const operatingHours =
         deur.totalOperatingMinutes / 60;
+
+      /**
+       * Batch 9.2.2
+       * Billing Engine
+       */
+      const quantity =
+        operatingHours;
+
+      const rate =
+        contract.unitRate;
+
+      const amount =
+        quantity * rate;
 
       return {
 
-        deurId: deur.id,
+        deurId:
+          deur.id,
 
         workDate:
           deur.workDate,
@@ -40,20 +59,23 @@ export function buildBillingPreview(
         operator:
           deur.operatorId,
 
-        operatingHours:
-          hours,
+        operatingHours,
 
         actualHours:
-          hours,
+          operatingHours,
+
+          billingMethod:
+          contract.billingMethod,  
 
         costCode: "",
 
         description:
-          `Equipment Rental - ${deur.workDate}`,
+          `Equipment Rental (${contract.billingMethod})`,
 
-        hourlyRate: 0,
+        hourlyRate:
+          rate,
 
-        amount: 0,
+        amount,
 
       };
 

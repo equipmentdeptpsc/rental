@@ -44,22 +44,24 @@ export default function NewRental() {
 
     const rental: RentalRecord = {
       id: crypto.randomUUID(),
-
+    
       equipmentId: data.equipmentId,
-
+    
       customer: data.customer,
-
+    
       project: data.project,
-
+    
       rentedBy: data.rentedBy,
-
+    
       dateOut: new Date()
         .toISOString()
         .split("T")[0],
-
+    
       expectedReturn: data.expectedReturn,
-
-      status: "Active",
+    
+      statusId: data.statusId,
+    
+      status: data.status,
     };
 
     addRental(rental);

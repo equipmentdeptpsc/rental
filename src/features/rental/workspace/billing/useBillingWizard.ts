@@ -34,26 +34,34 @@ export function useBillingWizard() {
   const [generated, setGenerated] =
     useState(false);
 
-  const preview =
+    const preview =
     useMemo(() => {
-
+  
       if (!generated) {
         return [];
       }
-
+  
+      const contract =
+        aggregate.contract;
+  
+      if (!contract) {
+        return [];
+      }
+  
       const deurs =
         deurRepository.getByRentalId(
           aggregate.rental.id
         );
-
+  
       return buildBillingPreview(
         deurs,
+        contract,
         from,
         to
       );
-
+  
     }, [
-      aggregate.rental.id,
+      aggregate,
       from,
       to,
       generated,

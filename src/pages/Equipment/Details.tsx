@@ -137,6 +137,110 @@ export default function EquipmentDetails() {
             {equipment.equipmentName}
           </h1>
 
+          <div className="grid grid-cols-2 gap-4">
+
+  <div>
+
+    <div className="text-xs text-slate-500">
+      Manufacturer
+    </div>
+
+    <div className="font-medium">
+      {equipment.manufacturer || "-"}
+    </div>
+
+  </div>
+
+  <div>
+
+    <div className="text-xs text-slate-500">
+      Model
+    </div>
+
+    <div className="font-medium">
+      {equipment.model || "-"}
+    </div>
+
+  </div>
+
+</div>
+
+<div className="grid grid-cols-2 gap-4">
+
+  <div>
+
+  <div className="grid grid-cols-2 gap-4">
+
+<div>
+  <div className="text-xs text-slate-500">
+    Serial Number
+  </div>
+
+  <div className="font-medium">
+    {equipment.serialNumber || "-"}
+  </div>
+</div>
+
+<div>
+  <div className="text-xs text-slate-500">
+    Plate Number
+  </div>
+
+  <div className="font-medium">
+    {equipment.plateNumber || "-"}
+  </div>
+</div>
+
+</div>
+
+<div className="grid grid-cols-2 gap-4">
+
+<div>
+  <div className="text-xs text-slate-500">
+    Engine Number
+  </div>
+
+  <div className="font-medium">
+    {equipment.engineNumber || "-"}
+  </div>
+</div>
+
+<div>
+  <div className="text-xs text-slate-500">
+    Chassis Number
+  </div>
+
+  <div className="font-medium">
+    {equipment.chassisNumber || "-"}
+  </div>
+</div>
+
+</div>
+
+    <div className="text-xs text-slate-500">
+      Year Model
+    </div>
+
+    <div className="font-medium">
+      {equipment.yearModel ?? "-"}
+    </div>
+
+  </div>
+
+  <div>
+
+    <div className="text-xs text-slate-500">
+      Capacity
+    </div>
+
+    <div className="font-medium">
+      {equipment.capacity || "-"}
+    </div>
+
+  </div>
+
+</div>
+
           <p className="mt-1 text-gray-500">
             Asset No.
             {" "}

@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./AppLayout";
 
 // Dashboard
-import Dashboard from "@/pages/Dashboard";
+import Dashboard from "@/pages/Dashboard/index.tsx";
 import NotFound from "@/pages/NotFound";
 
 // Equipment
@@ -48,7 +48,6 @@ import DailyLogs from "@/pages/DailyLogs";
 import NewDailyLog from "@/pages/DailyLogs/New";
 
 // Other Modules
-import Bookings from "@/pages/Bookings";
 import Billing from "@/pages/Billing";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
@@ -208,11 +207,7 @@ export const router = createBrowserRouter([
       // ====================================
       // Other Modules
       // ====================================
-      {
-        path: "bookings",
-        element: <Bookings />,
-      },
-      {
+            {
         path: "billing",
         element: <Billing />,
       },

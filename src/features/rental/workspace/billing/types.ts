@@ -29,6 +29,8 @@ export interface BillingPreviewLine {
 
   actualHours: number;
 
+  billingMethod: string;
+
   costCode: string;
 
   description: string;

@@ -26,10 +26,16 @@ export function useBillingPreview(
         aggregate.rental.id
       );
 
+      
+      if (!aggregate.contract) {
+        return [];
+    }
+    
     return buildBillingPreview(
-      deurs,
-      from,
-      to
+        deurs,
+        aggregate.contract,
+        from,
+        to
     );
 
   }, [

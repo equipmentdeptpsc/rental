@@ -6,13 +6,22 @@ import Select from "@/components/ui/Select";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
+import { useRentalStatuses } from "@/features/masters/rental-status";
 
 export interface RentalFormData {
   equipmentId: string;
+
   customer: string;
+
   project: string;
+
   rentedBy: string;
+
   expectedReturn: string;
+
+  statusId: string;
+
+  status: string;
 }
 
 interface Props {
@@ -34,40 +43,49 @@ export default function RentalForm({
   const { customers } =
     useCustomer();
 
-  const availableEquipment =
+  const { records: rentalStatuses } =
+    useRentalStatuses();
+
+    const availableEquipment =
     useMemo(() => {
+  
       const available =
         equipment.filter(
-          (e) =>
+          e =>
+            e.active !== false &&
+            !e.deleted &&
             e.status ===
-            "Available"
+              "Available"
         );
-
+  
       if (!initialEquipmentId)
         return available;
-
+  
       const selected =
         equipment.find(
-          (e) =>
+          e =>
             e.id ===
             initialEquipmentId
         );
-
+  
       if (
         selected &&
         !available.some(
-          (e) =>
+          e =>
             e.id ===
             selected.id
         )
       ) {
+  
         return [
           selected,
           ...available,
         ];
+  
       }
-
+  
       return available;
+  
     }, [
       equipment,
       initialEquipmentId,
@@ -111,19 +129,35 @@ export default function RentalForm({
       [customers]
     );
 
+    const reservedStatus =
+    rentalStatuses.find(
+      s =>
+        s.status ===
+          "Reserved" &&
+        s.active &&
+        !s.deleted
+    );
+  
   const [form, setForm] =
     useState<RentalFormData>({
       equipmentId:
         initialEquipmentId ??
         "",
-
+  
       customer: "",
-
+  
       project: "",
-
+  
       rentedBy: "",
-
+  
       expectedReturn: "",
+  
+      statusId:
+        reservedStatus?.id ?? "",
+  
+      status:
+        reservedStatus?.status ??
+        "Reserved",
     });
 
   useEffect(() => {
@@ -212,6 +246,30 @@ export default function RentalForm({
           )
         }
       />
+
+<Select
+  label="Rental Status"
+  value={form.statusId}
+  disabled
+  options={[
+    {
+      value: "",
+      label:
+        "-- Select Status --",
+    },
+
+    ...rentalStatuses
+      .filter(
+        s =>
+          s.active &&
+          !s.deleted
+      )
+      .map(s => ({
+        value: s.id,
+        label: s.status,
+      })),
+  ]}
+/>
 
       <Input
         type="date"

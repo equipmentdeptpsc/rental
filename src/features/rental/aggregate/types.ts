@@ -1,5 +1,7 @@
 import type { RentalRecord } from "../types";
 
+import type { RentalContractRecord } from "../types/RentalContract";
+
 import type { EquipmentRecord } from "@/features/equipment/types";
 
 import type { Operator } from "@/features/operators/types";
@@ -32,6 +34,12 @@ export interface BillingSummary {
 
 export interface RentalAggregate {
   rental: RentalRecord;
+
+  /**
+   * Commercial Contract
+   * (Billing Rules)
+   */
+  contract?: RentalContractRecord;
 
   equipment?: EquipmentRecord;
 

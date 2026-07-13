@@ -17,16 +17,17 @@ export interface RentalRecord {
 
   remarks?: string;
 
-  status:
-    | "Active"
-    | "Returned";
+  statusId: string;
+
+  status: string;
 }
 
 export function isOverdue(
   rental: RentalRecord
 ) {
   if (
-    rental.status === "Returned"
+    rental.status === "Returned" ||
+    rental.status === "Closed"
   ) {
     return false;
   }
