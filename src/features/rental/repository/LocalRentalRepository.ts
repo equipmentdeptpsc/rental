@@ -1,7 +1,23 @@
 import type { RentalRecord } from "../types";
 import type { IRentalRepository } from "./IRentalRepository";
 
-import { rentalData } from "../data/rental.mock";
+const STORAGE_KEY = "rentals";
+
+function load(): RentalRecord[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+
+    if (!data) return [];
+
+    const parsed = JSON.parse(data);
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+
+    return [];
+  }
+}
 
 export class LocalRentalRepository
   implements IRentalRepository
@@ -9,7 +25,14 @@ export class LocalRentalRepository
   private data: RentalRecord[];
 
   constructor() {
-    this.data = rentalData;
+    this.data = load();
+  }
+
+  private save() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(this.data)
+    );
   }
 
   getAll(): RentalRecord[] {
@@ -24,6 +47,8 @@ export class LocalRentalRepository
 
   create(item: RentalRecord) {
     this.data.push(item);
+
+    this.save();
   }
 
   update(item: RentalRecord) {
@@ -33,6 +58,8 @@ export class LocalRentalRepository
 
     if (index >= 0) {
       this.data[index] = item;
+
+      this.save();
     }
   }
 
@@ -40,5 +67,7 @@ export class LocalRentalRepository
     this.data = this.data.filter(
       (x) => x.id !== id
     );
+
+    this.save();
   }
 }
