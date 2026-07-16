@@ -2,7 +2,6 @@ import type { RentalRecord } from "../types";
 import type { IRentalRepository } from "./IRentalRepository";
 
 import { storage } from "@/core/storage";
-
 import { rentalData } from "../data/rental.mock";
 
 const STORAGE_KEY = "equipment-rental-records";
@@ -13,7 +12,9 @@ export class LocalRentalRepository
   private data: RentalRecord[];
 
   constructor() {
-    this.data = storage.get<RentalRecord[]>(STORAGE_KEY) ?? rentalData;
+    this.data =
+      storage.get<RentalRecord[]>(STORAGE_KEY) ??
+      rentalData;
   }
 
   getAll(): RentalRecord[] {
@@ -46,6 +47,7 @@ export class LocalRentalRepository
     this.data = this.data.filter(
       (x) => x.id !== id
     );
+
     this.save();
   }
 
