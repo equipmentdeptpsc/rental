@@ -9,8 +9,6 @@ import type {
   EquipmentCategory,
 } from "../types";
 
-import { useProject } from "@/features/project/context/ProjectContext";
-import { useOperator } from "@/features/operators/context/OperatorContext";
 import { usePrefix } from "@/features/settings";
 import { useEquipmentCategories } from "@/features/masters/equipment-category";
 import { useEquipmentStatuses,} from "@/features/masters/equipment-status";
@@ -41,12 +39,6 @@ export default function EquipmentForm({
 
   const { records: equipmentTypes } =
     useEquipmentTypes();
-
-  const { projects } =
-    useProject();
-
-  const { operators } =
-    useOperator();
 
   const {
     getPrefixByCategory,
@@ -130,7 +122,6 @@ export default function EquipmentForm({
 
   useEffect(() => {
     if (!form.category) {
-      update("assetNo", "");
       update("prefixId", "");
       return;
     }
@@ -575,12 +566,6 @@ export default function EquipmentForm({
             },
             {
               label:
-                "Kilometers",
-              value:
-                "Kilometers",
-            },
-            {
-              label:
                 "Mileage",
               value:
                 "Mileage",
@@ -612,49 +597,6 @@ export default function EquipmentForm({
           }
         />
 
-        <Select
-          label="Project"
-          value={form.projectId}
-          options={[
-            {
-              label:
-                "-- Select Project --",
-              value: "",
-            },
-            ...projects.map((p) => ({
-              label: p.projectName,
-              value: p.id,
-            })),
-          ]}
-          onChange={(e) =>
-            update(
-              "projectId",
-              e.target.value
-            )
-          }
-        />
-
-        <Select
-          label="Operator"
-          value={form.operatorId}
-          options={[
-            {
-              label:
-                "-- Select Operator --",
-              value: "",
-            },
-            ...operators.map((o) => ({
-              label: o.name,
-              value: o.id,
-            })),
-          ]}
-          onChange={(e) =>
-            update(
-              "operatorId",
-              e.target.value
-            )
-          }
-        />
 
       </div>
 

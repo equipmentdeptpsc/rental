@@ -1,5 +1,6 @@
 import type { DeurRecord } from "../types";
 import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
+import { storage } from "@/core/storage";
 
 const STORAGE_KEY = "equipment-rental-deur";
 
@@ -7,14 +8,7 @@ class DeurRepository {
 
   getAll(): DeurRecord[] {
 
-    const raw =
-      localStorage.getItem(STORAGE_KEY);
-
-    if (!raw) {
-      return [];
-    }
-
-    return JSON.parse(raw);
+    return storage.get<DeurRecord[]>(STORAGE_KEY) ?? [];
 
   }
 
@@ -138,10 +132,7 @@ class DeurRepository {
     records: DeurRecord[]
   ) {
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(records)
-    );
+    storage.set(STORAGE_KEY, records);
 
   }
 

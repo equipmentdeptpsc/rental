@@ -51,7 +51,7 @@ export default function NewAssignment() {
       "equipment"
     ) ?? "";
 
-  const { addAssignment } =
+  const { addAssignment, isEquipmentAssigned } =
     useAssignment();
 
   const {
@@ -74,6 +74,7 @@ export default function NewAssignment() {
         {
           getEquipment,
           updateEquipment,
+          isEquipmentAssigned,
         }
       );
       if (!workflow.success) {
@@ -109,7 +110,7 @@ export default function NewAssignment() {
             .split("T")[0],
 
         expectedReturn:
-          data.expectedReturn,
+          "",
 
         remarks:
           data.remarks,
@@ -186,11 +187,6 @@ export default function NewAssignment() {
         initialEquipmentId={
           equipmentId ||
           undefined
-        }
-        lockEquipment={
-          Boolean(
-            equipmentId
-          )
         }
       />
 

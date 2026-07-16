@@ -40,13 +40,6 @@ import {
             }
           />
   
-          <CloseRequirementItem
-            label="Outstanding Balance Cleared"
-            completed={
-              !readiness.hasOutstandingBalance
-            }
-          />
-  
         </div>
   
       </div>

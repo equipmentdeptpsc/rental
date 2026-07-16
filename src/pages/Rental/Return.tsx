@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useReturnRental } from "@/features/rental/services/useReturnRental";
+import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
 
 export default function ReturnRental() {
   const navigate = useNavigate();
@@ -55,11 +56,7 @@ export default function ReturnRental() {
       <div className="space-y-3 rounded-xl border bg-white p-6">
         <Detail
           label="Equipment"
-          value={
-            machine
-              ? `${machine.assetNo} - ${machine.equipmentName}`
-              : rental.equipmentId
-          }
+          value={getRentalEquipmentLabel(machine)}
         />
         <Detail label="Customer" value={rental.customer} />
         <Detail label="Project" value={rental.project || "-"} />

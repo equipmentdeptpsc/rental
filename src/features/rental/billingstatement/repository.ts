@@ -2,6 +2,7 @@ import type {
     BillingStatement,
   } from "./types";
 import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
+import { storage } from "@/core/storage";
 
 const STORAGE_KEY =
   "equipment-rental-billing-statements";
@@ -10,14 +11,7 @@ class BillingStatementRepository {
 
   getAll(): BillingStatement[] {
 
-    const raw =
-      localStorage.getItem(STORAGE_KEY);
-
-    if (!raw) {
-      return [];
-    }
-
-    return JSON.parse(raw);
+    return storage.get<BillingStatement[]>(STORAGE_KEY) ?? [];
 
   }
 
@@ -29,6 +23,10 @@ class BillingStatementRepository {
       x => x.id === id
     );
 
+  }
+
+  getByRentalId(rentalId: string) {
+    return this.getAll().filter((statement) => statement.rentalId === rentalId);
   }
 
   search(
@@ -133,6 +131,8 @@ class BillingStatementRepository {
 
     );
 
+    notifyRentalWorkspaceChange(deleted.rentalId);
+
     return deleted;
 
   }
@@ -141,15 +141,7 @@ class BillingStatementRepository {
     statements: BillingStatement[]
   ) {
 
-    localStorage.setItem(
-
-      STORAGE_KEY,
-
-      JSON.stringify(
-        statements
-      )
-
-    );
+    storage.set(STORAGE_KEY, statements);
 
   }
 

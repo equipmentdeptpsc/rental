@@ -234,12 +234,11 @@ export default function AssignmentDetails() {
           </Button>
         )}
 
-        <Button
-          variant="secondary"
-          disabled
-        >
-          Edit Assignment
-        </Button>
+        <Link to={`/assignments/${assignment.id}/edit`}>
+          <Button variant="secondary">
+            Edit Assignment
+          </Button>
+        </Link>
 
         <Button
           variant="secondary"

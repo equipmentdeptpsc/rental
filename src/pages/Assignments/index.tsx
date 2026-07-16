@@ -133,7 +133,7 @@ export default function Assignments() {
 
                       {equipment
                         ? `${equipment.assetNo} - ${equipment.equipmentName}`
-                        : assignment.equipmentId}
+                        : "Unknown equipment"}
 
                     </td>
 

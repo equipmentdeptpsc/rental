@@ -9,27 +9,27 @@ import BillingDraftTable from "./components/BillingDraftTable";
 import BillingMetricCard from "./BillingMetricCard";
 
 import {
-  useBillingSummary,
-} from "./useBillingSummary";
-
-import {
   useBillingWizard,
 } from "./useBillingWizard";
 
 import {
   useBillingDrafts,
 } from "./useBillingDrafts";
+import { useRentalWorkspaceAggregate } from "..";
 
 export default function BillingPanel() {
 
-  const billing =
-    useBillingSummary();
+  const aggregate = useRentalWorkspaceAggregate();
 
   const wizard =
     useBillingWizard();
 
   const drafts =
     useBillingDrafts();
+
+  const canCreate =
+    !["Cancelled", "Closed"].includes(aggregate.rental.status) &&
+    Boolean(aggregate.equipment && aggregate.operator && aggregate.contract);
 
   return (
 
@@ -42,6 +42,8 @@ export default function BillingPanel() {
         onToChange={wizard.setTo}
         onGenerate={wizard.generate}
         onSaveDraft={wizard.saveDraft}
+        canCreate={canCreate}
+        createUnavailableMessage="A valid rental, equipment, operator, and billing contract are required."
       />
 
       <BillingHeader
@@ -56,34 +58,23 @@ export default function BillingPanel() {
       <div className="grid gap-5 md:grid-cols-3">
 
         <BillingMetricCard
-          label="Operating"
-          value={billing.operatingCharge}
+          label="Persisted Subtotal"
+          value={aggregate.billing.subtotal}
         />
 
-        <BillingMetricCard
-          label="Idle"
-          value={billing.idleCharge}
-        />
+        <div className="rounded-lg border bg-white p-5">
+          <div className="text-sm text-slate-500">Invoice Status</div>
+          <div className="mt-2 text-xl font-bold">
+            {aggregate.billing.invoiceStatus ?? "No billing statement"}
+          </div>
+        </div>
 
-        <BillingMetricCard
-          label="Mobilization"
-          value={billing.mobilizationCharge}
-        />
-
-        <BillingMetricCard
-          label="Demobilization"
-          value={billing.demobilizationCharge}
-        />
-
-        <BillingMetricCard
-          label="Subtotal"
-          value={billing.subtotal}
-        />
-
-        <BillingMetricCard
-          label="Outstanding"
-          value={billing.outstanding}
-        />
+        <div className="rounded-lg border bg-white p-5">
+          <div className="text-sm text-slate-500">Invoice Preparation</div>
+          <div className="mt-2 text-xl font-bold">
+            {aggregate.billing.invoicePreparationComplete ? "Ready" : "Not ready"}
+          </div>
+        </div>
 
       </div>
 
@@ -115,6 +106,9 @@ export default function BillingPanel() {
   drafts={drafts.drafts}
   onDelete={
     drafts.deleteDraft
+  }
+  onInvoiceStatus={
+    drafts.updateInvoiceStatus
   }
 />
 

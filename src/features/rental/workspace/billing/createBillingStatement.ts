@@ -56,7 +56,9 @@ export function createBillingStatement(
       aggregate.rental.equipmentId,
 
     operatorId:
-      aggregate.equipment?.operatorId ??
+      aggregate.operator?.id ??
+      aggregate.rental.operatorId ??
+      aggregate.assignment?.operatorId ??
       "",
 
     billingFrom: from,

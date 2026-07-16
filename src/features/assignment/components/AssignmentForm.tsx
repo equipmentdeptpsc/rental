@@ -7,12 +7,13 @@ import Input from "@/components/ui/Input";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useProject } from "@/features/project/context/ProjectContext";
+import { useAssignment } from "@/features/assignment/context/AssignmentContext";
+import { selectAvailableEquipment } from "@/features/assignment/utils/selectAvailableEquipment";
 
 export interface AssignmentFormData {
   equipmentId: string;
   operatorId: string;
   projectId: string;
-  expectedReturn: string;
   remarks: string;
 }
 
@@ -23,13 +24,19 @@ interface Props {
 
   initialEquipmentId?: string;
 
+  initialData?: Partial<AssignmentFormData>;
+
   lockEquipment?: boolean;
+
+  submitLabel?: string;
 }
 
 export default function AssignmentForm({
   onSubmit,
   initialEquipmentId,
+  initialData,
   lockEquipment = false,
+  submitLabel = "Assign Equipment",
 }: Props) {
   const { equipment } =
     useEquipment();
@@ -40,42 +47,18 @@ export default function AssignmentForm({
   const { projects } =
     useProject();
 
+  const { assignments } =
+    useAssignment();
+
   const availableEquipment =
-    useMemo(() => {
-      const available =
-        equipment.filter(
-          (e) =>
-            e.status ===
-            "Available"
-        );
-
-      if (!initialEquipmentId)
-        return available;
-
-      const selected =
-        equipment.find(
-          (e) =>
-            e.id ===
-            initialEquipmentId
-        );
-
-      if (
-        selected &&
-        !available.some(
-          (e) =>
-            e.id ===
-            selected.id
-        )
-      ) {
-        return [
-          selected,
-          ...available,
-        ];
-      }
-
-      return available;
-    }, [
+    useMemo(() =>
+      selectAvailableEquipment(
+        equipment,
+        assignments,
+        initialEquipmentId
+      ), [
       equipment,
+      assignments,
       initialEquipmentId,
     ]);
 
@@ -110,22 +93,21 @@ export default function AssignmentForm({
 
       projectId: "",
 
-      expectedReturn: "",
-
       remarks: "",
+
+      ...initialData,
     });
 
   useEffect(() => {
-    if (
-      initialEquipmentId
-    ) {
-      setForm((prev) => ({
-        ...prev,
-        equipmentId:
-          initialEquipmentId,
-      }));
-    }
-  }, [initialEquipmentId]);
+    setForm((prev) => ({
+      ...prev,
+      ...initialData,
+      equipmentId:
+        initialEquipmentId ??
+        initialData?.equipmentId ??
+        prev.equipmentId,
+    }));
+  }, [initialData, initialEquipmentId]);
 
   function update(
     key: keyof AssignmentFormData,
@@ -179,6 +161,12 @@ export default function AssignmentForm({
           ),
         ]}
       />
+
+      {availableEquipment.length === 0 && (
+        <p className="text-sm text-slate-500">
+          No equipment is currently available for assignment.
+        </p>
+      )}
 
       <Select
         label="Operator"
@@ -236,20 +224,6 @@ export default function AssignmentForm({
       />
 
       <Input
-        label="Expected Return"
-        type="date"
-        value={
-          form.expectedReturn
-        }
-        onChange={(e) =>
-          update(
-            "expectedReturn",
-            e.target.value
-          )
-        }
-      />
-
-      <Input
         label="Remarks"
         value={
           form.remarks
@@ -264,7 +238,7 @@ export default function AssignmentForm({
 
       <div className="flex justify-end">
         <Button type="submit">
-          Assign Equipment
+          {submitLabel}
         </Button>
       </div>
     </form>

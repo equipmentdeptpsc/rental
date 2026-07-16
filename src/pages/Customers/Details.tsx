@@ -4,6 +4,8 @@ import Button from "@/components/ui/Button";
 
 import { useCustomer } from "@/features/customer/context/CustomerContext";
 import { useRental } from "@/features/rental/context/RentalContext";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
 
 export default function CustomerDetails() {
   const { id } = useParams();
@@ -13,6 +15,8 @@ export default function CustomerDetails() {
 
   const { rentals } =
     useRental();
+
+  const { getEquipment } = useEquipment();
 
   const customer = customers.find(
     (c) => c.id === id
@@ -130,7 +134,7 @@ export default function CustomerDetails() {
                   >
 
                     <td className="p-3">
-                      {rental.equipmentId}
+                      {getRentalEquipmentLabel(getEquipment(rental.equipmentId))}
                     </td>
 
                     <td className="p-3">

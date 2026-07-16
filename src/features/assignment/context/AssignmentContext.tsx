@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import type { AssignmentRecord } from "../types";
+import { hasActiveAssignmentConflict } from "../utils/selectAvailableEquipment";
 
 import { assignmentRepository } from "../repository";
 import { rentalRepository } from "@/features/rental/repository";
@@ -23,7 +24,7 @@ interface AssignmentContextType {
 
   updateAssignment(
     assignment: AssignmentRecord
-  ): void;
+  ): boolean;
 
   completeAssignment(
     id: string,
@@ -126,11 +127,19 @@ export function AssignmentProvider({
   function updateAssignment(
     assignment: AssignmentRecord
   ) {
+    if (assignment.status === "Active") {
+      if (hasActiveAssignmentConflict(activeAssignments, assignment, assignment.id)) {
+        return false;
+      }
+    }
+
     assignmentRepository.update(
       assignment
     );
 
     refresh();
+
+    return true;
   }
 
   function completeAssignment(

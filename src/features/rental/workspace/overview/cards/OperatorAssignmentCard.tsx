@@ -27,11 +27,6 @@ import type {
         <div className="grid gap-5 md:grid-cols-2">
   
           <Field
-            label="Operator ID"
-            value={operator.operatorId}
-          />
-  
-          <Field
             label="Operator Name"
             value={operator.operatorName}
           />

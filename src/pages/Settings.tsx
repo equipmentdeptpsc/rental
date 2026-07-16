@@ -8,6 +8,18 @@ import PrefixForm from "@/features/settings/components/PrefixForm";
 import { usePrefix } from "@/features/settings";
 
 import type { PrefixRecord } from "@/features/settings/types";
+import {
+  BACKUP_SCHEMA_VERSION,
+  MAX_BACKUP_FILE_SIZE_BYTES,
+  backupFilename,
+  createApplicationBackup,
+  parseApplicationBackup,
+  resetApplicationData,
+  resetTransactionalData,
+  restoreApplicationBackup,
+  serializeApplicationBackup,
+  type RestorePreview,
+} from "@/features/settings/services/applicationBackupService";
 
 export default function Settings() {
   const {
@@ -21,6 +33,67 @@ export default function Settings() {
 
   const [showForm, setShowForm] =
     useState(false);
+  const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
+  const [backupError, setBackupError] = useState("");
+
+  function downloadBackup(json = serializeApplicationBackup()) {
+    const anchor = document.createElement("a");
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    anchor.href = url;
+    anchor.download = backupFilename();
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }
+
+  function onBackup() {
+    try {
+      setBackupError("");
+      downloadBackup();
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : "Could not create backup.");
+    }
+  }
+
+  async function onRestoreFile(file: File | undefined) {
+    setRestorePreview(null);
+    setBackupError("");
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".json") || (file.type && file.type !== "application/json" && file.type !== "text/json")) {
+      setBackupError("Select a JSON backup file.");
+      return;
+    }
+    if (file.size > MAX_BACKUP_FILE_SIZE_BYTES) {
+      setBackupError("Backup files must be 5 MB or smaller.");
+      return;
+    }
+    try {
+      setRestorePreview(parseApplicationBackup(await file.text()));
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : "Could not validate backup.");
+    }
+  }
+
+  function confirmRestore() {
+    if (!restorePreview || !window.confirm("Replace all application data with this backup? Your current application data will be downloaded first.")) return;
+    try {
+      downloadBackup(JSON.stringify(createApplicationBackup(), null, 2));
+      restoreApplicationBackup(restorePreview);
+      window.location.reload();
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : "Restore failed. No data was changed.");
+    }
+  }
+
+  function confirmReset(allData: boolean) {
+    const message = allData
+      ? "Remove all Equipment Rental System data (except your signed-in session)? Download a backup first."
+      : "Remove transactional test data while keeping master data and your signed-in session?";
+    if (!window.confirm(message)) return;
+    allData ? resetApplicationData() : resetTransactionalData();
+    window.location.reload();
+  }
 
   function newPrefix() {
     setEditing(null);
@@ -85,6 +158,41 @@ export default function Settings() {
           onEdit={editPrefix}
         />
 
+      </div>
+
+      <div className="rounded-xl border bg-white p-6 space-y-4">
+        <div>
+          <h2 className="text-2xl font-semibold">Data Backup and Restore</h2>
+          <p className="text-gray-500">Backups include application records and master data, never your authentication session.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={onBackup}>Download Backup</Button>
+          <label className="rounded-lg px-5 py-3 font-medium border border-slate-300 bg-white hover:bg-slate-100 cursor-pointer">
+            Select Backup to Restore
+            <input className="hidden" type="file" accept="application/json,.json" onChange={(event) => void onRestoreFile(event.target.files?.[0])} />
+          </label>
+        </div>
+        {backupError && <p className="text-sm text-red-700">{backupError}</p>}
+        {restorePreview && (
+          <div className="rounded-lg bg-amber-50 p-4 text-sm space-y-2">
+            <p><strong>Ready for full replacement restore.</strong></p>
+            <p>Exported: {new Date(restorePreview.backup.exportedAt).toLocaleString()} · Schema: {restorePreview.backup.schemaVersion}</p>
+            <p>Sections: {restorePreview.sections.length} · Records: {Object.values(restorePreview.backup.recordCounts).reduce((total, count) => total + count, 0)}</p>
+            <Button onClick={confirmRestore} variant="danger">Confirm Restore</Button>
+          </div>
+        )}
+        <p className="text-xs text-gray-500">Storage schema version: {BACKUP_SCHEMA_VERSION}. Existing installations without metadata are treated as this legacy-compatible version.</p>
+      </div>
+
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 space-y-4">
+        <div>
+          <h2 className="text-2xl font-semibold text-red-900">Controlled Data Reset</h2>
+          <p className="text-red-800">Download a backup first. These actions do not affect unrelated browser storage or your sign-in session.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" onClick={() => confirmReset(false)}>Reset Transactional Test Data</Button>
+          <Button variant="danger" onClick={() => confirmReset(true)}>Reset All Application Data</Button>
+        </div>
       </div>
 
       {showForm && (

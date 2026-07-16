@@ -20,6 +20,7 @@ import {
 
 import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
 import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
+import { isInvoicePreparationComplete } from "@/features/rental/billingstatement/services/BillingReadiness";
 import { subscribeRentalWorkspaceChange } from "./workspaceRefresh";
 
 interface RentalWorkspaceProviderProps {
@@ -63,19 +64,18 @@ export default function RentalWorkspaceProvider({
     const assignment =
       rental.assignmentId
         ? assignments.find((item) => item.id === rental.assignmentId)
-        : assignments.find((item) => item.equipmentId === rental.equipmentId);
+        : undefined;
 
     const equipment =
       equipmentRecords.find((item) => item.id === rental.equipmentId);
 
     const operator =
-      assignment
-        ? operators.find((item) => item.id === assignment.operatorId)
-        : undefined;
+      operators.find(
+        (item) => item.id === (rental.operatorId ?? assignment?.operatorId)
+      );
 
     const project =
-      projects.find((item) => item.id === rental.projectId) ??
-      projects.find((item) => item.projectName === rental.project);
+      projects.find((item) => item.id === rental.projectId);
 
     // NEW
     const deurs =
@@ -87,11 +87,9 @@ export default function RentalWorkspaceProvider({
       statement => statement.rentalId === rental.id
     );
     const latestStatement = statements.at(-1);
-    const invoicePreparationComplete = latestStatement !== undefined && [
-      "Invoiced",
-      "Partially Collected",
-      "Fully Collected",
-    ].includes(latestStatement.invoiceStatus);
+    const invoicePreparationComplete = isInvoicePreparationComplete(
+      latestStatement?.invoiceStatus
+    );
 
       const activeDeur =
       deurs.find(

@@ -15,6 +15,13 @@ export function validateEquipmentAssignment(
     };
   }
 
+  if (equipment.deleted || equipment.active === false) {
+    return {
+      valid: false,
+      message: "Equipment is not available for assignment.",
+    };
+  }
+
   switch (equipment.status) {
     case "Available":
       return {

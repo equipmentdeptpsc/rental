@@ -18,6 +18,10 @@ import type {
     updateEquipment(
       equipment: EquipmentRecord
     ): void;
+
+    isEquipmentAssigned?(
+      equipmentId: string
+    ): boolean;
   }
   
   export interface AssignmentWorkflowResult {
@@ -45,6 +49,13 @@ if (!validation.valid) {
     success: false,
     message:
       validation.message,
+  };
+}
+
+if (_deps.isEquipmentAssigned?.(_data.equipmentId)) {
+  return {
+    success: false,
+    message: "This equipment is already assigned.",
   };
 }
 

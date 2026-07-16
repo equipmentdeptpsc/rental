@@ -8,6 +8,7 @@ import {
   
   import type { ProjectRecord } from "../types";
   import { projectRepository } from "../repository";
+  import { guardProjectDeletion } from "@/features/relationships/deletionGuards";
   
   interface ProjectContextType {
     projects: ProjectRecord[];
@@ -20,7 +21,7 @@ import {
       project: ProjectRecord
     ): void;
   
-    deleteProject(id: string): void;
+    deleteProject(id: string): { success: boolean; message?: string };
   }
   
   const ProjectContext =
@@ -59,8 +60,14 @@ import {
     }
   
     function deleteProject(id: string) {
+      const result = guardProjectDeletion(id);
+
+      if (!result.success) return result;
+
       projectRepository.delete(id);
       refresh();
+
+      return result;
     }
   
     const value = useMemo(

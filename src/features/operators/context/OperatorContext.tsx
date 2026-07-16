@@ -9,6 +9,7 @@ import {
   import type { Operator } from "../types";
   
   import { operatorRepository } from "../repository";
+  import { guardOperatorDeletion } from "@/features/relationships/deletionGuards";
   
   interface OperatorContextType {
     operators: Operator[];
@@ -23,7 +24,7 @@ import {
   
     deleteOperator(
       id: string
-    ): void;
+    ): { success: boolean; message?: string };
   }
   
   const OperatorContext =
@@ -68,8 +69,14 @@ import {
     function deleteOperator(
       id: string
     ) {
+      const result = guardOperatorDeletion(id);
+
+      if (!result.success) return result;
+
       operatorRepository.delete(id);
       refresh();
+
+      return result;
     }
   
     const value = useMemo(

@@ -115,8 +115,8 @@ export default function MaintenanceDetails() {
 
       <div className="space-y-3 rounded-xl border bg-white p-6">
         <p>
-          Equipment ID:{" "}
-          {currentWorkOrder.equipmentId}
+          Equipment:{" "}
+          {`${currentMachine.assetNo} - ${currentMachine.equipmentName}`}
         </p>
 
         <p>

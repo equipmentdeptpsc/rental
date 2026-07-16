@@ -12,13 +12,14 @@ import {
   buildBillingPreview,
 } from "./BillingPreviewBuilder";
 
-import {
-  createBillingStatement,
-} from "./createBillingStatement";
+import { createBillingStatementForRental } from "@/features/rental/billingstatement/services/BillingStatementWorkflow";
+import { useToast } from "@/components/ui/toast/ToastContext";
 
 export function useBillingWizard() {
   const aggregate =
     useRentalWorkspaceAggregate();
+
+  const { showToast } = useToast();
 
   const today =
     new Date()
@@ -77,16 +78,19 @@ export function useBillingWizard() {
       return;
     }
 
-    createBillingStatement(
+    const result = createBillingStatementForRental(
       aggregate,
       from,
       to,
       preview
     );
 
-    alert(
-      "Billing Statement saved successfully."
-    );
+    if (!result.success) {
+      showToast(result.message, "error");
+      return;
+    }
+
+    showToast("Billing statement created successfully.", "success");
   }
 
   return {

@@ -18,6 +18,8 @@ const assignmentKey = "assignments";
 const rentalKey = "equipment-rental-records";
 const authUserKey = "auth_user";
 const authTokenKey = "auth_token";
+const projectKey = "projects";
+const operatorKey = "operators";
 
 function equipment(status: EquipmentRecord["status"]): EquipmentRecord {
   return {
@@ -77,12 +79,15 @@ async function renderHarness(): Promise<{ harness: RentalHarness; root: Root; co
   vi.resetModules();
   const [{ AuthProvider }, { AuditProvider, useAudit }, { EquipmentProvider, useEquipment },
     { EquipmentHistoryProvider, useEquipmentHistory }, { AssignmentProvider, useAssignment },
+    { OperatorProvider }, { ProjectProvider },
     { RentalProvider, useRental }] = await Promise.all([
     import("@/features/auth/AuthContext"),
     import("@/features/equipment/audit/AuditContext"),
     import("@/features/equipment/context/EquipmentContext"),
     import("@/features/equipment/history/EquipmentHistoryContext"),
     import("@/features/assignment/context/AssignmentContext"),
+    import("@/features/operators/context/OperatorContext"),
+    import("@/features/project/context/ProjectContext"),
     import("@/features/rental/context/RentalContext"),
   ]);
   const harness = {} as RentalHarness;
@@ -106,7 +111,15 @@ async function renderHarness(): Promise<{ harness: RentalHarness; root: Root; co
         createElement(
           EquipmentHistoryProvider,
           null,
-          createElement(AssignmentProvider, null, createElement(RentalProvider, null, children))
+          createElement(
+            OperatorProvider,
+            null,
+            createElement(
+              ProjectProvider,
+              null,
+              createElement(AssignmentProvider, null, createElement(RentalProvider, null, children))
+            )
+          )
         )
       )
     )
@@ -125,6 +138,20 @@ function prepareState(status: EquipmentRecord["status"], rentalStatus: RentalLif
   storage.set(assignmentKey, assignment ? [assignment] : []);
   storage.set(authUserKey, { id: "user-1", name: "Test Admin", role: "Admin" });
   storage.set(authTokenKey, "token");
+}
+
+function prepareCreateState(status: EquipmentRecord["status"], assignment?: AssignmentRecord) {
+  storage.set(equipmentKey, [equipment(status)]);
+  storage.set(rentalKey, []);
+  storage.set(assignmentKey, assignment ? [assignment] : []);
+  storage.set(projectKey, [{
+    id: "project-1", projectCode: "PRJ-000001", projectName: "Test Project", client: "", location: "",
+    projectManager: "", startDate: "", targetCompletion: "", status: "Active",
+  }]);
+  storage.set(operatorKey, [{
+    id: "operator-1", name: "Test Operator", email: "", licenseNumber: "", certificationType: "None",
+    status: "Active", joinedDate: "",
+  }]);
 }
 
 describe("rental lifecycle rules", () => {
@@ -177,9 +204,10 @@ describe("RentalProvider synchronization", () => {
     await act(async () => {
       expect(harness.rental.transitionRental("rental-1", "Assigned").success).toBe(true);
       expect(harness.rental.transitionRental("rental-1", "Reserved").success).toBe(true);
-      expect(harness.rental.transitionRental("rental-1", "Released").success).toBe(true);
+      expect(harness.rental.releaseRental("rental-1", "Test Admin").success).toBe(true);
     });
     expect(harness.equipment.getEquipment("equipment-1")?.status).toBe("Rented");
+    expect(harness.rental.getRental("rental-1")?.rentedBy).toBe("Test Admin");
 
     await act(async () => {
       expect(harness.rental.transitionRental("rental-1", "Active").success).toBe(true);
@@ -237,5 +265,34 @@ describe("RentalProvider synchronization", () => {
     });
     await act(async () => root.unmount());
     container.remove();
+  });
+
+  it("accepts equipment assigned to its own assignment and rejects equipment assigned elsewhere", async () => {
+    prepareCreateState("Assigned", activeAssignment);
+    const { harness, root, container } = await renderHarness();
+    const { status: _status, statusId: _statusId, ...request } = rental("Draft", activeAssignment.id);
+
+    await act(async () => {
+      expect(harness.rental.addRental(request).success).toBe(true);
+    });
+    expect(harness.rental.getRental("rental-1")?.status).toBe("Reserved");
+    expect("status" in request).toBe(false);
+
+    await act(async () => root.unmount());
+    container.remove();
+
+    storage.clear();
+    vi.resetModules();
+    prepareCreateState("Assigned", { ...activeAssignment, id: "other-assignment" });
+    const second = await renderHarness();
+    const { assignmentId: _assignmentId, ...unlinkedRequest } = request;
+
+    const beforeFailure = { ...unlinkedRequest };
+    await act(async () => {
+      expect(second.harness.rental.addRental(unlinkedRequest).success).toBe(false);
+    });
+    expect(unlinkedRequest).toEqual(beforeFailure);
+    await act(async () => second.root.unmount());
+    second.container.remove();
   });
 });

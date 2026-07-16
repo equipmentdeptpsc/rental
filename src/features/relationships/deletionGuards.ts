@@ -9,6 +9,7 @@ import { rentalContractRepository } from "@/features/rental/repository/rentalCon
 import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
 import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { storage } from "@/core/storage";
+import { dailyLogRepository } from "@/features/daily-log/repository";
 
 export interface DeletionGuardResult { success: boolean; message?: string; }
 
@@ -33,6 +34,8 @@ export function guardProjectDeletion(id: string): DeletionGuardResult {
   if (assignmentRepository.getAll().some(x => x.projectId === id)) return blocked("Project", "assignment");
   if (rentalRepository.getAll().some(x => x.projectId === id)) return blocked("Project", "rental");
   if (deurRepository.getAll().some(x => x.projectId === id)) return blocked("Project", "DEUR");
+  if (rentalContractRepository.getAll().some(x => x.projectId === id)) return blocked("Project", "rental contract");
+  if (dailyLogRepository.getAll().some(x => x.projectId === id)) return blocked("Project", "daily log");
   return { success: true };
 }
 

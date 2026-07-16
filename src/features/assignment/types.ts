@@ -34,7 +34,5 @@ export interface AssignmentFormData {
 
   projectId: string;
 
-  expectedReturn: string;
-
   remarks: string;
 }

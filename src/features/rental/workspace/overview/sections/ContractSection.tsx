@@ -5,16 +5,19 @@ import type { RentalRecord } from "@/features/rental/types";
 
 interface Props {
   rental: RentalRecord;
+  equipmentLabel: string;
 }
 
 export default function ContractSection({
   rental,
+  equipmentLabel,
 }: Props) {
   return (
     <div className="space-y-6">
 
       <RentalKPICards
         rental={rental}
+        equipmentLabel={equipmentLabel}
       />
 
       <ContractSummaryCard

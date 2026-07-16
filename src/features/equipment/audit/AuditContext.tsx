@@ -75,9 +75,7 @@ export function AuditProvider({
         JSON.parse(stored)
       );
     } catch {
-      console.warn(
-        "Unable to load audit logs."
-      );
+      setLogs([]);
     }
   }, []);
 

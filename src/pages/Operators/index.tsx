@@ -99,11 +99,13 @@ export default function OperatorsPage() {
                     </Link>
 
                     <Button
-                      onClick={() =>
-                        deleteOperator(
-                          operator.id
-                        )
-                      }
+                      onClick={() => {
+                        const result = deleteOperator(operator.id);
+
+                        if (!result.success) {
+                          alert(result.message);
+                        }
+                      }}
                     >
                       Delete
                     </Button>

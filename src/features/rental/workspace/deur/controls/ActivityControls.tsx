@@ -32,6 +32,10 @@ export default function ActivityControls() {
 
   ) {
 
+    if (!aggregate.activeDeur) {
+      return;
+    }
+
     startActivity({
 
       rentalId:
@@ -40,7 +44,8 @@ export default function ActivityControls() {
       equipmentId:
         aggregate.rental.equipmentId,
 
-      operatorId: "",
+      operatorId:
+        aggregate.activeDeur.operatorId,
 
       activity,
 
@@ -77,6 +82,7 @@ export default function ActivityControls() {
           onClick={() =>
             start("Arrived at Site")
           }
+          disabled={!aggregate.activeDeur}
         />
 
         <ActivityButton
@@ -84,6 +90,7 @@ export default function ActivityControls() {
           onClick={() =>
             start("Operation")
           }
+          disabled={!aggregate.activeDeur}
         />
 
         <ActivityButton
@@ -91,6 +98,7 @@ export default function ActivityControls() {
           onClick={() =>
             start("Idle")
           }
+          disabled={!aggregate.activeDeur}
         />
 
         <ActivityButton
@@ -98,6 +106,7 @@ export default function ActivityControls() {
           onClick={() =>
             start("Meal Break")
           }
+          disabled={!aggregate.activeDeur}
         />
 
         <ActivityButton
@@ -105,6 +114,7 @@ export default function ActivityControls() {
           onClick={() =>
             start("Preventive Maintenance")
           }
+          disabled={!aggregate.activeDeur}
         />
 
         <ActivityButton
@@ -112,6 +122,7 @@ export default function ActivityControls() {
           onClick={() =>
             start("Corrective Maintenance")
           }
+          disabled={!aggregate.activeDeur}
         />
 
         <ActivityButton
@@ -119,6 +130,7 @@ export default function ActivityControls() {
           onClick={() =>
             start("Demobilization")
           }
+          disabled={!aggregate.activeDeur}
         />
 
 <ActivityButton

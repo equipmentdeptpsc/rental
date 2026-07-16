@@ -33,6 +33,8 @@ export interface DeurRecord {
 
   rentalId: string;
 
+  assignmentId?: string;
+
   equipmentId: string;
 
   operatorId: string;

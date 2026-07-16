@@ -10,6 +10,7 @@ import type {
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { validateDuplicateEquipment } from "@/features/equipment/utils/duplicateValidator";
+import { generateAssetNumber } from "@/features/equipment/utils/generateAssetNumber";
 
 export default function NewEquipment() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function NewEquipment() {
   const formDefaults: EquipmentFormData = {
     prefixId: "",
 
-    assetNo: "",
+    assetNo: generateAssetNumber(equipment),
 
     equipmentName: "",
 
@@ -59,7 +60,7 @@ export default function NewEquipment() {
 
       prefixId: data.prefixId,
 
-      assetNo: data.assetNo,
+      assetNo: data.assetNo || generateAssetNumber(equipment),
 
       equipmentName: data.equipmentName,
 
@@ -90,9 +91,9 @@ export default function NewEquipment() {
         data.currentReading
       ),
 
-      projectId: data.projectId,
+      projectId: "",
 
-      operatorId: data.operatorId,
+      operatorId: "",
 
       status: "Available",
 

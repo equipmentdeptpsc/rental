@@ -12,9 +12,10 @@ import type {
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
+import { useProject } from "@/features/project/context/ProjectContext";
 
-import type { RentalRecord } from "@/features/rental/types";
 import { generateRentalNumber } from "@/features/rental/utils/generateRentalNumber";
+import { getRentalAssignmentPrefill } from "@/features/rental/utils/rentalFormOptions";
 
 export default function NewRental() {
   const navigate =
@@ -51,10 +52,14 @@ export default function NewRental() {
     equipmentParam ??
     "";
 
+  const assignmentPrefill = getRentalAssignmentPrefill(assignment);
+
   const {
     addRental,
     rentals,
   } = useRental();
+
+  const { projects } = useProject();
 
     const {
     showToast,
@@ -67,7 +72,7 @@ export default function NewRental() {
       crypto.randomUUID();
 
       
-      const rental: RentalRecord = {
+      const rental = {
         id: rentalId,
 
         rentalNumber: generateRentalNumber(rentals),
@@ -77,20 +82,20 @@ export default function NewRental() {
 
         customerId: data.customerId,
 
-        projectId: assignment?.projectId,
+        projectId: data.projectId,
 
-        operatorId: assignment?.operatorId,
+        operatorId: assignmentPrefill.operatorId,
 
-        assignmentId: assignment?.id,
+        assignmentId: assignmentPrefill.assignmentId,
       
         customer:
           data.customer,
       
         project:
-          data.project,
+          projects.find((project) => project.id === data.projectId)?.projectName ?? "",
       
         rentedBy:
-          data.rentedBy,
+          "",
       
         dateOut:
           new Date()
@@ -100,11 +105,6 @@ export default function NewRental() {
         expectedReturn:
           data.expectedReturn,
       
-        statusId:
-          data.statusId,
-      
-        status:
-          data.status,
       };
 
     const result = addRental(rental);
@@ -156,9 +156,9 @@ export default function NewRental() {
           initialEquipmentId ||
           undefined
         }
-        lockEquipment={Boolean(
-          initialEquipmentId
-        )}
+        initialProjectId={assignmentPrefill.projectId}
+        lockEquipment={Boolean(assignment)}
+        lockProject={Boolean(assignment)}
       />
 
     </div>

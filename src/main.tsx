@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 
 import { router } from "@/app/router";
+import AppErrorBoundary from "@/app/AppErrorBoundary";
 
 import { AuthProvider } from "@/features/auth/AuthContext";
 
@@ -48,32 +49,32 @@ function AppProviders() {
 
                   <DailyLogProvider>
 
-                    <AssignmentProvider>
+                    <OperatorProvider>
 
-                      <RentalProvider>
+                      <CustomerProvider>
 
-                        <MaintenanceProvider>
+                        <ProjectProvider>
 
-                          <OperatorProvider>
+                          <AssignmentProvider>
 
-                            <CustomerProvider>
+                            <RentalProvider>
 
-                              <ProjectProvider>
+                              <MaintenanceProvider>
 
                                 {/** Application Routes */}
                                 <RouterProvider router={router} />
 
-                              </ProjectProvider>
+                              </MaintenanceProvider>
 
-                            </CustomerProvider>
+                            </RentalProvider>
 
-                          </OperatorProvider>
+                          </AssignmentProvider>
 
-                        </MaintenanceProvider>
+                        </ProjectProvider>
 
-                      </RentalProvider>
+                      </CustomerProvider>
 
-                    </AssignmentProvider>
+                    </OperatorProvider>
 
                   </DailyLogProvider>
 
@@ -98,6 +99,8 @@ ReactDOM.createRoot(
   document.getElementById("root")!
 ).render(
   <React.StrictMode>
-    <AppProviders />
+    <AppErrorBoundary>
+      <AppProviders />
+    </AppErrorBoundary>
   </React.StrictMode>
 );

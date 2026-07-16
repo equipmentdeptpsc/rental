@@ -9,6 +9,7 @@ import {
   import type { CustomerRecord } from "../types";
   
   import { customerRepository } from "../repository";
+  import { guardCustomerDeletion } from "@/features/relationships/deletionGuards";
   
   interface CustomerContextType {
     customers: CustomerRecord[];
@@ -23,7 +24,7 @@ import {
   
     deleteCustomer(
       id: string
-    ): void;
+    ): { success: boolean; message?: string };
   }
   
   const CustomerContext =
@@ -64,8 +65,14 @@ import {
     function deleteCustomer(
       id: string
     ) {
+      const result = guardCustomerDeletion(id);
+
+      if (!result.success) return result;
+
       customerRepository.delete(id);
       refresh();
+
+      return result;
     }
   
     const value = useMemo(

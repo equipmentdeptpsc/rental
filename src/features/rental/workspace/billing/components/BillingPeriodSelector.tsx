@@ -14,6 +14,10 @@ interface Props {
     onGenerate(): void;
   
     onSaveDraft(): void;
+
+    canCreate: boolean;
+
+    createUnavailableMessage?: string;
   }
   
   export default function BillingPeriodSelector({
@@ -23,6 +27,8 @@ interface Props {
     onToChange,
     onGenerate,
     onSaveDraft,
+    canCreate,
+    createUnavailableMessage,
   }: Props) {
     return (
       <div className="rounded-xl border bg-white p-6 space-y-4">
@@ -82,12 +88,18 @@ interface Props {
             Generate Billing
           </button>
   
-          <button
-            className="rounded bg-green-600 px-4 py-2 text-white"
-            onClick={onSaveDraft}
-          >
-            Save Draft
-          </button>
+          {canCreate ? (
+            <button
+              className="rounded bg-green-600 px-4 py-2 text-white"
+              onClick={onSaveDraft}
+            >
+              Create Billing Statement
+            </button>
+          ) : (
+            <p className="text-sm text-slate-500">
+              {createUnavailableMessage ?? "Billing statement creation is unavailable."}
+            </p>
+          )}
   
         </div>
   

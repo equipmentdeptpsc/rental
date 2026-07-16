@@ -37,11 +37,6 @@ import type {
           />
   
           <Field
-            label="Equipment ID"
-            value={equipment.equipmentId}
-          />
-  
-          <Field
             label="Status"
             value={equipment.equipmentStatus}
           />

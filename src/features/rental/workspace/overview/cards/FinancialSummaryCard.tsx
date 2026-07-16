@@ -54,21 +54,6 @@ import type {
             value={financial.subtotal}
           />
   
-          <Money
-            label="Invoiced"
-            value={financial.invoiced}
-          />
-  
-          <Money
-            label="Collected"
-            value={financial.collected}
-          />
-  
-          <Money
-            label="Outstanding"
-            value={financial.outstanding}
-          />
-  
         </div>
   
       </div>

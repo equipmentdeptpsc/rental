@@ -59,6 +59,7 @@ export function EquipmentCategoryProvider({
   }
 
   useEffect(() => {
+    equipmentCategoryRepository.seedDefaults();
     refresh();
   }, []);
 

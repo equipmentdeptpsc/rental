@@ -6,18 +6,18 @@ import Select from "@/components/ui/Select";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
-import { useRentalStatuses } from "@/features/masters/rental-status";
-import type { RentalLifecycleStatus } from "@/features/rental/types";
+import { useProject } from "@/features/project/context/ProjectContext";
+import {
+  getRentalEquipmentLabel,
+  getRentalProjectOptions,
+} from "@/features/rental/utils/rentalFormOptions";
 
 export interface RentalFormData {
   equipmentId: string;
   customerId: string;
   customer: string;
-  project: string;
-  rentedBy: string;
+  projectId: string;
   expectedReturn: string;
-  statusId: string;
-  status: RentalLifecycleStatus;
 }
 
 interface Props {
@@ -25,13 +25,19 @@ interface Props {
 
   initialEquipmentId?: string;
 
+  initialProjectId?: string;
+
   lockEquipment?: boolean;
+
+  lockProject?: boolean;
 }
 
 export default function RentalForm({
   onSubmit,
   initialEquipmentId,
+  initialProjectId,
   lockEquipment = false,
+  lockProject = false,
 }: Props) {
   const { equipment } =
     useEquipment();
@@ -39,8 +45,7 @@ export default function RentalForm({
   const { customers } =
     useCustomer();
 
-  const { records: rentalStatuses } =
-    useRentalStatuses();
+  const { projects } = useProject();
 
     const availableEquipment =
     useMemo(() => {
@@ -99,7 +104,7 @@ export default function RentalForm({
         ...availableEquipment.map(
           (e) => ({
             value: e.id,
-            label: `${e.assetNo} - ${e.equipmentName}`,
+            label: getRentalEquipmentLabel(e),
           })
         ),
       ],
@@ -124,15 +129,14 @@ export default function RentalForm({
       [customers]
     );
 
-    const reservedStatus =
-    rentalStatuses.find(
-      s =>
-        s.status ===
-          "Reserved" &&
-        s.active &&
-        !s.deleted
-    );
-  
+  const projectOptions = useMemo(
+    () => [
+      { value: "", label: "Select Project" },
+      ...getRentalProjectOptions(projects),
+    ],
+    [projects]
+  );
+
   const [form, setForm] =
     useState<RentalFormData>({
       equipmentId:
@@ -143,31 +147,21 @@ export default function RentalForm({
   
       customer: "",
   
-      project: "",
-  
-      rentedBy: "",
+      projectId: initialProjectId ?? "",
   
       expectedReturn: "",
   
-      statusId:
-        reservedStatus?.id ?? "",
-  
-      status:
-        reservedStatus?.status ??
-        "Reserved",
     });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
-    if (
-      initialEquipmentId
-    ) {
-      setForm((prev) => ({
-        ...prev,
-        equipmentId:
-          initialEquipmentId,
-      }));
-    }
-  }, [initialEquipmentId]);
+    setForm((prev) => ({
+      ...prev,
+      equipmentId: initialEquipmentId ?? prev.equipmentId,
+      projectId: initialProjectId ?? prev.projectId,
+    }));
+  }, [initialEquipmentId, initialProjectId]);
 
   function update<
     K extends keyof RentalFormData
@@ -186,7 +180,11 @@ export default function RentalForm({
       className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
         onSubmit(form);
+        setIsSubmitting(false);
       }}
     >
       <Select
@@ -226,51 +224,24 @@ export default function RentalForm({
         }
       />
 
-      <Input
+      <Select
         label="Project"
-        value={form.project}
+        value={form.projectId}
+        disabled={lockProject}
+        options={projectOptions}
         onChange={(e) =>
           update(
-            "project",
+            "projectId",
             e.target.value
           )
         }
       />
 
-      <Input
-        label="Released By"
-        value={form.rentedBy}
-        onChange={(e) =>
-          update(
-            "rentedBy",
-            e.target.value
-          )
-        }
-      />
-
-<Select
-  label="Rental Status"
-  value={form.statusId}
-  disabled
-  options={[
-    {
-      value: "",
-      label:
-        "-- Select Status --",
-    },
-
-    ...rentalStatuses
-      .filter(
-        s =>
-          s.active &&
-          !s.deleted
-      )
-      .map(s => ({
-        value: s.id,
-        label: s.status,
-      })),
-  ]}
-/>
+      {projectOptions.length === 1 && (
+        <p className="text-sm text-slate-500">
+          No active projects are available. Create or activate a project before creating a rental.
+        </p>
+      )}
 
       <Input
         type="date"
@@ -287,7 +258,7 @@ export default function RentalForm({
       />
 
       <div className="flex justify-end">
-        <Button type="submit">
+        <Button type="submit" disabled={isSubmitting}>
           Save Rental
         </Button>
       </div>

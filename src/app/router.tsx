@@ -31,6 +31,7 @@ import NewProject from "@/pages/Projects/New";
 import Assignments from "@/pages/Assignments";
 import NewAssignment from "@/pages/Assignments/New";
 import AssignmentDetails from "@/pages/Assignments/Details";
+import EditAssignment from "@/pages/Assignments/Edit";
 
 // Rentals
 import RentalPage from "@/pages/Rental";
@@ -150,6 +151,10 @@ export const router = createBrowserRouter([
       {
         path: "assignments/new",
         element: <NewAssignment />,
+      },
+      {
+        path: "assignments/:id/edit",
+        element: <EditAssignment />,
       },
       {
         path: "assignments/:id",

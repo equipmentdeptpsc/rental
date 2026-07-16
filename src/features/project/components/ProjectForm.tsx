@@ -21,21 +21,27 @@ export interface ProjectFormData {
 
 interface Props {
   onSubmit(data: ProjectFormData): void;
+
+  initialData?: ProjectFormData;
+
+  projectCodeReadOnly?: boolean;
 }
 
 export default function ProjectForm({
   onSubmit,
+  initialData,
+  projectCodeReadOnly = false,
 }: Props) {
   const [form, setForm] =
     useState<ProjectFormData>({
-      projectCode: "",
-      projectName: "",
-      client: "",
-      location: "",
-      projectManager: "",
-      startDate: "",
-      targetCompletion: "",
-      status: "Planning",
+      projectCode: initialData?.projectCode ?? "",
+      projectName: initialData?.projectName ?? "",
+      client: initialData?.client ?? "",
+      location: initialData?.location ?? "",
+      projectManager: initialData?.projectManager ?? "",
+      startDate: initialData?.startDate ?? "",
+      targetCompletion: initialData?.targetCompletion ?? "",
+      status: initialData?.status ?? "Planning",
     });
 
   function update<K extends keyof ProjectFormData>(
@@ -59,6 +65,7 @@ export default function ProjectForm({
       <Input
         label="Project Code"
         value={form.projectCode}
+        readOnly={projectCodeReadOnly}
         onChange={(e) =>
           update("projectCode", e.target.value)
         }

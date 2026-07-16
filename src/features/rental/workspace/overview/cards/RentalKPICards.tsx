@@ -2,6 +2,7 @@ import type { RentalRecord } from "@/features/rental/types";
 
 interface Props {
   rental: RentalRecord;
+  equipmentLabel: string;
 }
 
 function Card({
@@ -26,6 +27,7 @@ function Card({
 
 export default function RentalKPICards({
   rental,
+  equipmentLabel,
 }: Props) {
   const today = new Date();
 
@@ -72,7 +74,7 @@ export default function RentalKPICards({
 
       <Card
         title="Equipment"
-        value={rental.equipmentId}
+        value={equipmentLabel}
       />
 
     </div>

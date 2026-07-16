@@ -31,7 +31,7 @@ export default function NewAssignment() {
                 .toISOString()
                 .split("T")[0],
             expectedReturn:
-              data.expectedReturn,
+              "",
             remarks:
               data.remarks,
             status: "Active",

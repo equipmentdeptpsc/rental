@@ -5,6 +5,8 @@ import Button from "@/components/ui/Button";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
+import ReleaseRentalAction from "@/features/rental/components/ReleaseRentalAction";
+import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
 
 export default function RentalPage() {
   const { rentals, transitionRental } = useRental();
@@ -134,9 +136,7 @@ export default function RentalPage() {
 
                     <td className="px-4 py-3">
 
-                      {equipment
-                        ? `${equipment.assetNo} - ${equipment.equipmentName}`
-                        : rental.equipmentId}
+                      {getRentalEquipmentLabel(equipment)}
 
                     </td>
 
@@ -183,12 +183,7 @@ export default function RentalPage() {
                         </Link>
 
                         {rental.status === "Reserved" && (
-                          <Button
-                            variant="secondary"
-                            onClick={() => transition("Released")}
-                          >
-                            Release
-                          </Button>
+                          <ReleaseRentalAction rentalId={rental.id} />
                         )}
 
                         {rental.status === "Released" && (

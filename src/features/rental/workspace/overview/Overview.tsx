@@ -26,6 +26,11 @@ export default function Overview() {
 
       <ContractSection
         rental={aggregate.rental}
+        equipmentLabel={
+          overview.equipment.assetNo === "-"
+            ? "Unknown equipment"
+            : `${overview.equipment.assetNo} - ${overview.equipment.equipmentName}`
+        }
       />
 
       <EquipmentSection

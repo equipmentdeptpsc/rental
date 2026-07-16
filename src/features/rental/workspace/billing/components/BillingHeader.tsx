@@ -93,7 +93,7 @@ import {
             </div>
   
             <div className="font-medium text-blue-600">
-              Draft
+              {aggregate.billing.invoiceStatus ?? "No billing statement"}
             </div>
   
           </div>

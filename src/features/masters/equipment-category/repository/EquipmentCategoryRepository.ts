@@ -1,33 +1,32 @@
 import type {
   EquipmentCategoryRecord,
 } from "../types";
+import { storage } from "@/core/storage";
 
 const STORAGE_KEY =
   "equipment-category-master";
 
+const DEFAULT_CATEGORIES = ["Moving", "Non-moving", "Aerial", "Light Equipment"];
+
 export class EquipmentCategoryRepository {
   getAll(): EquipmentCategoryRecord[] {
-    const raw =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
-
-    if (!raw) return [];
-
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return storage.get<EquipmentCategoryRecord[]>(STORAGE_KEY) ?? [];
   }
 
   saveAll(
     records: EquipmentCategoryRecord[]
   ) {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(records)
-    );
+    storage.set(STORAGE_KEY, records);
+  }
+
+  seedDefaults(): EquipmentCategoryRecord[] {
+    const existing = this.getAll();
+    if (existing.length > 0) return existing;
+    const seeded = DEFAULT_CATEGORIES.map((category) => ({
+      id: crypto.randomUUID(), category, description: "", active: true, deleted: false,
+    }));
+    this.saveAll(seeded);
+    return seeded;
   }
 
   create(

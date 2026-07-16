@@ -18,6 +18,8 @@ import { getRentalTransitionError } from "../services/RentalWorkflowRules";
 
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
+import { useProject } from "@/features/project/context/ProjectContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import {
   createHistoryEvent,
@@ -34,7 +36,7 @@ interface RentalContextType {
   rentals: RentalRecord[];
 
   addRental(
-    item: RentalRecord
+    item: Omit<RentalRecord, "status" | "statusId">
   ): {
     success: boolean;
     message?: string;
@@ -50,6 +52,11 @@ interface RentalContextType {
   deleteRental(id: string): RentalTransitionResult;
 
   returnRental(id: string): RentalTransitionResult;
+
+  releaseRental(
+    id: string,
+    releasedBy: string
+  ): RentalTransitionResult;
 
   getRental(id: string): RentalRecord | undefined;
 
@@ -76,6 +83,8 @@ export function RentalProvider({
 
   const { getEquipment, updateEquipment } = useEquipment();
   const { getAssignment, completeAssignment } = useAssignment();
+  const { operators } = useOperator();
+  const { projects } = useProject();
   const { logAction } = useAudit();
   const { log } = useEquipmentHistory();
 
@@ -117,6 +126,40 @@ export function RentalProvider({
       ? getAssignment(item.assignmentId)
       : undefined;
 
+    const project = projects.find((candidate) => candidate.id === item.projectId);
+
+    if (!project || project.deleted || project.status !== "Active") {
+      return {
+        success: false,
+        message: "Select an active project.",
+      };
+    }
+
+    if (item.operatorId && !operators.some((operator) => operator.id === item.operatorId)) {
+      return {
+        success: false,
+        message: "Selected operator was not found.",
+      };
+    }
+
+    if (item.assignmentId && !assignment) {
+      return {
+        success: false,
+        message: "Selected assignment was not found.",
+      };
+    }
+
+    if (assignment && (
+      assignment.equipmentId !== item.equipmentId ||
+      assignment.operatorId !== item.operatorId ||
+      assignment.projectId !== item.projectId
+    )) {
+      return {
+        success: false,
+        message: "Rental relationships must match its active assignment.",
+      };
+    }
+
     const availableForRental =
       equipment.status === "Available" ||
       (
@@ -132,19 +175,21 @@ export function RentalProvider({
       };
     }
 
-    rentalRepository.create({
+    const created: RentalRecord = {
       ...item,
       status: "Draft",
-    });
+      statusId: "",
+    };
+    rentalRepository.create(created);
     refreshRentals();
 
-    const assigned = transitionRental(item.id, "Assigned");
+    const assigned = transitionRental(created.id, "Assigned");
 
     if (!assigned.success) {
       return assigned;
     }
 
-    return transitionRental(item.id, "Reserved");
+    return transitionRental(created.id, "Reserved");
   }
 
   function updateRental(item: RentalRecord) {
@@ -325,6 +370,30 @@ export function RentalProvider({
     return transitionRental(id, "Returned");
   }
 
+  function releaseRental(
+    id: string,
+    releasedBy: string
+  ): RentalTransitionResult {
+    if (!releasedBy.trim()) {
+      return { success: false, message: "An Admin must release this equipment." };
+    }
+
+    const result = transitionRental(id, "Released");
+
+    if (!result.success || !result.rental) {
+      return result;
+    }
+
+    const updated = {
+      ...result.rental,
+      rentedBy: releasedBy,
+    };
+    rentalRepository.update(updated);
+    refreshRentals();
+
+    return { success: true, rental: updated };
+  }
+
   function getRental(id: string) {
     return rentalRepository.getById(id);
   }
@@ -356,6 +425,7 @@ export function RentalProvider({
       transitionRental,
       deleteRental,
       returnRental,
+      releaseRental,
       getRental,
       contracts,
       addContract,
