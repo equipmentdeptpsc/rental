@@ -3,10 +3,6 @@ import type {
   } from "@/features/equipment/types";
 
   import {
-    assignEquipment,
-  } from "@/features/equipment/application";
-  
-  import {
     validateEquipmentAssignment,
   } from "../../utils/assignmentValidation";
 
@@ -60,18 +56,6 @@ if (!equipment) {
     };
   }
 
-const {
-    equipment: updatedEquipment,
-  } = assignEquipment(
-    equipment,
-    _data.projectId,
-    _data.operatorId
-  );
-  
-  _deps.updateEquipment(
-    updatedEquipment
-  );
-  
   return {
     success: true,
   };

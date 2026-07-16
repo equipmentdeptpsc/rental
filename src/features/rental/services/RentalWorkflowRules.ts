@@ -7,8 +7,9 @@ const allowedTransitions: Record<
   RentalLifecycleStatus,
   RentalLifecycleStatus[]
 > = {
-  Draft: ["Confirmed", "Cancelled"],
-  Confirmed: ["Released", "Cancelled"],
+  Draft: ["Assigned", "Cancelled"],
+  Assigned: ["Reserved", "Cancelled"],
+  Reserved: ["Released", "Cancelled"],
   Released: ["Active"],
   Active: ["Returned"],
   Returned: ["Closed"],
@@ -16,30 +17,16 @@ const allowedTransitions: Record<
   Cancelled: [],
 };
 
-export function normalizeRentalStatus(
-  status: RentalRecord["status"]
-): RentalLifecycleStatus | undefined {
-  if (status === "Reserved") {
-    return "Draft";
-  }
-
-  return status in allowedTransitions
-    ? status
-    : undefined;
-}
-
 export function canTransitionRental(
-  rental: RentalRecord,
+  rental: { status: RentalLifecycleStatus },
   nextStatus: RentalLifecycleStatus
 ): boolean {
-  const currentStatus = normalizeRentalStatus(rental.status);
-
-  return currentStatus !== undefined &&
-    allowedTransitions[currentStatus].includes(nextStatus);
+  return allowedTransitions[rental.status]
+    .includes(nextStatus);
 }
 
 export function getRentalTransitionError(
-  rental: RentalRecord,
+  rental: { status: RentalLifecycleStatus },
   nextStatus: RentalLifecycleStatus
 ): string | undefined {
   if (canTransitionRental(rental, nextStatus)) {

@@ -1,26 +1,19 @@
 import type { AssignmentRecord } from "./types";
 
+import { storage } from "@/core/storage";
+
 const STORAGE_KEY = "assignments";
 
 function load(): AssignmentRecord[] {
   try {
-    const data =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
-
-    if (!data) return [];
-
     const parsed =
-      JSON.parse(data);
+      storage.get<unknown>(STORAGE_KEY);
 
     return Array.isArray(parsed)
       ? parsed
       : [];
   } catch {
-    localStorage.removeItem(
-      STORAGE_KEY
-    );
+    storage.remove(STORAGE_KEY);
 
     return [];
   }
@@ -30,10 +23,7 @@ let assignments =
   load();
 
 function save() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(assignments)
-  );
+  storage.set(STORAGE_KEY, assignments);
 }
 
 export const assignmentRepository =

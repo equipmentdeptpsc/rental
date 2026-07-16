@@ -5,96 +5,53 @@ import {
 } from "..";
 
 import {
-  closeRental,
-} from "@/features/rental/application";
-
-import {
   useRental,
 } from "@/features/rental/context/RentalContext";
-
-import {
-  useEquipment,
-} from "@/features/equipment/context/EquipmentContext";
 
 import {
   useToast,
 } from "@/components/ui/toast/ToastContext";
 
-import {
-  useEquipmentHistory,
-} from "@/features/equipment/history";
-
-import {
-  useAudit,
-} from "@/features/equipment/audit/AuditContext";
-
-import {
-  rentalReturnHistory,
-  auditRentalClose,
-} from "@/features/equipment/application";
+import { useCloseReadiness } from "./useCloseReadiness";
 
 export default function CloseRentalPanel() {
   const aggregate =
     useRentalWorkspaceAggregate();
 
   const {
-    updateRental,
+    transitionRental,
   } = useRental();
-
-  const {
-    updateEquipment,
-  } = useEquipment();
 
   const {
     showToast,
   } = useToast();
 
-  const {
-    log,
-  } = useEquipmentHistory();
-
-  const {
-    logAction,
-  } = useAudit();
+  const readiness = useCloseReadiness();
 
   const closed =
     aggregate.rental.status ===
-    "Returned";
+    "Closed";
 
   function handleCloseRental() {
     if (
       closed ||
-      !aggregate.equipment
+      !readiness.canClose
     ) {
       return;
     }
 
-    const result =
-      closeRental(
-        aggregate.rental,
-        aggregate.equipment
+    const result = transitionRental(
+      aggregate.rental.id,
+      "Closed"
+    );
+
+    if (!result.success) {
+      showToast(
+        result.message ?? "Unable to close rental.",
+        "error"
       );
-
-    updateRental(
-      result.rental
-    );
-
-    updateEquipment(
-      result.equipment
-    );
-
-    logAction(
-      auditRentalClose(
-        aggregate.equipment,
-        result.equipment
-      )
-    );
-
-    log(
-      rentalReturnHistory(
-        result.equipment.id
-      )
-    );
+      return;
+    }
 
     showToast(
       "Rental closed successfully.",
@@ -131,13 +88,17 @@ export default function CloseRentalPanel() {
 
         <div className="rounded-xl border bg-white p-6">
 
-          <Button
-            onClick={
-              handleCloseRental
-            }
-          >
-            Close Rental
-          </Button>
+          {aggregate.rental.status === "Returned" && readiness.canClose ? (
+            <Button
+              onClick={handleCloseRental}
+            >
+              Close Rental
+            </Button>
+          ) : (
+            <p className="text-sm text-slate-500">
+              {readiness.reasons.join(" ")}
+            </p>
+          )}
 
         </div>
 

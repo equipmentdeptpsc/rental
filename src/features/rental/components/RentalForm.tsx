@@ -11,12 +11,13 @@ import type { RentalLifecycleStatus } from "@/features/rental/types";
 
 export interface RentalFormData {
   equipmentId: string;
+  customerId: string;
   customer: string;
   project: string;
   rentedBy: string;
   expectedReturn: string;
   statusId: string;
-  status: RentalLifecycleStatus | "Reserved";
+  status: RentalLifecycleStatus;
 }
 
 interface Props {
@@ -115,8 +116,7 @@ export default function RentalForm({
         },
 
         ...customers.map((c) => ({
-          value:
-            c.companyName,
+          value: c.id,
           label:
             c.companyName,
         })),
@@ -138,6 +138,8 @@ export default function RentalForm({
       equipmentId:
         initialEquipmentId ??
         "",
+
+      customerId: "",
   
       customer: "",
   
@@ -208,15 +210,19 @@ export default function RentalForm({
 
       <Select
         label="Customer"
-        value={form.customer}
+        value={form.customerId}
         options={
           customerOptions
         }
         onChange={(e) =>
-          update(
-            "customer",
-            e.target.value
-          )
+          {
+            const customer = customers.find(
+              (item) => item.id === e.target.value
+            );
+
+            update("customerId", e.target.value);
+            update("customer", customer?.companyName ?? "");
+          }
         }
       />
 

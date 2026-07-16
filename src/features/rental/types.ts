@@ -1,6 +1,7 @@
 export type RentalLifecycleStatus =
   | "Draft"
-  | "Confirmed"
+  | "Assigned"
+  | "Reserved"
   | "Released"
   | "Active"
   | "Returned"
@@ -14,6 +15,14 @@ export interface RentalRecord {
   rentalNumber?: string;
 
   equipmentId: string;
+
+  customerId?: string;
+
+  projectId?: string;
+
+  operatorId?: string;
+
+  assignmentId?: string;
 
   customer: string;
 
@@ -31,7 +40,7 @@ export interface RentalRecord {
 
   statusId: string;
 
-  status: RentalLifecycleStatus | "Reserved";
+  status: RentalLifecycleStatus;
 }
 
 export function isOverdue(

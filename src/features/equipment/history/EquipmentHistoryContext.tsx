@@ -9,6 +9,10 @@ import {
   import type {
     EquipmentHistoryRecord,
   } from "./types";
+
+  import {
+    equipmentHistoryRepository,
+  } from "./repository";
   
   interface EquipmentHistoryContextType {
     history: EquipmentHistoryRecord[];
@@ -38,7 +42,9 @@ import {
     const [history, setHistory] =
       useState<
         EquipmentHistoryRecord[]
-      >([]);
+      >(
+        equipmentHistoryRepository.getAll()
+      );
   
     function log(
       item: Omit<
@@ -46,18 +52,20 @@ import {
         "id" | "timestamp"
       >
     ) {
-      setHistory((prev) => [
-        {
-          ...item,
-  
-          id: crypto.randomUUID(),
-  
-          timestamp:
-            new Date().toISOString(),
-        },
-  
-        ...prev,
-      ]);
+      const record = {
+        ...item,
+
+        id: crypto.randomUUID(),
+
+        timestamp:
+          new Date().toISOString(),
+      };
+
+      equipmentHistoryRepository.create(record);
+
+      setHistory(
+        equipmentHistoryRepository.getAll()
+      );
     }
   
     function getHistory(

@@ -10,11 +10,20 @@ import {
   equipmentData,
 } from "../data/equipment.mock";
 
+import { storage } from "@/core/storage";
+
+const STORAGE_KEY = "equipment-records";
+
 export class LocalEquipmentRepository
   implements IEquipmentRepository
 {
-  private data =
-    equipmentData;
+  private data: EquipmentRecord[];
+
+  constructor() {
+    this.data =
+      storage.get<EquipmentRecord[]>(STORAGE_KEY) ??
+      equipmentData.map((item) => ({ ...item }));
+  }
 
   getAll() {
     return this.data.filter(
@@ -38,6 +47,7 @@ export class LocalEquipmentRepository
     equipment: EquipmentRecord
   ) {
     this.data.push(equipment);
+    this.save();
   }
 
   update(
@@ -52,6 +62,7 @@ export class LocalEquipmentRepository
     if (index >= 0) {
       this.data[index] =
         equipment;
+      this.save();
     }
   }
 
@@ -62,6 +73,7 @@ export class LocalEquipmentRepository
     if (!equipment) return;
 
     equipment.deleted = true;
+    this.save();
   }
 
   restore(id: string) {
@@ -71,6 +83,7 @@ export class LocalEquipmentRepository
     if (!equipment) return;
 
     equipment.deleted = false;
+    this.save();
   }
 
   permanentlyDelete(
@@ -80,5 +93,11 @@ export class LocalEquipmentRepository
       this.data.filter(
         (x) => x.id !== id
       );
+
+    this.save();
+  }
+
+  private save() {
+    storage.set(STORAGE_KEY, this.data);
   }
 }
