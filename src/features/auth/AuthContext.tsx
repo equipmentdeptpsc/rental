@@ -30,8 +30,12 @@ export function AuthProvider({
 }: {
   children: ReactNode;
 }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(
+    () => storage.get<User>(AUTH_USER_KEY)
+  );
+  const [token, setToken] = useState<string | null>(
+    () => storage.get<string>(AUTH_TOKEN_KEY)
+  );
 
   useEffect(() => {
     refreshSession();

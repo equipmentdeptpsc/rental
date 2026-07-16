@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "@/features/auth/AuthContext";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [name, setName] = useState("");
   const [role, setRole] =
@@ -18,7 +19,7 @@ export default function Login() {
     }
 
     login(name, role);
-    navigate("/equipment");
+    navigate(searchParams.get("returnTo") || "/equipment");
   }
 
   return (

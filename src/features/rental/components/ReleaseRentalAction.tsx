@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
@@ -15,6 +16,7 @@ export default function ReleaseRentalAction({ rentalId }: Props) {
   const { user } = useAuth();
   const { releaseRental } = useRental();
   const { showToast } = useToast();
+  const location = useLocation();
   const adminUsers = useMemo(() => selectAdminUsers(user ? [user] : []), [user]);
   const [releasedById, setReleasedById] = useState("");
 
@@ -23,7 +25,12 @@ export default function ReleaseRentalAction({ rentalId }: Props) {
   }, [adminUsers]);
 
   if (adminUsers.length === 0) {
-    return <p className="text-sm text-amber-700">An Admin must sign in before this equipment can be released.</p>;
+    return (
+      <p className="text-sm text-amber-700">
+        {user ? "Only an Admin can release this equipment." : "Sign in as Admin to release this equipment. "}
+        {!user && <Link className="underline font-medium" to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}>Sign in</Link>}
+      </p>
+    );
   }
 
   function release() {

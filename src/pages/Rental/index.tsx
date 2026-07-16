@@ -179,7 +179,7 @@ export default function RentalPage() {
                           to={`/rentals/${rental.id}/workspace`}
                           className="font-medium text-blue-600 hover:underline"
                         >
-                          Workspace
+                          Open Workspace
                         </Link>
 
                         {rental.status === "Reserved" && (

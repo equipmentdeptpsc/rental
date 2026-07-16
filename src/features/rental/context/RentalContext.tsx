@@ -15,11 +15,13 @@ import type { RentalContractRecord } from "../types/RentalContract";
 import { rentalRepository } from "../repository";
 import { rentalContractRepository } from "../repository/rentalContractRepository";
 import { getRentalTransitionError } from "../services/RentalWorkflowRules";
+import { validateNewRentalDates } from "../utils/rentalDateValidation";
 
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useProject } from "@/features/project/context/ProjectContext";
+import { useAuth } from "@/features/auth/AuthContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import {
   createHistoryEvent,
@@ -82,6 +84,7 @@ export function RentalProvider({
     useState<RentalContractRecord[]>(rentalContractRepository.getAll());
 
   const { getEquipment, updateEquipment } = useEquipment();
+  const { user } = useAuth();
   const { getAssignment, completeAssignment } = useAssignment();
   const { operators } = useOperator();
   const { projects } = useProject();
@@ -97,6 +100,8 @@ export function RentalProvider({
   }
 
   function addRental(item: RentalRecord) {
+    const dateError = validateNewRentalDates(item.dateOut, item.expectedReturn);
+    if (dateError) return { success: false, message: dateError };
     if (!item.rentalNumber?.trim()) {
       return {
         success: false,
@@ -372,9 +377,9 @@ export function RentalProvider({
 
   function releaseRental(
     id: string,
-    releasedBy: string
+    _releasedBy: string
   ): RentalTransitionResult {
-    if (!releasedBy.trim()) {
+    if (user?.role !== "Admin") {
       return { success: false, message: "An Admin must release this equipment." };
     }
 
@@ -386,7 +391,7 @@ export function RentalProvider({
 
     const updated = {
       ...result.rental,
-      rentedBy: releasedBy,
+      rentedBy: user.name,
     };
     rentalRepository.update(updated);
     refreshRentals();

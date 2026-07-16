@@ -67,6 +67,7 @@ describe("rental form options", () => {
       customerId: "customer-1",
       customer: "Customer",
       projectId: "project-1",
+      dateOut: "2026-07-17",
       expectedReturn: "2026-07-18",
     };
 

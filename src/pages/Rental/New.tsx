@@ -97,10 +97,7 @@ export default function NewRental() {
         rentedBy:
           "",
       
-        dateOut:
-          new Date()
-            .toISOString()
-            .split("T")[0],
+        dateOut: data.dateOut,
       
         expectedReturn:
           data.expectedReturn,

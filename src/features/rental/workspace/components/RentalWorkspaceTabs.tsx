@@ -1,15 +1,9 @@
 import {
   WORKSPACE_TABS,
+  type WorkspaceTab,
 } from "../types";
 
-import {
-  useWorkspaceTab,
-  setWorkspaceTab,
-} from "../hooks/useWorkspaceTab";
-
-export default function RentalWorkspaceTabs() {
-  const activeTab =
-    useWorkspaceTab();
+export default function RentalWorkspaceTabs({ activeTab, onChange }: { activeTab: WorkspaceTab; onChange(tab: WorkspaceTab): void }) {
 
   return (
     <div className="rounded-xl border bg-white shadow-sm">
@@ -25,13 +19,7 @@ export default function RentalWorkspaceTabs() {
               disabled={
                 tab.disabled
               }
-              onClick={() => {
-                setWorkspaceTab(
-                  tab.id
-                );
-
-                window.location.reload();
-              }}
+              onClick={() => onChange(tab.id)}
               className={`border-b-2 px-6 py-4 text-sm font-medium transition ${
                 activeTab ===
                 tab.id

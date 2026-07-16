@@ -2,13 +2,9 @@ import {
   TAB_COMPONENTS,
 } from "../tabs/TabRegistry";
 
-import {
-  useWorkspaceTab,
-} from "../hooks/useWorkspaceTab";
+import type { WorkspaceTab } from "../types";
 
-export default function WorkspaceContent() {
-  const activeTab =
-    useWorkspaceTab();
+export default function WorkspaceContent({ activeTab = "overview" }: { activeTab?: WorkspaceTab }) {
 
   const Component =
     TAB_COMPONENTS[

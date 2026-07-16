@@ -53,8 +53,10 @@ import Billing from "@/pages/Billing";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import EquipmentTrash from "@/pages/Equipment/Trash";
+import Login from "@/pages/Login";
 
 export const router = createBrowserRouter([
+  { path: "/login", element: <Login /> },
   {
     path: "/",
     element: <AppLayout />,

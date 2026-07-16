@@ -17,6 +17,7 @@ import {
 } from "@/features/equipment/history";
 
 import { useAudit } from "@/features/equipment/audit/AuditContext";
+import { displayAssignmentExpectedReturn } from "@/features/assignment/utils/assignmentDisplay";
 
 export default function AssignmentDetails() {
   const { id } = useParams();
@@ -192,7 +193,7 @@ export default function AssignmentDetails() {
           <Info
             label="Expected Return"
             value={
-              assignment.expectedReturn
+              displayAssignmentExpectedReturn(assignment.expectedReturn)
             }
           />
 

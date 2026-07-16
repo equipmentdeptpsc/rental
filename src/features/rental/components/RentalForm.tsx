@@ -11,12 +11,14 @@ import {
   getRentalEquipmentLabel,
   getRentalProjectOptions,
 } from "@/features/rental/utils/rentalFormOptions";
+import { localCalendarDate, validateNewRentalDates } from "@/features/rental/utils/rentalDateValidation";
 
 export interface RentalFormData {
   equipmentId: string;
   customerId: string;
   customer: string;
   projectId: string;
+  dateOut: string;
   expectedReturn: string;
 }
 
@@ -148,6 +150,7 @@ export default function RentalForm({
       customer: "",
   
       projectId: initialProjectId ?? "",
+      dateOut: localCalendarDate(),
   
       expectedReturn: "",
   
@@ -159,7 +162,7 @@ export default function RentalForm({
     setForm((prev) => ({
       ...prev,
       equipmentId: initialEquipmentId ?? prev.equipmentId,
-      projectId: initialProjectId ?? prev.projectId,
+      projectId: initialProjectId && !prev.projectId ? initialProjectId : prev.projectId,
     }));
   }, [initialEquipmentId, initialProjectId]);
 
@@ -181,6 +184,12 @@ export default function RentalForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (isSubmitting) return;
+
+        const dateError = validateNewRentalDates(form.dateOut, form.expectedReturn);
+        if (dateError) {
+          window.alert(dateError);
+          return;
+        }
 
         setIsSubmitting(true);
         onSubmit(form);
@@ -237,6 +246,12 @@ export default function RentalForm({
         }
       />
 
+      {lockProject && (
+        <p className="text-sm text-slate-500">
+          Project is fixed to the selected assignment to preserve its relationships.
+        </p>
+      )}
+
       {projectOptions.length === 1 && (
         <p className="text-sm text-slate-500">
           No active projects are available. Create or activate a project before creating a rental.
@@ -245,7 +260,23 @@ export default function RentalForm({
 
       <Input
         type="date"
+        label="Rental Start Date"
+        min={localCalendarDate()}
+        value={form.dateOut}
+        onChange={(e) => {
+          const dateOut = e.target.value;
+          setForm((prev) => ({
+            ...prev,
+            dateOut,
+            expectedReturn: prev.expectedReturn && prev.expectedReturn < dateOut ? "" : prev.expectedReturn,
+          }));
+        }}
+      />
+
+      <Input
+        type="date"
         label="Expected Return"
+        min={form.dateOut || localCalendarDate()}
         value={
           form.expectedReturn
         }
