@@ -27,9 +27,16 @@ export default function BillingPanel() {
   const drafts =
     useBillingDrafts();
 
-  const canCreate =
-    !["Cancelled", "Closed"].includes(aggregate.rental.status) &&
-    Boolean(aggregate.equipment && aggregate.operator && aggregate.contract);
+  const completedDeur = aggregate.deurs.some((deur) => Boolean(deur.endOfDay) && !deur.billingLocked);
+  const prerequisites = [
+    [!["Cancelled", "Closed"].includes(aggregate.rental.status), "Rental is Cancelled or Closed."],
+    [Boolean(aggregate.contract), "A rental contract is required."],
+    [Boolean(aggregate.equipment && aggregate.operator), "Equipment and operator relationships are required."],
+    [completedDeur, "Complete a billable DEUR before generating billing."],
+  ] as const;
+  const eligibilityMessage = prerequisites.find(([valid]) => !valid)?.[1];
+  const canGenerate = !eligibilityMessage;
+  const canCreate = canGenerate && wizard.hasGenerated && wizard.preview.length > 0;
 
   return (
 
@@ -42,8 +49,9 @@ export default function BillingPanel() {
         onToChange={wizard.setTo}
         onGenerate={wizard.generate}
         onSaveDraft={wizard.saveDraft}
+        canGenerate={canGenerate}
         canCreate={canCreate}
-        createUnavailableMessage="A valid rental, equipment, operator, and billing contract are required."
+        createUnavailableMessage={wizard.hasGenerated && !wizard.preview.length ? "No billable DEUR entries exist for the selected period." : eligibilityMessage ?? "Generate valid billing lines before creating a statement."}
       />
 
       <BillingHeader
@@ -55,7 +63,7 @@ export default function BillingPanel() {
         lines={wizard.preview}
       />
 
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid min-w-0 gap-5 md:grid-cols-3">
 
         <BillingMetricCard
           label="Persisted Subtotal"
@@ -78,9 +86,9 @@ export default function BillingPanel() {
 
       </div>
 
-      <div className="rounded-xl border bg-white p-6 space-y-4">
+      <div className="min-w-0 rounded-xl border bg-white p-4 sm:p-6 space-y-4">
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
 
           <h2 className="text-lg font-semibold">
 
@@ -97,7 +105,7 @@ export default function BillingPanel() {
                 e.target.value
               )
             }
-            className="rounded border px-3 py-2 text-sm w-64"
+            className="w-full min-w-0 rounded border px-3 py-2 text-sm sm:w-64"
           />
 
         </div>

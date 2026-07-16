@@ -8,7 +8,7 @@ export default function RentalWorkspaceTabs({ activeTab, onChange }: { activeTab
   return (
     <div className="rounded-xl border bg-white shadow-sm">
 
-      <div className="flex flex-wrap">
+      <div className="flex overflow-x-auto">
 
         {WORKSPACE_TABS.map(
           (tab) => (

@@ -25,7 +25,7 @@ export function buildBillingPreview(
 
     .filter(
       deur =>
-        !deur.billingLocked
+        !deur.billingLocked && Boolean(deur.endOfDay)
     )
 
     .filter(

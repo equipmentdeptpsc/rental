@@ -1,3 +1,5 @@
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
+
 import type {
     DeurActivityLog,
   } from "../types";
@@ -25,6 +27,7 @@ import type {
             No activity recorded.
           </div>
         ) : (
+          <ResponsiveTable>
           <table className="min-w-full">
   
             <thead className="bg-slate-100">
@@ -85,6 +88,7 @@ import type {
             </tbody>
   
           </table>
+          </ResponsiveTable>
         )}
   
       </div>

@@ -2,6 +2,7 @@ import type {
   BillingInvoiceStatus,
   BillingStatement,
 } from "@/features/rental/billingstatement/types";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 interface Props {
   drafts: BillingStatement[];
@@ -19,7 +20,7 @@ export default function BillingDraftTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-white">
+    <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
       <table className="min-w-full text-sm">
         <thead className="bg-slate-100">
           <tr>
@@ -64,6 +65,6 @@ export default function BillingDraftTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </div></ResponsiveTable>
   );
 }

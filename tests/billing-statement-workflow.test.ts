@@ -35,6 +35,7 @@ const calculatedLines = () => buildBillingPreview([{
   id: "deur-1", rentalId: "rental-1", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1",
   workDate: "2026-07-02", logs: [], totalOperatingMinutes: 60, totalIdleMinutes: 0, totalMaintenanceMinutes: 0,
   totalMealBreakMinutes: 0, totalMobilizationMinutes: 0, totalDemobilizationMinutes: 0, status: "Pending Acknowledgement",
+  endOfDay: "2026-07-02T17:00:00.000Z",
   createdAt: "2026-07-02", updatedAt: "2026-07-02",
 }], aggregate().contract!, "2026-07-01", "2026-07-31");
 

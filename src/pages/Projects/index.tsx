@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import ProjectStats from "@/features/project/components/ProjectStats";
 import { useProject } from "@/features/project/context/ProjectContext";
@@ -35,7 +36,7 @@ export default function ProjectPage() {
 
       <ProjectStats />
 
-      <div className="overflow-hidden rounded-xl border bg-white">
+      <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
 
         <table className="min-w-full">
 
@@ -104,7 +105,7 @@ export default function ProjectPage() {
 
         </table>
 
-      </div>
+      </div></ResponsiveTable>
 
     </div>
   );

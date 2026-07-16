@@ -5,6 +5,7 @@ import ActivityControls from "./controls/ActivityControls";
 import ActivityTimelineCard from "./cards/ActivityTimelineCard";
 
 import useTodayActivities from "./hooks/useTodayActivities";
+import DeurHoursEntry from "./DeurHoursEntry";
 
 export default function DeurWorkspace() {
 
@@ -15,6 +16,7 @@ export default function DeurWorkspace() {
     <div className="space-y-6">
 
       <ShiftSummaryCard />
+      <DeurHoursEntry />
 
       <ActivityControls />
 

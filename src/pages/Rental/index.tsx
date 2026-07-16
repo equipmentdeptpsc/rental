@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
@@ -45,7 +46,7 @@ export default function RentalPage() {
 
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-white">
+      <ResponsiveTable><div className="rounded-lg border bg-white min-w-max">
 
         <table className="min-w-full">
 
@@ -222,7 +223,7 @@ export default function RentalPage() {
 
         </table>
 
-      </div>
+      </div></ResponsiveTable>
 
     </div>
   );

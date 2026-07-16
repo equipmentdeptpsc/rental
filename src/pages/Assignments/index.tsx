@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
@@ -66,7 +67,7 @@ export default function Assignments() {
 
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+      <ResponsiveTable><div className="rounded-xl border bg-white shadow-sm min-w-max">
 
         <table className="min-w-full">
 
@@ -176,7 +177,7 @@ export default function Assignments() {
 
         </table>
 
-      </div>
+      </div></ResponsiveTable>
 
     </div>
   );

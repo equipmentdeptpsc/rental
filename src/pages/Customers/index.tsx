@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import CustomerStats from "@/features/customer/components/CustomerStats";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
@@ -37,7 +38,7 @@ export default function CustomerPage() {
 
       <CustomerStats />
 
-      <div className="overflow-hidden rounded-xl border bg-white">
+      <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
 
         <table className="min-w-full">
 
@@ -137,7 +138,7 @@ export default function CustomerPage() {
 
         </table>
 
-      </div>
+      </div></ResponsiveTable>
 
     </div>
   );

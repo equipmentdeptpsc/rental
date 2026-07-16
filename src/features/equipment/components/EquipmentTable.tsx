@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useToast } from "@/components/ui/toast/ToastContext";
 
@@ -66,7 +67,7 @@ export default function EquipmentTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white">
+    <ResponsiveTable><div className="rounded-lg border bg-white min-w-max">
 
       <table className="min-w-full">
 
@@ -171,6 +172,6 @@ export default function EquipmentTable({
 
       </table>
 
-    </div>
+    </div></ResponsiveTable>
   );
 }

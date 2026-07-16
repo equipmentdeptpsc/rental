@@ -1,4 +1,5 @@
 # Route-specific SPA fallback. Static assets remain served (or 404) normally.
+/login /index.html 200
 /equipment /index.html 200
 /equipment/* /index.html 200
 /assignments /index.html 200

@@ -105,6 +105,8 @@ export function useBillingWizard() {
 
     preview,
 
+    hasGenerated: generated,
+
     generate,
 
     saveDraft,

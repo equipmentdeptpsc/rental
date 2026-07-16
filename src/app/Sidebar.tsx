@@ -112,25 +112,26 @@ const menuGroups = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }: { collapsed: boolean; mobileOpen: boolean; onToggle(): void; onNavigate(): void }) {
   return (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col">
-      <div className="border-b border-slate-700 p-6">
-        <h2 className="text-lg font-bold">
+    <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-slate-900 text-white transition-transform md:static md:translate-x-0 ${collapsed ? "md:w-16" : "md:w-64"}`}>
+      <div className="border-b border-slate-700 p-4">
+        <button aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} aria-expanded={!collapsed} onClick={onToggle} className="hidden rounded p-2 hover:bg-slate-800 md:block">☰</button>
+        {!collapsed && <><h2 className="text-lg font-bold">
           Legacy ERP
         </h2>
 
         <p className="text-xs text-slate-400">
           Equipment Rental Platform
-        </p>
+        </p></>}
       </div>
 
       <nav className="flex-1 overflow-y-auto p-4">
         {menuGroups.map((group) => (
           <div key={group.title} className="mb-6">
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            {!collapsed && <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
               {group.title}
-            </p>
+            </p>}
 
             {group.items.map((item) => {
               const Icon = item.icon;
@@ -140,6 +141,8 @@ export default function Sidebar() {
                   key={item.label}
                   to={item.path}
                   end={item.path === "/"}
+                  title={item.label}
+                  onClick={onNavigate}
                   className={({ isActive }) =>
                     `mb-1 flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                       isActive
@@ -150,7 +153,7 @@ export default function Sidebar() {
                 >
                   <Icon size={20} />
 
-                  <span>{item.label}</span>
+                  {!collapsed && <span>{item.label}</span>}
                 </NavLink>
               );
             })}

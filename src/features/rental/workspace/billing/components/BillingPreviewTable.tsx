@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import type {
   BillingPreviewLine,
@@ -53,7 +54,7 @@ export default function BillingPreviewTable({
   }
 
   return (
-    <div className="rounded-xl border bg-white overflow-hidden">
+    <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
 
       <table className="min-w-full text-sm">
 
@@ -137,6 +138,6 @@ export default function BillingPreviewTable({
 
       </table>
 
-    </div>
+    </div></ResponsiveTable>
   );
 }

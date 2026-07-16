@@ -15,6 +15,8 @@ interface Props {
   
     onSaveDraft(): void;
 
+    canGenerate: boolean;
+
     canCreate: boolean;
 
     createUnavailableMessage?: string;
@@ -27,6 +29,7 @@ interface Props {
     onToChange,
     onGenerate,
     onSaveDraft,
+    canGenerate,
     canCreate,
     createUnavailableMessage,
   }: Props) {
@@ -79,14 +82,17 @@ interface Props {
   
         </div>
   
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
   
           <button
             className="rounded bg-blue-600 px-4 py-2 text-white"
             onClick={onGenerate}
+            disabled={!canGenerate}
           >
             Generate Billing
           </button>
+
+          {!canGenerate && <p className="text-sm text-slate-500">{createUnavailableMessage}</p>}
   
           {canCreate ? (
             <button

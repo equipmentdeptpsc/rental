@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useOperator } from "@/features/operators/context/OperatorContext";
 
@@ -37,7 +38,7 @@ export default function OperatorsPage() {
 
       </div>
 
-      <div className="rounded-lg border bg-white overflow-hidden">
+      <ResponsiveTable><div className="rounded-lg border bg-white min-w-max">
 
         <table className="min-w-full">
 
@@ -122,7 +123,7 @@ export default function OperatorsPage() {
 
         </table>
 
-      </div>
+      </div></ResponsiveTable>
 
     </div>
   );
