@@ -1,288 +1,373 @@
-# Equipment Rental System
-## Software Architecture
+# Equipment Rental Management System
+# System Architecture
 
-Version: MVP 1.0
-
----
-
-# 1. Purpose
-
-The Equipment Rental System is a single-page React application used to manage company-owned equipment throughout its operational lifecycle.
-
-The system centralizes:
-
-- Equipment Inventory
-- Equipment Assignment
-- Equipment Rental
-- Maintenance Scheduling
-- Operators
-- Projects
-- Customers
-- Audit Trail
-- Equipment History
-
-The current MVP stores all information locally through repository implementations. The architecture has been designed so the storage layer can later be replaced with Firebase, Supabase, SQL Server, or another backend without changing business logic.
+**Last Updated:** July 15, 2026
 
 ---
 
-# 2. Architecture Style
+# Architecture Philosophy
 
-The application follows a Feature-Based Architecture.
+The Equipment Rental Management System follows a modular, feature-based architecture designed for long-term maintainability, scalability, and future migration from Local Storage to SQL Server with an ASP.NET Core Web API.
 
-Each business domain owns its own:
+The frontend is intentionally isolated from the persistence layer through the Repository Pattern so that changing the storage implementation requires minimal changes to business logic and user interface components.
 
-- types
-- repository
-- context
-- components
-- utilities
-- pages (when applicable)
+---
 
-Business logic is separated from UI whenever possible.
-
-The application does not access browser storage directly from pages.
-
-Pages communicate with Context Providers.
-
-Context Providers communicate with Repository implementations.
-
-Repositories are responsible for data persistence.
+# High-Level Architecture
 
 ```
-React Page
-      â”‚
-      â–¼
-Context Provider
-      â”‚
-      â–¼
-Repository
-      â”‚
-      â–¼
+                User
+                  ¦
+                  ?
+          React Pages / Screens
+                  ¦
+                  ?
+         Feature Context Providers
+                  ¦
+                  ?
+         Repository Layer
+                  ¦
+                  ?
+     Local Storage (Current)
+                  ¦
+                  ?
+ SQL Server + ASP.NET Core API (Future)
+```
+
+---
+
+# Application Layers
+
+## 1. Pages
+
+Responsibilities
+
+- Display UI
+- Handle user interactions
+- Navigation
+- Forms
+- Tables
+- Dashboards
+
+Pages never communicate directly with Local Storage.
+
+Pages only communicate with Context Providers.
+
+---
+
+## 2. Context Layer
+
+Responsibilities
+
+- Manage application state
+- Execute business workflows
+- Call repository methods
+- Provide reusable hooks
+
+Examples
+
+- EquipmentContext
+- AssignmentContext
+- RentalContext
+- CustomerContext
+- ProjectContext
+- MaintenanceContext
+- OperatorContext
+
+---
+
+## 3. Repository Layer
+
+Responsibilities
+
+- CRUD operations
+- Data persistence
+- Local Storage access
+- Future API communication
+
+Repositories never import React.
+
+Repositories never render UI.
+
+Repositories contain no presentation logic.
+
+---
+
+## 4. Storage Layer
+
+Current
+
 Local Storage
-```
 
-This separation allows repositories to be replaced by cloud storage in the future without changing page components.
+Future
 
----
+- SQL Server
+- ASP.NET Core Web API
 
-# 3. Current Technology Stack
-
-Frontend
-
-- React
-- TypeScript
-- Vite
-
-Routing
-
-- React Router
-
-Styling
-
-- TailwindCSS
-
-State Management
-
-- React Context API
-
-Persistence
-
-- Local Storage Repository Pattern
-
-Build Tool
-
-- Vite
-
-Language
-
-- TypeScript (Strict Mode)
+The Repository Pattern isolates this layer from the UI.
 
 ---
 
-# 4. Project Folder Structure
+# Feature Modules
 
-The project follows this high-level structure.
+Current modules include
+
+- Dashboard
+- Equipment
+- Assignments
+- Rentals
+- Customers
+- Projects
+- Operators
+- Maintenance
+- Billing
+- Audit Trail
+- Reports
+- Settings
+
+Each feature owns its own
+
+- Types
+- Repository
+- Context
+- Components
+- Utilities
+- Services (when required)
+
+---
+
+# Folder Organization
 
 ```
 src/
 
-app/
-components/
 features/
+    equipment/
+    assignment/
+    rental/
+    maintenance/
+    customer/
+    operator/
+    project/
+
 pages/
+
+components/
+
+contexts/
+
+repository/
+
+hooks/
+
+utils/
+
 docs/
 ```
 
-## app
-
-Contains application startup and routing.
-
-Examples
-
-- router
-- route configuration
+The architecture emphasizes feature ownership and separation of concerns.
 
 ---
 
-## components
-
-Reusable UI controls.
-
-Examples
-
-- Button
-- Input
-- Select
-- Modal
-- Toast
-
-These components should never contain business logic.
-
----
-
-## features
-
-Each feature owns its own business logic.
-
-Current features include:
-
-- auth
-- equipment
-- assignment
-- rental
-- maintenance
-- operators
-- project
-- customer
-
-Each feature may contain:
+# Data Flow
 
 ```
-components/
-context/
-repository/
-types.ts
-utils/
-audit/
-history/
-```
+User Action
 
----
+      ¦
 
-## pages
+      ?
 
-Contains route pages.
+React Page
 
-Pages should primarily:
+      ¦
 
-- display information
-- call Context methods
-- navigate between routes
-
-Pages should not contain repository logic.
-
----
-
-## docs
-
-Project documentation.
-
-Current documents:
-
-- architecture.md
-- domain-rules.md
-- development-roadmap.md
-- ai-context.md
-
-These documents must remain synchronized with the implementation.
-
----
-
-# 5. Repository Pattern
-
-Every master entity owns a repository.
-
-Example:
-
-Equipment
-
-```
-repository/
-
-IEquipmentRepository.ts
-
-LocalEquipmentRepository.ts
-
-index.ts
-```
-
-Repository responsibilities:
-
-- create
-- update
-- delete
-- getAll
-- getById
-
-Pages should never communicate with Local Storage directly.
-
----
-
-# 6. Context Pattern
-
-Every repository is exposed through a Context Provider.
-
-Example
-
-EquipmentProvider
-
-Responsibilities include:
-
-- expose records
-- expose CRUD operations
-- refresh UI state
-- coordinate repository updates
-
-Contexts are the only layer pages should communicate with.
-
----
-
-# 7. Dependency Direction
-
-Dependencies always flow downward.
-
-```
-Page
-
-â†“
+      ?
 
 Context
 
-â†“
+      ¦
+
+      ?
 
 Repository
 
-â†“
+      ¦
 
-Storage
+      ?
+
+Local Storage
+
+      ¦
+
+      ?
+
+Updated State
+
+      ¦
+
+      ?
+
+React UI Refresh
 ```
-
-Lower layers must never depend on higher layers.
-
-Repositories never import React.
-
-Pages never import Local Storage.
 
 ---
 
-# 8. Design Goals
+# Design Principles
 
-The architecture prioritizes:
+Single Responsibility
 
-- Maintainability
-- Testability
-- Clear separation of responsibility
-- Future backend migration
-- Predictable data flow
-- Type safety
-- Feature isolation
+Each module has one responsibility.
+
+Feature Ownership
+
+Each feature manages its own logic.
+
+Separation of Concerns
+
+UI, business logic, and persistence remain independent.
+
+Reusability
+
+Components should be reusable whenever practical.
+
+Maintainability
+
+Favor readability over clever implementations.
+
+Scalability
+
+Every implementation should support future enterprise expansion.
+
+---
+
+# TypeScript Standards
+
+- Strict Mode enabled
+- Strong typing
+- Minimal use of any
+- Shared interfaces where appropriate
+- Reusable model definitions
+
+---
+
+# Repository Rules
+
+Repositories
+
+Allowed
+
+- CRUD
+- Storage
+- Mapping
+- Serialization
+
+Not Allowed
+
+- React imports
+- JSX
+- UI rendering
+- Component state
+
+---
+
+# Context Rules
+
+Contexts
+
+Allowed
+
+- Business logic
+- Validation
+- Repository calls
+- State management
+
+Not Allowed
+
+- Local Storage access
+- Presentation rendering
+
+---
+
+# Component Rules
+
+Components should
+
+- Be reusable
+- Be composable
+- Receive typed props
+- Avoid duplicated logic
+
+---
+
+# Current Build Status
+
+Status
+
+? Successful
+
+Verification
+
+```
+npm run build
+```
+
+The project must continue building successfully after every completed milestone.
+
+---
+
+# Future Migration Strategy
+
+Current
+
+React
+
+?
+
+Repository
+
+?
+
+Local Storage
+
+Future
+
+React
+
+?
+
+Repository
+
+?
+
+REST API
+
+?
+
+ASP.NET Core
+
+?
+
+SQL Server
+
+Because of the Repository Pattern, migration should require minimal frontend changes.
+
+---
+
+# Long-Term Vision
+
+The application is being designed as an enterprise-grade Equipment Rental Management System capable of supporting
+
+- Multi-user access
+- Authentication
+- Authorization
+- Cloud deployment
+- Reporting
+- Billing
+- Maintenance scheduling
+- Equipment lifecycle tracking
+- Analytics dashboards
+- SQL Server backend
+- Microsoft Azure hosting
+
+Architecture decisions should always prioritize long-term maintainability over short-term convenience.

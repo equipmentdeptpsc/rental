@@ -6,7 +6,8 @@ export type TimelineEventType =
   | "billing"
   | "invoice"
   | "collection"
-  | "return";
+  | "return"
+  | "closing";
 
 export interface TimelineEvent {
   id: string;

@@ -1,3 +1,7 @@
+import {
+  BillingRateEngine,
+} from "@/features/rental/billing/engine";
+
 import type {
   DeurRecord,
 } from "@/features/rental/deur";
@@ -32,21 +36,11 @@ export function buildBillingPreview(
 
     .map(deur => {
 
-      const operatingHours =
-        deur.totalOperatingMinutes / 60;
-
-      /**
-       * Batch 9.2.2
-       * Billing Engine
-       */
-      const quantity =
-        operatingHours;
-
-      const rate =
-        contract.unitRate;
-
-      const amount =
-        quantity * rate;
+      const charges =
+        BillingRateEngine.calculate(
+          deur,
+          contract
+        );
 
       return {
 
@@ -59,13 +53,14 @@ export function buildBillingPreview(
         operator:
           deur.operatorId,
 
-        operatingHours,
+        operatingHours:
+          charges.operatingHours,
 
         actualHours:
-          operatingHours,
+          charges.operatingHours,
 
-          billingMethod:
-          contract.billingMethod,  
+        billingMethod:
+          contract.billingMethod,
 
         costCode: "",
 
@@ -73,9 +68,10 @@ export function buildBillingPreview(
           `Equipment Rental (${contract.billingMethod})`,
 
         hourlyRate:
-          rate,
+          contract.unitRate,
 
-        amount,
+        amount:
+          charges.subtotal,
 
       };
 

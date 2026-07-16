@@ -44,18 +44,6 @@ export interface Customer {
     totalBilling?: number;
   }
   
-  export interface Booking {
-    id: string;
-    equipmentId: string;
-    equipmentName: string;
-    operatorId: string;
-    operatorName: string;
-    projectName?: string;
-    billingType: string;
-    hourlyRate: number;
-    status: string;
-    date?: string;
-  }
   
   export interface FieldLog {
     id: string;
@@ -69,14 +57,3 @@ export interface Customer {
   }
   // Concrete value to force the bundler to recognize exports at runtime
 export const ENTERPRISE_SCHEMA_VERSION = "1.0.0";
-
-export const DummyBookingPlaceholder: Booking = {
-  id: "EX-EMPTY",
-  equipmentId: "",
-  equipmentName: "",
-  operatorId: "",
-  operatorName: "",
-  billingType: "Hourly",
-  hourlyRate: 0,
-  status: "Inactive"
-};

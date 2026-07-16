@@ -1,5 +1,17 @@
+export type RentalLifecycleStatus =
+  | "Draft"
+  | "Confirmed"
+  | "Released"
+  | "Active"
+  | "Returned"
+  | "Closed"
+  | "Cancelled";
+
 export interface RentalRecord {
   id: string;
+
+  /** Optional for compatibility with records created before lifecycle numbering. */
+  rentalNumber?: string;
 
   equipmentId: string;
 
@@ -19,7 +31,7 @@ export interface RentalRecord {
 
   statusId: string;
 
-  status: string;
+  status: RentalLifecycleStatus | "Reserved";
 }
 
 export function isOverdue(

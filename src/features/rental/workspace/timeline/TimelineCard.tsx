@@ -20,12 +20,13 @@ import type {
   
         <div>
   
-          {events.map((event) => (
-            <TimelineItem
-              key={event.id}
-              event={event}
-            />
-          ))}
+        {events.map((event, index) => (
+  <TimelineItem
+    key={event.id}
+    event={event}
+    isLast={index === events.length - 1}
+  />
+))}
   
         </div>
   

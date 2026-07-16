@@ -104,6 +104,10 @@ export default function RentalPage() {
                     rental.equipmentId
                   );
 
+                const returnable =
+                  rental.status === "Released" ||
+                  rental.status === "Active";
+
                 return (
 
                   <tr
@@ -161,8 +165,7 @@ export default function RentalPage() {
                           Workspace
                         </Link>
 
-                        {rental.status ===
-                          "Active" && (
+                        {returnable && (
 
                           <Link
                             to={`/rentals/return/${rental.id}`}

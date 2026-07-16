@@ -7,6 +7,10 @@ import {
 } from "./hooks/useRentalOverview";
 
 import ContractSection from "./sections/ContractSection";
+import EquipmentSection from "./sections/EquipmentSection";
+import OperatorSection from "./sections/OperatorSection";
+import TodayOperationsSection from "./sections/TodayOperationsSection";
+import FinancialSection from "./sections/FinancialSection";
 
 export default function Overview() {
   const aggregate =
@@ -21,7 +25,23 @@ export default function Overview() {
     <div className="space-y-6">
 
       <ContractSection
-        overview={overview}
+        rental={aggregate.rental}
+      />
+
+      <EquipmentSection
+        equipment={overview.equipment}
+      />
+
+      <OperatorSection
+        operator={overview.operator}
+      />
+
+      <TodayOperationsSection
+        today={overview.today}
+      />
+
+      <FinancialSection
+        financial={overview.financial}
       />
 
     </div>

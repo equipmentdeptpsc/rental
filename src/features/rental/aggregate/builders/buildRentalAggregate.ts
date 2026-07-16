@@ -25,7 +25,16 @@ interface BuildRentalAggregateParams {
 
   operator?: Operator;
 
+  /**
+   * Today's active DEUR
+   */
   activeDeur?: DeurRecord;
+
+  /**
+   * Complete DEUR history
+   * for this rental.
+   */
+  deurs?: DeurRecord[];
 }
 
 export function buildRentalAggregate({
@@ -35,6 +44,7 @@ export function buildRentalAggregate({
   project,
   operator,
   activeDeur,
+  deurs = [],
 }: BuildRentalAggregateParams): RentalAggregate {
   return {
     rental,
@@ -49,6 +59,8 @@ export function buildRentalAggregate({
 
     activeDeur,
 
+    deurs,
+
     billing: {
       totalOperatingCharge: 0,
 
@@ -56,9 +68,9 @@ export function buildRentalAggregate({
 
       totalMobilizationCharge: 0,
 
-      totalDemobilizationCharge: 0,
-
       totalAdjustment: 0,
+
+      totalDemobilizationCharge: 0,
 
       subtotal: 0,
 

@@ -1,7 +1,11 @@
 import type { RentalRecord } from "../types";
 import type { IRentalRepository } from "./IRentalRepository";
 
+import { storage } from "@/core/storage";
+
 import { rentalData } from "../data/rental.mock";
+
+const STORAGE_KEY = "equipment-rental-records";
 
 export class LocalRentalRepository
   implements IRentalRepository
@@ -9,7 +13,7 @@ export class LocalRentalRepository
   private data: RentalRecord[];
 
   constructor() {
-    this.data = rentalData;
+    this.data = storage.get<RentalRecord[]>(STORAGE_KEY) ?? rentalData;
   }
 
   getAll(): RentalRecord[] {
@@ -24,6 +28,7 @@ export class LocalRentalRepository
 
   create(item: RentalRecord) {
     this.data.push(item);
+    this.save();
   }
 
   update(item: RentalRecord) {
@@ -33,6 +38,7 @@ export class LocalRentalRepository
 
     if (index >= 0) {
       this.data[index] = item;
+      this.save();
     }
   }
 
@@ -40,5 +46,10 @@ export class LocalRentalRepository
     this.data = this.data.filter(
       (x) => x.id !== id
     );
+    this.save();
+  }
+
+  private save() {
+    storage.set(STORAGE_KEY, this.data);
   }
 }

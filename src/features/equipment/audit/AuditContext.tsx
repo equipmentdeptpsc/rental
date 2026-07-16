@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
 } from "react";
 
@@ -40,6 +41,9 @@ interface AuditContextType {
   ) => void;
 }
 
+const STORAGE_KEY =
+  "equipment-audit-logs";
+
 const AuditContext =
   createContext<AuditContextType | undefined>(
     undefined
@@ -55,6 +59,34 @@ export function AuditProvider({
   const [logs, setLogs] = useState<
     AuditLog[]
   >([]);
+
+  useEffect(() => {
+    const stored =
+      localStorage.getItem(
+        STORAGE_KEY
+      );
+
+    if (!stored) {
+      return;
+    }
+
+    try {
+      setLogs(
+        JSON.parse(stored)
+      );
+    } catch {
+      console.warn(
+        "Unable to load audit logs."
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(logs)
+    );
+  }, [logs]);
 
   function logAction(
     log: Omit<

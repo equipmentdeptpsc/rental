@@ -51,5 +51,11 @@ export interface RentalAggregate {
 
   activeDeur?: DeurRecord;
 
-  billing: BillingSummary;
+/**
+ * All DEUR records belonging
+ * to this rental.
+ */
+deurs: DeurRecord[];
+
+billing: BillingSummary;
 }

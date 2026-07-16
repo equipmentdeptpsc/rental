@@ -7,21 +7,16 @@ import Select from "@/components/ui/Select";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
 import { useRentalStatuses } from "@/features/masters/rental-status";
+import type { RentalLifecycleStatus } from "@/features/rental/types";
 
 export interface RentalFormData {
   equipmentId: string;
-
   customer: string;
-
   project: string;
-
   rentedBy: string;
-
   expectedReturn: string;
-
   statusId: string;
-
-  status: string;
+  status: RentalLifecycleStatus | "Reserved";
 }
 
 interface Props {

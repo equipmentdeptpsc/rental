@@ -1,285 +1,312 @@
-# Equipment Rental System
+# Equipment Rental Management System
+# Domain Rules
 
-## Domain Rules
-
-Version: MVP 1.0
+**Last Updated:** July 15, 2026
 
 ---
 
 # Purpose
 
-This document defines the business rules of the Equipment Rental System.
-
-These rules describe **what the system is allowed to do** regardless of how the software is implemented.
-
-If implementation and this document conflict, this document takes precedence.
+This document defines the business rules governing the Equipment Rental Management System. These rules are independent of the application's implementation and must remain valid regardless of future technology changes.
 
 ---
 
-# 1. Equipment Rules
+# Core Business Principles
 
-Equipment is the primary business asset.
+The system is the single source of truth for all equipment rental operations.
 
-Every equipment record shall have:
+Every equipment transaction must be traceable.
 
-- unique ID
+Historical records must never be physically deleted.
 
-- Asset Number
+Every significant action must be auditable.
 
-- Equipment Name
+Business rules take precedence over UI implementation.
 
-- Category
+---
 
-- Maintenance Type
+# Equipment Rules
 
-- Current Reading
+Each equipment unit shall have a unique Equipment ID.
 
-- Project Assignment
+Each equipment shall have only one current status.
 
-- Operator Assignment
+Equipment may belong to one category.
 
-- Status
+Equipment may have one or more attachments.
 
-Status values:
+Equipment history shall be retained permanently.
+
+Equipment cannot be permanently deleted.
+
+Soft Delete shall be used whenever equipment is retired.
+
+Equipment availability shall be calculated from active assignments, rentals and maintenance records.
+
+---
+
+# Equipment Status
+
+Only one status may exist at any time.
+
+Allowed statuses include:
 
 - Available
-
 - Assigned
+- Rented
+- Under Maintenance
+- Reserved
+- Out of Service
+- Retired
 
-- Maintenance
-
-Equipment shall never exist without an Asset Number.
-
-Asset Numbers should be unique.
-
----
-
-# 2. Assignment Rules
-
-Assignments connect:
-
-Equipment
-
-↓
-
-Operator
-
-↓
-
-Project
-
-Rules:
-
-A single equipment unit may only have ONE active assignment.
-
-A single operator may only have ONE active assignment.
-
-Assignments cannot be created when equipment status is:
-
-- Maintenance
-
-Assignments cannot be created if equipment is already assigned.
-
-Assignments automatically change Equipment status to:
-
-Assigned
-
-Returning equipment automatically changes Equipment status to:
-
-Available
-
-Completing an assignment stores:
-
-- returnedDate
-
-Assignment status values:
-
-- Active
-
-- Completed
-
-- Cancelled
+Status changes shall automatically update equipment history.
 
 ---
 
-# 3. Rental Rules
+# Customer Rules
 
-Equipment may be rented to customers.
+Each customer shall have a unique Customer ID.
 
-Rental records store:
+Customers may have multiple rentals.
 
-- Customer
+Customers may have multiple projects.
+
+Inactive customers shall remain searchable for historical records.
+
+Customer deletion shall not remove historical rental records.
+
+---
+
+# Project Rules
+
+Projects shall have unique Project IDs.
+
+A project may contain multiple equipment assignments.
+
+A project may have multiple operators.
+
+Projects may be Active, Completed, Suspended or Cancelled.
+
+Completed projects become read-only except through authorized administrative actions.
+
+---
+
+# Operator Rules
+
+Each operator shall have a unique Operator ID.
+
+Operators may be assigned to multiple rentals over time.
+
+An operator cannot be assigned to overlapping active assignments.
+
+Operator history shall be preserved.
+
+---
+
+# Assignment Rules
+
+Assignments link equipment, operator and project.
+
+An assignment requires:
 
 - Equipment
-
 - Project
+- Start Date
 
-- Date Out
+Optional fields may include:
 
-- Expected Return
-
-- Actual Return
-
+- Operator
+- End Date
 - Remarks
 
-Rental status values:
+Equipment cannot have multiple conflicting active assignments.
 
-- Active
-
-- Returned
-
-Returning rental equipment records Actual Return automatically.
+Assignment completion updates equipment availability.
 
 ---
 
-# 4. Maintenance Rules
+# Rental Rules
 
-Maintenance prevents equipment usage.
+Each rental shall have a unique Rental Number.
 
-Equipment in Maintenance cannot:
+Rental lifecycle:
 
-- be assigned
+Draft
 
-Maintenance types are determined by Equipment configuration.
+?
 
-Maintenance schedules use:
+Confirmed
 
-- Odometer
+?
 
-or
+Released
 
-- Engine Hours
+?
 
----
+Active
 
-# 5. Operator Rules
-
-Operators represent equipment operators.
-
-Operators may have only one Active Assignment.
-
-Operator status values include:
-
-- Active
-
-- On Leave
-
-- Suspended
-
-Only Active operators may receive assignments.
-
----
-
-# 6. Project Rules
-
-Projects own assignments.
-
-Assignments always belong to exactly one project.
-
-Projects support soft delete.
-
-Deleted projects shall not appear in selection lists.
-
----
-
-# 7. Customer Rules
-
-Customers own rental transactions.
-
-Deleting customers shall not delete historical rentals.
-
----
-
-# 8. Soft Delete Rules
-
-Master records use soft delete.
-
-Deleted records:
-
-- remain in storage
-
-- disappear from normal lists
-
-- preserve historical relationships
-
-Soft delete fields:
-
-deleted
-
-deletedAt
-
----
-
-# 9. Audit Rules
-
-Every Create
-
-Update
-
-Delete
-
-should generate an Audit Log entry.
-
-Audit records should never be edited.
-
-Audit records should never be deleted.
-
----
-
-# 10. Equipment History Rules
-
-Equipment maintains a permanent activity history.
-
-Examples include:
-
-Equipment Created
-
-Equipment Edited
-
-Assigned
+?
 
 Returned
 
-Maintenance Started
+?
 
-Maintenance Completed
+Closed
 
-Rental Started
+Cancelled rentals shall remain in history.
 
-Rental Returned
-
-History records should be chronological.
-
-History records should never be deleted.
+Closed rentals become read-only.
 
 ---
 
-# 11. Repository Rules
+# Billing Rules
 
-Repositories own persistence.
+Billing is generated from rental activity.
 
-Pages never communicate with Local Storage.
+Billing calculations shall be deterministic.
 
-Contexts communicate with repositories.
+Billing shall preserve historical rates used during billing.
 
-Repositories communicate with Local Storage.
+Changes to future rate schedules shall never modify historical invoices.
+
+Billing records shall remain immutable after finalization unless adjusted through an approved correction process.
 
 ---
 
-# 12. Future Backend Rules
+# Maintenance Rules
 
-Repositories are intentionally isolated.
+Maintenance records are permanent.
 
-Future migration targets include:
+Maintenance may be:
 
-Firebase
+- Preventive
+- Corrective
+- Breakdown
+- Inspection
 
-Supabase
+Equipment under maintenance shall not be available for assignment or rental.
 
-SQL Server
+Maintenance completion automatically restores equipment availability when no other restrictions exist.
 
-REST API
+---
 
-GraphQL
+# Equipment History
 
-Changing storage technology should not require rewriting pages.
+Every significant equipment event shall create a history entry.
+
+Examples include:
+
+- Created
+- Updated
+- Assigned
+- Returned
+- Rented
+- Maintenance Started
+- Maintenance Completed
+- Status Changed
+- Soft Deleted
+- Restored
+
+History records shall never be removed.
+
+---
+
+# Audit Trail
+
+The system shall log important user actions.
+
+Audit entries should include:
+
+- Date and Time
+- User
+- Action
+- Module
+- Entity ID
+- Summary of Changes
+
+Audit records are append-only.
+
+---
+
+# Data Integrity Rules
+
+Duplicate primary identifiers are prohibited.
+
+Required fields must be validated before saving.
+
+Business validation occurs before persistence.
+
+Referential integrity shall be maintained between related entities.
+
+Historical records shall never be orphaned.
+
+---
+
+# Reporting Rules
+
+Reports shall be generated from system data.
+
+Reports shall never modify operational records.
+
+Reports shall reflect historical values as recorded.
+
+---
+
+# Security Rules
+
+Current MVP
+
+- Single-user environment
+
+Future
+
+- Authentication
+- Role-based authorization
+- User permissions
+- Session management
+
+Business rules shall remain unchanged after security implementation.
+
+---
+
+# Future Integration Rules
+
+Migration from Local Storage to SQL Server shall not change business behavior.
+
+Repository interfaces should remain stable.
+
+REST APIs shall enforce the same business rules as the frontend.
+
+---
+
+# AI Development Rules
+
+When implementing new features:
+
+1. Preserve all business rules.
+2. Never remove historical records.
+3. Never bypass validation.
+4. Never redesign the architecture.
+5. Preserve auditability.
+6. Preserve data integrity.
+7. Keep business logic independent from UI implementation.
+8. Ensure the project continues to build successfully.
+
+---
+
+# Long-Term Vision
+
+The Equipment Rental Management System shall evolve into an enterprise-grade platform supporting:
+
+- Multi-user operation
+- SQL Server
+- ASP.NET Core Web API
+- Cloud deployment
+- Role-based security
+- QR code integration
+- Barcode support
+- Advanced reporting
+- Analytics dashboards
+- Mobile extensions
+
+Future enhancements must preserve the business rules defined in this document.

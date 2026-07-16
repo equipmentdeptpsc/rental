@@ -14,7 +14,7 @@ import { useOperator } from "@/features/operators/context/OperatorContext";
 import { usePrefix } from "@/features/settings";
 import { useEquipmentCategories } from "@/features/masters/equipment-category";
 import { useEquipmentStatuses,} from "@/features/masters/equipment-status";
-import {  useEquipmentOwnerships,} from "@/features/masters/equipment-ownership";
+import { useEquipmentOwnerships } from "@/features/masters/equipment-ownership/context/EquipmentOwnershipContext";
 import {  useEquipmentConditions,} from "@/features/masters/equipment-condition";
 import {  useEquipmentLocations,} from "@/features/masters/equipment-location";
 import { useEquipmentBrands } from "@/features/masters/equipment-brand";

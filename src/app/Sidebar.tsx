@@ -2,7 +2,6 @@ import {
   LayoutDashboard,
   Truck,
   Users,
-  CalendarDays,
   FileText,
   BarChart3,
   FolderKanban,
@@ -63,12 +62,6 @@ const menuGroups = [
         icon: FolderKanban,
         label: "Projects",
         path: "/projects",
-      },
-
-      {
-        icon: CalendarDays,
-        label: "Bookings",
-        path: "/bookings",
       },
 
       {

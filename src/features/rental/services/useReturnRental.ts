@@ -19,7 +19,7 @@ import {
 
 import {
   auditRental,
-  rentalHistory,
+  rentalReturnHistory,
 } from "@/features/equipment/application";
 
 import type {
@@ -102,7 +102,7 @@ export function useReturnRental() {
       
           message:
       
-            "Rental has already been returned.",
+            "Only released or active rentals can be returned.",
       
         };
       
@@ -152,7 +152,7 @@ export function useReturnRental() {
     );
 
     log(
-      rentalHistory(
+      rentalReturnHistory(
         machine.id
       )
     );

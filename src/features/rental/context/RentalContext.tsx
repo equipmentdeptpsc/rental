@@ -6,7 +6,10 @@ import {
   type ReactNode,
 } from "react";
 
-import type { RentalRecord } from "../types";
+import type {
+  RentalLifecycleStatus,
+  RentalRecord,
+} from "../types";
 import type { RentalContractRecord } from "../types/RentalContract";
 
 import { rentalRepository } from "../repository";
@@ -14,6 +17,15 @@ import { rentalContractRepository } from "../repository/rentalContractRepository
 
 import type { EquipmentRecord } from "@/features/equipment/types";
 import { validateRental } from "../utils/validateRental";
+import {
+  getRentalTransitionError,
+} from "../services/RentalWorkflowRules";
+
+interface RentalTransitionResult {
+  success: boolean;
+  message?: string;
+  rental?: RentalRecord;
+}
 
 interface RentalContextType {
   rentals: RentalRecord[];
@@ -29,6 +41,11 @@ interface RentalContextType {
   updateRental(
     item: RentalRecord
   ): void;
+
+  transitionRental(
+    id: string,
+    nextStatus: RentalLifecycleStatus
+  ): RentalTransitionResult;
 
   deleteRental(
     id: string
@@ -97,6 +114,25 @@ export function RentalProvider({
     item: RentalRecord,
     equipment?: EquipmentRecord
   ) {
+    if (!item.rentalNumber?.trim()) {
+      return {
+        success: false,
+        message: "Rental number is required.",
+      };
+    }
+
+    if (
+      rentalRepository.getAll().some(
+        (rental) =>
+          rental.rentalNumber === item.rentalNumber
+      )
+    ) {
+      return {
+        success: false,
+        message: "Rental number already exists.",
+      };
+    }
+
     const validation =
       validateRental(equipment);
 
@@ -123,6 +159,45 @@ export function RentalProvider({
     rentalRepository.update(item);
 
     refreshRentals();
+  }
+
+  function transitionRental(
+    id: string,
+    nextStatus: RentalLifecycleStatus
+  ): RentalTransitionResult {
+    const current = rentalRepository.getById(id);
+
+    if (!current) {
+      return {
+        success: false,
+        message: "Rental not found.",
+      };
+    }
+
+    const error = getRentalTransitionError(
+      current,
+      nextStatus
+    );
+
+    if (error) {
+      return {
+        success: false,
+        message: error,
+      };
+    }
+
+    const updated = {
+      ...current,
+      status: nextStatus,
+    };
+
+    rentalRepository.update(updated);
+    refreshRentals();
+
+    return {
+      success: true,
+      rental: updated,
+    };
   }
 
   function deleteRental(
@@ -202,6 +277,7 @@ export function RentalProvider({
       rentals,
       addRental,
       updateRental,
+      transitionRental,
       deleteRental,
       returnRental,
       getRental,

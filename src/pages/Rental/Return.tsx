@@ -1,108 +1,99 @@
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
-import RentalForm from "@/features/rental/components/RentalForm";
-
-import { useRental } from "@/features/rental/context/RentalContext";
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useAudit } from "@/features/equipment/audit/AuditContext";
+import Button from "@/components/ui/Button";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
-import type { RentalRecord } from "@/features/rental/types";
-import type { EquipmentRecord } from "@/features/equipment/types";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useRental } from "@/features/rental/context/RentalContext";
+import { useReturnRental } from "@/features/rental/services/useReturnRental";
 
-export default function NewRental() {
+export default function ReturnRental() {
   const navigate = useNavigate();
-
-  const { addRental } = useRental();
-
-  const {
-    equipment,
-    updateEquipment,
-  } = useEquipment();
-
-  const { logAction } = useAudit();
-
+  const { id } = useParams();
+  const { rentals } = useRental();
+  const { equipment } = useEquipment();
+  const { returnEquipment } = useReturnRental();
   const { showToast } = useToast();
+  const [confirming, setConfirming] = useState(false);
 
-  function handleSubmit(data: any) {
-    const selected = equipment.find(
-      (e) => e.id === data.equipmentId
-    );
+  const rental = rentals.find((item) => item.id === id);
+  const machine = equipment.find(
+    (item) => item.id === rental?.equipmentId
+  );
 
-    if (!selected) {
-      showToast("Equipment not found", "error");
+  function handleReturn() {
+    if (!rental) return;
+
+    const result = returnEquipment(rental.id);
+
+    if (!result.success) {
+      showToast(result.message ?? "Unable to return equipment.", "error");
+      setConfirming(false);
       return;
     }
 
-    if (selected.status !== "Available") {
-      showToast(
-        "Equipment is not available",
-        "error"
-      );
-      return;
-    }
-
-    const rental: RentalRecord = {
-      id: crypto.randomUUID(),
-    
-      equipmentId: data.equipmentId,
-    
-      customer: data.customer,
-    
-      project: data.project,
-    
-      rentedBy: data.rentedBy,
-    
-      dateOut: new Date()
-        .toISOString()
-        .split("T")[0],
-    
-      expectedReturn: data.expectedReturn,
-    
-      statusId: data.statusId,
-    
-      status: data.status,
-    };
-
-    addRental(rental);
-
-    const updatedEquipment: EquipmentRecord = {
-      ...selected,
-
-      projectId: "",
-
-      operatorId: "",
-
-      status: "Assigned",
-    };
-
-    updateEquipment(updatedEquipment);
-
-    logAction({
-      action: "UPDATE",
-
-      equipmentId: selected.id,
-
-      before: selected,
-
-      after: updatedEquipment,
-    });
-
-    showToast(
-      "Rental created successfully",
-      "success"
-    );
-
+    showToast(result.message ?? "Equipment returned successfully.", "success");
     navigate("/rentals");
   }
 
-  return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="mb-6 text-2xl font-bold">
-        New Rental
-      </h1>
+  if (!rental) {
+    return <div className="p-8">Rental not found.</div>;
+  }
 
-      <RentalForm onSubmit={handleSubmit} />
+  return (
+    <div className="mx-auto max-w-3xl space-y-6 p-8">
+      <div>
+        <h1 className="text-3xl font-bold">Return Rental Equipment</h1>
+
+        <p className="mt-2 text-slate-500">
+          Confirm the equipment return to complete the operational return step.
+        </p>
+      </div>
+
+      <div className="space-y-3 rounded-xl border bg-white p-6">
+        <Detail
+          label="Equipment"
+          value={
+            machine
+              ? `${machine.assetNo} - ${machine.equipmentName}`
+              : rental.equipmentId
+          }
+        />
+        <Detail label="Customer" value={rental.customer} />
+        <Detail label="Project" value={rental.project || "-"} />
+        <Detail label="Rental status" value={rental.status} />
+        <Detail label="Expected return" value={rental.expectedReturn} />
+      </div>
+
+      <div className="flex gap-3">
+        <Button onClick={() => setConfirming(true)}>
+          Return Equipment
+        </Button>
+
+        <Button variant="secondary" onClick={() => navigate("/rentals")}>
+          Cancel
+        </Button>
+      </div>
+
+      <ConfirmModal
+        open={confirming}
+        title="Confirm equipment return"
+        message="This will mark the rental as returned and restore the equipment to Available."
+        confirmText="Return Equipment"
+        onConfirm={handleReturn}
+        onCancel={() => setConfirming(false)}
+      />
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-6">
+      <span className="text-sm text-slate-500">{label}</span>
+      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }

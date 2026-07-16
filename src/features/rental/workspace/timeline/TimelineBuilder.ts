@@ -7,6 +7,9 @@ export function buildTimeline(
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
 
+  //
+  // Rental Created
+  //
   events.push({
     id: "rental",
 
@@ -22,6 +25,9 @@ export function buildTimeline(
     completed: true,
   });
 
+  //
+  // Equipment Assignment
+  //
   if (aggregate.assignment) {
     events.push({
       id: "assignment",
@@ -41,6 +47,9 @@ export function buildTimeline(
     });
   }
 
+  //
+  // Operator Assignment
+  //
   if (aggregate.operator) {
     events.push({
       id: "operator",
@@ -60,6 +69,32 @@ export function buildTimeline(
     });
   }
 
+  //
+  // DEUR History
+  //
+  for (const deur of aggregate.deurs) {
+    for (const log of deur.logs) {
+      events.push({
+        id: log.id,
+
+        type: "deur",
+
+        title: log.activity,
+
+        description:
+          log.remarks ??
+          "Daily Equipment Utilization Record",
+
+        date: log.startTime,
+
+        completed: Boolean(log.endTime),
+      });
+    }
+  }
+
+  //
+  // Expected Return
+  //
   events.push({
     id: "return",
 

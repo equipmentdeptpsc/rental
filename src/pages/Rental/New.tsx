@@ -122,6 +122,7 @@ if (!availability.success) {
     const rentalId =
       crypto.randomUUID();
 
+      
       const rental: RentalRecord = {
         id: rentalId,
       

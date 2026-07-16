@@ -1,573 +1,238 @@
 # Equipment Rental Management System
-
 ## AI Development Context
 
-> Last Updated: July 2026
+**Last Updated:** July 15, 2026
 
 ---
 
-# Project Goal
+# PROJECT OVERVIEW
 
-Develop a production-ready Equipment Rental Management System using React + TypeScript + Vite.
+The Equipment Rental Management System is being developed as a production-quality internal web application for the Equipment Department. Its objective is to digitize and automate equipment management, rental operations, billing, maintenance, and reporting while preserving a scalable architecture suitable for enterprise deployment.
 
-Priority:
-
-1. Finish MVP
-
-2. Stabilize
-
-3. Polish UI
-
-4. Optimize
-
-5. Deployment
-
-The AI should ALWAYS prioritize finishing functionality before UI improvements.
+The current persistence layer uses Local Storage through the Repository Pattern. The architecture is intentionally designed to allow seamless migration to SQL Server and ASP.NET Core Web API without major frontend refactoring.
 
 ---
 
-# Technology Stack
+# TECHNOLOGY STACK
 
-Frontend
+## Frontend
 
-- React
-
-- TypeScript
-
+- React 19
+- TypeScript (Strict Mode)
 - Vite
-
 - React Router
-
 - TailwindCSS
-
 - Recharts
 
-State
+## Architecture
 
-- React Context
+- Feature-Based Architecture
+- Repository Pattern
+- Context API
+- Local Storage Persistence
 
-Persistence
+## Future Technology
 
-- Local Storage Repository Pattern
-
-Architecture
-
-Feature → Context → Repository
-
----
-
-# Project Architecture
-
-The project uses Feature First architecture.
-
-Example
-
-src/
-
-features/
-
-equipment/
-
-assignment/
-
-customer/
-
-dashboard/
-
-maintenance/
-
-operators/
-
-project/
-
-rental/
-
-Each feature owns:
-
-- types
-
-- repository
-
-- context
-
-- hooks
-
-- utils
-
-- services
-
-- components
-
-The AI MUST NEVER redesign this architecture.
+- ASP.NET Core Web API
+- SQL Server
+- Azure App Service
+- Azure SQL Database
+- Azure Storage
+- JWT / Azure AD Authentication
 
 ---
 
-# Data Flow
+# ARCHITECTURE
+
+Application Flow
 
 Pages
-
-↓
-
-Context
-
-↓
-
+?
+Feature Context
+?
 Repository
+?
+Local Storage
 
-↓
+Rules
 
-Storage
-
-Business logic belongs inside services/utils.
-
-Pages should remain thin.
-
-Repositories own persistence.
-
-Contexts own state.
-
----
-
-# Current Providers
-
-main.tsx registers providers in this order:
-
-AuthProvider
-
-ToastProvider
-
-AuditProvider
-
-EquipmentProvider
-
-EquipmentHistoryProvider
-
-OperatorProvider
-
-CustomerProvider
-
-ProjectProvider
-
-MaintenanceProvider
-
-AssignmentProvider
-
-RentalProvider
-
-RouterProvider
-
-Do NOT introduce unnecessary Providers.
+- Pages never access Local Storage directly.
+- Pages communicate only through Context.
+- Context communicates only with Repository.
+- Repository never imports React.
+- Maintain strict separation of concerns.
+- Maintain backward compatibility whenever possible.
 
 ---
 
-# Routing
+# CURRENT PROJECT STATUS
 
-React Router
+Current Build Status
 
-Pages live under
+? Project builds successfully.
 
-src/pages
+Command
 
-Each page is only a route entry.
+npm run build
 
-Heavy logic belongs inside feature services.
+Latest significant work completed
 
----
-
-# Dashboard Architecture
-
-Dashboard has NO Context.
-
-Dashboard has NO Repository.
-
-Dashboard consumes existing contexts.
-
-Structure
-
-features/dashboard
-
-components/
-
-services/
-
-types.ts
-
-index.ts
-
-Business logic
-
-dashboard.service.ts
-
-Dashboard page only gathers data from contexts.
+- Billing Engine TypeScript issues resolved.
+- Project successfully compiles.
+- Repository architecture stabilized.
 
 ---
 
-# Naming Convention
-
-New files use dot notation.
-
-Example
-
-dashboard.service.ts
-
-statistics-grid.tsx
-
-equipment-status-chart.tsx
-
-equipment-category-chart.tsx
-
-statistic-card.tsx
-
-Avoid camelCase filenames for new files.
-
----
-
-# Current Modules
-
-## Equipment
-
-Completed
-
-Includes
-
-CRUD
-
-Details
-
-Status
-
-History
-
-Assignment integration
-
-Rental integration
-
-Maintenance integration
-
----
-
-## Customers
-
-Completed
-
-CRUD
-
----
-
-## Operators
-
-Completed
-
-CRUD
-
----
-
-## Projects
-
-Completed
-
-CRUD
-
----
-
-## Assignments
-
-Completed
-
-Assignment
-
-Return Equipment
-
-Equipment Status Update
-
-History Logging
-
-Rental Integration
-
----
-
-## Rentals
-
-Completed
-
-Rental
-
-Return
-
-Status
-
-Overdue calculation
-
----
-
-## Maintenance
-
-Core implementation completed
-
-CRUD
-
-Status
-
-Equipment linkage
-
----
+# COMPLETED MODULES
 
 ## Dashboard
 
 Completed
 
-Milestone 1
+## Equipment
 
-✔ KPI Cards
+- Equipment List
+- Add Equipment
+- Edit Equipment
+- Equipment Details
+- Soft Delete
 
-Total Equipment
+## Equipment History
 
-Available
+Completed
 
-Assigned
+## Audit Trail
 
-Maintenance
+Completed
 
-Active Rentals
+## Billing
 
-Active Assignments
+Core Billing Engine implemented.
 
-Overdue Rentals
+## Context Providers
 
-Upcoming Returns
+- Equipment
+- Assignment
+- Rental
+- Customer
+- Project
+- Maintenance
+- Operator
 
-Milestone 2
+## Repository Layer
 
-✔ Equipment Status Pie Chart
+- Equipment Repository
+- Assignment Repository
+- Rental Repository
 
-✔ Equipment Category Bar Chart
+## Persistence
+
+Local Storage implementation completed.
 
 ---
 
-# Remaining MVP
+# MASTER MODULES
 
-Dashboard
+Current / Planned
 
-Milestone 3
+- Dashboard
+- Equipment
+- Customers
+- Projects
+- Operators
+- Assignments
+- Rentals
+- Billing
+- Maintenance
+- Audit Trail
+- Reports
+- Settings
 
-Recent Assignments
+---
 
-Recent Rentals
+# DEVELOPMENT STANDARDS
 
-Upcoming Returns
+Always
 
-Upcoming Maintenance
+- Preserve architecture.
+- Preserve folder structure.
+- Maintain feature ownership.
+- Produce production-quality code.
+- Keep components reusable.
+- Keep TypeScript strict.
+- Think ahead before implementing.
+- Ensure successful build after every milestone.
 
-Recent Equipment History
+Never
 
-Reports
+- Redesign the application architecture.
+- Introduce breaking changes without necessity.
+- Duplicate business logic.
+- Bypass Context and Repository layers.
 
-Bookings
+---
 
-Billing
+# CODING GUIDELINES
 
-Daily Logs
+- Strong typing.
+- No unnecessary any.
+- Reusable interfaces.
+- Clean naming conventions.
+- Repository contains business persistence only.
+- React logic belongs inside Context or Components.
+- Keep code modular and maintainable.
 
-QR Tracking
+---
 
-Settings
+# FUTURE ROADMAP
+
+Future migration targets
+
+Database
+
+- SQL Server
+
+Backend
+
+- ASP.NET Core Web API
 
 Authentication
 
-Export
+- JWT
+- Azure AD
 
-Print
+Hosting
 
-Deployment
-
----
-
-# Equipment History
-
-Equipment history already exists.
-
-Context
-
-EquipmentHistoryContext
-
-API
-
-history
-
-log()
-
-getHistory()
-
-History Type
-
-CREATED
-
-UPDATED
-
-ASSIGNED
-
-RETURNED
-
-RENTED
-
-RENTAL_RETURN
-
-MAINTENANCE_START
-
-MAINTENANCE_END
-
-STATUS_CHANGE
-
-Do NOT create another activity log system.
-
-Reuse Equipment History.
+- Microsoft Azure
 
 ---
 
-# Important Development Rules
+# AI DEVELOPMENT INSTRUCTIONS
 
-Never redesign architecture.
+Before writing code
 
-Never introduce unnecessary Contexts.
+1. Analyze the requested feature.
+2. Review affected modules.
+3. Identify every file requiring modification.
+4. Explain the implementation approach.
+5. Generate code.
 
-Never introduce unnecessary Providers.
+When source files are needed
 
-Never bypass Repositories.
+- Never assume file contents.
+- Ask for the required files first.
+- Use uploaded files as the source of truth.
 
-Never duplicate state.
+General rules
 
-Never move business logic into Pages.
-
-Never replace repositories with hooks.
-
-Never store duplicated computed data.
-
-Always follow existing architecture.
-
----
-
-# Development Workflow
-
-For every milestone
-
-1.
-
-Return complete replacement files.
-
-2.
-
-User pastes files.
-
-3.
-
-Run
-
-npm run build
-
-4.
-
-If build succeeds
-
-git add .
-
-git commit
-
-git push
-
-5.
-
-Continue next milestone.
-
-Never stop for UI polishing.
+- Preserve the existing architecture.
+- Maintain consistency across all modules.
+- Prefer complete file replacements when practical.
+- Ensure the application continues to build successfully.
+- Act as a Senior Software Architect focused on long-term maintainability.
 
 ---
 
-# Build Rule
+# PROJECT OBJECTIVE
 
-The AI should stop ONLY if
-
-npm run build
-
-fails.
-
-Otherwise continue implementing the MVP.
-
----
-
-# Git
-
-Repository already exists.
-
-Current workflow
-
-Feature branch
-
-architecture-standardization
-
-Remote
-
-origin
-
-GitHub
-
-[https://github.com/equipmentdeptpsc/equipment-rental-system](https://github.com/equipmentdeptpsc/equipment-rental-system)
-
-Commit after every successful milestone.
-
----
-
-# AI Response Rules
-
-Always review existing architecture before generating code.
-
-Never assume interfaces.
-
-Never invent Context APIs.
-
-Never redesign folders.
-
-Return COMPLETE replacement files.
-
-Avoid snippets.
-
-Avoid pseudo code.
-
-Assume user wants production-ready code.
-
-When the response exceeds model limits, split into multiple responses while ensuring each response contains only complete files.
-
----
-
-# Current Status
-
-Dashboard Milestone 1
-
-Completed
-
-Dashboard Milestone 2
-
-Completed
-
-Assignment return flow
-
-Completed
-
-Equipment History
-
-Completed
-
-Repository architecture
-
-Stable
-
-TypeScript build
-
-Passing
-
-Application Status
-
-Ready to continue MVP development.
-
-Current Priority
-
-Dashboard Milestone 3.
+Build a maintainable, scalable, enterprise-ready Equipment Rental Management System capable of supporting future cloud deployment, multi-user access, role-based security, SQL Server integration, and advanced reporting without requiring architectural redesign.

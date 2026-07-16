@@ -1,43 +1,24 @@
-import type {
-  RentalOverviewModel,
-} from "../types";
-
 import ContractSummaryCard from "../cards/ContractSummaryCard";
+import RentalKPICards from "../cards/RentalKPICards";
 
-import EquipmentAssignmentCard from "../cards/EquipmentAssignmentCard";
+import type { RentalRecord } from "@/features/rental/types";
 
-import OperatorAssignmentCard from "../cards/OperatorAssignmentCard";
-
-import TodayOperationsCard from "../cards/TodayOperationsCard";
-
-interface ContractSectionProps {
-  overview: RentalOverviewModel;
+interface Props {
+  rental: RentalRecord;
 }
 
 export default function ContractSection({
-  overview,
-}: ContractSectionProps) {
+  rental,
+}: Props) {
   return (
     <div className="space-y-6">
 
-      <ContractSummaryCard
-        contract={overview.contract}
+      <RentalKPICards
+        rental={rental}
       />
 
-      <div className="grid gap-6 xl:grid-cols-2">
-
-        <EquipmentAssignmentCard
-          equipment={overview.equipment}
-        />
-
-        <OperatorAssignmentCard
-          operator={overview.operator}
-        />
-
-      </div>
-
-      <TodayOperationsCard
-        today={overview.today}
+      <ContractSummaryCard
+        rental={rental}
       />
 
     </div>

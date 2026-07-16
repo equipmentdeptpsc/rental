@@ -1,0 +1,28 @@
+import ShiftSummaryCard from "./cards/ShiftSummaryCard";
+
+import ActivityControls from "./controls/ActivityControls";
+
+import ActivityTimelineCard from "./cards/ActivityTimelineCard";
+
+import useTodayActivities from "./hooks/useTodayActivities";
+
+export default function DeurWorkspace() {
+
+  const activities =
+    useTodayActivities();
+
+  return (
+    <div className="space-y-6">
+
+      <ShiftSummaryCard />
+
+      <ActivityControls />
+
+      <ActivityTimelineCard
+        activities={activities}
+      />
+
+    </div>
+  );
+
+}

@@ -2,89 +2,102 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 
-import "./index.css";
-
 import { router } from "@/app/router";
 
 import { AuthProvider } from "@/features/auth/AuthContext";
 
-import { EquipmentProvider } from "@/features/equipment/context/EquipmentContext";
+import { ToastProvider } from "@/components/ui/toast/ToastContext";
+
+import { PrefixProvider } from "@/features/settings/context/PrefixContext";
+
 import { AuditProvider } from "@/features/equipment/audit/AuditContext";
 
+import MasterProviders from "@/app/MasterProviders";
+
+import { EquipmentProvider } from "@/features/equipment/context/EquipmentContext";
 import { EquipmentHistoryProvider } from "@/features/equipment/history";
-
-import { AssignmentProvider } from "@/features/assignment/context/AssignmentContext";
-
-import { RentalProvider } from "@/features/rental/context/RentalContext";
-
-import { CustomerProvider } from "@/features/customer/context/CustomerContext";
-
-import { ProjectProvider } from "@/features/project/context/ProjectContext";
-
-import { MaintenanceProvider } from "@/features/maintenance/context/MaintenanceContext";
 
 import { DailyLogProvider } from "@/features/daily-log";
 
+import { AssignmentProvider } from "@/features/assignment/context/AssignmentContext";
+import { RentalProvider } from "@/features/rental/context/RentalContext";
+import { MaintenanceProvider } from "@/features/maintenance/context/MaintenanceContext";
+
 import { OperatorProvider } from "@/features/operators/context/OperatorContext";
+import { CustomerProvider } from "@/features/customer/context/CustomerContext";
+import { ProjectProvider } from "@/features/project/context/ProjectContext";
 
-import { ToastProvider } from "@/components/ui/toast/ToastContext";
+import "./index.css";
 
-import { PrefixProvider } from "@/features/settings";
+
+function AppProviders() {
+  return (
+    <AuthProvider>
+
+      <ToastProvider>
+
+        <PrefixProvider>
+
+          <AuditProvider>
+
+            <MasterProviders>
+
+              <EquipmentProvider>
+
+                <EquipmentHistoryProvider>
+
+                  <DailyLogProvider>
+
+                    <AssignmentProvider>
+
+                      <RentalProvider>
+
+                        <MaintenanceProvider>
+
+                          <OperatorProvider>
+
+                            <CustomerProvider>
+
+                              <ProjectProvider>
+
+                                {/** Application Routes */}
+                                <RouterProvider router={router} />
+
+                              </ProjectProvider>
+
+                            </CustomerProvider>
+
+                          </OperatorProvider>
+
+                        </MaintenanceProvider>
+
+                      </RentalProvider>
+
+                    </AssignmentProvider>
+
+                  </DailyLogProvider>
+
+                </EquipmentHistoryProvider>
+
+              </EquipmentProvider>
+
+            </MasterProviders>
+
+          </AuditProvider>
+
+        </PrefixProvider>
+
+      </ToastProvider>
+
+    </AuthProvider>
+  );
+}
+
 
 ReactDOM.createRoot(
   document.getElementById("root")!
 ).render(
   <React.StrictMode>
-    <AuthProvider>
-      <ToastProvider>
-        <AuditProvider>
-
-          <PrefixProvider>
-
-            <EquipmentProvider>
-
-              <EquipmentHistoryProvider>
-
-                <OperatorProvider>
-
-                  <CustomerProvider>
-
-                    <ProjectProvider>
-
-                      <MaintenanceProvider>
-
-                        <DailyLogProvider>
-
-                          <AssignmentProvider>
-
-                            <RentalProvider>
-
-                              <RouterProvider
-                                router={router}
-                              />
-
-                            </RentalProvider>
-
-                          </AssignmentProvider>
-
-                        </DailyLogProvider>
-
-                      </MaintenanceProvider>
-
-                    </ProjectProvider>
-
-                  </CustomerProvider>
-
-                </OperatorProvider>
-
-              </EquipmentHistoryProvider>
-
-            </EquipmentProvider>
-
-          </PrefixProvider>
-
-        </AuditProvider>
-      </ToastProvider>
-    </AuthProvider>
+    <AppProviders />
   </React.StrictMode>
 );

@@ -29,8 +29,16 @@ export interface RentalAggregateAssemblerData {
 
   operator?: Operator;
 
+  /**
+   * Today's active DEUR.
+   */
   activeDeur?: DeurRecord;
 
+  /**
+   * Complete DEUR history
+   * for this rental.
+   */
+  deurs?: DeurRecord[];
 }
 
 export class RentalAggregateAssembler {
@@ -50,6 +58,7 @@ export class RentalAggregateAssembler {
 
       activeDeur: data.activeDeur,
 
+      deurs: data.deurs,
     });
   }
 }
