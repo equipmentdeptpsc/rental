@@ -11,28 +11,10 @@ import type {
 
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
-import { useEquipmentHistory,
-} from "@/features/equipment/history";
-
-import {
-  rentalHistory,
-} from "@/features/equipment/application";
 
 import type { RentalRecord } from "@/features/rental/types";
-import {
-  assignEquipment,
-} from "@/features/equipment/application";
-
-import {
-    auditRental,
-} from "@/features/equipment/application";
-
-import {
-  canCreateRental,
-} from "@/features/rental/services/AvailabilityService";
+import { generateRentalNumber } from "@/features/rental/utils/generateRentalNumber";
 
 export default function NewRental() {
   const navigate =
@@ -53,7 +35,6 @@ export default function NewRental() {
 
   const {
     assignments,
-    updateAssignment,
   } = useAssignment();
 
   const assignment =
@@ -70,64 +51,37 @@ export default function NewRental() {
     equipmentParam ??
     "";
 
-    const {
-      addRental,
-      rentals,
-    } = useRental();
-
   const {
-    equipment,
-    updateEquipment,
-  } = useEquipment();
-
-  const {
-    logAction,
-  } = useAudit();
+    addRental,
+    rentals,
+  } = useRental();
 
     const {
     showToast,
   } = useToast();
 
-  const { log } =
-  useEquipmentHistory();
-
   function handleSubmit(
     data: RentalFormData
   ) {
-    const selected =
-      equipment.find(
-        (e) =>
-          e.id ===
-          data.equipmentId
-      );
-
-      const availability =
-  canCreateRental(
-    selected,
-    rentals
-  );
-
-if (!availability.success) {
-
-  showToast(
-    availability.message ??
-      "Equipment is unavailable.",
-    "error"
-  );
-
-  return;
-
-}
-
     const rentalId =
       crypto.randomUUID();
 
       
       const rental: RentalRecord = {
         id: rentalId,
+
+        rentalNumber: generateRentalNumber(rentals),
       
         equipmentId:
           data.equipmentId,
+
+        customerId: data.customerId,
+
+        projectId: assignment?.projectId,
+
+        operatorId: assignment?.operatorId,
+
+        assignmentId: assignment?.id,
       
         customer:
           data.customer,
@@ -153,11 +107,7 @@ if (!availability.success) {
           data.status,
       };
 
-    const result =
-      addRental(
-        rental,
-        selected
-      );
+    const result = addRental(rental);
 
     if (!result.success) {
       showToast(
@@ -167,52 +117,6 @@ if (!availability.success) {
       );
 
       return;
-    }
-
-    if (!selected) {
-      return;
-    }
-
-    const {
-      equipment: updatedEquipment,
-    } = assignEquipment(
-      selected,
-      assignment?.projectId ?? "",
-      assignment?.operatorId ?? ""
-    );
-    
-    updateEquipment(
-      updatedEquipment
-    );
-    log(
-      rentalHistory(
-        selected.id
-      )
-    );
-
-    logAction(
-      auditRental(
-        selected,
-        updatedEquipment
-      )
-    );
-
-    if (
-      assignment &&
-      assignment.status ===
-        "Active"
-    ) {
-      updateAssignment({
-        ...assignment,
-
-        status:
-          "Completed",
-
-        returnedDate:
-          new Date()
-            .toISOString()
-            .split("T")[0],
-      });
     }
 
     showToast(

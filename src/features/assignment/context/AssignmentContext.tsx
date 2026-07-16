@@ -9,6 +9,7 @@ import {
 import type { AssignmentRecord } from "../types";
 
 import { assignmentRepository } from "../repository";
+import { rentalRepository } from "@/features/rental/repository";
 
 interface AssignmentContextType {
   assignments: AssignmentRecord[];
@@ -31,7 +32,7 @@ interface AssignmentContextType {
 
   deleteAssignment(
     id: string
-  ): void;
+  ): { success: boolean; message?: string };
 
   getAssignment(
     id: string
@@ -163,11 +164,20 @@ export function AssignmentProvider({
   function deleteAssignment(
     id: string
   ) {
+    if (rentalRepository.getAll().some((rental) => rental.assignmentId === id)) {
+      return {
+        success: false,
+        message: "This assignment is linked to a rental and cannot be deleted.",
+      };
+    }
+
     assignmentRepository.delete(
       id
     );
 
     refresh();
+
+    return { success: true };
   }
 
   function getAssignment(

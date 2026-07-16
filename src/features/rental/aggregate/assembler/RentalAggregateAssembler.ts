@@ -39,6 +39,8 @@ export interface RentalAggregateAssemblerData {
    * for this rental.
    */
   deurs?: DeurRecord[];
+
+  billing?: Partial<RentalAggregate["billing"]>;
 }
 
 export class RentalAggregateAssembler {
@@ -59,6 +61,8 @@ export class RentalAggregateAssembler {
       activeDeur: data.activeDeur,
 
       deurs: data.deurs,
+
+      billing: data.billing,
     });
   }
 }

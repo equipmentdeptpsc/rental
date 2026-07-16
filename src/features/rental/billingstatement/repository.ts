@@ -1,6 +1,7 @@
 import type {
-  BillingStatement,
-} from "./types";
+    BillingStatement,
+  } from "./types";
+import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
 
 const STORAGE_KEY =
   "equipment-rental-billing-statements";
@@ -83,6 +84,7 @@ class BillingStatementRepository {
     all.push(statement);
 
     this.saveAll(all);
+    notifyRentalWorkspaceChange(statement.rentalId);
 
   }
 
@@ -105,6 +107,7 @@ class BillingStatementRepository {
       )
 
     );
+    notifyRentalWorkspaceChange(statement.rentalId);
 
   }
 

@@ -85,7 +85,12 @@ export default function EquipmentTrash() {
 
     if (!confirmed) return;
 
-    permanentlyDeleteEquipment(id);
+    const result = permanentlyDeleteEquipment(id);
+
+    if (!result.success) {
+      showToast(result.message ?? "Equipment cannot be permanently deleted.", "error");
+      return;
+    }
 
     logAction({
       action: "DELETE",

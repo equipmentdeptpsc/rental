@@ -1,4 +1,6 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+
+import { downloadWorkbook } from "./excelWorkbook";
 
 export interface ExportOptions<T> {
 
@@ -15,13 +17,13 @@ export interface ExportOptions<T> {
 
 }
 
-export function exportToExcel<T>(
+export async function exportToExcel<T>(
 
   records: T[],
 
   options: ExportOptions<T>
 
-): void {
+): Promise<void> {
 
   const {
 
@@ -79,28 +81,15 @@ export function exportToExcel<T>(
 
   }
 
-  const worksheet =
-    XLSX.utils.json_to_sheet(exportRows);
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetName);
+  const headers = Object.keys(exportRows[0] ?? {});
 
-  const workbook =
-    XLSX.utils.book_new();
+  worksheet.addRow(headers);
+  exportRows.forEach((row) => {
+    worksheet.addRow(headers.map((header) => row[header] ?? ""));
+  });
 
-  XLSX.utils.book_append_sheet(
-
-    workbook,
-
-    worksheet,
-
-    sheetName
-
-  );
-
-  XLSX.writeFile(
-
-    workbook,
-
-    `${fileName}.xlsx`
-
-  );
+  await downloadWorkbook(workbook, fileName);
 
 }

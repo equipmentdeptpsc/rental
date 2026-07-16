@@ -25,9 +25,23 @@ export const DEFAULT_ALLOWED_EXTENSIONS = [
 
 ];
 
+export const DEFAULT_ALLOWED_MIME_TYPES = [
+
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+  "text/csv",
+
+  "application/csv",
+
+  "text/plain",
+
+];
+
 export interface FileValidationOptions {
 
   allowedExtensions?: string[];
+
+  allowedMimeTypes?: string[];
 
   maxFileSize?: number;
 
@@ -56,6 +70,8 @@ export function validateImportFile(
   const {
 
     allowedExtensions = DEFAULT_ALLOWED_EXTENSIONS,
+
+    allowedMimeTypes = DEFAULT_ALLOWED_MIME_TYPES,
 
     maxFileSize = DEFAULT_MAX_FILE_SIZE,
 
@@ -150,6 +166,19 @@ export function validateImportFile(
     errors.push(
 
       `Unsupported file type. Allowed formats: ${allowedExtensions.join(", ")}.`
+
+    );
+
+  }
+
+  if (
+    file.type &&
+    !allowedMimeTypes.includes(file.type.toLowerCase())
+  ) {
+
+    errors.push(
+
+      "Unsupported file content type."
 
     );
 

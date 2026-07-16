@@ -4,9 +4,12 @@ import Button from "@/components/ui/Button";
 
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useToast } from "@/components/ui/toast/ToastContext";
 
 export default function RentalPage() {
-  const { rentals } = useRental();
+  const { rentals, transitionRental } = useRental();
+
+  const { showToast } = useToast();
 
   const { getEquipment } =
     useEquipment();
@@ -104,9 +107,23 @@ export default function RentalPage() {
                     rental.equipmentId
                   );
 
-                const returnable =
-                  rental.status === "Released" ||
-                  rental.status === "Active";
+                const returnable = rental.status === "Active";
+
+                function transition(
+                  nextStatus: "Released" | "Active"
+                ) {
+                  const result = transitionRental(
+                    rental.id,
+                    nextStatus
+                  );
+
+                  if (!result.success) {
+                    showToast(
+                      result.message ?? "Unable to update rental.",
+                      "error"
+                    );
+                  }
+                }
 
                 return (
 
@@ -164,6 +181,24 @@ export default function RentalPage() {
                         >
                           Workspace
                         </Link>
+
+                        {rental.status === "Reserved" && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => transition("Released")}
+                          >
+                            Release
+                          </Button>
+                        )}
+
+                        {rental.status === "Released" && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => transition("Active")}
+                          >
+                            Activate
+                          </Button>
+                        )}
 
                         {returnable && (
 

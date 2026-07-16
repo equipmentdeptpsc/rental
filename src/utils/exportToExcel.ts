@@ -1,6 +1,8 @@
-import { utils, writeFile } from "xlsx";
+import ExcelJS from "exceljs";
 
-export function exportToExcel<T>(
+import { downloadWorkbook } from "@/shared/import-export/excelWorkbook";
+
+export async function exportToExcel<T>(
   rows: T[],
   fileName: string
 ) {
@@ -9,20 +11,16 @@ export function exportToExcel<T>(
     return;
   }
 
-  const worksheet =
-    utils.json_to_sheet(rows);
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Data");
+  const firstRow = rows[0] as Record<string, unknown>;
+  const headers = Object.keys(firstRow);
 
-  const workbook =
-    utils.book_new();
+  worksheet.addRow(headers);
+  rows.forEach((row) => {
+    const source = row as Record<string, unknown>;
+    worksheet.addRow(headers.map((header) => source[header] ?? ""));
+  });
 
-  utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Data"
-  );
-
-  writeFile(
-    workbook,
-    `${fileName}.xlsx`
-  );
+  await downloadWorkbook(workbook, fileName);
 }

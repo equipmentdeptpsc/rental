@@ -263,6 +263,10 @@ export interface ImportWizardState<T> {
 
   validation?: RecordValidationResult<T>;
 
+  blockingErrors?: string[];
+
+  isEmptyResult?: boolean;
+
   summary?: ImportSummary;
 
 }

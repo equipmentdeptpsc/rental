@@ -33,23 +33,14 @@ import type {
       );
     }
   
-    const hasOutstandingBalance =
-      aggregate.billing.outstanding >
-      0;
-  
-    if (hasOutstandingBalance) {
-      reasons.push(
-        "Outstanding balance exists."
-      );
-    }
-  
     const hasUnbilledOperations =
-      aggregate.billing.subtotal >
-        aggregate.billing.invoiced;
-  
+      !aggregate.billing.invoicePreparationComplete;
+
     if (hasUnbilledOperations) {
       reasons.push(
-        "There are billable charges that have not yet been invoiced."
+        aggregate.billing.hasStatement
+          ? "Billing statement has not reached an invoiced status."
+          : "A billing statement is required before closing."
       );
     }
   
@@ -61,7 +52,7 @@ import type {
   
       hasPendingOperations,
   
-      hasOutstandingBalance,
+      hasOutstandingBalance: false,
   
       hasUnbilledOperations,
   

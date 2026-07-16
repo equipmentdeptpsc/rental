@@ -1,4 +1,5 @@
 import type { DeurRecord } from "../types";
+import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
 
 const STORAGE_KEY = "equipment-rental-deur";
 
@@ -41,6 +42,7 @@ class DeurRepository {
     all.push(record);
 
     this.saveAll(all);
+    notifyRentalWorkspaceChange(record.rentalId);
 
   }
 
@@ -54,6 +56,7 @@ class DeurRepository {
       );
 
     this.saveAll(updated);
+    notifyRentalWorkspaceChange(record.rentalId);
 
   }
 

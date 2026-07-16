@@ -1,6 +1,7 @@
 import {
   importExcel,
 } from "@/shared/import-export/excelImport";
+import { validateImportedData } from "@/shared/import-export/importValidation";
 
 import {
   useMemo,
@@ -135,6 +136,19 @@ export default function MasterImportWizard<
         (result as any).data ??
         [];
 
+      if (!result.success) {
+        setState(previous => ({
+          ...previous,
+          rawRecords: [],
+          previewRows: [],
+          blockingErrors: result.errors,
+          isEmptyResult: false,
+        }));
+        return;
+      }
+
+      const validationOutcome = validateImportedData(result, columns, validateRecord);
+
       const previewRows =
         records.map(
           (
@@ -161,14 +175,26 @@ export default function MasterImportWizard<
 
         previewRows,
 
+        blockingErrors: validationOutcome.blockingErrors,
+
+        isEmptyResult: records.length === 0,
+
+        validation: {
+          validRecords: validationOutcome.validRecords,
+          invalidRecords: validationOutcome.invalidRecords,
+          errors: validationOutcome.rowErrors,
+          warnings: [],
+        },
+
       }));
 
     }
 
-    catch (error) {
-
-      console.error(error);
-
+    catch {
+      setState(previous => ({
+        ...previous,
+        blockingErrors: ["The selected file could not be read. Please choose a valid CSV or Excel file."],
+      }));
     }
 
   }
@@ -278,6 +304,9 @@ export default function MasterImportWizard<
   }
 
   function finishImport() {
+    if (state.blockingErrors?.length || state.isEmptyResult) {
+      return;
+    }
 
     const validRecords =
       state.validation?.validRecords ??
@@ -513,6 +542,7 @@ export default function MasterImportWizard<
                 type="button"
 
                 onClick={finishImport}
+                disabled={Boolean(state.blockingErrors?.length || state.isEmptyResult)}
 
                 className="rounded bg-green-600 px-4 py-2 text-white"
 

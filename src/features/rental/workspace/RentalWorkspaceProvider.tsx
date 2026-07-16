@@ -2,10 +2,16 @@ import {
   createContext,
   useContext,
   useMemo,
+  useEffect,
+  useState,
   type ReactNode,
 } from "react";
 
-import { RentalQueries } from "@/features/rental/queries";
+import { useRental } from "@/features/rental/context/RentalContext";
+import { useAssignment } from "@/features/assignment/context/AssignmentContext";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
+import { useProject } from "@/features/project/context/ProjectContext";
 
 import {
   buildRentalAggregate,
@@ -13,6 +19,8 @@ import {
 } from "@/features/rental/aggregate";
 
 import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
+import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
+import { subscribeRentalWorkspaceChange } from "./workspaceRefresh";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -33,43 +41,57 @@ export default function RentalWorkspaceProvider({
   rentalId,
   children,
 }: RentalWorkspaceProviderProps) {
+  const { rentals } = useRental();
+  const { assignments } = useAssignment();
+  const { equipment: equipmentRecords } = useEquipment();
+  const { operators } = useOperator();
+  const { projects } = useProject();
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
+
+  useEffect(
+    () => subscribeRentalWorkspaceChange(rentalId, () => setWorkspaceVersion(value => value + 1)),
+    [rentalId]
+  );
   const aggregate = useMemo(() => {
     const rental =
-      RentalQueries.getRental(
-        rentalId
-      );
+      rentals.find((item) => item.id === rentalId);
 
     if (!rental) {
       return undefined;
     }
 
     const assignment =
-      RentalQueries.getAssignment(
-        rentalId
-      );
+      rental.assignmentId
+        ? assignments.find((item) => item.id === rental.assignmentId)
+        : assignments.find((item) => item.equipmentId === rental.equipmentId);
 
     const equipment =
-      RentalQueries.getEquipment(
-        rental.equipmentId
-      );
+      equipmentRecords.find((item) => item.id === rental.equipmentId);
 
     const operator =
       assignment
-        ? RentalQueries.getOperator(
-            assignment.operatorId
-          )
+        ? operators.find((item) => item.id === assignment.operatorId)
         : undefined;
 
     const project =
-      RentalQueries.getProject(
-        rental.project
-      );
+      projects.find((item) => item.id === rental.projectId) ??
+      projects.find((item) => item.projectName === rental.project);
 
     // NEW
     const deurs =
       deurRepository.getByRentalId(
         rental.id
       );
+
+    const statements = billingStatementRepository.getAll().filter(
+      statement => statement.rentalId === rental.id
+    );
+    const latestStatement = statements.at(-1);
+    const invoicePreparationComplete = latestStatement !== undefined && [
+      "Invoiced",
+      "Partially Collected",
+      "Fully Collected",
+    ].includes(latestStatement.invoiceStatus);
 
       const activeDeur =
       deurs.find(
@@ -86,8 +108,14 @@ export default function RentalWorkspaceProvider({
       project,
       activeDeur,
       deurs,
+      billing: {
+        hasStatement: statements.length > 0,
+        invoiceStatus: latestStatement?.invoiceStatus,
+        invoicePreparationComplete,
+        subtotal: statements.reduce((sum, statement) => sum + statement.subtotal, 0),
+      },
     });
-  }, [rentalId]);
+  }, [rentalId, rentals, assignments, equipmentRecords, operators, projects, workspaceVersion]);
 
   if (!aggregate) {
     return (

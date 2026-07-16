@@ -13,6 +13,12 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 import type { DeurRecord } from "../deur/types";
 
 export interface BillingSummary {
+
+  hasStatement?: boolean;
+
+  invoiceStatus?: string;
+
+  invoicePreparationComplete?: boolean;
   totalOperatingCharge: number;
 
   totalIdleCharge: number;

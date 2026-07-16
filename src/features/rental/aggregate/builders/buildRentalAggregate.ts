@@ -35,6 +35,8 @@ interface BuildRentalAggregateParams {
    * for this rental.
    */
   deurs?: DeurRecord[];
+
+  billing?: Partial<RentalAggregate["billing"]>;
 }
 
 export function buildRentalAggregate({
@@ -45,6 +47,7 @@ export function buildRentalAggregate({
   operator,
   activeDeur,
   deurs = [],
+  billing,
 }: BuildRentalAggregateParams): RentalAggregate {
   return {
     rental,
@@ -62,6 +65,9 @@ export function buildRentalAggregate({
     deurs,
 
     billing: {
+      hasStatement: false,
+
+      invoicePreparationComplete: false,
       totalOperatingCharge: 0,
 
       totalIdleCharge: 0,
@@ -79,6 +85,8 @@ export function buildRentalAggregate({
       collected: 0,
 
       outstanding: 0,
+
+      ...billing,
     },
   };
 }

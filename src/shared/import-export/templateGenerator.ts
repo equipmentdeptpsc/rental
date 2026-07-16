@@ -1,4 +1,6 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+
+import { downloadWorkbook } from "./excelWorkbook";
 
 export interface TemplateColumn {
 
@@ -39,15 +41,15 @@ export interface TemplateOptions {
 
 }
 
-export function generateTemplate(
+export async function generateTemplate(
 
   columns: TemplateColumn[],
 
   options: TemplateOptions
 
-): void {
+): Promise<void> {
 
-  const workbook = XLSX.utils.book_new();
+  const workbook = new ExcelJS.Workbook();
 
   const sheetName =
 
@@ -77,23 +79,8 @@ export function generateTemplate(
 
   ];
 
-  const templateSheet =
-
-    XLSX.utils.aoa_to_sheet(
-
-      templateRows
-
-    );
-
-  XLSX.utils.book_append_sheet(
-
-    workbook,
-
-    templateSheet,
-
-    sheetName
-
-  );
+  const templateSheet = workbook.addWorksheet(sheetName);
+  templateSheet.addRows(templateRows);
 
   /**
    * Optional Data Dictionary
@@ -145,32 +132,11 @@ export function generateTemplate(
 
     );
 
-    const dictionarySheet =
-
-      XLSX.utils.aoa_to_sheet(
-
-        dictionaryRows
-
-      );
-
-    XLSX.utils.book_append_sheet(
-
-      workbook,
-
-      dictionarySheet,
-
-      "Data Dictionary"
-
-    );
+    const dictionarySheet = workbook.addWorksheet("Data Dictionary");
+    dictionarySheet.addRows(dictionaryRows);
 
   }
 
-  XLSX.writeFile(
-
-    workbook,
-
-    `${options.fileName}.xlsx`
-
-  );
+  await downloadWorkbook(workbook, options.fileName);
 
 }

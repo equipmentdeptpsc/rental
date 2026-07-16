@@ -16,8 +16,10 @@ import {
   
     const validation =
       state.validation;
+
+    const blockingErrors = state.blockingErrors ?? [];
   
-    if (!validation) {
+    if (!validation && blockingErrors.length === 0) {
   
       return (
   
@@ -33,6 +35,17 @@ import {
   
       );
   
+    }
+
+    if (!validation) {
+      return (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4">
+          <h4 className="font-semibold text-red-700">Import cannot continue</h4>
+          <ul className="mt-2 list-disc pl-5 text-sm text-red-700">
+            {blockingErrors.map(error => <li key={error}>{error}</li>)}
+          </ul>
+        </div>
+      );
     }
   
     const validCount =
@@ -63,6 +76,21 @@ import {
           </p>
   
         </div>
+
+        {blockingErrors.length > 0 && (
+          <div className="rounded-lg border border-red-300 bg-red-50 p-4">
+            <h4 className="font-semibold text-red-700">Import cannot continue</h4>
+            <ul className="mt-2 list-disc pl-5 text-sm text-red-700">
+              {blockingErrors.map(error => <li key={error}>{error}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {state.isEmptyResult && (
+          <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
+            The file is valid but contains no data rows to import.
+          </div>
+        )}
   
         <div className="grid gap-4 md:grid-cols-3">
   

@@ -47,7 +47,7 @@ interface RentalContextType {
     nextStatus: RentalLifecycleStatus
   ): RentalTransitionResult;
 
-  deleteRental(id: string): void;
+  deleteRental(id: string): RentalTransitionResult;
 
   returnRental(id: string): RentalTransitionResult;
 
@@ -302,8 +302,23 @@ export function RentalProvider({
   }
 
   function deleteRental(id: string) {
+    const rental = rentalRepository.getById(id);
+
+    if (!rental) {
+      return { success: false, message: "Rental not found." };
+    }
+
+    if (["Released", "Active", "Returned", "Closed"].includes(rental.status)) {
+      return {
+        success: false,
+        message: "This rental is a transaction record and cannot be deleted.",
+      };
+    }
+
     rentalRepository.delete(id);
     refreshRentals();
+
+    return { success: true };
   }
 
   function returnRental(id: string): RentalTransitionResult {

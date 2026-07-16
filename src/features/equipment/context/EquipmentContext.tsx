@@ -13,6 +13,7 @@ import type {
 import {
   equipmentRepository,
 } from "../repository";
+import { guardEquipmentDeletion } from "@/features/relationships/deletionGuards";
 
 interface EquipmentContextType {
   equipment: EquipmentRecord[];
@@ -35,7 +36,7 @@ interface EquipmentContextType {
 
   permanentlyDeleteEquipment(
     id: string
-  ): void;
+  ): { success: boolean; message?: string };
 
   getDeletedEquipment():
     EquipmentRecord[];
@@ -106,10 +107,16 @@ export function EquipmentProvider({
   function permanentlyDeleteEquipment(
     id: string
   ) {
+    const result = guardEquipmentDeletion(id);
+
+    if (!result.success) return result;
+
     equipmentRepository.permanentlyDelete(
       id
     );
     refresh();
+
+    return result;
   }
 
   function getDeletedEquipment() {
