@@ -14,7 +14,11 @@ import type { RentalContractRecord } from "../types/RentalContract";
 
 import { rentalRepository } from "../repository";
 import { rentalContractRepository } from "../repository/rentalContractRepository";
-import { getRentalTransitionError } from "../services/RentalWorkflowRules";
+import {
+  findEquipmentBlockingRental,
+  getRentalTransitionError,
+  isEquipmentBlockingRental,
+} from "../services/RentalWorkflowRules";
 import { validateNewRentalDates } from "../utils/rentalDateValidation";
 
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
@@ -109,6 +113,13 @@ export function RentalProvider({
       };
     }
 
+    if (!item.customerId?.trim() || !item.customer.trim()) {
+      return {
+        success: false,
+        message: "Select a customer before creating a rental.",
+      };
+    }
+
     if (rentalRepository.getAll().some(
       (rental) => rental.rentalNumber === item.rentalNumber
     )) {
@@ -162,6 +173,15 @@ export function RentalProvider({
       return {
         success: false,
         message: "Rental relationships must match its active assignment.",
+      };
+    }
+
+    // Re-read persisted records immediately before creating to protect against
+    // stale pages and repeated submissions.
+    if (findEquipmentBlockingRental(rentalRepository.getAll(), item.equipmentId)) {
+      return {
+        success: false,
+        message: "Equipment already has a non-final rental.",
       };
     }
 
@@ -226,6 +246,20 @@ export function RentalProvider({
       };
     }
 
+    if (isEquipmentBlockingRental({ status: nextStatus })) {
+      const blockingRental = findEquipmentBlockingRental(
+        rentalRepository.getAll(),
+        current.equipmentId,
+        current.id,
+      );
+      if (blockingRental) {
+        return {
+          success: false,
+          message: "Equipment already has a non-final rental.",
+        };
+      }
+    }
+
     const equipment = getEquipment(current.equipmentId);
 
     if (!equipment) {
@@ -261,12 +295,24 @@ export function RentalProvider({
         };
       }
 
-      updatedEquipment = {
-        ...equipment,
-        status: "Available",
-        projectId: "",
-        operatorId: "",
-      };
+      const blockingRental = findEquipmentBlockingRental(
+        rentalRepository.getAll(),
+        current.equipmentId,
+        current.id,
+      );
+      updatedEquipment = blockingRental
+        ? {
+            ...equipment,
+            status: ["Released", "Active"].includes(blockingRental.status) ? "Rented" : "Assigned",
+            projectId: blockingRental.projectId ?? equipment.projectId,
+            operatorId: blockingRental.operatorId ?? equipment.operatorId,
+          }
+        : {
+            ...equipment,
+            status: "Available",
+            projectId: "",
+            operatorId: "",
+          };
     }
 
     if (nextStatus === "Cancelled") {

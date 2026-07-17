@@ -314,4 +314,61 @@ describe("RentalProvider synchronization", () => {
     await act(async () => root.unmount());
     container.remove();
   });
+
+  it("requires a customer and prevents repeated rental submissions for the same equipment", async () => {
+    prepareCreateState("Available");
+    const { harness, root, container } = await renderHarness();
+    const { status: _status, statusId: _statusId, ...request } = rental("Draft");
+    const before = structuredClone(request);
+
+    await act(async () => {
+      expect(harness.rental.addRental({ ...request, customerId: "", customer: "" })).toMatchObject({
+        success: false,
+        message: "Select a customer before creating a rental.",
+      });
+      expect(harness.rental.addRental(request).success).toBe(true);
+      expect(harness.rental.addRental({ ...request, id: "rental-2", rentalNumber: "R-002" })).toMatchObject({
+        success: false,
+        message: "Equipment already has a non-final rental.",
+      });
+    });
+
+    expect(harness.rental.rentals).toHaveLength(1);
+    expect(request).toEqual(before);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("applies the same equipment guard to assignment-started rentals", async () => {
+    prepareCreateState("Assigned", activeAssignment);
+    const { harness, root, container } = await renderHarness();
+    const { status: _status, statusId: _statusId, ...request } = rental("Draft", activeAssignment.id);
+
+    await act(async () => {
+      expect(harness.rental.addRental(request).success).toBe(true);
+      expect(harness.rental.addRental({ ...request, id: "rental-2", rentalNumber: "R-002" })).toMatchObject({
+        success: false,
+        message: "Equipment already has a non-final rental.",
+      });
+    });
+
+    expect(harness.rental.rentals).toHaveLength(1);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("keeps equipment rented when returning a corrupted duplicate active rental", async () => {
+    prepareState("Rented", "Active");
+    storage.set(rentalKey, [rental("Active"), { ...rental("Active"), id: "rental-2", rentalNumber: "R-002" }]);
+    const { harness, root, container } = await renderHarness();
+
+    await act(async () => {
+      expect(harness.rental.returnRental("rental-1").success).toBe(true);
+    });
+
+    expect(harness.equipment.getEquipment("equipment-1")?.status).toBe("Rented");
+    expect(harness.rental.getRental("rental-2")?.status).toBe("Active");
+    await act(async () => root.unmount());
+    container.remove();
+  });
 });
