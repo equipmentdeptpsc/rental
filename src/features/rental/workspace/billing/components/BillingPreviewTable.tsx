@@ -12,13 +12,13 @@ import BillingLineRow from "./BillingLineRow";
 interface Props {
   lines: BillingPreviewLine[];
   completedDeurs?: DeurRecord[];
-  awaitingContract?: boolean;
+  rateUnavailable?: boolean;
 }
 
 export default function BillingPreviewTable({
   lines,
   completedDeurs = [],
-  awaitingContract = false,
+  rateUnavailable = false,
 }: Props) {
 
   const [billingLines, setBillingLines] =
@@ -54,9 +54,9 @@ export default function BillingPreviewTable({
       return (
         <div className="rounded-xl border bg-white p-6">
           <h2 className="text-lg font-semibold">Completed DEUR records</h2>
-          {awaitingContract && (
+          {rateUnavailable && (
             <p className="mt-1 text-sm text-slate-500">
-              A rental contract is required before billing amounts can be calculated.
+              Billing rate not configured. DEUR evidence is available, but amounts cannot be calculated yet.
             </p>
           )}
           <div className="mt-4 space-y-2 text-sm text-slate-700">
