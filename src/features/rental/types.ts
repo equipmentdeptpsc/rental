@@ -8,6 +8,28 @@ export type RentalLifecycleStatus =
   | "Closed"
   | "Cancelled";
 
+export const rentalTypes = ["Bare Rental", "Operated Rental"] as const;
+export type RentalType = typeof rentalTypes[number];
+
+export const rentalBillingMethods = [
+  "Per Hour",
+  "Per Day",
+  "Per Week",
+  "Per Trip",
+  "Per Kilometer",
+  "Per Cubic Meter",
+  "Per Lot",
+] as const;
+export type RentalBillingMethod = typeof rentalBillingMethods[number];
+
+export function isRentalType(value: unknown): value is RentalType {
+  return typeof value === "string" && rentalTypes.includes(value as RentalType);
+}
+
+export function isRentalBillingMethod(value: unknown): value is RentalBillingMethod {
+  return typeof value === "string" && rentalBillingMethods.includes(value as RentalBillingMethod);
+}
+
 export interface RentalRecord {
   id: string;
 
@@ -36,6 +58,10 @@ export interface RentalRecord {
   expectedReturn?: string;
 
   actualReturn?: string;
+
+  /** Optional for historical records created before commercial terms were captured. */
+  rentalType?: RentalType;
+  billingMethod?: RentalBillingMethod;
 
   /** Actual transaction timestamps used by the rental workspace timeline. */
   createdAt?: string;

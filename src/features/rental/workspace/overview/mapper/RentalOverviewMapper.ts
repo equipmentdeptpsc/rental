@@ -19,9 +19,9 @@ export class RentalOverviewMapper {
         projectLocation:
           aggregate.project?.location ?? "-",
 
-        rentalType: "-",
+        rentalType: aggregate.rental.rentalType ?? "Not specified",
 
-        billingMethod: "-",
+        billingMethod: aggregate.rental.billingMethod ?? "Not specified",
 
         contractStatus: aggregate.rental.status,
 

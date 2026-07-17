@@ -13,6 +13,7 @@ import {
   getRentalProjectOptions,
 } from "@/features/rental/utils/rentalFormOptions";
 import { localCalendarDate, validateNewRentalDates } from "@/features/rental/utils/rentalDateValidation";
+import { rentalBillingMethods, rentalTypes, type RentalBillingMethod, type RentalType } from "@/features/rental/types";
 
 export interface RentalFormData {
   equipmentId: string;
@@ -22,6 +23,8 @@ export interface RentalFormData {
   projectId: string;
   dateOut: string;
   expectedReturn?: string;
+  rentalType: RentalType | "";
+  billingMethod: RentalBillingMethod | "";
 }
 
 interface Props {
@@ -172,6 +175,8 @@ export default function RentalForm({
       dateOut: localCalendarDate(),
   
       expectedReturn: "",
+      rentalType: "",
+      billingMethod: "",
   
     });
 
@@ -266,6 +271,20 @@ export default function RentalForm({
         disabled={lockOperator}
         options={operatorOptions}
         onChange={(e) => update("operatorId", e.target.value)}
+      />
+
+      <Select
+        label="Rental Type"
+        value={form.rentalType}
+        options={[{ value: "", label: "Select Rental Type" }, ...rentalTypes.map((value) => ({ value, label: value }))]}
+        onChange={(e) => update("rentalType", e.target.value as RentalFormData["rentalType"])}
+      />
+
+      <Select
+        label="Billing Method"
+        value={form.billingMethod}
+        options={[{ value: "", label: "Select Billing Method" }, ...rentalBillingMethods.map((value) => ({ value, label: value }))]}
+        onChange={(e) => update("billingMethod", e.target.value as RentalFormData["billingMethod"])}
       />
 
       {lockOperator && <p className="text-sm text-slate-500">Operator is inherited from the selected assignment.</p>}

@@ -97,6 +97,10 @@ export default function NewRental() {
       
         expectedReturn:
           data.expectedReturn,
+
+        rentalType: data.rentalType || undefined,
+
+        billingMethod: data.billingMethod || undefined,
       
       };
 

@@ -70,6 +70,8 @@ describe("rental form options", () => {
       projectId: "project-1",
       dateOut: "2026-07-17",
       expectedReturn: "2026-07-18",
+      rentalType: "Operated Rental",
+      billingMethod: "Per Hour",
     };
 
     expect("status" in data).toBe(false);

@@ -16,6 +16,7 @@ import { rentalRepository } from "../repository";
 import { rentalContractRepository } from "../repository/rentalContractRepository";
 import {
   findEquipmentBlockingRental,
+  getRentalCommercialTermsError,
   getRentalTransitionError,
   isEquipmentBlockingRental,
 } from "../services/RentalWorkflowRules";
@@ -106,6 +107,8 @@ export function RentalProvider({
   function addRental(item: RentalRecord) {
     const dateError = validateNewRentalDates(item.dateOut, item.expectedReturn);
     if (dateError) return { success: false, message: dateError };
+    const commercialTermsError = getRentalCommercialTermsError(item);
+    if (commercialTermsError) return { success: false, message: commercialTermsError };
     if (!item.rentalNumber?.trim()) {
       return {
         success: false,

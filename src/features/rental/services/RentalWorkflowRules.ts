@@ -2,6 +2,21 @@ import type {
   RentalLifecycleStatus,
   RentalRecord,
 } from "../types";
+import { isRentalBillingMethod, isRentalType } from "../types";
+
+export function getRentalCommercialTermsError(
+  rental: { rentalType?: unknown; billingMethod?: unknown }
+): string | undefined {
+  if (!isRentalType(rental.rentalType)) {
+    return "Select a rental type before creating a rental.";
+  }
+
+  if (!isRentalBillingMethod(rental.billingMethod)) {
+    return "Select a billing method before creating a rental.";
+  }
+
+  return undefined;
+}
 
 const allowedTransitions: Record<
   RentalLifecycleStatus,

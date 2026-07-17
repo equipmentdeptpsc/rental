@@ -51,6 +51,8 @@ function rental(status: RentalLifecycleStatus, assignmentId?: string): RentalRec
     rentedBy: "Test User",
     dateOut: "2026-07-17",
     expectedReturn: "2026-07-18",
+    rentalType: "Operated Rental",
+    billingMethod: "Per Hour",
     statusId: "reserved",
     status,
   };

@@ -27,7 +27,19 @@ import {
         <div className="mt-6 grid gap-4 md:grid-cols-2">
   
           <div>
-  
+
+            <div className="text-sm text-slate-500">
+              Rental Billing Method
+            </div>
+
+            <div className="font-medium">
+              {aggregate.rental.billingMethod ?? "Not specified"}
+            </div>
+
+          </div>
+
+          <div>
+
             <div className="text-sm text-slate-500">
               Customer
             </div>

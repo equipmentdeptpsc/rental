@@ -46,6 +46,16 @@ export default function ContractSummaryCard({
         />
 
         <Row
+          label="Rental Type"
+          value={rental.rentalType ?? "Not specified"}
+        />
+
+        <Row
+          label="Billing Method"
+          value={rental.billingMethod ?? "Not specified"}
+        />
+
+        <Row
           label="Date Out"
           value={rental.dateOut}
         />
