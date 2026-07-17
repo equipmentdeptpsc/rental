@@ -78,7 +78,8 @@ export default function AssignmentForm({
       () =>
         projects.filter(
           (p) =>
-            !p.deleted
+            !p.deleted &&
+            p.status === "Active"
         ),
       [projects]
     );
@@ -216,7 +217,7 @@ export default function AssignmentForm({
           ...activeProjects.map(
             (p) => ({
               label:
-                p.projectName,
+                `${p.projectCode} - ${p.projectName}`,
               value: p.id,
             })
           ),

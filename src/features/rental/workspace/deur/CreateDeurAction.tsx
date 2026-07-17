@@ -1,6 +1,9 @@
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/toast/ToastContext";
-import { createDeur } from "@/features/rental/deur/services/CreateDeurService";
+import {
+  createDeur,
+  getDeurCreationError,
+} from "@/features/rental/deur/services/CreateDeurService";
 import { useRentalWorkspaceAggregate } from "..";
 
 export default function CreateDeurAction() {
@@ -9,17 +12,19 @@ export default function CreateDeurAction() {
   const hasActiveDeur = Boolean(aggregate.activeDeur);
   const equipment = aggregate.equipment;
   const operator = aggregate.operator;
+  const request = {
+    rentalId: aggregate.rental.id,
+    rentalStatus: aggregate.rental.status,
+    equipmentId: equipment?.id ?? "",
+    operatorId: operator?.id ?? "",
+    assignmentId: aggregate.assignment?.id,
+    projectId: aggregate.project?.id ?? aggregate.rental.projectId,
+    customerId: aggregate.rental.customerId,
+  } as const;
+  const eligibilityError = getDeurCreationError(request);
 
   function create() {
-    const result = createDeur({
-      rentalId: aggregate.rental.id,
-      rentalStatus: aggregate.rental.status,
-      equipmentId: equipment?.id ?? "",
-      operatorId: operator?.id ?? "",
-      assignmentId: aggregate.assignment?.id,
-      projectId: aggregate.project?.id ?? aggregate.rental.projectId,
-      customerId: aggregate.rental.customerId,
-    });
+    const result = createDeur(request);
 
     if (!result.success) {
       showToast(result.message, "error");
@@ -27,22 +32,6 @@ export default function CreateDeurAction() {
     }
 
     showToast("DEUR created successfully.", "success");
-  }
-
-  if (hasActiveDeur) {
-    return (
-      <p className="text-sm text-slate-500">
-        An active DEUR already exists for this rental.
-      </p>
-    );
-  }
-
-  if (aggregate.rental.status !== "Released") {
-    return (
-      <p className="text-sm text-slate-500">
-        A DEUR can be created after the rental is released.
-      </p>
-    );
   }
 
   return (
@@ -53,8 +42,10 @@ export default function CreateDeurAction() {
         {operator ? ` · ${operator.name}` : " · Operator required"}
         {aggregate.project ? ` · ${aggregate.project.projectCode} - ${aggregate.project.projectName}` : ""}
       </p>
-      <div className="mt-4">
-        <Button type="button" onClick={create}>Create DEUR</Button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button type="button" onClick={create} disabled={Boolean(eligibilityError)}>Create DEUR</Button>
+        {hasActiveDeur && <span className="text-sm text-slate-500">Open the existing DEUR below to continue daily operations.</span>}
+        {eligibilityError && <span className="text-sm text-slate-500">{eligibilityError}</span>}
       </div>
     </div>
   );

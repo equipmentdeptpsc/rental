@@ -70,17 +70,17 @@ describe("DEUR creation", () => {
     });
     expect(createDeur({ ...request, rentalStatus: "Cancelled" })).toEqual({
       success: false,
-      message: "Only released rentals can create a DEUR.",
+      message: "Release the rental before creating a DEUR.",
     });
     expect(createDeur({ ...request, rentalStatus: "Closed" })).toEqual({
       success: false,
-      message: "Only released rentals can create a DEUR.",
+      message: "Release the rental before creating a DEUR.",
     });
 
     expect(createDeur(request).success).toBe(true);
     expect(createDeur(request)).toEqual({
       success: false,
-      message: "This rental already has an active DEUR.",
+      message: "A DEUR already exists for this rental.",
     });
     expect(deurRepository.getAll()).toHaveLength(1);
     expect(deurRepository.getAll()[0]).not.toMatchObject({

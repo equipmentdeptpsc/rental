@@ -16,9 +16,9 @@ export type CreateDeurResult =
   | { success: true; record: DeurRecord }
   | { success: false; message: string };
 
-export function createDeur(request: CreateDeurRequest): CreateDeurResult {
-  if (request.rentalStatus !== "Released") {
-    return { success: false, message: "Only released rentals can create a DEUR." };
+export function getDeurCreationError(request: CreateDeurRequest): string | undefined {
+  if (!['Released', 'Active'].includes(request.rentalStatus)) {
+    return "Release the rental before creating a DEUR.";
   }
 
   const required: Array<[string, string | undefined]> = [
@@ -29,7 +29,7 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
   const missing = required.find(([, value]) => !value?.trim());
 
   if (missing) {
-    return { success: false, message: `Missing required ${missing[0]} relationship.` };
+    return `Missing required ${missing[0]} relationship.`;
   }
 
   const hasActiveDeur = deurRepository.getByRentalId(request.rentalId).some(
@@ -37,8 +37,15 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
   );
 
   if (hasActiveDeur) {
-    return { success: false, message: "This rental already has an active DEUR." };
+    return "A DEUR already exists for this rental.";
   }
+
+  return undefined;
+}
+
+export function createDeur(request: CreateDeurRequest): CreateDeurResult {
+  const error = getDeurCreationError(request);
+  if (error) return { success: false, message: error };
 
   const timestamp = new Date().toISOString();
   const record: DeurRecord = {

@@ -17,9 +17,9 @@ export interface ProjectRecord {
 
   projectManager: string;
 
-  startDate: string;
+  startDate?: string;
 
-  targetCompletion: string;
+  targetCompletion?: string;
 
   status: ProjectStatus;
 

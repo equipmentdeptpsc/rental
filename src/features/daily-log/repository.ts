@@ -1,22 +1,22 @@
 import type { DailyLogRecord } from "./types";
+import { storage } from "@/core/storage";
 
 const STORAGE_KEY =
   "equipment-daily-logs";
 
 function load() {
-  return JSON.parse(
-    localStorage.getItem(STORAGE_KEY) ??
-      "[]"
-  ) as DailyLogRecord[];
+  try {
+    const records = storage.get<unknown>(STORAGE_KEY);
+    return Array.isArray(records) ? records as DailyLogRecord[] : [];
+  } catch {
+    return [];
+  }
 }
 
 function save(
   records: DailyLogRecord[]
 ) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(records)
-  );
+  storage.set(STORAGE_KEY, records);
 }
 
 export const dailyLogRepository = {

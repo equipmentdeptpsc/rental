@@ -45,7 +45,7 @@ import NewMaintenance from "@/pages/Maintenance/New";
 import MaintenanceDetails from "@/pages/Maintenance/Details";
 
 // Daily Logs
-import DailyLogs from "@/pages/DailyLogs";
+import DailyLogs from "@/pages/DailyLogs/index.tsx";
 import NewDailyLog from "@/pages/DailyLogs/New";
 
 // Other Modules

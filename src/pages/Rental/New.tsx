@@ -15,7 +15,11 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { useProject } from "@/features/project/context/ProjectContext";
 
 import { generateRentalNumber } from "@/features/rental/utils/generateRentalNumber";
-import { getRentalAssignmentPrefill } from "@/features/rental/utils/rentalFormOptions";
+import {
+  getAssignmentProjectError,
+  getRentalAssignmentPrefill,
+  getRentalProjectLabel,
+} from "@/features/rental/utils/rentalFormOptions";
 
 export default function NewRental() {
   const navigate =
@@ -60,6 +64,10 @@ export default function NewRental() {
   } = useRental();
 
   const { projects } = useProject();
+  const assignmentProject = assignment
+    ? projects.find((project) => project.id === assignment.projectId)
+    : undefined;
+  const assignmentProjectError = getAssignmentProjectError(assignment, projects);
 
     const {
     showToast,
@@ -156,6 +164,8 @@ export default function NewRental() {
         initialProjectId={assignmentPrefill.projectId}
         lockEquipment={Boolean(assignment)}
         lockProject={Boolean(assignment)}
+        lockedProjectLabel={assignment ? getRentalProjectLabel(assignmentProject) : undefined}
+        initialProjectError={assignmentProjectError}
       />
 
     </div>

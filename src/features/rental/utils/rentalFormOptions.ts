@@ -20,6 +20,26 @@ export function getRentalProjectOptions(projects: ProjectRecord[]) {
     }));
 }
 
+export function getAssignmentProjectError(
+  assignment: AssignmentRecord | undefined,
+  projects: ProjectRecord[]
+): string | undefined {
+  if (!assignment) return undefined;
+  if (!assignment.projectId) return "The assignment does not have a project.";
+
+  const project = projects.find((candidate) => candidate.id === assignment.projectId);
+  if (!project || project.deleted) return "The assignment's project could not be found.";
+  if (project.status !== "Active") return "The assignment's project is inactive.";
+
+  return undefined;
+}
+
+export function getRentalProjectLabel(project: ProjectRecord | undefined): string {
+  return project
+    ? `${project.projectCode} - ${project.projectName}`
+    : "Unknown project";
+}
+
 export function selectAdminUsers(users: User[]): User[] {
   return users.filter((user) => user.role === "Admin");
 }

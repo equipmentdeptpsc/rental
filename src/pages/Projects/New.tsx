@@ -13,7 +13,7 @@ export default function NewProject() {
 
   return (
     <ProjectForm
-      initialData={{ projectCode, projectName: "", client: "", location: "", projectManager: "", startDate: "", targetCompletion: "", status: "Planning" }}
+      initialData={{ projectCode, projectName: "", client: "", location: "", projectManager: "", status: "Planning" }}
       projectCodeReadOnly
       onSubmit={(data) => {
         if (projects.some(project => project.projectCode.toLowerCase() === data.projectCode.toLowerCase())) {

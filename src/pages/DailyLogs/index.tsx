@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useDailyLog } from "@/features/daily-log";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
@@ -104,7 +105,7 @@ export default function DailyLogs() {
 
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white">
+      <ResponsiveTable><div className="min-w-max rounded-xl border bg-white">
 
         <table className="min-w-full text-sm">
 
@@ -234,7 +235,7 @@ export default function DailyLogs() {
 
         </table>
 
-      </div>
+      </div></ResponsiveTable>
 
     </div>
   );

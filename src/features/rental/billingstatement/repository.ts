@@ -10,8 +10,12 @@ const STORAGE_KEY =
 class BillingStatementRepository {
 
   getAll(): BillingStatement[] {
-
-    return storage.get<BillingStatement[]>(STORAGE_KEY) ?? [];
+    try {
+      const statements = storage.get<unknown>(STORAGE_KEY);
+      return Array.isArray(statements) ? statements as BillingStatement[] : [];
+    } catch {
+      return [];
+    }
 
   }
 

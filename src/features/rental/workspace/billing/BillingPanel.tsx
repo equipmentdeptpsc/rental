@@ -54,6 +54,17 @@ export default function BillingPanel() {
         createUnavailableMessage={wizard.hasGenerated && !wizard.preview.length ? "No billable DEUR entries exist for the selected period." : eligibilityMessage ?? "Generate valid billing lines before creating a statement."}
       />
 
+      {!canGenerate && (
+        <div className="min-w-0 rounded-xl border bg-white p-4 sm:p-6">
+          <h2 className="text-lg font-semibold">Billing prerequisites</h2>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
+            {prerequisites.filter(([valid]) => !valid).map(([, message]) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <BillingHeader
         from={wizard.from}
         to={wizard.to}

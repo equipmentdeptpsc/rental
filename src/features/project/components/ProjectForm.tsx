@@ -10,8 +10,6 @@ export interface ProjectFormData {
   client: string;
   location: string;
   projectManager: string;
-  startDate: string;
-  targetCompletion: string;
   status:
     | "Planning"
     | "Active"
@@ -39,8 +37,6 @@ export default function ProjectForm({
       client: initialData?.client ?? "",
       location: initialData?.location ?? "",
       projectManager: initialData?.projectManager ?? "",
-      startDate: initialData?.startDate ?? "",
-      targetCompletion: initialData?.targetCompletion ?? "",
       status: initialData?.status ?? "Planning",
     });
 
@@ -101,30 +97,6 @@ export default function ProjectForm({
         onChange={(e) =>
           update(
             "projectManager",
-            e.target.value
-          )
-        }
-      />
-
-      <Input
-        type="date"
-        label="Start Date"
-        value={form.startDate}
-        onChange={(e) =>
-          update(
-            "startDate",
-            e.target.value
-          )
-        }
-      />
-
-      <Input
-        type="date"
-        label="Target Completion"
-        value={form.targetCompletion}
-        onChange={(e) =>
-          update(
-            "targetCompletion",
             e.target.value
           )
         }
