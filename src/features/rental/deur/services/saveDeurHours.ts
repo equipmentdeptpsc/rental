@@ -19,6 +19,7 @@ export function saveDeurHours(id: string, operatingHours: string, idleHours: str
     status: complete ? "Pending Acknowledgement" as const : record.status,
     updatedAt: new Date().toISOString(),
   };
-  deurRepository.update(updated);
-  return { success: true, record: updated };
+  const persisted = deurRepository.update(updated);
+  if (!persisted) return { success: false, message: "DEUR could not be saved." };
+  return { success: true, record: persisted };
 }

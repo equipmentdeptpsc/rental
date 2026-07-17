@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { createElement, type ReactNode } from "react";
@@ -193,8 +193,14 @@ describe("rental lifecycle rules", () => {
 
 describe("RentalProvider synchronization", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-17T12:00:00"));
     storage.clear();
     vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("synchronizes release, return, assignment completion, audit, history, and close", async () => {
