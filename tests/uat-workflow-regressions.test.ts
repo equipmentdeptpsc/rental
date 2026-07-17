@@ -59,7 +59,7 @@ describe("UAT workflow regressions", () => {
     const data: ProjectFormData = {
       projectCode: "PRJ-000001",
       projectName: "UAT Project",
-      client: "Client",
+      customerId: "customer-1",
       location: "Site",
       projectManager: "Manager",
       status: "Planning",

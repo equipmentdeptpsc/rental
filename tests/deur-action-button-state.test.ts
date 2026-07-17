@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { getDeurActionButtonState } from "@/features/rental/deur/services/getDeurActionButtonState";
+const r:any={events:[],status:"Draft",legacy:false};
+describe("DEUR action button state",()=>{it("returns Shift start and disables primary activities before Shift",()=>{expect(getDeurActionButtonState(r,"shift").label).toBe("Start Shift");expect(getDeurActionButtonState(r,"operation").disabledReason).toBe("Start Shift first.")});it("returns end label for open activity and automatic transition indicator",()=>{const open={...r,events:[{id:"1",activityType:"shift",action:"start",timestamp:"2026-01-01T00:00:00.000Z",sequence:1,source:"user"},{id:"2",activityType:"operation",action:"start",timestamp:"2026-01-01T00:00:00.000Z",sequence:2,source:"user"}]};expect(getDeurActionButtonState(open,"operation").label).toBe("End operation");expect(getDeurActionButtonState(open,"idle").automaticTransition).toBe(true)});});

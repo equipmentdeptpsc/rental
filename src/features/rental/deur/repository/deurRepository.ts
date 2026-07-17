@@ -1,6 +1,7 @@
 import type { DeurRecord } from "../types";
 import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
 import { storage } from "@/core/storage";
+import { generateDeurNumber, normalizeDeur } from "../services/canonicalDeur";
 
 const STORAGE_KEY = "equipment-rental-deur";
 
@@ -8,7 +9,12 @@ class DeurRepository {
 
   getAll(): DeurRecord[] {
 
-    return storage.get<DeurRecord[]>(STORAGE_KEY) ?? [];
+    try {
+      const records = storage.get<unknown>(STORAGE_KEY);
+      return Array.isArray(records) ? records.map((record) => normalizeDeur(record as DeurRecord)) : [];
+    } catch {
+      return [];
+    }
 
   }
 
@@ -33,10 +39,12 @@ class DeurRepository {
     const all =
       this.getAll();
 
-    all.push(record);
+    const created = normalizeDeur({ ...record, deurNumber: record.deurNumber ?? generateDeurNumber(all) });
+    all.push(created);
 
     this.saveAll(all);
     notifyRentalWorkspaceChange(record.rentalId);
+    return created;
 
   }
 

@@ -5,9 +5,12 @@ import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import ProjectStats from "@/features/project/components/ProjectStats";
 import { useProject } from "@/features/project/context/ProjectContext";
+import { useCustomer } from "@/features/customer/context/CustomerContext";
+import { getProjectCustomerLabel } from "@/features/project/services/projectCustomerService";
 
 export default function ProjectPage() {
   const { projects } = useProject();
+  const { customers } = useCustomer();
 
   return (
     <div className="space-y-8 p-8">
@@ -86,7 +89,7 @@ export default function ProjectPage() {
                 </td>
 
                 <td className="p-3">
-                  {project.client}
+                  {getProjectCustomerLabel(project, customers)}
                 </td>
 
                 <td className="p-3">

@@ -9,6 +9,8 @@ export type DeurActivityType =
 
 export type DeurStatus =
   | "Draft"
+  | "In Progress"
+  | "Submitted"
   | "Pending Acknowledgement"
   | "Acknowledged"
   | "Rejected"
@@ -31,6 +33,8 @@ export interface DeurActivityLog {
 export interface DeurRecord {
   id: string;
 
+  deurNumber?: string;
+
   rentalId: string;
 
   assignmentId?: string;
@@ -44,6 +48,18 @@ export interface DeurRecord {
   customerId?: string;
 
   workDate: string;
+
+  reportDate?: string;
+
+  events?: CanonicalDeurEvent[];
+
+  totals?: DeurTotals;
+
+  legacy?: boolean;
+
+  submittedAt?: string;
+
+  submittedBy?: string;
 
   shift?: "Day" | "Night";
 
@@ -73,9 +89,17 @@ export interface DeurRecord {
 
   acknowledgedBy?: string;
 
+  acknowledgedByUserId?: string;
+
   acknowledgedAt?: string;
 
   acknowledgementRemarks?: string;
+
+  rejectedAt?: string;
+
+  rejectedBy?: string;
+
+  rejectionReason?: string;
 
   billId?: string;
 
@@ -92,4 +116,29 @@ export interface DeurRecord {
   createdAt: string;
 
   updatedAt: string;
+}
+
+export type DeurActivityTypeCanonical = "shift" | "operation" | "idle" | "mealBreak";
+export type DeurEventAction = "start" | "end";
+
+export interface CanonicalDeurEvent {
+  id: string;
+  activityType: DeurActivityTypeCanonical;
+  action: DeurEventAction;
+  timestamp: string;
+  sequence: number;
+  source: "user" | "automatic" | "legacy";
+  actionGroupId?: string;
+  logicalActionId?: string;
+  actorId?: string;
+  actorName?: string;
+  createdOffline?: boolean;
+  localCreatedAt?: string;
+}
+
+export interface DeurTotals {
+  shiftMinutes: number;
+  operationMinutes: number;
+  idleMinutes: number;
+  mealBreakMinutes: number;
 }

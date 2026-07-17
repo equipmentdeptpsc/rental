@@ -217,7 +217,7 @@ export default function AssignmentDetails() {
       <div className="flex flex-wrap gap-3">
 
         <Link
-          to={`/rentals/new?assignment=${assignment.id}`}
+          to={`/rentals/new?assignment=${encodeURIComponent(assignment.id)}`}
         >
           <Button>
             Start Rental

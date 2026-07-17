@@ -70,6 +70,6 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
     updatedAt: timestamp,
   };
 
-  deurRepository.create(record);
-  return { success: true, record };
+  const persisted = deurRepository.create(record);
+  return { success: true, record: persisted };
 }

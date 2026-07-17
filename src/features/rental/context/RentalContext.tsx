@@ -155,9 +155,9 @@ export function RentalProvider({
     }
 
     if (assignment && (
+      assignment.status !== "Active" ||
       assignment.equipmentId !== item.equipmentId ||
-      assignment.operatorId !== item.operatorId ||
-      assignment.projectId !== item.projectId
+      assignment.operatorId !== item.operatorId
     )) {
       return {
         success: false,

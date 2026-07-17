@@ -18,8 +18,8 @@ import { generateRentalNumber } from "@/features/rental/utils/generateRentalNumb
 import {
   getAssignmentProjectError,
   getRentalAssignmentPrefill,
-  getRentalProjectLabel,
 } from "@/features/rental/utils/rentalFormOptions";
+import { resolveAssignmentRentalLookup } from "@/features/rental/utils/assignmentRentalLookup";
 
 export default function NewRental() {
   const navigate =
@@ -28,10 +28,7 @@ export default function NewRental() {
   const [searchParams] =
     useSearchParams();
 
-  const assignmentId =
-    searchParams.get(
-      "assignment"
-    );
+  const assignmentQuery = searchParams.get("assignment");
 
   const equipmentParam =
     searchParams.get(
@@ -42,14 +39,8 @@ export default function NewRental() {
     assignments,
   } = useAssignment();
 
-  const assignment =
-    assignmentId
-      ? assignments.find(
-          (a) =>
-            a.id ===
-            assignmentId
-        )
-      : undefined;
+  const assignmentLookup = resolveAssignmentRentalLookup(assignmentQuery, assignments);
+  const assignment = assignmentLookup.state === "found" ? assignmentLookup.assignment : undefined;
 
   const initialEquipmentId =
     assignment?.equipmentId ??
@@ -64,9 +55,6 @@ export default function NewRental() {
   } = useRental();
 
   const { projects } = useProject();
-  const assignmentProject = assignment
-    ? projects.find((project) => project.id === assignment.projectId)
-    : undefined;
   const assignmentProjectError = getAssignmentProjectError(assignment, projects);
 
     const {
@@ -153,7 +141,7 @@ export default function NewRental() {
 
       </div>
 
-      <RentalForm
+      {assignmentLookup.state === "loading" ? <p className="text-slate-500">Loading assignment…</p> : "message" in assignmentLookup ? <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{assignmentLookup.message}</p> : <RentalForm
         onSubmit={
           handleSubmit
         }
@@ -163,10 +151,8 @@ export default function NewRental() {
         }
         initialProjectId={assignmentPrefill.projectId}
         lockEquipment={Boolean(assignment)}
-        lockProject={Boolean(assignment)}
-        lockedProjectLabel={assignment ? getRentalProjectLabel(assignmentProject) : undefined}
-        initialProjectError={assignmentProjectError}
-      />
+        initialProjectWarning={assignmentProjectError}
+      />}
 
     </div>
   );

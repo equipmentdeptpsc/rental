@@ -11,7 +11,9 @@ export interface ProjectRecord {
 
   projectName: string;
 
-  client: string;
+  client?: string;
+
+  customerId?: string;
 
   location: string;
 

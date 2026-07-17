@@ -3,11 +3,14 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import { Link } from "react-router-dom";
+import { useCustomer } from "@/features/customer/context/CustomerContext";
+import { getProjectCustomerOptions, validateProjectCustomer } from "../services/projectCustomerService";
 
 export interface ProjectFormData {
   projectCode: string;
   projectName: string;
-  client: string;
+  customerId: string;
   location: string;
   projectManager: string;
   status:
@@ -34,11 +37,15 @@ export default function ProjectForm({
     useState<ProjectFormData>({
       projectCode: initialData?.projectCode ?? "",
       projectName: initialData?.projectName ?? "",
-      client: initialData?.client ?? "",
+      customerId: initialData?.customerId ?? "",
       location: initialData?.location ?? "",
       projectManager: initialData?.projectManager ?? "",
       status: initialData?.status ?? "Planning",
     });
+
+  const { customers } = useCustomer();
+  const customerOptions = getProjectCustomerOptions(customers);
+  const [customerError, setCustomerError] = useState("");
 
   function update<K extends keyof ProjectFormData>(
     key: K,
@@ -55,6 +62,9 @@ export default function ProjectForm({
       className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
+        const error = validateProjectCustomer(form.customerId, customers);
+        setCustomerError(error ?? "");
+        if (error) return;
         onSubmit(form);
       }}
     >
@@ -75,13 +85,15 @@ export default function ProjectForm({
         }
       />
 
-      <Input
-        label="Client"
-        value={form.client}
-        onChange={(e) =>
-          update("client", e.target.value)
-        }
+      <Select
+        label="Customer"
+        value={form.customerId}
+        options={[{ value: "", label: customerOptions.length ? "Select Customer" : "No active customers available" }, ...customerOptions]}
+        error={customerError}
+        onChange={(e) => update("customerId", e.target.value)}
       />
+
+      {!customerOptions.length && <p className="text-sm text-slate-500">Create an active customer before creating a project. <Link className="text-blue-600 underline" to="/customers/new">Create Customer</Link></p>}
 
       <Input
         label="Location"

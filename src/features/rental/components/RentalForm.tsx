@@ -31,11 +31,7 @@ interface Props {
 
   lockEquipment?: boolean;
 
-  lockProject?: boolean;
-
-  lockedProjectLabel?: string;
-
-  initialProjectError?: string;
+  initialProjectWarning?: string;
 }
 
 export default function RentalForm({
@@ -43,9 +39,7 @@ export default function RentalForm({
   initialEquipmentId,
   initialProjectId,
   lockEquipment = false,
-  lockProject = false,
-  lockedProjectLabel,
-  initialProjectError,
+  initialProjectWarning,
 }: Props) {
   const { equipment } =
     useEquipment();
@@ -191,11 +185,6 @@ export default function RentalForm({
         e.preventDefault();
         if (isSubmitting) return;
 
-        if (initialProjectError) {
-          window.alert(initialProjectError);
-          return;
-        }
-
         const dateError = validateNewRentalDates(form.dateOut, form.expectedReturn);
         if (dateError) {
           window.alert(dateError);
@@ -244,24 +233,14 @@ export default function RentalForm({
         }
       />
 
-      {lockProject ? (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-700">Project</p>
-          <p className={`rounded-lg border px-4 py-3 ${initialProjectError ? "border-red-300 bg-red-50 text-red-700" : "border-slate-300 bg-slate-50 text-slate-700"}`}>
-            {initialProjectError ?? lockedProjectLabel ?? "Unknown project"}
-          </p>
-          <p className="text-sm text-slate-500">
-            Project is inherited from the selected assignment to preserve its relationships.
-          </p>
-        </div>
-      ) : (
-        <Select
+      <Select
           label="Project"
           value={form.projectId}
           options={projectOptions}
           onChange={(e) => update("projectId", e.target.value)}
-        />
-      )}
+      />
+
+      {initialProjectWarning && <p className="text-sm text-amber-700">The assignment’s project is unavailable or inactive. Select another active project.</p>}
 
       {projectOptions.length === 1 && (
         <p className="text-sm text-slate-500">
