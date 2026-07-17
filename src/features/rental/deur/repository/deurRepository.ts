@@ -2,6 +2,7 @@ import type { DeurRecord } from "../types";
 import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
 import { storage } from "@/core/storage";
 import { generateDeurNumber, normalizeDeur } from "../services/canonicalDeur";
+import { submitDeur, acknowledgeDeur, rejectDeur, reopenDeur } from "../services/reviewLifecycle";
 
 const STORAGE_KEY = "equipment-rental-deur";
 
@@ -60,6 +61,20 @@ class DeurRepository {
     this.saveAll(updated);
     notifyRentalWorkspaceChange(record.rentalId);
 
+  }
+
+  submit(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => submitDeur(record, actor)); }
+  acknowledge(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => acknowledgeDeur(record, actor)); }
+  reject(id: string, actor: { name: string; id?: string }, reason: string) { return this.review(id, (record) => rejectDeur(record, actor, reason)); }
+  reopen(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => reopenDeur(record, actor)); }
+
+  private review(id: string, operation: (record: DeurRecord) => { success: true; record: DeurRecord } | { success: false; message: string }) {
+    const record = this.getById(id);
+    if (!record) return { success: false as const, message: "DEUR not found." };
+    const result = operation(record);
+    if (!result.success) return result;
+    this.update(result.record);
+    return { success: true as const, record: this.getById(id)! };
   }
 
   delete(id: string) {

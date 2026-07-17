@@ -99,7 +99,11 @@ export interface DeurRecord {
 
   rejectedBy?: string;
 
+  rejectedByUserId?: string;
+
   rejectionReason?: string;
+
+  reviewHistory?: DeurReviewHistoryEntry[];
 
   billId?: string;
 
@@ -142,3 +146,5 @@ export interface DeurTotals {
   idleMinutes: number;
   mealBreakMinutes: number;
 }
+
+export interface DeurReviewHistoryEntry { action: "submitted" | "acknowledged" | "rejected" | "reopened"; actorName: string; actorId?: string; timestamp: string; reason?: string; }
