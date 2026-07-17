@@ -91,6 +91,10 @@ export function createBillingStatement(
 
       line => ({
 
+        id:
+          (line as BillingPreviewLine & { id?: string }).id ??
+          line.deurId,
+
         deurId:
           line.deurId,
 

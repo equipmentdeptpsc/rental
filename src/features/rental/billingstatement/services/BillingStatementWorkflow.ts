@@ -6,6 +6,7 @@ import type { BillingPreviewLine } from "@/features/rental/workspace/billing/typ
 import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
 import { evaluateDeurBillingEligibility, type DeurBillingEligibilityResult } from "@/features/rental/deur/billing/evaluateDeurBillingEligibility";
 import type { DeurRecord } from "@/features/rental/deur/types";
+import { calculateDeurBillingStatementLine } from "./calculateDeurBillingStatementLine";
 
 type Result =
   | { success: true; statement: BillingStatement }
@@ -22,7 +23,6 @@ export interface SingleDeurBillingStatementInput {
   aggregate: RentalAggregate;
   billingFrom: string;
   billingTo: string;
-  line: BillingPreviewLine;
 }
 
 export interface ConsumeDeurIntoBillingStatementCommand {
@@ -35,7 +35,7 @@ export type ConsumeDeurIntoBillingStatementResult =
   | { success: true; code: "SUCCESS"; statement: BillingStatement; deur: DeurRecord; idempotent: boolean }
   | {
     success: false;
-    code: "DEUR_NOT_FOUND" | "INVALID_COMMAND" | "STALE_DEUR" | "ELIGIBILITY_REJECTED" | "DUPLICATE_CONSUMPTION" | "STATEMENT_CREATION_FAILED" | "DEUR_UPDATE_FAILED" | "COMPENSATION_FAILED";
+    code: "DEUR_NOT_FOUND" | "INVALID_COMMAND" | "STALE_DEUR" | "ELIGIBILITY_REJECTED" | "DUPLICATE_CONSUMPTION" | "CALCULATION_FAILED" | "STATEMENT_CREATION_FAILED" | "DEUR_UPDATE_FAILED" | "COMPENSATION_FAILED";
     message: string;
     eligibility?: DeurBillingEligibilityResult;
     statementId?: string;
@@ -154,19 +154,16 @@ export function consumeDeurIntoBillingStatement(
     return failure("DUPLICATE_CONSUMPTION", "The DEUR is already associated with billing.");
   }
 
-  const { aggregate, billingFrom, billingTo, line } = command.statementInput;
+  const { aggregate, billingFrom, billingTo } = command.statementInput;
   if (
     !isObject(aggregate)
     || !isNonBlankString(aggregate.rental?.id)
     || !isNonBlankString(aggregate.contract?.billingMethod)
     || !isNonBlankString(billingFrom)
     || !isNonBlankString(billingTo)
-    || !isObject(line)
-    || !isNonBlankString(line.deurId)
     || aggregate.rental.id !== deur.rentalId
-    || line.deurId !== deur.id
   ) {
-    return failure("INVALID_COMMAND", "Billing statement input does not match the DEUR rental and line identity.");
+    return failure("INVALID_COMMAND", "Billing statement input does not match the DEUR rental.");
   }
 
   const eligibility = evaluateDeurBillingEligibility({ deur, billingMethod: aggregate.contract.billingMethod });
@@ -174,9 +171,14 @@ export function consumeDeurIntoBillingStatement(
     return failure("ELIGIBILITY_REJECTED", eligibility.reason, { eligibility });
   }
 
+  const calculatedLine = calculateDeurBillingStatementLine(deur, aggregate.contract);
+  if (!calculatedLine.success) {
+    return failure("CALCULATION_FAILED", calculatedLine.message);
+  }
+
   let statement: BillingStatement;
   try {
-    const creation = createBillingStatementForRental(aggregate, billingFrom, billingTo, [line], statements);
+    const creation = createBillingStatementForRental(aggregate, billingFrom, billingTo, [calculatedLine.line], statements);
     if (!creation.success) {
       return failure("STATEMENT_CREATION_FAILED", creation.message);
     }

@@ -13,6 +13,9 @@ export type BillingInvoiceStatus =
 
 export interface BillingStatementLine {
 
+  /** Stable identity for newly calculated canonical statement lines. */
+  id?: string;
+
   deurId: string;
 
   workDate: string;

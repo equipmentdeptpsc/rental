@@ -4,7 +4,6 @@ import { consumeDeurIntoBillingStatement, type BillingStatementWorkflowDependenc
 import type { RentalAggregate } from "@/features/rental/aggregate";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
-import type { BillingPreviewLine } from "@/features/rental/workspace/billing/types";
 
 function aggregate(): RentalAggregate {
   return {
@@ -36,7 +35,7 @@ function command(overrides: Partial<ConsumeDeurIntoBillingStatementCommand> = {}
   return {
     deurId: "deur-1",
     expectedDeurUpdatedAt: "2026-01-02T03:00:00.000Z",
-    statementInput: { aggregate: aggregate(), billingFrom: "2026-01-01", billingTo: "2026-01-31", line: { deurId: "deur-1", workDate: "2026-01-02", operator: "operator-1", operatingHours: 1, actualHours: 1, billingMethod: "Per Hour", costCode: "", description: "Equipment Rental", hourlyRate: 100, amount: 100 } },
+    statementInput: { aggregate: aggregate(), billingFrom: "2026-01-01", billingTo: "2026-01-31" },
     ...overrides,
   };
 }
@@ -59,7 +58,7 @@ describe("DEUR billing statement consumption", () => {
 
     expect(result).toMatchObject({ success: true, code: "SUCCESS", idempotent: false, statement: { rentalId: "rental-1", lines: [{ deurId: "deur-1" }] }, deur: { billingLocked: true } });
     if (!result.success) return;
-    expect(result.statement.lines).toHaveLength(1);
+    expect(result.statement.lines).toEqual([expect.objectContaining({ id: "deur-1", deurId: "deur-1", hours: 1, hourlyRate: 100, amount: 100 })]);
     expect(result.deur.billingStatementId).toBe(result.statement.id);
     expect(billingStatementRepository.getById(result.statement.id)?.lines).toHaveLength(1);
     expect(deurRepository.getById(source.id)).toMatchObject({ billingLocked: true, billingStatementId: result.statement.id });
@@ -70,6 +69,43 @@ describe("DEUR billing statement consumption", () => {
     vi.resetModules();
     const { deurRepository: reloadedDeurs } = await import("@/features/rental/deur/repository/deurRepository");
     expect(reloadedDeurs.getById(source.id)?.billingStatementId).toBe(result.statement.id);
+  });
+
+  it("ignores caller-supplied calculated values and persists canonical event-derived evidence", async () => {
+    const [{ deurRepository }, { billingStatementRepository }] = await Promise.all([
+      import("@/features/rental/deur/repository/deurRepository"),
+      import("@/features/rental/billingstatement/repository"),
+    ]);
+    deurRepository.create(acknowledgedDeur());
+    const input = command({
+      statementInput: {
+        ...command().statementInput,
+        line: { id: "other", deurId: "other-deur", operatingHours: 999, hourlyRate: 999, amount: 999 },
+      } as unknown as ConsumeDeurIntoBillingStatementCommand["statementInput"],
+    });
+
+    const result = consumeDeurIntoBillingStatement(input);
+
+    expect(result).toMatchObject({ success: true, statement: { lines: [
+      { id: "deur-1", deurId: "deur-1", hours: 1, hourlyRate: 100, amount: 100 },
+    ] } });
+    expect(billingStatementRepository.getAll()).toHaveLength(1);
+  });
+
+  it("does not create a statement or update the DEUR when canonical calculation fails", async () => {
+    const [{ deurRepository }, { billingStatementRepository }] = await Promise.all([
+      import("@/features/rental/deur/repository/deurRepository"),
+      import("@/features/rental/billingstatement/repository"),
+    ]);
+    deurRepository.create(acknowledgedDeur());
+    const invalidAggregate = aggregate();
+    invalidAggregate.contract = { ...invalidAggregate.contract!, unitRate: Number.NaN };
+
+    expect(consumeDeurIntoBillingStatement(command({
+      statementInput: { ...command().statementInput, aggregate: invalidAggregate },
+    }))).toMatchObject({ success: false, code: "CALCULATION_FAILED" });
+    expect(billingStatementRepository.getAll()).toEqual([]);
+    expect(deurRepository.getById("deur-1")?.billingLocked).toBeUndefined();
   });
 
   it("rejects eligibility failures without creating a statement or changing the DEUR", async () => {
@@ -97,9 +133,8 @@ describe("DEUR billing statement consumption", () => {
 
   it.each([
     ["a mismatched rental", () => command({ statementInput: { ...command().statementInput, aggregate: { ...aggregate(), rental: { ...aggregate().rental, id: "other-rental" } } } })],
-    ["a conflicting DEUR line", () => command({ statementInput: { ...command().statementInput, line: { ...command().statementInput.line, deurId: "other-deur" } } })],
     ["a malformed runtime command", () => ({ deurId: 12, statementInput: null } as unknown as ConsumeDeurIntoBillingStatementCommand)],
-    ["a non-single-line runtime value", () => command({ statementInput: { ...command().statementInput, billingFrom: "   ", line: [] as unknown as BillingPreviewLine } })],
+    ["a blank billing period", () => command({ statementInput: { ...command().statementInput, billingFrom: "   " } })],
   ])("rejects %s without writes", async (_name, buildInvalidCommand) => {
     const [{ deurRepository }, { billingStatementRepository }] = await Promise.all([
       import("@/features/rental/deur/repository/deurRepository"),
