@@ -70,11 +70,11 @@ describe("DEUR creation", () => {
     });
     expect(createDeur({ ...request, rentalStatus: "Cancelled" })).toEqual({
       success: false,
-      message: "Release the rental before creating a DEUR.",
+      message: "Cancelled rentals cannot create new DEUR records.",
     });
     expect(createDeur({ ...request, rentalStatus: "Closed" })).toEqual({
       success: false,
-      message: "Release the rental before creating a DEUR.",
+      message: "Closed rentals cannot create new DEUR records.",
     });
 
     expect(createDeur(request).success).toBe(true);

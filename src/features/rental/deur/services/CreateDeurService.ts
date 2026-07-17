@@ -18,6 +18,18 @@ export type CreateDeurResult =
 
 export function getDeurCreationError(request: CreateDeurRequest): string | undefined {
   if (!['Released', 'Active'].includes(request.rentalStatus)) {
+    if (request.rentalStatus === "Returned") {
+      return "Returned rentals cannot create new DEUR records.";
+    }
+
+    if (request.rentalStatus === "Closed") {
+      return "Closed rentals cannot create new DEUR records.";
+    }
+
+    if (request.rentalStatus === "Cancelled") {
+      return "Cancelled rentals cannot create new DEUR records.";
+    }
+
     return "Release the rental before creating a DEUR.";
   }
 
