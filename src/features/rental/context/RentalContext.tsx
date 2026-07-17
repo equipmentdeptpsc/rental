@@ -507,7 +507,7 @@ export function RentalProvider({
       deleteContract,
       getContract,
     }),
-    [rentals, contracts]
+    [rentals, contracts, getAssignment]
   );
 
   return (

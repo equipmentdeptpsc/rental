@@ -16,7 +16,7 @@ export function resolveAssignmentRentalLookup(value: string | null, assignments:
   if (!id) return { state: "malformed", message: "The assignment link is invalid." };
   if (!assignments.length) return { state: "loading" };
   const assignment = assignments.find((item) => item.id === id);
-  if (!assignment) return { state: "missing", message: "The selected assignment could not be found." };
+  if (!assignment || assignment.deleted) return { state: "missing", message: "The selected assignment could not be found." };
   if (assignment.status !== "Active") return { state: "ineligible", message: "The selected assignment is no longer eligible." };
   return { state: "found", assignment };
 }

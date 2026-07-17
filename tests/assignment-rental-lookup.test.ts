@@ -17,6 +17,7 @@ describe("assignment rental lookup", () => {
     expect(resolveAssignmentRentalLookup("assignment-1", []).state).toBe("loading");
     expect(resolveAssignmentRentalLookup("equipment-1", [assignment()]).state).toBe("missing");
     expect(resolveAssignmentRentalLookup("assignment-1", [assignment("assignment-1", "Completed")]).state).toBe("ineligible");
+    expect(resolveAssignmentRentalLookup("assignment-1", [{ ...assignment(), deleted: true }]).state).toBe("missing");
   });
 
   it("builds an encoded assignment ID link without substituting equipment ID", () => {

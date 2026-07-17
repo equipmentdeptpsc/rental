@@ -378,6 +378,31 @@ describe("RentalProvider synchronization", () => {
     container.remove();
   });
 
+  it("uses a newly loaded assignment when saving an assignment-started rental", async () => {
+    prepareCreateState("Assigned");
+    const { harness, root, container } = await renderHarness();
+    const { status: _status, statusId: _statusId, ...request } = rental("Draft", activeAssignment.id);
+    const before = structuredClone(request);
+
+    await act(async () => {
+      expect(harness.assignment.addAssignment(activeAssignment)).toBe(true);
+    });
+
+    await act(async () => {
+      expect(harness.rental.addRental(request)).toMatchObject({ success: true });
+    });
+
+    expect(harness.rental.getRental("rental-1")).toMatchObject({
+      assignmentId: activeAssignment.id,
+      equipmentId: activeAssignment.equipmentId,
+      operatorId: activeAssignment.operatorId,
+      projectId: activeAssignment.projectId,
+    });
+    expect(request).toEqual(before);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it("keeps equipment rented when returning a corrupted duplicate active rental", async () => {
     prepareState("Rented", "Active");
     storage.set(rentalKey, [rental("Active"), { ...rental("Active"), id: "rental-2", rentalNumber: "R-002" }]);
