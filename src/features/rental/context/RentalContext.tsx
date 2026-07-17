@@ -17,6 +17,8 @@ import { rentalContractRepository } from "../repository/rentalContractRepository
 import {
   findEquipmentBlockingRental,
   getRentalCommercialTermsError,
+  validateRentalBillingTerms,
+  normalizeRentalBillingTermsInput,
   getRentalTransitionError,
   isEquipmentBlockingRental,
 } from "../services/RentalWorkflowRules";
@@ -109,6 +111,12 @@ export function RentalProvider({
     if (dateError) return { success: false, message: dateError };
     const commercialTermsError = getRentalCommercialTermsError(item);
     if (commercialTermsError) return { success: false, message: commercialTermsError };
+    if (item.billingTerms || item.transactionRelationship) {
+      const normalized = normalizeRentalBillingTermsInput(item);
+      if (!normalized.valid) return { success: false, message: normalized.message };
+      const terms = validateRentalBillingTerms({ ...item, billingTerms: normalized.value, transactionRelationship: normalized.transactionRelationship });
+      if (!terms.valid) return { success: false, message: terms.message };
+    }
     if (!item.rentalNumber?.trim()) {
       return {
         success: false,

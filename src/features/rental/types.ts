@@ -22,6 +22,23 @@ export const rentalBillingMethods = [
 ] as const;
 export type RentalBillingMethod = typeof rentalBillingMethods[number];
 
+export type VatApplicability = "Applicable" | "Not Applicable";
+export type TransactionRelationship = "Affiliate" | "Non-Affiliate";
+
+/** Serializable rental-level commercial inputs. Rental type and method remain on RentalRecord. */
+export interface RentalBillingTerms {
+  unitRate?: number;
+  minimumBillableHours?: number;
+  overtimeRate?: number;
+  standbyRate?: number;
+  mobilizationFee?: number;
+  demobilizationFee?: number;
+  fuelCharge?: number;
+  operatorRate?: number;
+  vatApplicability?: VatApplicability;
+  withholdingTax?: number;
+}
+
 export function isRentalType(value: unknown): value is RentalType {
   return typeof value === "string" && rentalTypes.includes(value as RentalType);
 }
@@ -62,6 +79,8 @@ export interface RentalRecord {
   /** Optional for historical records created before commercial terms were captured. */
   rentalType?: RentalType;
   billingMethod?: RentalBillingMethod;
+  transactionRelationship?: TransactionRelationship;
+  billingTerms?: RentalBillingTerms;
 
   /** Actual transaction timestamps used by the rental workspace timeline. */
   createdAt?: string;
