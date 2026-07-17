@@ -19,8 +19,10 @@ import type {
         </h3>
   
         <div>
-  
-        {events.map((event, index) => (
+
+        {events.length === 0 ? (
+          <p className="text-sm text-slate-500">No recorded rental transactions.</p>
+        ) : events.map((event, index) => (
   <TimelineItem
     key={event.id}
     event={event}

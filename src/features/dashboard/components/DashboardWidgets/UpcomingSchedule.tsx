@@ -20,16 +20,16 @@ import type {
       rentals
         .filter(
           (item) =>
-            item.status ===
-            "Active"
+            item.status === "Active" &&
+            Boolean(item.expectedReturn)
         )
         .sort(
           (a, b) =>
             new Date(
-              a.expectedReturn
+              a.expectedReturn!
             ).getTime() -
             new Date(
-              b.expectedReturn
+              b.expectedReturn!
             ).getTime()
         )
         .slice(0, 5);

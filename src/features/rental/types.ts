@@ -32,9 +32,19 @@ export interface RentalRecord {
 
   dateOut: string;
 
-  expectedReturn: string;
+  /** Optional for long-term rentals without a planned return date. */
+  expectedReturn?: string;
 
   actualReturn?: string;
+
+  /** Actual transaction timestamps used by the rental workspace timeline. */
+  createdAt?: string;
+  reservedAt?: string;
+  releasedAt?: string;
+  activatedAt?: string;
+  returnedAt?: string;
+  closedAt?: string;
+  cancelledAt?: string;
 
   remarks?: string;
 
@@ -46,7 +56,7 @@ export interface RentalRecord {
 export function isOverdue(
   rental: RentalRecord
 ) {
-  if (
+  if (!rental.expectedReturn ||
     rental.status === "Returned" ||
     rental.status === "Closed"
   ) {

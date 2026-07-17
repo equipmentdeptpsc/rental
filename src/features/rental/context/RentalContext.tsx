@@ -182,6 +182,8 @@ export function RentalProvider({
 
     const created: RentalRecord = {
       ...item,
+      expectedReturn: item.expectedReturn || undefined,
+      createdAt: new Date().toISOString(),
       status: "Draft",
       statusId: "",
     };
@@ -287,12 +289,26 @@ export function RentalProvider({
           };
     }
 
+    const timestamp = new Date().toISOString();
+    const transitionTimestamp: Partial<Record<RentalLifecycleStatus, keyof Pick<RentalRecord,
+      "reservedAt" | "releasedAt" | "activatedAt" | "returnedAt" | "closedAt" | "cancelledAt"
+    >>> = {
+      Reserved: "reservedAt",
+      Released: "releasedAt",
+      Active: "activatedAt",
+      Returned: "returnedAt",
+      Closed: "closedAt",
+      Cancelled: "cancelledAt",
+    } as const;
+    const timestampField = transitionTimestamp[nextStatus];
+
     const updated: RentalRecord = {
       ...current,
       status: nextStatus,
+      ...(timestampField ? { [timestampField]: timestamp } : {}),
       actualReturn:
         nextStatus === "Returned"
-          ? new Date().toISOString().split("T")[0]
+          ? timestamp.split("T")[0]
           : current.actualReturn,
     };
 

@@ -55,7 +55,8 @@ import {
             value={
               assignment?.expectedReturn ??
               aggregate.rental
-                .expectedReturn
+                .expectedReturn ??
+              "Not specified"
             }
           />
   

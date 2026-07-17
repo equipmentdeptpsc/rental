@@ -101,8 +101,9 @@ function next7Days() {
 }
 
 function isWithinNext7Days(
-  value: string
+  value: string | undefined
 ) {
+  if (!value) return false;
   const start = today();
 
   start.setHours(
@@ -199,10 +200,7 @@ export function calculateDashboardSummary(
 
     overdueRentals:
       activeRentals.filter(
-        (r) =>
-          new Date(
-            r.expectedReturn
-          ) < today()
+        (r) => Boolean(r.expectedReturn) && new Date(r.expectedReturn!) < today()
       ).length,
 
     scheduledMaintenance:
@@ -229,9 +227,7 @@ export function calculateDashboardSummary(
     upcomingReturns:
       activeRentals.filter(
         (r) =>
-          isWithinNext7Days(
-            r.expectedReturn
-          )
+          isWithinNext7Days(r.expectedReturn)
       ).length,
   };
 }
@@ -349,19 +345,15 @@ export function getUpcomingReturns(
   return rentals
     .filter(
       (r) =>
-        r.status ===
-          "Active" &&
-        isWithinNext7Days(
-          r.expectedReturn
-        )
+        r.status === "Active" && isWithinNext7Days(r.expectedReturn)
     )
     .sort(
       (a, b) =>
         new Date(
-          a.expectedReturn
+          a.expectedReturn!
         ).getTime() -
         new Date(
-          b.expectedReturn
+          b.expectedReturn!
         ).getTime()
     );
 }
@@ -453,11 +445,7 @@ function buildAlerts(
   rentals
     .filter(
       (r) =>
-        r.status ===
-          "Active" &&
-        new Date(
-          r.expectedReturn
-        ) < today()
+        r.status === "Active" && Boolean(r.expectedReturn) && new Date(r.expectedReturn!) < today()
     )
     .forEach((item) => {
       alerts.push({
@@ -583,9 +571,7 @@ export function buildDashboardAnalytics(
   const overdueRentals =
     activeRentals.filter(
       (r) =>
-        new Date(
-          r.expectedReturn
-        ) < today()
+        Boolean(r.expectedReturn) && new Date(r.expectedReturn!) < today()
     );
 
   const maintenanceDue =

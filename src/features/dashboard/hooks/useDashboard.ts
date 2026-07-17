@@ -32,7 +32,7 @@ export function useDashboard() {
 
     const overdueRentals =
       rentals.filter((r) => {
-        if (r.status !== "Active") return false;
+        if (r.status !== "Active" || !r.expectedReturn) return false;
 
         return (
           new Date(r.expectedReturn) <

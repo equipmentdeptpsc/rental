@@ -28,7 +28,7 @@ export class RentalOverviewMapper {
         contractStart: aggregate.rental.dateOut,
 
         contractEnd:
-          aggregate.rental.expectedReturn,
+          aggregate.rental.expectedReturn ?? "Not specified",
 
         totalDays: 0,
 

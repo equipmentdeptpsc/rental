@@ -19,7 +19,7 @@ export interface RentalFormData {
   customer: string;
   projectId: string;
   dateOut: string;
-  expectedReturn: string;
+  expectedReturn?: string;
 }
 
 interface Props {
@@ -192,7 +192,7 @@ export default function RentalForm({
         }
 
         setIsSubmitting(true);
-        onSubmit(form);
+        onSubmit({ ...form, expectedReturn: form.expectedReturn || undefined });
         setIsSubmitting(false);
       }}
     >
@@ -268,7 +268,7 @@ export default function RentalForm({
         label="Expected Return"
         min={form.dateOut || localCalendarDate()}
         value={
-          form.expectedReturn
+          form.expectedReturn ?? ""
         }
         onChange={(e) =>
           update(

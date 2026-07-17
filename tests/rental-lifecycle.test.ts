@@ -295,4 +295,23 @@ describe("RentalProvider synchronization", () => {
     await act(async () => second.root.unmount());
     second.container.remove();
   });
+
+  it("creates a long-term rental without an expected return and records actual creation and reservation timestamps", async () => {
+    prepareCreateState("Assigned", activeAssignment);
+    const { harness, root, container } = await renderHarness();
+    const { status: _status, statusId: _statusId, expectedReturn: _expectedReturn, ...request } = rental("Draft", activeAssignment.id);
+
+    await act(async () => {
+      expect(harness.rental.addRental(request).success).toBe(true);
+    });
+
+    expect(harness.rental.getRental("rental-1")).toMatchObject({
+      expectedReturn: undefined,
+      status: "Reserved",
+    });
+    expect(harness.rental.getRental("rental-1")?.createdAt).toBeTruthy();
+    expect(harness.rental.getRental("rental-1")?.reservedAt).toBeTruthy();
+    await act(async () => root.unmount());
+    container.remove();
+  });
 });

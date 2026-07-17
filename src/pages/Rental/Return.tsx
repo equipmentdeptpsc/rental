@@ -61,7 +61,7 @@ export default function ReturnRental() {
         <Detail label="Customer" value={rental.customer} />
         <Detail label="Project" value={rental.project || "-"} />
         <Detail label="Rental status" value={rental.status} />
-        <Detail label="Expected return" value={rental.expectedReturn} />
+        <Detail label="Expected return" value={rental.expectedReturn ?? "Not specified"} />
       </div>
 
       <div className="flex gap-3">

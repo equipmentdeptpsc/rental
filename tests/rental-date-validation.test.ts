@@ -12,6 +12,7 @@ describe("new rental date validation", () => {
   });
 
   it("accepts today, equal return dates, and valid future ranges", () => {
+    expect(validateNewRentalDates("2026-07-17", undefined, "2026-07-17")).toBeUndefined();
     expect(validateNewRentalDates("2026-07-17", "2026-07-17", "2026-07-17")).toBeUndefined();
     expect(validateNewRentalDates("2026-07-18", "2026-07-20", "2026-07-17")).toBeUndefined();
   });

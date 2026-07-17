@@ -33,9 +33,7 @@ export default function RentalKPICards({
 
   const dateOut = new Date(rental.dateOut);
 
-  const expected = new Date(
-    rental.expectedReturn
-  );
+  const expected = rental.expectedReturn ? new Date(rental.expectedReturn) : undefined;
 
   const daysOnRent =
     Math.max(
@@ -47,12 +45,9 @@ export default function RentalKPICards({
       )
     );
 
-  const remainingDays =
-    Math.ceil(
-      (expected.getTime() -
-        today.getTime()) /
-        86400000
-    );
+  const remainingDays = expected
+    ? Math.ceil((expected.getTime() - today.getTime()) / 86400000)
+    : undefined;
 
   return (
     <div className="grid gap-4 md:grid-cols-4">
@@ -69,7 +64,7 @@ export default function RentalKPICards({
 
       <Card
         title="Remaining Days"
-        value={remainingDays.toString()}
+        value={remainingDays?.toString() ?? "Not specified"}
       />
 
       <Card

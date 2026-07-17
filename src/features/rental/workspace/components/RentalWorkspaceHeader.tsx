@@ -65,7 +65,7 @@ export default function RentalWorkspaceHeader() {
         <Info
           label="Expected Return"
           value={
-            aggregate.rental.expectedReturn
+            aggregate.rental.expectedReturn ?? "Not specified"
           }
         />
 

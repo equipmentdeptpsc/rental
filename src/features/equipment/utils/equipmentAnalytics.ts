@@ -28,7 +28,8 @@ export function getFleetAnalytics(
   const overdueRentals = rentals.filter(
     (r) =>
       r.status === "Active" &&
-      new Date(r.expectedReturn) < new Date()
+      Boolean(r.expectedReturn) &&
+      new Date(r.expectedReturn!) < new Date()
   ).length;
 
   const utilization =

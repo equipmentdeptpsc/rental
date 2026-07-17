@@ -1,121 +1,29 @@
 import type { RentalAggregate } from "@/features/rental/aggregate";
-
 import type { TimelineEvent } from "./types";
 
-export function buildTimeline(
-  aggregate: RentalAggregate
-): TimelineEvent[] {
+/** Builds the workspace timeline from persisted rental transactions only. */
+export function buildTimeline(aggregate: RentalAggregate): TimelineEvent[] {
+  const rental = aggregate.rental;
   const events: TimelineEvent[] = [];
-
-  //
-  // Rental Created
-  //
-  events.push({
-    id: "rental",
-
-    type: "rental",
-
-    title: "Rental Created",
-
-    description:
-      `${aggregate.rental.customer} • ${aggregate.rental.project}`,
-
-    date: aggregate.rental.dateOut,
-
-    completed: true,
-  });
-
-  //
-  // Equipment Assignment
-  //
-  if (aggregate.assignment) {
+  const addRecordedEvent = (id: string, title: string, date: string | undefined) => {
+    if (!date?.trim() || !Number.isFinite(Date.parse(date))) return;
     events.push({
-      id: "assignment",
-
-      type: "assignment",
-
-      title: "Equipment Assigned",
-
-      description:
-        aggregate.equipment?.equipmentName ??
-        "Equipment assigned",
-
-      date:
-        aggregate.assignment.assignedDate,
-
+      id,
+      type: "rental",
+      title,
+      description: `${rental.customer} • ${rental.project}`,
+      date,
       completed: true,
     });
-  }
+  };
 
-  //
-  // Operator Assignment
-  //
-  if (aggregate.operator) {
-    events.push({
-      id: "operator",
+  addRecordedEvent("rental-created", "Rental Created", rental.createdAt);
+  addRecordedEvent("rental-reserved", "Reserved", rental.reservedAt);
+  addRecordedEvent("rental-released", "Released", rental.releasedAt);
+  addRecordedEvent("rental-activated", "Activated", rental.activatedAt);
+  addRecordedEvent("rental-returned", "Returned", rental.returnedAt ?? rental.actualReturn);
+  addRecordedEvent("rental-closed", "Closed", rental.closedAt);
+  addRecordedEvent("rental-cancelled", "Cancelled", rental.cancelledAt);
 
-      type: "operator",
-
-      title: "Operator Assigned",
-
-      description:
-        aggregate.operator.name,
-
-      date:
-        aggregate.assignment?.assignedDate ??
-        "",
-
-      completed: true,
-    });
-  }
-
-  //
-  // DEUR History
-  //
-  for (const deur of aggregate.deurs) {
-    for (const log of deur.logs) {
-      events.push({
-        id: log.id,
-
-        type: "deur",
-
-        title: log.activity,
-
-        description:
-          log.remarks ??
-          "Daily Equipment Utilization Record",
-
-        date: log.startTime,
-
-        completed: Boolean(log.endTime),
-      });
-    }
-  }
-
-  //
-  // Expected Return
-  //
-  events.push({
-    id: "return",
-
-    type: "return",
-
-    title: "Expected Return",
-
-    description:
-      "Scheduled completion",
-
-    date:
-      aggregate.rental.expectedReturn,
-
-    completed:
-      aggregate.rental.status ===
-      "Returned",
-  });
-
-  return events.sort(
-    (a, b) =>
-      new Date(a.date).getTime() -
-      new Date(b.date).getTime()
-  );
+  return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
