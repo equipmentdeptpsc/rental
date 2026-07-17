@@ -4,15 +4,20 @@ import ResponsiveTable from "@/components/ui/ResponsiveTable";
 import type {
   BillingPreviewLine,
 } from "../types";
+import type { DeurRecord } from "@/features/rental/deur/types";
 
 import BillingLineRow from "./BillingLineRow";
 
 interface Props {
   lines: BillingPreviewLine[];
+  completedDeurs?: DeurRecord[];
+  awaitingContract?: boolean;
 }
 
 export default function BillingPreviewTable({
   lines,
+  completedDeurs = [],
+  awaitingContract = false,
 }: Props) {
 
   const [billingLines, setBillingLines] =
@@ -44,6 +49,28 @@ export default function BillingPreviewTable({
   if (
     billingLines.length === 0
   ) {
+    if (completedDeurs.length > 0) {
+      return (
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-lg font-semibold">Completed DEUR records</h2>
+          {awaitingContract && (
+            <p className="mt-1 text-sm text-slate-500">
+              A rental contract is required before billing amounts can be calculated.
+            </p>
+          )}
+          <div className="mt-4 space-y-2 text-sm text-slate-700">
+            {completedDeurs.map((deur) => (
+              <div key={deur.id} className="flex flex-wrap justify-between gap-2 rounded border p-3">
+                <span>{deur.workDate}</span>
+                <span>Operating: {deur.totalOperatingMinutes / 60} h</span>
+                <span>Idle: {deur.totalIdleMinutes / 60} h</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-xl border bg-white p-6 text-center text-slate-500">
 

@@ -72,6 +72,8 @@ export default function BillingPanel() {
 
       <BillingPreviewTable
         lines={wizard.preview}
+        completedDeurs={wizard.completedDeurs}
+        awaitingContract={!aggregate.contract}
       />
 
       <div className="grid min-w-0 gap-5 md:grid-cols-3">

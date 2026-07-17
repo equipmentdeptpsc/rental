@@ -21,18 +21,7 @@ export function buildBillingPreview(
   to: string
 ): BillingPreviewLine[] {
 
-  return deurs
-
-    .filter(
-      deur =>
-        !deur.billingLocked && Boolean(deur.endOfDay)
-    )
-
-    .filter(
-      deur =>
-        deur.workDate >= from &&
-        deur.workDate <= to
-    )
+  return getCompletedDeursForBillingPeriod(deurs, from, to)
 
     .map(deur => {
 
@@ -77,4 +66,18 @@ export function buildBillingPreview(
 
     });
 
+}
+
+export function getCompletedDeursForBillingPeriod(
+  deurs: DeurRecord[],
+  from: string,
+  to: string
+): DeurRecord[] {
+  return deurs.filter(
+    deur =>
+      !deur.billingLocked &&
+      Boolean(deur.endOfDay) &&
+      deur.workDate >= from &&
+      deur.workDate <= to
+  );
 }

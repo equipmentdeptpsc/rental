@@ -5,11 +5,8 @@ import {
 } from "..";
 
 import {
-  deurRepository,
-} from "@/features/rental/deur/repository/deurRepository";
-
-import {
   buildBillingPreview,
+  getCompletedDeursForBillingPeriod,
 } from "./BillingPreviewBuilder";
 
 import { createBillingStatementForRental } from "@/features/rental/billingstatement/services/BillingStatementWorkflow";
@@ -35,6 +32,16 @@ export function useBillingWizard() {
   const [generated, setGenerated] =
     useState(false);
 
+  const completedDeurs =
+    useMemo(
+      () => getCompletedDeursForBillingPeriod(
+        aggregate.deurs,
+        from,
+        to
+      ),
+      [aggregate.deurs, from, to]
+    );
+
     const preview =
     useMemo(() => {
   
@@ -49,23 +56,19 @@ export function useBillingWizard() {
         return [];
       }
   
-      const deurs =
-        deurRepository.getByRentalId(
-          aggregate.rental.id
-        );
-  
       return buildBillingPreview(
-        deurs,
+        completedDeurs,
         contract,
         from,
         to
       );
   
     }, [
-      aggregate,
+      aggregate.contract,
       from,
       to,
       generated,
+      completedDeurs,
     ]);
 
   function generate() {
@@ -104,6 +107,8 @@ export function useBillingWizard() {
     setTo,
 
     preview,
+
+    completedDeurs,
 
     hasGenerated: generated,
 
