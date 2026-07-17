@@ -36,6 +36,9 @@ export function buildBillingPreview(
         deurId:
           deur.id,
 
+        deurReference:
+          getDeurPreviewReference(deur),
+
         workDate:
           deur.workDate,
 
@@ -80,4 +83,8 @@ export function getCompletedDeursForBillingPeriod(
       deur.workDate >= from &&
       deur.workDate <= to
   );
+}
+
+export function getDeurPreviewReference(deur: DeurRecord): string {
+  return deur.deurNumber?.trim() || deur.id;
 }

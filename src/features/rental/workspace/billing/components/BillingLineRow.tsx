@@ -33,6 +33,10 @@ import type {
   
     return (
       <tr>
+
+        <td className="px-3 py-2">
+          {line.deurReference ?? line.deurId}
+        </td>
   
         <td className="px-3 py-2">
           {line.workDate}

@@ -21,6 +21,8 @@ export interface BillingSummary {
 export interface BillingPreviewLine {
   deurId: string;
 
+  deurReference?: string;
+
   workDate: string;
 
   operator: string;

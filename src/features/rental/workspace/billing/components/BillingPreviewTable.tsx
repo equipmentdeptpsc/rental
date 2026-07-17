@@ -5,6 +5,7 @@ import type {
   BillingPreviewLine,
 } from "../types";
 import type { DeurRecord } from "@/features/rental/deur/types";
+import { getDeurPreviewReference } from "../BillingPreviewBuilder";
 
 import BillingLineRow from "./BillingLineRow";
 
@@ -61,6 +62,7 @@ export default function BillingPreviewTable({
           <div className="mt-4 space-y-2 text-sm text-slate-700">
             {completedDeurs.map((deur) => (
               <div key={deur.id} className="flex flex-wrap justify-between gap-2 rounded border p-3">
+                <span>DEUR: {getDeurPreviewReference(deur)}</span>
                 <span>{deur.workDate}</span>
                 <span>Operating: {deur.totalOperatingMinutes / 60} h</span>
                 <span>Idle: {deur.totalIdleMinutes / 60} h</span>
@@ -88,6 +90,10 @@ export default function BillingPreviewTable({
         <thead className="bg-slate-100">
 
           <tr>
+
+            <th className="px-3 py-3 text-left">
+              DEUR
+            </th>
 
             <th className="px-3 py-3 text-left">
               Date
@@ -140,7 +146,7 @@ export default function BillingPreviewTable({
           <tr>
 
             <td
-              colSpan={5}
+              colSpan={6}
               className="px-3 py-3 text-right font-semibold"
             >
               Subtotal

@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { storage } from "@/core/storage";
 import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
 import { saveDeurHours } from "@/features/rental/deur/services/saveDeurHours";
-import { getCompletedDeursForBillingPeriod } from "@/features/rental/workspace/billing/BillingPreviewBuilder";
+import {
+  getCompletedDeursForBillingPeriod,
+  getDeurPreviewReference,
+} from "@/features/rental/workspace/billing/BillingPreviewBuilder";
 
 const record = () => ({
   id: "deur-1",
@@ -46,6 +49,29 @@ describe("completed DEUR billing preview discovery", () => {
       totalIdleMinutes: 60,
       endOfDay: expect.any(String),
     });
+    expect(getDeurPreviewReference(discovered[0])).toBe("DEUR-000001");
+  });
+
+  it("keeps two different completed DEURs as separate, stably identified preview rows", () => {
+    deurRepository.create(record());
+    saveDeurHours("deur-1", "5", "1", "2026-07-17", true);
+    deurRepository.create({
+      ...record(),
+      id: "deur-2",
+      deurNumber: "DEUR-000002",
+      endOfDay: "2026-07-17T17:00:00.000Z",
+      status: "Pending Acknowledgement",
+    });
+
+    const discovered = getCompletedDeursForBillingPeriod(
+      deurRepository.getByRentalId("rental-1"),
+      "2026-07-01",
+      "2026-07-31"
+    );
+
+    expect(discovered).toHaveLength(2);
+    expect(discovered.map(getDeurPreviewReference)).toEqual(["DEUR-000001", "DEUR-000002"]);
+    expect(getDeurPreviewReference({ ...record(), id: "canonical-id", deurNumber: "   " })).toBe("canonical-id");
   });
 
   it("includes and excludes completed DEURs strictly by persisted workDate", () => {
