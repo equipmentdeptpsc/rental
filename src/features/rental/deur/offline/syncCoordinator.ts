@@ -1,0 +1,2 @@
+import { deurSyncQueue } from "./deurSyncQueue"; import type { DeurSyncTransport } from "./deurSyncTransport";
+export async function processDeurSyncQueue(transport:DeurSyncTransport){let processed=0;while(true){const item=deurSyncQueue.peek();if(!item)return{processed};deurSyncQueue.markSyncing(item.id);const result=await transport.push(item);if(result.success){deurSyncQueue.markSynced(item.id);processed++}else if(result.conflict)deurSyncQueue.markConflict(item.id,result.error);else deurSyncQueue.markFailed(item.id,result.error);if(!result.success) return{processed};}}

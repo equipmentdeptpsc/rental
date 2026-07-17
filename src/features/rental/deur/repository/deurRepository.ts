@@ -3,6 +3,8 @@ import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspa
 import { storage } from "@/core/storage";
 import { generateDeurNumber, normalizeDeur } from "../services/canonicalDeur";
 import { submitDeur, acknowledgeDeur, rejectDeur, reopenDeur } from "../services/reviewLifecycle";
+import { deurSyncQueue } from "../offline/deurSyncQueue";
+import type { DeurQueueOperation } from "../offline/types";
 
 const STORAGE_KEY = "equipment-rental-deur";
 
@@ -43,13 +45,13 @@ class DeurRepository {
     const created = normalizeDeur({ ...record, deurNumber: record.deurNumber ?? generateDeurNumber(all) });
     all.push(created);
 
-    this.saveAll(all);
-    notifyRentalWorkspaceChange(record.rentalId);
-    return created;
+    return this.persistMutation(all, created, "create", created);
 
   }
 
   update(record: DeurRecord) {
+
+    if (!this.getById(record.id)) return undefined;
 
     const updated =
       this.getAll().map(x =>
@@ -58,32 +60,30 @@ class DeurRepository {
           : x
       );
 
-    this.saveAll(updated);
-    notifyRentalWorkspaceChange(record.rentalId);
+    return this.persistMutation(updated, record, "update", record);
 
   }
 
-  submit(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => submitDeur(record, actor)); }
-  acknowledge(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => acknowledgeDeur(record, actor)); }
-  reject(id: string, actor: { name: string; id?: string }, reason: string) { return this.review(id, (record) => rejectDeur(record, actor, reason)); }
-  reopen(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => reopenDeur(record, actor)); }
+  submit(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => submitDeur(record, actor), "submit"); }
+  acknowledge(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => acknowledgeDeur(record, actor), "acknowledge"); }
+  reject(id: string, actor: { name: string; id?: string }, reason: string) { return this.review(id, (record) => rejectDeur(record, actor, reason), "reject"); }
+  reopen(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => reopenDeur(record, actor), "reopen"); }
 
-  private review(id: string, operation: (record: DeurRecord) => { success: true; record: DeurRecord } | { success: false; message: string }) {
+  private review(id: string, operation: (record: DeurRecord) => { success: true; record: DeurRecord } | { success: false; message: string }, queueOperation: DeurQueueOperation) {
     const record = this.getById(id);
     if (!record) return { success: false as const, message: "DEUR not found." };
     const result = operation(record);
     if (!result.success) return result;
-    this.update(result.record);
-    return { success: true as const, record: this.getById(id)! };
+    const records = this.getAll().map((item) => item.id === id ? result.record : item);
+    return { success: true as const, record: this.persistMutation(records, result.record, queueOperation, result.record) };
   }
 
   delete(id: string) {
 
-    this.saveAll(
-      this.getAll().filter(
-        x => x.id !== id
-      )
-    );
+    const deleted = this.getById(id);
+    if (!deleted) return undefined;
+    this.persistMutation(this.getAll().filter(x => x.id !== id), deleted, "delete", { id: deleted.id });
+    return deleted;
 
   }
 
@@ -157,6 +157,14 @@ class DeurRepository {
 
     storage.set(STORAGE_KEY, records);
 
+  }
+
+  private persistMutation(records: DeurRecord[], record: DeurRecord, operation: DeurQueueOperation, payload: unknown) {
+    const normalized = normalizeDeur(record);
+    this.saveAll(records.map((item) => item.id === normalized.id ? normalized : item));
+    deurSyncQueue.enqueue({ id: crypto.randomUUID(), aggregateId: normalized.id, aggregateType: "DEUR", operation, payload, createdAt: new Date().toISOString() });
+    notifyRentalWorkspaceChange(normalized.rentalId);
+    return normalized;
   }
 
 }
