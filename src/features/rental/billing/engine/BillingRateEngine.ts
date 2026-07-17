@@ -3,17 +3,14 @@ import type {
 } from "@/features/rental/deur";
 
 import type {
-  RentalContractRecord,
-} from "@/features/rental/types/RentalContract";
-
-import type {
   BillingChargeResult,
 } from "./BillingChargeResult";
+import type { BillingCalculationTerms } from "./BillingCalculationTerms";
 
 export class BillingRateEngine {
   static calculate(
     deur: DeurRecord,
-    contract: RentalContractRecord
+    terms: BillingCalculationTerms
   ): BillingChargeResult {
 
     let operatingHours =
@@ -32,23 +29,23 @@ export class BillingRateEngine {
     // Minimum Billable Hours
     //
     if (
-      contract.minimumBillableHours &&
+      terms.minimumBillableHours &&
       operatingHours <
-        contract.minimumBillableHours
+        terms.minimumBillableHours
     ) {
       operatingHours =
-        contract.minimumBillableHours;
+        terms.minimumBillableHours;
     }
 
     const unitRate =
-      contract.unitRate;
+      terms.unitRate;
 
     //
     // Operating Charge
     //
     let operatingCharge = 0;
 
-    switch (contract.billingMethod) {
+    switch (terms.billingMethod) {
 
       case "Per Hour":
         operatingCharge =
@@ -77,7 +74,7 @@ export class BillingRateEngine {
 
       case "One Lot":
         operatingCharge =
-          contract.contractAmount ??
+          terms.contractAmount ??
           unitRate;
         break;
     }
@@ -87,33 +84,33 @@ export class BillingRateEngine {
     //
     const idleCharge =
       idleHours *
-      (contract.standbyRate ?? 0);
+      (terms.standbyRate ?? 0);
 
     //
     // Mobilization
     //
     const mobilizationCharge =
-      contract.mobilizationFee ?? 0;
+      terms.mobilizationFee ?? 0;
 
     //
     // Demobilization
     //
     const demobilizationCharge =
-      contract.demobilizationFee ?? 0;
+      terms.demobilizationFee ?? 0;
 
     //
     // Operator
     //
     const operatorCharge =
-      contract.operatorIncluded
+      terms.operatorIncluded
         ? 0
-        : (contract.operatorRate ?? 0);
+        : (terms.operatorRate ?? 0);
 
     //
     // Fuel
     //
     const fuelCharge =
-      contract.fuelCharge ?? 0;
+      terms.fuelCharge ?? 0;
 
     //
     // Subtotal
@@ -131,14 +128,14 @@ export class BillingRateEngine {
     //
     const vat =
       subtotal *
-      ((contract.taxRate ?? 0) / 100);
+      ((terms.taxRate ?? 0) / 100);
 
     //
     // Withholding Tax
     //
     const withholdingTax =
       subtotal *
-      ((contract.withholdingTax ?? 0) / 100);
+      ((terms.withholdingTax ?? 0) / 100);
 
     //
     // Grand Total

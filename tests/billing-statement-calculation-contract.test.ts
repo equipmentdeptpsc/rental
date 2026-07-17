@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateDeurBillingStatementLine } from "@/features/rental/billingstatement/services/calculateDeurBillingStatementLine";
+import { mapRentalContractToBillingCalculationTerms } from "@/features/rental/billing/engine";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { BillingMethod, RentalContractRecord } from "@/features/rental/types/RentalContract";
 
@@ -31,7 +32,7 @@ describe("billing statement calculation contract", () => {
   it("maps canonical hourly event totals through BillingRateEngine into one stable statement line", () => {
     const source = deur();
     const original = structuredClone(source);
-    const result = calculateDeurBillingStatementLine(source, contract());
+    const result = calculateDeurBillingStatementLine(source, mapRentalContractToBillingCalculationTerms(contract()));
 
     expect(result).toMatchObject({ success: true, line: { id: "deur-1", deurId: "deur-1", operatingHours: 2, actualHours: 2, hourlyRate: 100, amount: 200 } });
     expect(source).toEqual(original);
@@ -46,18 +47,18 @@ describe("billing statement calculation contract", () => {
   ] as const)("maps %s using the existing engine contract", (billingMethod, expectedAmount) => {
     const result = calculateDeurBillingStatementLine(
       deur(),
-      contract(billingMethod, billingMethod === "One Lot" ? { contractAmount: 450 } : {}),
+      mapRentalContractToBillingCalculationTerms(contract(billingMethod, billingMethod === "One Lot" ? { contractAmount: 450 } : {})),
     );
 
     expect(result).toMatchObject({ success: true, line: { billingMethod, amount: expectedAmount } });
   });
 
   it("rejects unsupported methods and unsafe runtime numeric inputs", () => {
-    expect(calculateDeurBillingStatementLine(deur(), contract("Unknown" as BillingMethod))).toMatchObject({ success: false, code: "INVALID_BILLING_METHOD" });
-    expect(calculateDeurBillingStatementLine(deur(), contract("Per Hour", { unitRate: Number.NaN }))).toMatchObject({ success: false, code: "INVALID_NUMERIC_INPUT" });
-    expect(calculateDeurBillingStatementLine(deur(), contract("Per Hour", { standbyRate: Number.POSITIVE_INFINITY }))).toMatchObject({ success: false, code: "INVALID_NUMERIC_INPUT" });
-    expect(calculateDeurBillingStatementLine(deur({ totalMobilizationMinutes: -1 }), contract())).toMatchObject({ success: false, code: "INVALID_NUMERIC_INPUT" });
-    expect(calculateDeurBillingStatementLine(deur({ id: "   " }), contract())).toMatchObject({ success: false, code: "INVALID_DEUR_TOTALS" });
+    expect(calculateDeurBillingStatementLine(deur(), mapRentalContractToBillingCalculationTerms(contract("Unknown" as BillingMethod)))).toMatchObject({ success: false, code: "INVALID_BILLING_METHOD" });
+    expect(calculateDeurBillingStatementLine(deur(), mapRentalContractToBillingCalculationTerms(contract("Per Hour", { unitRate: Number.NaN })))).toMatchObject({ success: false, code: "INVALID_NUMERIC_INPUT" });
+    expect(calculateDeurBillingStatementLine(deur(), mapRentalContractToBillingCalculationTerms(contract("Per Hour", { standbyRate: Number.POSITIVE_INFINITY })))).toMatchObject({ success: false, code: "INVALID_NUMERIC_INPUT" });
+    expect(calculateDeurBillingStatementLine(deur({ totalMobilizationMinutes: -1 }), mapRentalContractToBillingCalculationTerms(contract()))).toMatchObject({ success: false, code: "INVALID_NUMERIC_INPUT" });
+    expect(calculateDeurBillingStatementLine(deur({ id: "   " }), mapRentalContractToBillingCalculationTerms(contract()))).toMatchObject({ success: false, code: "INVALID_DEUR_TOTALS" });
   });
 
   it("handles zero canonical duration deterministically without synthetic amounts", () => {
@@ -65,13 +66,13 @@ describe("billing statement calculation contract", () => {
       { id: "s", activityType: "shift", action: "start", timestamp: "2026-01-02T00:00:00.000Z", sequence: 1, source: "user" },
       { id: "e", activityType: "shift", action: "end", timestamp: "2026-01-02T00:00:00.000Z", sequence: 2, source: "user" },
     ] });
-    const result = calculateDeurBillingStatementLine(zero, contract());
+    const result = calculateDeurBillingStatementLine(zero, mapRentalContractToBillingCalculationTerms(contract()));
     expect(result).toMatchObject({ success: true, line: { operatingHours: 0, amount: 0 } });
   });
 
   it("returns deterministic serializable calculated evidence without mutating inputs", () => {
     const source = deur();
-    const terms = contract("Per Hour", { standbyRate: 10, taxRate: 12 });
+    const terms = mapRentalContractToBillingCalculationTerms(contract("Per Hour", { standbyRate: 10, taxRate: 12 }));
     const first = calculateDeurBillingStatementLine(source, terms);
     const second = calculateDeurBillingStatementLine(source, terms);
 

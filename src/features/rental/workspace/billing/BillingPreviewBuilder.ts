@@ -1,5 +1,6 @@
 import {
   BillingRateEngine,
+  mapRentalContractToBillingCalculationTerms,
 } from "@/features/rental/billing/engine";
 
 import type {
@@ -20,6 +21,7 @@ export function buildBillingPreview(
   from: string,
   to: string
 ): BillingPreviewLine[] {
+  const terms = mapRentalContractToBillingCalculationTerms(contract);
 
   return getCompletedDeursForBillingPeriod(deurs, from, to)
 
@@ -28,7 +30,7 @@ export function buildBillingPreview(
       const charges =
         BillingRateEngine.calculate(
           deur,
-          contract
+          terms
         );
 
       return {

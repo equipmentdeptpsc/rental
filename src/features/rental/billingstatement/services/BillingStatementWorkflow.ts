@@ -7,6 +7,7 @@ import { deurRepository } from "@/features/rental/deur/repository/deurRepository
 import { evaluateDeurBillingEligibility, type DeurBillingEligibilityResult } from "@/features/rental/deur/billing/evaluateDeurBillingEligibility";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import { calculateDeurBillingStatementLine } from "./calculateDeurBillingStatementLine";
+import { mapRentalContractToBillingCalculationTerms } from "@/features/rental/billing/engine";
 
 type Result =
   | { success: true; statement: BillingStatement }
@@ -171,7 +172,10 @@ export function consumeDeurIntoBillingStatement(
     return failure("ELIGIBILITY_REJECTED", eligibility.reason, { eligibility });
   }
 
-  const calculatedLine = calculateDeurBillingStatementLine(deur, aggregate.contract);
+  const calculatedLine = calculateDeurBillingStatementLine(
+    deur,
+    mapRentalContractToBillingCalculationTerms(aggregate.contract),
+  );
   if (!calculatedLine.success) {
     return failure("CALCULATION_FAILED", calculatedLine.message);
   }
