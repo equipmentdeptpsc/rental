@@ -339,6 +339,26 @@ describe("RentalProvider synchronization", () => {
     container.remove();
   });
 
+  it("requires an operator for manual rentals and persists a selected operator", async () => {
+    prepareCreateState("Available");
+    const { harness, root, container } = await renderHarness();
+    const { status: _status, statusId: _statusId, ...request } = rental("Draft");
+    const before = structuredClone(request);
+
+    await act(async () => {
+      expect(harness.rental.addRental({ ...request, operatorId: "" })).toMatchObject({
+        success: false,
+        message: "Select an operator before creating a rental.",
+      });
+      expect(harness.rental.addRental(request).success).toBe(true);
+    });
+
+    expect(harness.rental.getRental("rental-1")?.operatorId).toBe("operator-1");
+    expect(request).toEqual(before);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it("applies the same equipment guard to assignment-started rentals", async () => {
     prepareCreateState("Assigned", activeAssignment);
     const { harness, root, container } = await renderHarness();
@@ -353,6 +373,7 @@ describe("RentalProvider synchronization", () => {
     });
 
     expect(harness.rental.rentals).toHaveLength(1);
+    expect(harness.rental.getRental("rental-1")?.operatorId).toBe(activeAssignment.operatorId);
     await act(async () => root.unmount());
     container.remove();
   });

@@ -80,7 +80,7 @@ export default function NewRental() {
 
         projectId: data.projectId,
 
-        operatorId: assignmentPrefill.operatorId,
+        operatorId: data.operatorId,
 
         assignmentId: assignmentPrefill.assignmentId,
       
@@ -150,7 +150,9 @@ export default function NewRental() {
           undefined
         }
         initialProjectId={assignmentPrefill.projectId}
+        initialOperatorId={assignmentPrefill.operatorId}
         lockEquipment={Boolean(assignment)}
+        lockOperator={Boolean(assignment)}
         initialProjectWarning={assignmentProjectError}
       />}
 

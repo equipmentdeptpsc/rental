@@ -151,7 +151,14 @@ export function RentalProvider({
       };
     }
 
-    if (item.operatorId && !operators.some((operator) => operator.id === item.operatorId)) {
+    if (!item.operatorId?.trim()) {
+      return {
+        success: false,
+        message: "Select an operator before creating a rental.",
+      };
+    }
+
+    if (!operators.some((operator) => operator.id === item.operatorId)) {
       return {
         success: false,
         message: "Selected operator was not found.",

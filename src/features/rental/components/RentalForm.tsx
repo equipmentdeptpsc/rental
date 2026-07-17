@@ -7,6 +7,7 @@ import Select from "@/components/ui/Select";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
 import { useProject } from "@/features/project/context/ProjectContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
 import {
   getRentalEquipmentLabel,
   getRentalProjectOptions,
@@ -17,6 +18,7 @@ export interface RentalFormData {
   equipmentId: string;
   customerId: string;
   customer: string;
+  operatorId: string;
   projectId: string;
   dateOut: string;
   expectedReturn?: string;
@@ -29,7 +31,11 @@ interface Props {
 
   initialProjectId?: string;
 
+  initialOperatorId?: string;
+
   lockEquipment?: boolean;
+
+  lockOperator?: boolean;
 
   initialProjectWarning?: string;
 }
@@ -38,7 +44,9 @@ export default function RentalForm({
   onSubmit,
   initialEquipmentId,
   initialProjectId,
+  initialOperatorId,
   lockEquipment = false,
+  lockOperator = false,
   initialProjectWarning,
 }: Props) {
   const { equipment } =
@@ -48,6 +56,7 @@ export default function RentalForm({
     useCustomer();
 
   const { projects } = useProject();
+  const { operators } = useOperator();
 
     const availableEquipment =
     useMemo(() => {
@@ -139,6 +148,15 @@ export default function RentalForm({
     [projects]
   );
 
+  const operatorOptions = useMemo(() => {
+    const available = operators.filter((operator) => operator.status === "Active");
+    const selected = initialOperatorId ? operators.find((operator) => operator.id === initialOperatorId) : undefined;
+    const choices = selected && !available.some((operator) => operator.id === selected.id)
+      ? [selected, ...available]
+      : available;
+    return [{ value: "", label: "Select Operator" }, ...choices.map((operator) => ({ value: operator.id, label: operator.name }))];
+  }, [initialOperatorId, operators]);
+
   const [form, setForm] =
     useState<RentalFormData>({
       equipmentId:
@@ -148,6 +166,7 @@ export default function RentalForm({
       customerId: "",
   
       customer: "",
+      operatorId: initialOperatorId ?? "",
   
       projectId: initialProjectId ?? "",
       dateOut: localCalendarDate(),
@@ -163,8 +182,9 @@ export default function RentalForm({
       ...prev,
       equipmentId: initialEquipmentId ?? prev.equipmentId,
       projectId: initialProjectId && !prev.projectId ? initialProjectId : prev.projectId,
+      operatorId: initialOperatorId ?? prev.operatorId,
     }));
-  }, [initialEquipmentId, initialProjectId]);
+  }, [initialEquipmentId, initialProjectId, initialOperatorId]);
 
   function update<
     K extends keyof RentalFormData
@@ -239,6 +259,16 @@ export default function RentalForm({
           options={projectOptions}
           onChange={(e) => update("projectId", e.target.value)}
       />
+
+      <Select
+        label="Operator"
+        value={form.operatorId}
+        disabled={lockOperator}
+        options={operatorOptions}
+        onChange={(e) => update("operatorId", e.target.value)}
+      />
+
+      {lockOperator && <p className="text-sm text-slate-500">Operator is inherited from the selected assignment.</p>}
 
       {initialProjectWarning && <p className="text-sm text-amber-700">The assignment’s project is unavailable or inactive. Select another active project.</p>}
 

@@ -66,6 +66,7 @@ describe("rental form options", () => {
       equipmentId: "equipment-1",
       customerId: "customer-1",
       customer: "Customer",
+      operatorId: "operator-1",
       projectId: "project-1",
       dateOut: "2026-07-17",
       expectedReturn: "2026-07-18",
