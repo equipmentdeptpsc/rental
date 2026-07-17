@@ -47,6 +47,9 @@ export default function ActivityControls() {
       operatorId:
         aggregate.activeDeur.operatorId,
 
+      deurId:
+        aggregate.activeDeur.id,
+
       activity,
 
     });
@@ -137,7 +140,8 @@ export default function ActivityControls() {
   label="End Activity"
   onClick={() =>
     endActivity(
-      aggregate.rental.id
+      aggregate.rental.id,
+      aggregate.activeDeur?.id
     )
   }
   disabled={!current}

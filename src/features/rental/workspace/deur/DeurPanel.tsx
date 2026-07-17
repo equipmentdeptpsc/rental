@@ -11,6 +11,7 @@ import {
   import ActivityControls from "./controls/ActivityControls";
   import ActivityTimelineCard from "./cards/ActivityTimelineCard";
   import useTodayActivities from "./hooks/useTodayActivities";
+  import DeurHoursEntry from "./DeurHoursEntry";
   
   export default function DeurPanel() {
     const summary =
@@ -44,6 +45,8 @@ import {
             summary.remarks
           }
         />
+
+        <DeurHoursEntry />
 
         <ActivityControls />
 

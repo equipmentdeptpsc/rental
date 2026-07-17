@@ -6,13 +6,17 @@ import {
   
   export function endActivity(
   
-    rentalId: string
+    rentalId: string,
+
+    deurId?: string
   
   ) {
   
     return EndActivityService.execute(
   
-      rentalId
+      rentalId,
+
+      deurId
   
     );
   

@@ -18,6 +18,8 @@ export interface StartActivityRequest {
 
   operatorId: string;
 
+  deurId?: string;
+
   activity: DeurActivityType;
 
 }

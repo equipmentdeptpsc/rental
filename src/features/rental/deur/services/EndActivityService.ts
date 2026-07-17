@@ -1,109 +1,46 @@
 import { deurRepository } from "../repository/deurRepository";
-
 import type { DeurRecord } from "../types";
 
 export class EndActivityService {
+  static execute(rentalId: string, deurId?: string): DeurRecord | undefined {
+    const today = new Date().toISOString().split("T")[0];
+    const record = deurId
+      ? deurRepository.getById(deurId)
+      : deurRepository.getByRentalId(rentalId).find((item) => item.workDate === today);
+    if (!record) return undefined;
 
-  static execute(
-    rentalId: string
-  ): DeurRecord | undefined {
+    const openIndex = record.logs.findLastIndex((log) => !log.endTime);
+    if (openIndex < 0) return record;
 
-    const today =
-      new Date()
-        .toISOString()
-        .split("T")[0];
+    const timestamp = new Date().toISOString();
+    const elapsed = Date.parse(timestamp) - Date.parse(record.logs[openIndex].startTime);
+    const logs = record.logs.map((log, index) => index === openIndex
+      ? {
+          ...log,
+          endTime: timestamp,
+          durationMinutes: Number.isFinite(elapsed) && elapsed >= 0
+            ? Math.round(elapsed / 60000)
+            : log.durationMinutes,
+        }
+      : { ...log });
+    const minutes = Number.isFinite(elapsed) && elapsed >= 0
+      ? Math.round(elapsed / 60000)
+      : record.logs[openIndex].durationMinutes;
+    const updated: DeurRecord = {
+      ...record,
+      logs,
+      updatedAt: timestamp,
+    };
 
-    const record =
-      deurRepository
-        .getByRentalId(rentalId)
-        .find(
-          d => d.workDate === today
-        );
-
-    if (!record) {
-      return;
-    }
-
-    const log =
-      record.logs.at(-1);
-
-    if (!log) {
-      return record;
-    }
-
-    if (log.endTime) {
-      return record;
-    }
-
-    const now =
-      new Date();
-
-    log.endTime =
-      now.toISOString();
-
-    const start =
-      new Date(log.startTime);
-
-    const minutes =
-      Math.max(
-        0,
-        Math.round(
-          (now.getTime() - start.getTime())
-          / 60000
-        )
-      );
-
-    log.durationMinutes =
-      minutes;
-
-    switch (log.activity) {
-
-      case "Operation":
-
-        record.totalOperatingMinutes +=
-          minutes;
-
-        break;
-
-      case "Idle":
-
-        record.totalIdleMinutes +=
-          minutes;
-
-        break;
-
-      case "Meal Break":
-
-        record.totalMealBreakMinutes +=
-          minutes;
-
-        break;
-
+    switch (record.logs[openIndex].activity) {
+      case "Operation": updated.totalOperatingMinutes += minutes; break;
+      case "Idle": updated.totalIdleMinutes += minutes; break;
+      case "Meal Break": updated.totalMealBreakMinutes += minutes; break;
       case "Corrective Maintenance":
-
-      case "Preventive Maintenance":
-
-        record.totalMaintenanceMinutes +=
-          minutes;
-
-        break;
-
-      case "Demobilization":
-
-        record.totalDemobilizationMinutes +=
-          minutes;
-
-        break;
-
+      case "Preventive Maintenance": updated.totalMaintenanceMinutes += minutes; break;
+      case "Demobilization": updated.totalDemobilizationMinutes += minutes; break;
     }
-
-    record.updatedAt =
-      now.toISOString();
-
-    deurRepository.update(record);
-
-    return record;
-
+    deurRepository.update(updated);
+    return updated;
   }
-
 }
