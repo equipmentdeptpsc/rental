@@ -1,12 +1,12 @@
 import type { DeurRecord } from "../types";
-import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
 import { storage } from "@/core/storage";
 import { generateDeurNumber, normalizeDeur } from "../services/canonicalDeur";
 import { submitDeur, acknowledgeDeur, rejectDeur, reopenDeur } from "../services/reviewLifecycle";
 import { deurSyncQueue } from "../offline/deurSyncQueue";
 import type { DeurQueueOperation } from "../offline/types";
+import { DEUR_STORAGE_KEY, notifyDeurChange } from "../synchronization/deurChangeNotifications";
 
-const STORAGE_KEY = "equipment-rental-deur";
+const STORAGE_KEY = DEUR_STORAGE_KEY;
 
 class DeurRepository {
 
@@ -163,7 +163,7 @@ class DeurRepository {
     const normalized = normalizeDeur(record);
     this.saveAll(records.map((item) => item.id === normalized.id ? normalized : item));
     deurSyncQueue.enqueue({ id: crypto.randomUUID(), aggregateId: normalized.id, aggregateType: "DEUR", operation, payload, createdAt: new Date().toISOString() });
-    notifyRentalWorkspaceChange(normalized.rentalId);
+    notifyDeurChange(normalized);
     return normalized;
   }
 

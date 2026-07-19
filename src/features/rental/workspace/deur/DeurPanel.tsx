@@ -12,6 +12,7 @@ import {
   import ActivityTimelineCard from "./cards/ActivityTimelineCard";
   import useTodayActivities from "./hooks/useTodayActivities";
   import DeurHoursEntry from "./DeurHoursEntry";
+  import CurrentActivityCard from "@/features/rental/deur/components/CurrentActivityCard";
   
   export default function DeurPanel() {
     const summary =
@@ -45,6 +46,13 @@ import {
             summary.remarks
           }
         />
+
+        {summary.latestRecord && (
+          <CurrentActivityCard
+            logs={summary.latestRecord.logs}
+            workDate={summary.latestRecord.workDate}
+          />
+        )}
 
         <DeurHoursEntry />
 
