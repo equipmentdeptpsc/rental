@@ -54,11 +54,11 @@ export class ReferenceDeurSyncServer {
     try {
       if (path === "/deur-sync/push") {
         if (!Array.isArray(value.changes) || !value.changes.every(isDeurSyncEnvelope) || (value.cursor !== undefined && typeof value.cursor !== "string")) return { status: 400, body: { message: "Malformed DEUR push request." } };
-        const result = this.service.push({ clientId: value.clientId, changes: structuredClone(value.changes), cursor: value.cursor as string | undefined });
+        const result = await this.service.push({ clientId: value.clientId, changes: structuredClone(value.changes), cursor: value.cursor as string | undefined });
         return { status: result.conflicts.length > 0 && result.accepted.length === 0 ? 409 : 200, body: { protocolVersion: 1, ...result } };
       }
       if ((value.cursor !== undefined && typeof value.cursor !== "string") || (value.limit !== undefined && typeof value.limit !== "number")) return { status: 400, body: { message: "Malformed DEUR pull request." } };
-      const result = this.service.pull({ clientId: value.clientId, cursor: value.cursor as string | undefined, limit: value.limit as number | undefined });
+      const result = await this.service.pull({ clientId: value.clientId, cursor: value.cursor as string | undefined, limit: value.limit as number | undefined });
       return { status: 200, body: { protocolVersion: 1, ...result } };
     } catch (error) {
       if (error instanceof DeurSyncServerValidationError) return { status: 400, body: { message: error.message } };

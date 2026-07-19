@@ -4,4 +4,4 @@ export interface ServerPushCommand { clientId: string; changes: DeurSyncChangeEn
 export interface ServerPushResult { accepted: DeurAcceptedChange[]; rejected: DeurRejectedChange[]; conflicts: DeurConflictResult[]; cursor: string; serverTimestamp: string }
 export interface ServerPullQuery { clientId: string; cursor?: string; limit?: number }
 export interface ServerPullResult { changes: DeurSyncChangeEnvelope[]; cursor: string; hasMore: boolean; serverTimestamp: string }
-export interface DeurSyncServerApplication { push(command: ServerPushCommand): ServerPushResult; pull(query: ServerPullQuery): ServerPullResult }
+export interface DeurSyncServerApplication { push(command: ServerPushCommand): Promise<ServerPushResult>; pull(query: ServerPullQuery): Promise<ServerPullResult> }

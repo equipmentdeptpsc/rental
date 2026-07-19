@@ -19,13 +19,15 @@ export type AtomicAcceptanceResult =
   | { kind: "replayed"; accepted: ServerAcceptedOperation }
   | { kind: "revision-mismatch"; currentRevision: number; current?: ServerEntityState };
 
+export type MaybePromise<T> = T | Promise<T>;
+
 export interface DeurSyncServerPersistence {
-  findByOperationId(operationId: string): ServerAcceptedOperation | undefined;
-  findByIdempotencyKey(idempotencyKey: string): ServerAcceptedOperation | undefined;
-  getEntityState(entityId: string): ServerEntityState | undefined;
-  accept(input: { change: DeurSyncChangeEnvelope; expectedRevision: number }): AtomicAcceptanceResult;
-  readChanges(cursor: number, limit: number): { changes: DeurSyncChangeEnvelope[]; total: number };
-  recordConflict(conflict: StoredServerConflict): StoredServerConflict;
-  findConflict(id: string): StoredServerConflict | undefined;
-  reset(): void;
+  findByOperationId(operationId: string): MaybePromise<ServerAcceptedOperation | undefined>;
+  findByIdempotencyKey(idempotencyKey: string): MaybePromise<ServerAcceptedOperation | undefined>;
+  getEntityState(entityId: string): MaybePromise<ServerEntityState | undefined>;
+  accept(input: { change: DeurSyncChangeEnvelope; expectedRevision: number }): MaybePromise<AtomicAcceptanceResult>;
+  readChanges(cursor: number, limit: number): MaybePromise<{ changes: DeurSyncChangeEnvelope[]; total: number; nextCursor?: number }>;
+  recordConflict(conflict: StoredServerConflict): MaybePromise<StoredServerConflict>;
+  findConflict(id: string): MaybePromise<StoredServerConflict | undefined>;
+  reset(): MaybePromise<void>;
 }

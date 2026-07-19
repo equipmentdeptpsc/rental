@@ -60,7 +60,8 @@ export class InMemoryDeurSyncServerPersistence implements DeurSyncServerPersiste
   }
 
   readChanges(cursor: number, limit: number) {
-    return { changes: this.changes.slice(cursor, cursor + limit).map(clone), total: this.changes.length };
+    const changes = this.changes.slice(cursor, cursor + limit).map(clone);
+    return { changes, total: this.changes.length, nextCursor: cursor + changes.length };
   }
   recordConflict(conflict: StoredServerConflict) {
     const existing = this.conflicts.get(conflict.id);
