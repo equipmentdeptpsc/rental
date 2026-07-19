@@ -6,8 +6,10 @@ import { DeurSyncServerService } from "./server/application/DeurSyncServerServic
 import { conformanceChange } from "./server/deurSyncConformance";
 import { PostgresDeurSyncServerPersistence } from "./server/postgres/PostgresDeurSyncServerPersistence";
 import { runDeurSyncPostgresMigrations } from "./server/postgres/runMigrations";
+import { assertSafePostgresTestReset } from "./server/postgres/postgresTestSafety";
 
 const connectionString = process.env.DEUR_SYNC_POSTGRES_TEST_URL;
+const allowReset = process.env.DEUR_SYNC_ALLOW_POSTGRES_TEST_RESET === "true";
 const describePostgres = connectionString ? describe : describe.skip;
 
 describePostgres("PostgreSQL DEUR sync persistence integration", () => {
@@ -15,9 +17,11 @@ describePostgres("PostgreSQL DEUR sync persistence integration", () => {
   let persistence: PostgresDeurSyncServerPersistence;
 
   beforeAll(async () => {
+    assertSafePostgresTestReset(connectionString!, allowReset);
     pool = new Pool({ connectionString, max: 8 });
     await runDeurSyncPostgresMigrations(pool);
-    persistence = new PostgresDeurSyncServerPersistence(pool);
+    await runDeurSyncPostgresMigrations(pool);
+    persistence = new PostgresDeurSyncServerPersistence(pool, { allowDestructiveReset: true });
   });
   beforeEach(async () => { await persistence.reset(); });
   afterAll(async () => { if (pool) await pool.end(); });
@@ -34,6 +38,27 @@ describePostgres("PostgreSQL DEUR sync persistence integration", () => {
     expect((await persistence.readChanges(0, 10)).changes[0].operationId).toBe("operation-1");
   });
 
+  it("creates the required constraints and indexes on repeatable migration", async () => {
+    const constraints = await pool.query<{ table_name: string; constraint_type: string }>(
+      `SELECT rel.relname AS table_name, con.contype AS constraint_type
+       FROM pg_constraint con
+       JOIN pg_class rel ON rel.oid = con.conrelid
+       WHERE rel.relname LIKE 'deur_sync_%'`,
+    );
+    const indexes = await pool.query<{ indexname: string }>(
+      "SELECT indexname FROM pg_indexes WHERE schemaname = current_schema() AND indexname = ANY($1)",
+      [["deur_sync_change_log_entity_sequence_idx", "deur_sync_conflicts_entity_status_idx"]],
+    );
+
+    expect(constraints.rows.filter((row) => row.constraint_type === "p").map((row) => row.table_name).sort()).toEqual([
+      "deur_sync_accepted_operations", "deur_sync_change_log", "deur_sync_conflicts", "deur_sync_entity_state",
+    ]);
+    expect(constraints.rows.filter((row) => row.constraint_type === "u")).toHaveLength(2);
+    expect(indexes.rows.map((row) => row.indexname).sort()).toEqual([
+      "deur_sync_change_log_entity_sequence_idx", "deur_sync_conflicts_entity_status_idx",
+    ]);
+  });
+
   it("deduplicates concurrent operation IDs and idempotency keys", async () => {
     const sameOperation = conformanceChange("same-operation", "deur-a");
     const operationResults = await Promise.all([
@@ -42,6 +67,8 @@ describePostgres("PostgreSQL DEUR sync persistence integration", () => {
     ]);
     expect(operationResults.filter((item) => item.kind === "accepted")).toHaveLength(1);
     expect((await persistence.readChanges(0, 10)).changes).toHaveLength(1);
+    expect((await pool.query("SELECT 1 FROM deur_sync_accepted_operations")).rowCount).toBe(1);
+    expect((await persistence.getEntityState("deur-a"))?.revision).toBe(1);
 
     await persistence.reset();
     const sameKey = conformanceChange("first-operation", "deur-b");
@@ -51,6 +78,8 @@ describePostgres("PostgreSQL DEUR sync persistence integration", () => {
     ]);
     expect(keyResults.filter((item) => item.kind === "accepted")).toHaveLength(1);
     expect((await persistence.readChanges(0, 10)).changes).toHaveLength(1);
+    expect((await pool.query("SELECT 1 FROM deur_sync_accepted_operations")).rowCount).toBe(1);
+    expect((await persistence.getEntityState("deur-b"))?.revision).toBe(1);
   });
 
   it("serializes concurrent same-revision entity updates so only one advances", async () => {
@@ -89,6 +118,20 @@ describePostgres("PostgreSQL DEUR sync persistence integration", () => {
     expect(await persistence.findByIdempotencyKey("failed")).toBeUndefined();
     expect(await persistence.getEntityState("deur-1")).toBeUndefined();
     expect((await persistence.readChanges(0, 10)).changes).toEqual([]);
+
+    const retry = await persistence.accept({ change: conformanceChange("failed", "deur-1"), expectedRevision: 0 });
+    expect(retry).toMatchObject({ kind: "accepted", accepted: { remoteRevision: 1 } });
+    const afterGap = await persistence.readChanges(0, 10);
+    expect(afterGap).toMatchObject({ nextCursor: 2, total: 2 });
+    expect(afterGap.changes.map((change) => change.operationId)).toEqual(["failed"]);
+
+    await persistence.accept({ change: conformanceChange("after-gap", "deur-2"), expectedRevision: 0 });
+    const firstPage = await persistence.readChanges(0, 1);
+    const repeatedPage = await persistence.readChanges(0, 1);
+    expect(firstPage).toEqual(repeatedPage);
+    expect(firstPage).toMatchObject({ nextCursor: 2, total: 3 });
+    expect((await persistence.readChanges(2, 1))).toMatchObject({ nextCursor: 3, total: 3 });
+    expect((await persistence.readChanges(3, 1))).toMatchObject({ changes: [], nextCursor: 3, total: 3 });
   });
 });
 
@@ -96,6 +139,7 @@ if (!connectionString) {
   describe("PostgreSQL DEUR sync persistence configuration", () => {
     it("skips integration safely when DEUR_SYNC_POSTGRES_TEST_URL is absent", () => {
       expect(connectionString).toBeUndefined();
+      expect(allowReset).toBe(false);
     });
   });
 }

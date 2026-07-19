@@ -21,7 +21,7 @@ interface ConflictRow extends QueryResultRow { conflict_evidence: StoredServerCo
 export class PostgresDeurSyncServerPersistence implements DeurSyncServerPersistence {
   private failAcceptance = false;
 
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: Pool, private readonly options: { allowDestructiveReset?: boolean } = {}) {}
 
   async findByOperationId(operationId: string) { return this.findAccepted("operation_id", operationId); }
   async findByIdempotencyKey(idempotencyKey: string) { return this.findAccepted("idempotency_key", idempotencyKey); }
@@ -143,6 +143,9 @@ export class PostgresDeurSyncServerPersistence implements DeurSyncServerPersiste
   }
 
   async reset(): Promise<void> {
+    if (!this.options.allowDestructiveReset) {
+      throw new Error("PostgreSQL test reset is disabled without explicit adapter opt-in.");
+    }
     await this.pool.query(
       "TRUNCATE TABLE deur_sync_conflicts, deur_sync_change_log, deur_sync_accepted_operations, deur_sync_entity_state RESTART IDENTITY CASCADE",
     );
