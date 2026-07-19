@@ -63,7 +63,10 @@ export interface DeurConflictResult {
   remote: DeurSyncChangeEnvelope;
 }
 
-export type DeurTransportErrorClassification = "network" | "timeout" | "unavailable" | "unauthorized" | "unknown";
+export type DeurTransportErrorClassification =
+  | "network" | "timeout" | "aborted" | "unavailable" | "unauthenticated" | "unauthorized"
+  | "validation" | "conflict" | "rate-limited" | "server" | "malformed-response"
+  | "unsupported-protocol" | "invalid-response" | "unknown";
 
 export interface DeurTransportError {
   classification: DeurTransportErrorClassification;
