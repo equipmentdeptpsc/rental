@@ -14,6 +14,7 @@ export class InMemoryDeurSyncTransport implements DeurRemoteSyncTransport {
   private accepted = new Map<string, number>();
   private nextFailure?: { classification: DeurTransportErrorClassification; message: string };
   private nextConflict?: DeurSyncChangeEnvelope;
+  private pullRequests: DeurPullRequest[] = [];
 
   async push(request: DeurPushRequest): Promise<DeurPushResult> {
     const snapshot = structuredClone(request);
@@ -54,6 +55,15 @@ export class InMemoryDeurSyncTransport implements DeurRemoteSyncTransport {
   }
 
   async pull(request: DeurPullRequest): Promise<DeurPullResult> {
+    this.pullRequests.push(structuredClone(request));
+    if (this.nextFailure) {
+      const failure = this.nextFailure;
+      this.nextFailure = undefined;
+      return {
+        changes: [], cursor: request.cursor ?? "0", hasMore: false,
+        transportError: { ...failure, retryable: ["network", "timeout", "unavailable"].includes(failure.classification) },
+      };
+    }
     const offset = Math.max(0, Number.parseInt(request.cursor ?? "0", 10) || 0);
     const limit = request.limit ?? this.changes.length;
     const changes = this.changes.slice(offset, offset + limit).map((change) => structuredClone(change));
@@ -78,5 +88,9 @@ export class InMemoryDeurSyncTransport implements DeurRemoteSyncTransport {
 
   getStoredChanges(): DeurSyncChangeEnvelope[] {
     return structuredClone(this.changes);
+  }
+
+  getPullRequests(): DeurPullRequest[] {
+    return structuredClone(this.pullRequests);
   }
 }

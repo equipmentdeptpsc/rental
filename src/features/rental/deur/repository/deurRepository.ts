@@ -64,6 +64,27 @@ class DeurRepository {
 
   }
 
+  /** Persists a reconciled inbound snapshot without creating an outbound echo. */
+  applyInbound(record: DeurRecord) {
+    const normalized = normalizeDeur(structuredClone(record));
+    const records = this.getAll();
+    const exists = records.some((item) => item.id === normalized.id);
+    this.saveAll(exists
+      ? records.map((item) => item.id === normalized.id ? normalized : item)
+      : [...records, normalized]);
+    notifyDeurChange(normalized);
+    return structuredClone(normalized);
+  }
+
+  /** Deletes reconciled inbound state without creating an outbound echo. */
+  deleteInbound(id: string) {
+    const existing = this.getById(id);
+    if (!existing) return false;
+    this.saveAll(this.getAll().filter((item) => item.id !== id));
+    notifyDeurChange(existing);
+    return true;
+  }
+
   submit(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => submitDeur(record, actor), "submit"); }
   acknowledge(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => acknowledgeDeur(record, actor), "acknowledge"); }
   reject(id: string, actor: { name: string; id?: string }, reason: string) { return this.review(id, (record) => rejectDeur(record, actor, reason), "reject"); }
