@@ -26,11 +26,11 @@ export function createQueueTransportAdapter(remote: DeurRemoteSyncTransport): De
   return {
     async push(item) {
       const result = await remote.push({ changes: [toEnvelope(item)] });
-      if (result.transportError) return { success: false, error: result.transportError.message };
+      if (result.transportError) return { success: false, error: result.transportError.message, classification: result.transportError.classification, retryable: result.transportError.retryable };
       const conflict = result.conflicts.find((entry) => entry.operationId === item.id);
       if (conflict) return { success: false, conflict: true, error: conflict.message };
       const rejected = result.rejected.find((entry) => entry.operationId === item.id);
-      if (rejected) return { success: false, error: rejected.message };
+      if (rejected) return { success: false, error: rejected.message, classification: "validation", retryable: false };
       return result.accepted.some((entry) => entry.operationId === item.id)
         ? { success: true }
         : { success: false, error: "Transport did not confirm the DEUR change." };

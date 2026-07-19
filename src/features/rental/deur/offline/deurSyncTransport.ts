@@ -1,1 +1,4 @@
-import type { DeurQueueItem } from "./types"; export interface DeurSyncTransport { push(item:DeurQueueItem):Promise<{success:boolean;error?:string;conflict?:boolean}> } export const NoopDeurSyncTransport:DeurSyncTransport={async push(){return{success:true}}};
+import type { DeurQueueItem } from "./types";
+export interface DeurSyncTransportResult { success:boolean; error?:string; conflict?:boolean; classification?:string; retryable?:boolean; }
+export interface DeurSyncTransport { push(item:DeurQueueItem):Promise<DeurSyncTransportResult> }
+export const NoopDeurSyncTransport:DeurSyncTransport={async push(){return{success:true}}};

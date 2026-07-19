@@ -28,6 +28,8 @@ export interface InboundDeurSyncResult {
   rejected: number;
   cursor?: string;
   error?: string;
+  errorClassification?: string;
+  retryable?: boolean;
 }
 
 function json(value: unknown): JsonValue {
@@ -86,7 +88,7 @@ export async function synchronizeInboundDeur(
   } catch (error) {
     return { ...base, error: error instanceof Error ? error.message : "Inbound DEUR pull failed." };
   }
-  if (pulled.transportError) return { ...base, error: pulled.transportError.message };
+  if (pulled.transportError) return { ...base, error: pulled.transportError.message, errorClassification: pulled.transportError.classification, retryable: pulled.transportError.retryable };
   const result = { ...base, pulled: pulled.changes.length };
 
   try {
