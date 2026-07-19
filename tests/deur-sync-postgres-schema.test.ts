@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const migrationPath = resolve("tests/server/postgres/migrations/001_deur_sync.sql");
+const migrationPath = resolve("server/deur-sync/postgres/migrations/001_deur_sync.sql");
 
 describe("PostgreSQL DEUR synchronization schema", () => {
   it("defines durable invariant tables, uniqueness, JSONB evidence, and ordered cursors", () => {
