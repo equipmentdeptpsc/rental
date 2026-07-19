@@ -27,8 +27,16 @@ import { MaintenanceProvider } from "@/features/maintenance/context/MaintenanceC
 import { OperatorProvider } from "@/features/operators/context/OperatorContext";
 import { CustomerProvider } from "@/features/customer/context/CustomerContext";
 import { ProjectProvider } from "@/features/project/context/ProjectContext";
+import { createDeurSyncLifecycle } from "@/features/rental/deur/synchronization/lifecycle/createDeurSyncLifecycle";
 
 import "./index.css";
+
+const deurSyncLifecycle = createDeurSyncLifecycle();
+void deurSyncLifecycle.start();
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => deurSyncLifecycle.stop());
+}
 
 
 function AppProviders() {

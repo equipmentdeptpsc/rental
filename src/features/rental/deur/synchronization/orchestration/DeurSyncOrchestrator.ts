@@ -33,6 +33,9 @@ export interface DeurSyncOrchestratorDependencies {
   locks: DeurSyncLockRepository;
   now?: () => Date;
   ownerId?: string;
+  timers?: { setInterval(callback: () => void, milliseconds: number): unknown; clearInterval(handle: unknown): void };
+  lockTtlMilliseconds?: number;
+  lockRenewalIntervalMilliseconds?: number;
 }
 
 export interface DeurSyncCycleResult {
@@ -47,11 +50,25 @@ let activeCycle: Promise<DeurSyncCycleResult> | undefined;
 export class DeurSyncOrchestrator {
   private readonly now: () => Date;
   private readonly ownerId: string;
+  private readonly timers: { setInterval(callback: () => void, milliseconds: number): unknown; clearInterval(handle: unknown): void };
+  private readonly lockTtlMilliseconds: number;
+  private readonly lockRenewalIntervalMilliseconds: number;
 
   constructor(private readonly dependencies: DeurSyncOrchestratorDependencies) {
     this.now = dependencies.now ?? (() => new Date());
     this.ownerId = dependencies.ownerId ?? crypto.randomUUID();
+    this.timers = dependencies.timers ?? {
+      setInterval: (callback, milliseconds) => window.setInterval(callback, milliseconds),
+      clearInterval: (handle) => window.clearInterval(handle as number),
+    };
+    this.lockTtlMilliseconds = dependencies.lockTtlMilliseconds ?? 30_000;
+    this.lockRenewalIntervalMilliseconds = dependencies.lockRenewalIntervalMilliseconds ?? 10_000;
+    if (!dependencies.transport) {
+      dependencies.health.save(this.snapshot("disabled-unconfigured", { running: false }));
+    }
   }
+
+  isConfigured(): boolean { return Boolean(this.dependencies.transport); }
 
   getHealth(): DeurSyncHealth {
     return this.dependencies.health.get();
@@ -108,12 +125,16 @@ export class DeurSyncOrchestrator {
     }
 
     const startedAt = this.now();
-    if (!this.dependencies.locks.acquire(this.ownerId, startedAt)) {
+    if (!this.dependencies.locks.acquire(this.ownerId, startedAt, this.lockTtlMilliseconds)) {
       return { started: false, outboundProcessed: 0, inboundApplied: 0, health: this.getHealth() };
     }
 
     let outboundProcessed = 0;
     let inboundApplied = 0;
+    const renewalTimer = this.timers.setInterval(
+      () => { this.dependencies.locks.renew(this.ownerId, this.now(), this.lockTtlMilliseconds); },
+      this.lockRenewalIntervalMilliseconds,
+    );
     try {
       this.save("running-outbound", { running: true, lastCycleStart: startedAt.toISOString() });
       const outbound = await processDeurSyncQueue(createQueueTransportAdapter(transport));
@@ -168,6 +189,7 @@ export class DeurSyncOrchestrator {
       const health = this.failure(error instanceof Error ? error.message : "Synchronization cycle failed.", "unknown", true, outboundProcessed > 0);
       return { started: true, outboundProcessed, inboundApplied, health };
     } finally {
+      this.timers.clearInterval(renewalTimer);
       this.dependencies.locks.release(this.ownerId);
     }
   }

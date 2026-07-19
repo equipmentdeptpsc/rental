@@ -20,5 +20,11 @@ export class DeurSyncLockRepository {
     storage.set(KEY, lock);
     return this.get()?.ownerId === ownerId;
   }
+  renew(ownerId: string, now: Date, ttlMilliseconds = 30_000): boolean {
+    const current = this.get();
+    if (!current || current.ownerId !== ownerId || Date.parse(current.expiresAt) <= now.getTime()) return false;
+    storage.set(KEY, { ...current, expiresAt: new Date(now.getTime() + ttlMilliseconds).toISOString() });
+    return this.get()?.ownerId === ownerId;
+  }
   release(ownerId: string): void { if (this.get()?.ownerId === ownerId) storage.remove(KEY); }
 }
