@@ -42,7 +42,7 @@ export default function RentalWorkspaceProvider({
   rentalId,
   children,
 }: RentalWorkspaceProviderProps) {
-  const { rentals } = useRental();
+  const { rentals, contracts } = useRental();
   const { assignments } = useAssignment();
   const { equipment: equipmentRecords } = useEquipment();
   const { operators } = useOperator();
@@ -60,6 +60,8 @@ export default function RentalWorkspaceProvider({
     if (!rental) {
       return undefined;
     }
+
+    const contract = contracts.find((item) => item.id === rental.id);
 
     const assignment =
       rental.assignmentId
@@ -100,6 +102,7 @@ export default function RentalWorkspaceProvider({
 
     return buildRentalAggregate({
       rental,
+      contract,
       equipment,
       assignment,
       operator,
@@ -113,7 +116,7 @@ export default function RentalWorkspaceProvider({
         subtotal: statements.reduce((sum, statement) => sum + statement.subtotal, 0),
       },
     });
-  }, [rentalId, rentals, assignments, equipmentRecords, operators, projects, workspaceVersion]);
+  }, [rentalId, rentals, contracts, assignments, equipmentRecords, operators, projects, workspaceVersion]);
 
   if (!aggregate) {
     return (

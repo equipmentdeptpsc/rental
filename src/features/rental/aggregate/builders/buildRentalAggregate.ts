@@ -9,6 +9,7 @@ import type { ProjectRecord } from "@/features/project/types";
 import type { Operator } from "@/features/operators/types";
 
 import type { DeurRecord } from "../../deur/types";
+import type { RentalContractRecord } from "../../types/RentalContract";
 
 import type {
   RentalAggregate,
@@ -37,6 +38,7 @@ interface BuildRentalAggregateParams {
   deurs?: DeurRecord[];
 
   billing?: Partial<RentalAggregate["billing"]>;
+  contract?: RentalContractRecord;
 }
 
 export function buildRentalAggregate({
@@ -48,9 +50,11 @@ export function buildRentalAggregate({
   activeDeur,
   deurs = [],
   billing,
+  contract,
 }: BuildRentalAggregateParams): RentalAggregate {
   return {
     rental,
+    contract,
 
     equipment,
 

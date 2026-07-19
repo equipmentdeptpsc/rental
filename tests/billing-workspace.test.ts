@@ -15,6 +15,11 @@ function aggregate(billing: Partial<ReturnType<typeof buildRentalAggregate>["bil
 }
 
 describe("billing aggregate and close readiness", () => {
+  it("retains the rental billing contract for read-only workspace calculations", () => {
+    const contract = { id: "rental-1", billingMethod: "Per Hour", unitRate: 100 } as never;
+    expect(buildRentalAggregate({ rental, contract }).contract).toBe(contract);
+  });
+
   it("blocks a missing, draft, or not-invoiced statement", () => {
     for (const billing of [
       { hasStatement: false, invoicePreparationComplete: false, subtotal: 0 },

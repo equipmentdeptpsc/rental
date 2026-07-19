@@ -11,25 +11,29 @@ import type {
 interface Props {
   logs: DeurActivityLog[];
   workDate: string;
+  evaluatedAt?: Date;
 }
 
 export default function CurrentActivityCard({
   logs,
   workDate,
+  evaluatedAt,
 }: Props) {
   const current =
     logs.at(-1);
 
-  const [now, setNow] = useState(() => new Date());
+  const [internalNow, setInternalNow] = useState(() => new Date());
 
   useEffect(() => {
-    if (!current || current.endTime) return;
+    if (evaluatedAt || !current || current.endTime) return;
 
-    setNow(new Date());
-    const timer = window.setInterval(() => setNow(new Date()), 1_000);
+    setInternalNow(new Date());
+    const timer = window.setInterval(() => setInternalNow(new Date()), 1_000);
 
     return () => window.clearInterval(timer);
-  }, [current?.id, current?.endTime]);
+  }, [current?.id, current?.endTime, evaluatedAt]);
+
+  const now = evaluatedAt ?? internalNow;
 
   const elapsed = current
     ? formatElapsedTime(getDeurActivityElapsedSeconds(current, workDate, now))
