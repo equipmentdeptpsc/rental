@@ -99,6 +99,7 @@ function Screen() {
         logs={
           session.activities
         }
+        workDate={session.deur.workDate}
       />
 
       <ActivityButtons
