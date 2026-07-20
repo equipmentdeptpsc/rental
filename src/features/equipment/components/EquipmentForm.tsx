@@ -19,6 +19,8 @@ import { useEquipmentBrands } from "@/features/masters/equipment-brand";
 import { useEquipmentTypes } from "@/features/masters/equipment-type/context/EquipmentTypeContext";
 import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
 import { getActiveCostCodeOptions } from "../utils/equipmentCostCode";
+import { useEquipment } from "../context/EquipmentContext";
+import { previewCategoryAssetNumber } from "../services/categoryAssetNumber";
 
 interface Props {
   initialData?: EquipmentFormData;
@@ -44,9 +46,8 @@ export default function EquipmentForm({
 
   const { costCodes } = useCostCodes();
 
-  const {
-    getPrefixByCategory,
-  } = usePrefix();
+  const { prefixes } = usePrefix();
+  const { equipment } = useEquipment();
 
   const { records: equipmentBrands } =
   useEquipmentBrands();
@@ -127,33 +128,25 @@ export default function EquipmentForm({
   }
 
   useEffect(() => {
+    if (initialData?.assetNo) return;
     if (!form.category) {
-      update("prefixId", "");
-      return;
-    }
-
-    const prefix =
-      getPrefixByCategory(
-        form.category as EquipmentCategory
-      );
-
-    if (!prefix) {
       update("assetNo", "");
       update("prefixId", "");
       return;
     }
-
-    update("prefixId", prefix.id);
-
-    update(
-      "assetNo",
-      `${prefix.code}-${String(
-        prefix.nextNumber
-      ).padStart(prefix.digits, "0")}`
-    );
+    const preview = previewCategoryAssetNumber(form.category as EquipmentCategory, prefixes, equipment);
+    if (!preview.success) {
+      update("assetNo", "");
+      update("prefixId", "");
+      return;
+    }
+    update("prefixId", preview.prefixId);
+    update("assetNo", preview.assetNo);
   }, [
     form.category,
-    getPrefixByCategory,
+    prefixes,
+    equipment,
+    initialData?.assetNo,
   ]);
 
   function submit(
@@ -173,6 +166,7 @@ export default function EquipmentForm({
         <Input
           label="Asset Number"
           value={form.assetNo}
+          placeholder="Select an equipment category to generate the asset number."
           readOnly
         />
 

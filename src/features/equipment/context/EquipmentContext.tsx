@@ -14,13 +14,15 @@ import {
   equipmentRepository,
 } from "../repository";
 import { guardEquipmentDeletion } from "@/features/relationships/deletionGuards";
+import { prefixRepository } from "@/features/settings/repository/prefixRepository";
+import { createEquipmentWithCategoryAssetNumber } from "../services/categoryAssetNumber";
 
 interface EquipmentContextType {
   equipment: EquipmentRecord[];
 
   addEquipment(
     equipment: EquipmentRecord
-  ): void;
+  ): { success: boolean; message?: string; record?: EquipmentRecord };
 
   updateEquipment(
     equipment: EquipmentRecord
@@ -79,8 +81,11 @@ export function EquipmentProvider({
   function addEquipment(
     item: EquipmentRecord
   ) {
-    equipmentRepository.create(item);
+    const prepared = createEquipmentWithCategoryAssetNumber(item, prefixRepository.getAll(), equipmentRepository.getAll());
+    if (!prepared.success) return { success: false, message: prepared.message };
+    equipmentRepository.create(prepared.record);
     refresh();
+    return { success: true, record: prepared.record };
   }
 
   function updateEquipment(

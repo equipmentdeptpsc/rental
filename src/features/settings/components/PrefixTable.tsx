@@ -56,6 +56,7 @@ export default function PrefixTable({
 
               <td className="p-3">
                 <Button
+                  type="button"
                   onClick={() => onEdit(item)}
                 >
                   Edit

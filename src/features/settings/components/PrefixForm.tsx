@@ -14,7 +14,7 @@ interface Props {
 
   onSave(
     data: Omit<PrefixRecord, "id">
-  ): void;
+  ): { success: true } | { success: false; message: string };
 
   onCancel(): void;
 }
@@ -46,6 +46,8 @@ export default function PrefixForm({
 
   const [active, setActive] =
     useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!initialData) return;
@@ -77,7 +79,9 @@ export default function PrefixForm({
   ) {
     e.preventDefault();
 
-    onSave({
+    if (saving) return;
+    setSaving(true);
+    const result = onSave({
       category,
 
       code: code
@@ -94,6 +98,7 @@ export default function PrefixForm({
 
       active,
     });
+    if (!result.success) { setError(result.message); setSaving(false); }
   }
 
   return (
@@ -142,7 +147,7 @@ export default function PrefixForm({
 
         <Input
           label="Prefix Code"
-          maxLength={4}
+          maxLength={6}
           value={code}
           onChange={(e) =>
             setCode(
@@ -200,6 +205,7 @@ export default function PrefixForm({
       </label>
 
       <div className="flex justify-end gap-3">
+        {error && <p className="mr-auto text-sm text-red-700">{error}</p>}
         <Button
           type="button"
           variant="secondary"
@@ -208,7 +214,7 @@ export default function PrefixForm({
           Cancel
         </Button>
 
-        <Button type="submit">
+        <Button type="submit" disabled={saving}>
           {initialData
             ? "Update Prefix"
             : "Create Prefix"}

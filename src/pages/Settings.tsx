@@ -132,14 +132,11 @@ export default function Settings() {
     setShowForm(false);
   }
 
-  function save(item: PrefixRecord) {
-    if (editing) {
-      updatePrefix(item);
-    } else {
-      addPrefix(item);
-    }
-
+  function save(item: Omit<PrefixRecord, "id">) {
+    const result = editing ? updatePrefix({ ...item, id: editing.id }) : addPrefix({ ...item, id: crypto.randomUUID() });
+    if (!result.success) return result;
     closeForm();
+    return { success: true as const };
   }
 
   return (
@@ -157,7 +154,7 @@ export default function Settings() {
           </p>
         </div>
 
-        <Button onClick={newPrefix}>
+        <Button type="button" onClick={newPrefix}>
           + New Prefix
         </Button>
 

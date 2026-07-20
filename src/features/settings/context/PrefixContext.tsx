@@ -1,252 +1,27 @@
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-
-import type {
-  PrefixRecord,
-  EquipmentCategory,
-} from "../types";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import type { EquipmentCategory, PrefixRecord } from "../types";
+import { prefixRepository, type PrefixMutationResult } from "../repository/prefixRepository";
 
 interface PrefixContextType {
   prefixes: PrefixRecord[];
-
-  addPrefix(
-    item: PrefixRecord
-  ): void;
-
-  updatePrefix(
-    item: PrefixRecord
-  ): void;
-
-  activatePrefix(
-    id: string
-  ): void;
-
-  getActivePrefix():
-    | PrefixRecord
-    | undefined;
-
-  getPrefixByCategory(
-    category: EquipmentCategory
-  ):
-    | PrefixRecord
-    | undefined;
-
-  previewAssetNumber(
-    category: EquipmentCategory
-  ):
-    | {
-        prefixId: string;
-        assetNo: string;
-      }
-    | undefined;
-
-  generateAssetNumber(
-    category: EquipmentCategory
-  ):
-    | {
-        prefixId: string;
-        assetNo: string;
-      }
-    | undefined;
+  addPrefix(item: PrefixRecord): PrefixMutationResult;
+  updatePrefix(item: PrefixRecord): PrefixMutationResult;
+  activatePrefix(id: string): PrefixMutationResult;
+  getActivePrefix(): PrefixRecord | undefined;
+  getPrefixByCategory(category: EquipmentCategory): PrefixRecord | undefined;
 }
+const PrefixContext = createContext<PrefixContextType | undefined>(undefined);
 
-const PrefixContext =
-  createContext<
-    PrefixContextType | undefined
-  >(undefined);
-
-const initialData: PrefixRecord[] = [
-  {
-    id: crypto.randomUUID(),
-    code: "EX",
-    description: "Excavators",
-    category:
-      "Non-Moving Equipment",
-    nextNumber: 4,
-    digits: 3,
-    active: true,
-  },
-  {
-    id: crypto.randomUUID(),
-    code: "DT",
-    description: "Dump Trucks",
-    category:
-      "Moving Equipment",
-    nextNumber: 8,
-    digits: 3,
-    active: true,
-  },
-];
-
-export function PrefixProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [
-    prefixes,
-    setPrefixes,
-  ] = useState(initialData);
-
-  function addPrefix(
-    item: PrefixRecord
-  ) {
-    setPrefixes((prev) => [
-      ...prev,
-      item,
-    ]);
+export function PrefixProvider({ children }: { children: ReactNode }) {
+  const [prefixes, setPrefixes] = useState(() => prefixRepository.getAll());
+  const refresh = () => setPrefixes(prefixRepository.getAll());
+  function addPrefix(item: PrefixRecord) { const result = prefixRepository.create(item); if (result.success) refresh(); return result; }
+  function updatePrefix(item: PrefixRecord) { const result = prefixRepository.update(item); if (result.success) refresh(); return result; }
+  function activatePrefix(id: string) {
+    const selected = prefixRepository.get(id); if (!selected) return { success: false as const, code: "PREFIX_NOT_FOUND", message: "Prefix was not found." };
+    const result = prefixRepository.update({ ...selected, active: true }); if (result.success) refresh(); return result;
   }
-
-  function updatePrefix(
-    item: PrefixRecord
-  ) {
-    setPrefixes((prev) =>
-      prev.map((p) =>
-        p.id === item.id
-          ? item
-          : p
-      )
-    );
-  }
-
-  function activatePrefix(
-    id: string
-  ) {
-    setPrefixes((prev) =>
-      prev.map((p) => ({
-        ...p,
-        active:
-          p.id === id,
-      }))
-    );
-  }
-
-  function getActivePrefix() {
-    return prefixes.find(
-      (p) => p.active
-    );
-  }
-
-  function getPrefixByCategory(
-    category: EquipmentCategory
-  ) {
-    return prefixes.find(
-      (p) =>
-        p.category === category
-    );
-  }
-
-  /**
-   * Preview only.
-   * Does NOT increment sequence.
-   */
-  function previewAssetNumber(
-    category: EquipmentCategory
-  ) {
-    const prefix =
-      prefixes.find(
-        (p) =>
-          p.category === category
-      );
-
-    if (!prefix) {
-      return undefined;
-    }
-
-    return {
-      prefixId: prefix.id,
-      assetNo:
-        `${prefix.code}-${String(
-          prefix.nextNumber
-        ).padStart(
-          prefix.digits,
-          "0"
-        )}`,
-    };
-  }
-
-  /**
-   * Generates AND consumes the next number.
-   * Call ONLY after user clicks Create.
-   */
-  function generateAssetNumber(
-    category: EquipmentCategory
-  ) {
-    const prefix =
-      prefixes.find(
-        (p) =>
-          p.category === category
-      );
-
-    if (!prefix) {
-      return undefined;
-    }
-
-    const assetNo =
-      `${prefix.code}-${String(
-        prefix.nextNumber
-      ).padStart(
-        prefix.digits,
-        "0"
-      )}`;
-
-    setPrefixes((prev) =>
-      prev.map((p) =>
-        p.id === prefix.id
-          ? {
-              ...p,
-              nextNumber:
-                p.nextNumber + 1,
-            }
-          : p
-      )
-    );
-
-    return {
-      prefixId: prefix.id,
-      assetNo,
-    };
-  }
-
-  const value = useMemo(
-    () => ({
-      prefixes,
-      addPrefix,
-      updatePrefix,
-      activatePrefix,
-      getActivePrefix,
-      getPrefixByCategory,
-      previewAssetNumber,
-      generateAssetNumber,
-    }),
-    [prefixes]
-  );
-
-  return (
-    <PrefixContext.Provider
-      value={value}
-    >
-      {children}
-    </PrefixContext.Provider>
-  );
+  const value = useMemo(() => ({ prefixes, addPrefix, updatePrefix, activatePrefix, getActivePrefix: () => prefixes.find((item) => item.active), getPrefixByCategory: (category: EquipmentCategory) => prefixes.find((item) => item.active && item.category === category) }), [prefixes]);
+  return <PrefixContext.Provider value={value}>{children}</PrefixContext.Provider>;
 }
-
-export function usePrefix() {
-  const context =
-    useContext(
-      PrefixContext
-    );
-
-  if (!context) {
-    throw new Error(
-      "usePrefix must be used inside PrefixProvider."
-    );
-  }
-
-  return context;
-}
+export function usePrefix() { const context = useContext(PrefixContext); if (!context) throw new Error("usePrefix must be used inside PrefixProvider."); return context; }

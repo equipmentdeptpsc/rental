@@ -10,7 +10,6 @@ import type {
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { validateDuplicateEquipment } from "@/features/equipment/utils/duplicateValidator";
-import { generateAssetNumber } from "@/features/equipment/utils/generateAssetNumber";
 
 export default function NewEquipment() {
   const navigate = useNavigate();
@@ -25,7 +24,7 @@ export default function NewEquipment() {
   const formDefaults: EquipmentFormData = {
     prefixId: "",
 
-    assetNo: generateAssetNumber(equipment),
+    assetNo: "",
 
     equipmentName: "",
 
@@ -62,7 +61,7 @@ export default function NewEquipment() {
 
       prefixId: data.prefixId,
 
-      assetNo: data.assetNo || generateAssetNumber(equipment),
+      assetNo: "",
 
       equipmentName: data.equipmentName,
 
@@ -115,12 +114,16 @@ export default function NewEquipment() {
       return;
     }
 
-    addEquipment(newRecord);
+    const created = addEquipment(newRecord);
+    if (!created.success || !created.record) {
+      alert(created.message ?? "Equipment could not be created.");
+      return;
+    }
 
     logAction({
       action: "CREATE",
-      equipmentId: newRecord.id,
-      after: newRecord,
+      equipmentId: created.record.id,
+      after: created.record,
     });
 
     navigate("/equipment");
