@@ -33,9 +33,13 @@ export default function BillingPreviewPanel({ preview, currency = "PHP" }: Props
         <>
           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
             <div><div className="text-slate-500">Billing method</div><div className="font-semibold">{preview.billingMethod}</div></div>
-            <div><div className="text-slate-500">Operating evidence</div><div className="font-semibold">{(preview.evidence.operatingMinutes / 60).toFixed(2)} hours</div></div>
+            <div><div className="text-slate-500">{preview.quantity ? "Quantity" : "Operating evidence"}</div><div className="font-semibold">{preview.quantity ? `${preview.quantity.value.toFixed(preview.quantity.unit === "trip" ? 0 : 2)} ${preview.quantity.unit === "trip" && preview.quantity.value !== 1 ? "trips" : preview.quantity.unit}` : `${(preview.evidence.operatingMinutes / 60).toFixed(2)} hours`}</div></div>
             <div><div className="text-slate-500">Calculated</div><div className="font-semibold">{new Date(preview.calculatedAt).toLocaleString()}</div></div>
           </div>
+          <div className="mt-3 text-sm"><span className="text-slate-500">Commercial terms source</span><div className="font-semibold">{preview.commercialTermsSource === "IMMUTABLE_SNAPSHOT" ? "Immutable Rental Snapshot" : "Current Rental Terms — Legacy Record"}</div></div>
+          {preview.quantity && preview.charges?.unitRate !== undefined && (
+            <div className="mt-3 text-sm"><span className="text-slate-500">Unit rate</span><div className="font-semibold">{money(preview.charges.unitRate, currency)} / {preview.quantity.unit}</div></div>
+          )}
           {preview.charges && (
             <dl className="mt-5 divide-y rounded-lg border">
               {mapDeurBillingPreviewCharges(preview.charges).map((row) => (

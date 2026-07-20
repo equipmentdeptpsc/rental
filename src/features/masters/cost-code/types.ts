@@ -16,6 +16,16 @@ export interface CostCodeRecord {
 
   description: string;
 
+  /** Equipment classification used by equipment, rental, and DEUR snapshots. */
+  equipmentClassification?: "Heavy" | "Light";
+
+  /** Optional ordering and audit metadata for records created before this milestone. */
+  sortOrder?: number;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
   defaultRate: number;
 
   unit: CostUnit;

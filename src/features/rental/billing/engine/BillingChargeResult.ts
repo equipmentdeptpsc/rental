@@ -1,4 +1,7 @@
 export interface BillingChargeResult {
+  billingQuantity?: number;
+  billingUnit?: "KILOMETER" | "TRIP" | "CUBIC_METER";
+  unitRate?: number;
   operatingHours: number;
 
   idleHours: number;

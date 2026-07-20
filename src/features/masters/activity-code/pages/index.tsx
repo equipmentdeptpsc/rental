@@ -180,13 +180,21 @@ export default function ActivityCodePage() {
 
     if (editing) {
 
-      update(record);
+      const result = update(record);
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
 
     }
 
     else {
 
-      create(record);
+      const result = create(record);
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
 
     }
 
@@ -448,6 +456,8 @@ export default function ActivityCodePage() {
         <ActivityCodeForm
 
           editing={editing}
+
+          existingRecords={records}
 
           onSave={save}
 

@@ -32,6 +32,8 @@ export default function NewEquipment() {
     typeId: "",
     type: "",
 
+    costCodeId: "",
+
     manufacturer: "",
     model: "",
     serialNumber: "",
@@ -66,6 +68,8 @@ export default function NewEquipment() {
 
       typeId: data.typeId,
       type: data.type,
+
+      costCodeId: data.costCodeId || undefined,
 
       manufacturer: data.manufacturer,
       model: data.model,

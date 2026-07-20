@@ -22,6 +22,7 @@ describe("PostgreSQL DEUR persistence adapter transaction", () => {
     const fake = scriptedPool();
     const adapter = new PostgresDeurSyncServerPersistence(fake.pool);
     const change = conformanceChange("operation-1", "deur-1");
+    change.payload = { id:"deur-1",evidenceMode:"ODOMETER_TRIP",odometerTripEvidence:{checkpoints:[{id:"a",location:"Plant",odometerReading:100}],segments:[],totalDistance:0,tripCount:0} };
 
     expect(await adapter.accept({ change, expectedRevision: 0 })).toMatchObject({ kind: "accepted", accepted: { remoteRevision: 1 } });
 
@@ -33,6 +34,7 @@ describe("PostgreSQL DEUR persistence adapter transaction", () => {
     expect(fake.calls.some((call) => call.text.includes("INSERT INTO deur_sync_change_log"))).toBe(true);
     expect(fake.calls.filter((call) => call.text.includes("operation-1") || call.text.includes("deur-1"))).toEqual([]);
     expect(fake.calls.some((call) => call.values?.includes("operation-1"))).toBe(true);
+    expect(fake.calls.some((call)=>call.values?.some(value=>typeof value==="string"&&value.includes("ODOMETER_TRIP")))).toBe(true);
     expect(fake.release).toHaveBeenCalledOnce();
   });
 

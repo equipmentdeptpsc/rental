@@ -11,6 +11,8 @@ import { useMaintenance } from "@/features/maintenance/context/MaintenanceContex
 import { useDailyLog } from "@/features/daily-log";
 
 import EquipmentTimeline from "@/features/equipment/history/components/EquipmentTimeline";
+import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
+import { getEquipmentCostCodeDisplay } from "@/features/equipment/utils/equipmentCostCode";
 
 export default function EquipmentDetails() {
   const { id } = useParams();
@@ -42,6 +44,8 @@ export default function EquipmentDetails() {
 
   const { logs } =
     useDailyLog();
+
+  const { costCodes } = useCostCodes();
 
   if (!equipment) {
     return (
@@ -125,6 +129,11 @@ export default function EquipmentDetails() {
 
   const totalMaintenance =
     maintenanceHistory.length;
+
+  const costCode = getEquipmentCostCodeDisplay(
+    equipment.costCodeId,
+    costCodes,
+  );
 
   return (
     <div className="space-y-8 p-8">
@@ -348,6 +357,22 @@ export default function EquipmentDetails() {
           </h2>
 
           <div className="space-y-3">
+
+            <div>
+
+              <strong>
+                Cost Code:
+              </strong>
+              {costCode.configured ? (
+                <div className="mt-1">
+                  <div className="font-medium">{costCode.code}</div>
+                  <div className="text-sm text-slate-500">{costCode.name}</div>
+                </div>
+              ) : (
+                <div className="mt-1 text-amber-700">{costCode.warning}</div>
+              )}
+
+            </div>
 
             <div>
 

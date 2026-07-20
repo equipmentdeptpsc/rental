@@ -104,6 +104,9 @@ export default function NewAssignment() {
         projectId:
           data.projectId,
 
+        activityCodeId:
+          data.activityCodeId || undefined,
+
         assignedDate:
           new Date()
             .toISOString()

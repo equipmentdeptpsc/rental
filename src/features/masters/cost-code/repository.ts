@@ -4,6 +4,31 @@ import type {
   
   const STORAGE_KEY =
     "equipment-rental-cost-codes";
+
+  const CLASSIFICATION_SEEDS: CostCodeRecord[] = [
+    {
+      id: "cost-code-5031-heavy-equipment",
+      code: "5031HEAVYEQPT",
+      description: "Heavy Equipment",
+      equipmentClassification: "Heavy",
+      sortOrder: 10,
+      defaultRate: 0,
+      unit: "Hour",
+      active: true,
+      deleted: false,
+    },
+    {
+      id: "cost-code-5031-light-equipment",
+      code: "5031LIGHTEQPT",
+      description: "Light Equipment",
+      equipmentClassification: "Light",
+      sortOrder: 20,
+      defaultRate: 0,
+      unit: "Hour",
+      active: true,
+      deleted: false,
+    },
+  ];
   
   const SEED_DATA: CostCodeRecord[] = [
   
@@ -62,24 +87,23 @@ import type {
   class CostCodeRepository {
   
     private initialize() {
-  
-      if (
-        localStorage.getItem(
-          STORAGE_KEY
-        )
-      ) {
-        return;
-      }
-  
-      localStorage.setItem(
-  
-        STORAGE_KEY,
-  
-        JSON.stringify(
-          SEED_DATA
-        )
-  
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const stored = raw
+        ? JSON.parse(raw) as CostCodeRecord[]
+        : SEED_DATA;
+      const existingCodes = new Set(
+        stored.map((record) => record.code.trim().toUpperCase())
       );
+      const missingSeeds = CLASSIFICATION_SEEDS.filter(
+        (seed) => !existingCodes.has(seed.code)
+      );
+
+      if (!raw || missingSeeds.length > 0) {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify([...stored, ...missingSeeds])
+        );
+      }
   
     }
   

@@ -48,6 +48,8 @@ const current: EquipmentRecord = existing;
     typeId: current.typeId ?? "",
     type: current.type ?? "",
 
+    costCodeId: current.costCodeId ?? "",
+
     manufacturer:
       current.manufacturer ?? "",
 
@@ -109,6 +111,8 @@ const current: EquipmentRecord = existing;
       typeId: data.typeId,
 
       type: data.type,
+
+      costCodeId: data.costCodeId || undefined,
 
       manufacturer:
         data.manufacturer,

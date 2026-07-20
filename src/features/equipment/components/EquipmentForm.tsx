@@ -17,6 +17,8 @@ import {  useEquipmentConditions,} from "@/features/masters/equipment-condition"
 import {  useEquipmentLocations,} from "@/features/masters/equipment-location";
 import { useEquipmentBrands } from "@/features/masters/equipment-brand";
 import { useEquipmentTypes } from "@/features/masters/equipment-type/context/EquipmentTypeContext";
+import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
+import { getActiveCostCodeOptions } from "../utils/equipmentCostCode";
 
 interface Props {
   initialData?: EquipmentFormData;
@@ -39,6 +41,8 @@ export default function EquipmentForm({
 
   const { records: equipmentTypes } =
     useEquipmentTypes();
+
+  const { costCodes } = useCostCodes();
 
   const {
     getPrefixByCategory,
@@ -78,6 +82,8 @@ export default function EquipmentForm({
 
       brandId: "",
       brand: "",
+
+      costCodeId: "",
 
       manufacturer: "",
       model: "",
@@ -260,6 +266,23 @@ export default function EquipmentForm({
     );
   }}
 />
+
+        <div>
+          <Select
+            label="Cost Code"
+            value={form.costCodeId ?? ""}
+            options={[
+              { label: "-- Select Cost Code --", value: "" },
+              ...getActiveCostCodeOptions(costCodes),
+            ]}
+            onChange={(event) => update("costCodeId", event.target.value)}
+          />
+          {!form.costCodeId && (
+            <p className="mt-1 text-sm text-amber-700">
+              Cost Code not configured
+            </p>
+          )}
+        </div>
 
         <Input
           label="Manufacturer"

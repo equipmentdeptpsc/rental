@@ -239,6 +239,22 @@ describe("RentalProvider synchronization", () => {
     container.remove();
   });
 
+  it("freezes a required DEUR expectation policy at release and rejects a marked Rental without one", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), deurExpectationPolicyRequired: true, deurExpectationPolicy: { frequency: "PER_WORKDAY", effectiveFrom: "2026-07-17", timezone: "Asia/Manila", capturedAt: "2026-07-16T00:00:00Z" } }]);
+    const first = await renderHarness();
+    await act(async () => expect(first.harness.rental.releaseRental("rental-1", "Test Admin").success).toBe(true));
+    expect(first.harness.rental.getRental("rental-1")).toMatchObject({ status: "Released", deurExpectationPolicyFrozenAt: expect.any(String), deurExpectationPolicy: { capturedAt: expect.any(String) } });
+    await act(async () => first.root.unmount()); first.container.remove();
+
+    storage.clear(); vi.resetModules(); prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), deurExpectationPolicyRequired: true }]);
+    const second = await renderHarness();
+    await act(async () => expect(second.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: false, message: expect.stringContaining("expectation policy") }));
+    expect(second.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
+    await act(async () => second.root.unmount()); second.container.remove();
+  });
+
   it("returns equipment to Available when a reservation without an assignment is cancelled", async () => {
     prepareState("Available", "Draft");
     const { harness, root, container } = await renderHarness();
@@ -422,6 +438,32 @@ describe("RentalProvider synchronization", () => {
 
     expect(harness.equipment.getEquipment("equipment-1")?.status).toBe("Rented");
     expect(harness.rental.getRental("rental-2")?.status).toBe("Active");
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("captures both operational snapshots before persisting an Assignment rental", async () => {
+    const configuredAssignment = { ...activeAssignment, activityCodeId: "activity-ldc" };
+    prepareCreateState("Assigned", configuredAssignment);
+    storage.set(equipmentKey, [{ ...equipment("Assigned"), costCodeId: "cost-heavy" }]);
+    storage.set("equipment-rental-cost-codes", [{
+      id: "cost-heavy", code: "5031HEAVYEQPT", description: "Heavy Equipment",
+      defaultRate: 0, unit: "Hour", active: true, deleted: false,
+    }]);
+    storage.set("equipment-rental-activity-codes", [{
+      id: "activity-ldc", activityCode: "LDC", description: "LAUCHANCO DEVELOPMENT CORPORATION",
+      active: true, deleted: false,
+    }]);
+    const { harness, root, container } = await renderHarness();
+    const { status: _status, statusId: _statusId, ...request } = rental("Draft", configuredAssignment.id);
+
+    await act(async () => {
+      expect(harness.rental.addRental(request).success).toBe(true);
+    });
+    expect(harness.rental.getRental("rental-1")?.operationalMetadata).toEqual({
+      costCode: { id: "cost-heavy", code: "5031HEAVYEQPT", name: "Heavy Equipment" },
+      activityCode: { id: "activity-ldc", code: "LDC", name: "LAUCHANCO DEVELOPMENT CORPORATION" },
+    });
     await act(async () => root.unmount());
     container.remove();
   });

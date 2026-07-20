@@ -20,6 +20,10 @@ export interface BillingSummary {
 
 export interface BillingPreviewLine {
   deurId: string;
+  deurRevisionChainId?: string;
+  deurRevisionNumber?: number;
+  effectiveDeurId?: string;
+  correctedFromDeurId?: string;
 
   deurReference?: string;
 
@@ -34,6 +38,16 @@ export interface BillingPreviewLine {
   billingMethod: string;
 
   costCode: string;
+
+  activityCode?: string;
+
+  quantity?: number;
+
+  unit?: "km" | "trip" | "m³";
+
+  unitRate?: number;
+  commercialTermsSource?: "IMMUTABLE_SNAPSHOT" | "LEGACY_RENTAL_FALLBACK";
+  commercialCapturedAt?: string;
 
   description: string;
 

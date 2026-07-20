@@ -7,7 +7,7 @@ import { deurRepository } from "@/features/rental/deur/repository/deurRepository
 import { evaluateDeurBillingEligibility, type DeurBillingEligibilityResult } from "@/features/rental/deur/billing/evaluateDeurBillingEligibility";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import { calculateDeurBillingStatementLine } from "./calculateDeurBillingStatementLine";
-import { mapRentalContractToBillingCalculationTerms } from "@/features/rental/billing/engine";
+import { mapRentalContractToBillingCalculationTerms, resolveDeurBillingCalculationTerms, type BillingChargeResult } from "@/features/rental/billing/engine";
 
 type Result =
   | { success: true; statement: BillingStatement }
@@ -18,7 +18,7 @@ type BillingStatementRepositoryPort = Pick<
   "getById" | "getByRentalId" | "create" | "delete"
 >;
 
-type DeurRepositoryPort = Pick<typeof deurRepository, "getById" | "update">;
+type DeurRepositoryPort = Pick<typeof deurRepository, "getById" | "update"> & { getByRentalId?: typeof deurRepository.getByRentalId };
 
 export interface SingleDeurBillingStatementInput {
   aggregate: RentalAggregate;
@@ -30,6 +30,7 @@ export interface ConsumeDeurIntoBillingStatementCommand {
   deurId: string;
   expectedDeurUpdatedAt?: string;
   statementInput: SingleDeurBillingStatementInput;
+  statementIdentity?: { id: string; statementNo: string };
 }
 
 export type ConsumeDeurIntoBillingStatementResult =
@@ -52,7 +53,9 @@ export function createBillingStatementForRental(
   from: string,
   to: string,
   lines: BillingPreviewLine[],
-  statements: Pick<BillingStatementRepositoryPort, "getByRentalId" | "create"> = billingStatementRepository
+  statements: Pick<BillingStatementRepositoryPort, "getByRentalId" | "create"> = billingStatementRepository,
+  financials?: Pick<BillingChargeResult, "vat" | "withholdingTax" | "grandTotal">,
+  identity?: { id: string; statementNo: string },
 ): Result {
   if (["Cancelled", "Closed"].includes(aggregate.rental.status)) {
     return { success: false, message: "Cancelled or closed rentals cannot create billing statements." };
@@ -81,7 +84,7 @@ export function createBillingStatementForRental(
     return { success: false, message: "A billing statement already exists for this rental and period." };
   }
 
-  const statement = createBillingStatement(aggregate, from, to, lines);
+  const statement = createBillingStatement(aggregate, from, to, lines, financials, identity);
   statements.create(statement);
   return { success: true, statement };
 }
@@ -96,6 +99,13 @@ function failure(
 
 function hasText(value: string | undefined) {
   return Boolean(value?.trim());
+}
+
+function revisionChainFor(deur: DeurRecord, deurs: DeurRepositoryPort) {
+  const chainId = deur.revision?.chainId ?? deur.id;
+  return (deurs.getByRentalId?.(deur.rentalId) ?? [deur]).filter(
+    (item) => (item.revision?.chainId ?? item.id) === chainId,
+  );
 }
 
 function isNonBlankString(value: unknown): value is string {
@@ -167,14 +177,20 @@ export function consumeDeurIntoBillingStatement(
     return failure("INVALID_COMMAND", "Billing statement input does not match the DEUR rental.");
   }
 
-  const eligibility = evaluateDeurBillingEligibility({ deur, billingMethod: aggregate.contract.billingMethod });
+  const resolvedCommercial=resolveDeurBillingCalculationTerms(deur,mapRentalContractToBillingCalculationTerms(aggregate.contract));
+  const eligibility = evaluateDeurBillingEligibility({
+    deur,
+    billingMethod: resolvedCommercial.terms.billingMethod,
+    unitRate: resolvedCommercial.terms.unitRate,
+    revisionChain: revisionChainFor(deur, deurs),
+  });
   if (!eligibility.eligible) {
     return failure("ELIGIBILITY_REJECTED", eligibility.reason, { eligibility });
   }
 
   const calculatedLine = calculateDeurBillingStatementLine(
     deur,
-    mapRentalContractToBillingCalculationTerms(aggregate.contract),
+    resolvedCommercial.terms,
   );
   if (!calculatedLine.success) {
     return failure("CALCULATION_FAILED", calculatedLine.message);
@@ -182,7 +198,10 @@ export function consumeDeurIntoBillingStatement(
 
   let statement: BillingStatement;
   try {
-    const creation = createBillingStatementForRental(aggregate, billingFrom, billingTo, [calculatedLine.line], statements);
+    const creation = createBillingStatementForRental(
+      aggregate, billingFrom, billingTo, [calculatedLine.line], statements,
+      calculatedLine.charges, command.statementIdentity,
+    );
     if (!creation.success) {
       return failure("STATEMENT_CREATION_FAILED", creation.message);
     }

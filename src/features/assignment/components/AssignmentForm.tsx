@@ -9,13 +9,14 @@ import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useProject } from "@/features/project/context/ProjectContext";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { selectAvailableEquipment } from "@/features/assignment/utils/selectAvailableEquipment";
+import { useActivityCodes } from "@/features/masters/activity-code";
+import {
+  evaluateAssignmentActivityCodeConfiguration,
+  getActiveAssignmentActivityCodeOptions,
+} from "../utils/assignmentActivityCode";
+import type { AssignmentFormData } from "../types";
 
-export interface AssignmentFormData {
-  equipmentId: string;
-  operatorId: string;
-  projectId: string;
-  remarks: string;
-}
+export type { AssignmentFormData } from "../types";
 
 interface Props {
   onSubmit(
@@ -49,6 +50,8 @@ export default function AssignmentForm({
 
   const { assignments } =
     useAssignment();
+
+  const { records: activityCodes } = useActivityCodes();
 
   const availableEquipment =
     useMemo(() =>
@@ -94,10 +97,17 @@ export default function AssignmentForm({
 
       projectId: "",
 
+      activityCodeId: "",
+
       remarks: "",
 
       ...initialData,
     });
+
+  const activityCodeConfiguration = evaluateAssignmentActivityCodeConfiguration(
+    form.activityCodeId,
+    activityCodes,
+  );
 
   useEffect(() => {
     setForm((prev) => ({
@@ -223,6 +233,31 @@ export default function AssignmentForm({
           ),
         ]}
       />
+
+      <div>
+        <Select
+          label="Activity Code"
+          value={form.activityCodeId ?? ""}
+          onChange={(event) => update("activityCodeId", event.target.value)}
+          options={[
+            { label: "Select Activity Code", value: "" },
+            ...getActiveAssignmentActivityCodeOptions(activityCodes),
+          ]}
+        />
+        {(activityCodeConfiguration.status === "missing" ||
+          activityCodeConfiguration.status === "not-found") && (
+          <p className="mt-1 text-sm text-amber-700">
+            {activityCodeConfiguration.message}
+          </p>
+        )}
+        {(activityCodeConfiguration.status === "inactive" ||
+          activityCodeConfiguration.status === "deleted") && (
+          <p className="mt-1 text-sm text-amber-700">
+            {activityCodeConfiguration.record.activityCode} — {activityCodeConfiguration.record.description}
+            {` (${activityCodeConfiguration.status === "inactive" ? "Inactive" : "Deleted"})`}
+          </p>
+        )}
+      </div>
 
       <Input
         label="Remarks"

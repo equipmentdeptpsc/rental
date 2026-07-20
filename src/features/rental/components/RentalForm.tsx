@@ -13,7 +13,13 @@ import {
   getRentalProjectOptions,
 } from "@/features/rental/utils/rentalFormOptions";
 import { localCalendarDate, validateNewRentalDates } from "@/features/rental/utils/rentalDateValidation";
-import { rentalBillingMethods, rentalTypes, type RentalBillingMethod, type RentalType } from "@/features/rental/types";
+import { rentalBillingMethods, rentalTypes, type DeurExpectationFrequency, type DeurExpectationShiftCode, type RentalBillingMethod, type RentalType } from "@/features/rental/types";
+import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
+import type { AssignmentRecord } from "@/features/assignment/types";
+import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
+import { useActivityCodes } from "@/features/masters/activity-code";
+import { createRentalOperationalMetadataSnapshot } from "@/features/rental/services/createRentalOperationalMetadataSnapshot";
+import RentalOperationalMetadataCard from "./RentalOperationalMetadataCard";
 
 export interface RentalFormData {
   equipmentId: string;
@@ -25,6 +31,8 @@ export interface RentalFormData {
   expectedReturn?: string;
   rentalType: RentalType | "";
   billingMethod: RentalBillingMethod | "";
+  deurExpectationFrequency: DeurExpectationFrequency;
+  expectedShiftCodes: DeurExpectationShiftCode[];
 }
 
 interface Props {
@@ -41,6 +49,8 @@ interface Props {
   lockOperator?: boolean;
 
   initialProjectWarning?: string;
+
+  assignment?: AssignmentRecord;
 }
 
 export default function RentalForm({
@@ -51,6 +61,7 @@ export default function RentalForm({
   lockEquipment = false,
   lockOperator = false,
   initialProjectWarning,
+  assignment,
 }: Props) {
   const { equipment } =
     useEquipment();
@@ -60,6 +71,8 @@ export default function RentalForm({
 
   const { projects } = useProject();
   const { operators } = useOperator();
+  const { costCodes } = useCostCodes();
+  const { records: activityCodes } = useActivityCodes();
 
     const availableEquipment =
     useMemo(() => {
@@ -177,10 +190,17 @@ export default function RentalForm({
       expectedReturn: "",
       rentalType: "",
       billingMethod: "",
+      deurExpectationFrequency: "PER_WORKDAY",
+      expectedShiftCodes: ["DAY"],
   
     });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedEquipment = equipment.find((record) => record.id === form.equipmentId);
+  const metadataPreview = selectedEquipment
+    ? createRentalOperationalMetadataSnapshot({ equipment: selectedEquipment, assignment, costCodes, activityCodes })
+    : undefined;
 
   useEffect(() => {
     setForm((prev) => ({
@@ -213,6 +233,10 @@ export default function RentalForm({
         const dateError = validateNewRentalDates(form.dateOut, form.expectedReturn);
         if (dateError) {
           window.alert(dateError);
+          return;
+        }
+        if (form.deurExpectationFrequency === "PER_SHIFT" && form.expectedShiftCodes.length === 0) {
+          window.alert("Select at least one expected DEUR shift.");
           return;
         }
 
@@ -287,6 +311,23 @@ export default function RentalForm({
         onChange={(e) => update("billingMethod", e.target.value as RentalFormData["billingMethod"])}
       />
 
+      <Select
+        label="DEUR Reporting Frequency"
+        value={form.deurExpectationFrequency}
+        options={[{ value: "PER_WORKDAY", label: "Per Workday" }, { value: "PER_SHIFT", label: "Per Shift" }, { value: "ON_DEMAND", label: "On Demand" }]}
+        onChange={(e) => update("deurExpectationFrequency", e.target.value as DeurExpectationFrequency)}
+      />
+
+      {form.deurExpectationFrequency === "PER_SHIFT" && <fieldset className="rounded border p-3">
+        <legend className="px-1 text-sm font-medium">Expected Shifts</legend>
+        <div className="flex gap-4">{(["DAY", "NIGHT"] as const).map((shift) => <label key={shift} className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={form.expectedShiftCodes.includes(shift)} onChange={(event) => update("expectedShiftCodes", event.target.checked ? [...form.expectedShiftCodes, shift] : form.expectedShiftCodes.filter((item) => item !== shift))} /> {shift === "DAY" ? "Day" : "Night"}
+        </label>)}</div>
+        <div className="mt-2 text-xs text-slate-600">{deurShiftWindowRepository.getAll().filter((window) => form.expectedShiftCodes.includes(window.code)).map((window) => <p key={window.code}>{window.label}: {window.startTime}–{window.endTime}{window.endTime <= window.startTime ? " next day" : ""}</p>)}</div>
+      </fieldset>}
+
+      <p className="text-xs text-slate-500">The DEUR expectation policy becomes read-only when the Rental is released.</p>
+
       {lockOperator && <p className="text-sm text-slate-500">Operator is inherited from the selected assignment.</p>}
 
       {initialProjectWarning && <p className="text-sm text-amber-700">The assignment’s project is unavailable or inactive. Select another active project.</p>}
@@ -296,6 +337,17 @@ export default function RentalForm({
           No active projects are available. Create or activate a project before creating a rental.
         </p>
       )}
+
+      <RentalOperationalMetadataCard
+        title="Inherited Operational Metadata"
+        metadata={metadataPreview?.snapshot ?? {}}
+        costCodeMissingLabel={metadataPreview?.issues.some((issue) => issue.code === "COST_CODE_NOT_FOUND")
+          ? "Cost Code not found" : metadataPreview?.issues.some((issue) => issue.code === "COST_CODE_INVALID")
+            ? "Cost Code configuration is invalid" : "Cost Code not configured"}
+        activityCodeMissingLabel={metadataPreview?.issues.some((issue) => issue.code === "ACTIVITY_CODE_NOT_FOUND")
+          ? "Activity Code not found" : metadataPreview?.issues.some((issue) => issue.code === "ACTIVITY_CODE_INVALID")
+            ? "Activity Code configuration is invalid" : "Activity Code not configured"}
+      />
 
       <Input
         type="date"

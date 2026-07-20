@@ -101,6 +101,16 @@ export default function NewRental() {
         rentalType: data.rentalType || undefined,
 
         billingMethod: data.billingMethod || undefined,
+
+        deurExpectationPolicyRequired: true,
+
+        deurExpectationPolicy: {
+          frequency: data.deurExpectationFrequency,
+          effectiveFrom: data.dateOut,
+          ...(data.deurExpectationFrequency === "PER_SHIFT" ? { expectedShiftCodes: data.expectedShiftCodes } : {}),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          capturedAt: new Date().toISOString(),
+        },
       
       };
 
@@ -158,6 +168,7 @@ export default function NewRental() {
         lockEquipment={Boolean(assignment)}
         lockOperator={Boolean(assignment)}
         initialProjectWarning={assignmentProjectError}
+        assignment={assignment}
       />}
 
     </div>

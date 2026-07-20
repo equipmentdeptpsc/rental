@@ -55,6 +55,7 @@ export default function EditAssignment() {
           equipmentId: existingAssignment.equipmentId,
           operatorId: existingAssignment.operatorId,
           projectId: existingAssignment.projectId,
+          activityCodeId: existingAssignment.activityCodeId,
           remarks: existingAssignment.remarks,
         }}
         lockEquipment={equipmentLocked}

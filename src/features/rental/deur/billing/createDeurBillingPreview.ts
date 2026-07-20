@@ -1,4 +1,4 @@
-import type { BillingCalculationTerms, BillingChargeResult } from "@/features/rental/billing/engine";
+import { resolveDeurBillingCalculationTerms, type BillingCalculationTerms, type BillingChargeResult, type CommercialTermsSource } from "@/features/rental/billing/engine";
 import { calculateDeurBillingStatementLine } from "@/features/rental/billingstatement/services/calculateDeurBillingStatementLine";
 import type { CanonicalDeurEvent, DeurRecord } from "../types";
 import { calculateDeurTotals } from "../services/calculateDeurTotals";
@@ -18,10 +18,13 @@ export interface DeurBillingPreview {
   };
   rates: Omit<BillingCalculationTerms, "billingMethod" | "operatorIncluded"> & { operatorIncluded: boolean };
   charges?: BillingChargeResult;
+  commercialTermsSource?: CommercialTermsSource;
+  commercialCapturedAt?: string;
+  quantity?: { value: number; unit: "km" | "trip" | "m³" };
   issues: DeurBillingPreviewIssue[];
   disclaimer?: string;
 }
-export interface CreateDeurBillingPreviewInput { deur: DeurRecord; terms: BillingCalculationTerms; evaluatedAt?: string | Date }
+export interface CreateDeurBillingPreviewInput { deur: DeurRecord; terms: BillingCalculationTerms; evaluatedAt?: string | Date; revisionChain?: DeurRecord[] }
 
 const provisionalCodes = new Set<DeurBillingEligibilityReasonCode>(["NOT_ACKNOWLEDGED", "SHIFT_NOT_COMPLETED", "OPEN_ACTIVITY"]);
 const numericFields: Array<keyof Omit<BillingCalculationTerms, "billingMethod" | "operatorIncluded">> = [
@@ -40,7 +43,7 @@ function closeOpenEvents(events: CanonicalDeurEvent[], evaluatedAt: Date): Canon
     const timestamp = new Date(Number.isFinite(startedAt) ? Math.max(startedAt, evaluation) : evaluation).toISOString();
     result.push({ id: `preview-${activityType}-end`, activityType, action: "end", timestamp, sequence: ++sequence, source: "automatic" });
   };
-  (["operation", "idle", "mealBreak"] as const).forEach(close);
+  (["operation", "idle", "mealBreak", "breakdown"] as const).forEach(close);
   close("shift");
   return result;
 }
@@ -53,22 +56,24 @@ function configurationIssues(terms: BillingCalculationTerms): DeurBillingPreview
   });
   if (terms.billingMethod === "One Lot") {
     if (!(Number.isFinite(terms.contractAmount) && terms.contractAmount! > 0)) issues.push({ code: "CONTRACT_AMOUNT_REQUIRED", message: "A positive contract amount is required for One Lot billing.", field: "contractAmount" });
-  } else if (terms.billingMethod !== "Per Cubic Meter" && !(Number.isFinite(terms.unitRate) && terms.unitRate > 0)) {
+  } else if (!(Number.isFinite(terms.unitRate) && terms.unitRate > 0)) {
     issues.push({ code: "UNIT_RATE_REQUIRED", message: "A positive billing unit rate is required.", field: "unitRate" });
   }
   return issues;
 }
 
-export function createDeurBillingPreview({ deur, terms, evaluatedAt = new Date() }: CreateDeurBillingPreviewInput): DeurBillingPreview {
+export function createDeurBillingPreview({ deur, terms, evaluatedAt = new Date(), revisionChain }: CreateDeurBillingPreviewInput): DeurBillingPreview {
+  const resolvedCommercial=resolveDeurBillingCalculationTerms(deur,terms);terms=resolvedCommercial.terms;
   const calculatedAt = new Date(evaluatedAt);
   const eventState = deriveDeurEventState(deur);
   const hasRunningActivity = eventState.hasOpenInterval || Boolean(eventState.openPrimaryActivity);
   const evidenceEvents = hasRunningActivity && Array.isArray(deur.events) ? closeOpenEvents(deur.events, calculatedAt) : structuredClone(deur.events ?? []);
   const totals = calculateDeurTotals(evidenceEvents).totals;
-  const eligibility = evaluateDeurBillingEligibility({ deur, billingMethod: terms.billingMethod });
+  const eligibility = evaluateDeurBillingEligibility({ deur, billingMethod: terms.billingMethod, unitRate: terms.unitRate, revisionChain });
   const issues = configurationIssues(terms);
   const base: DeurBillingPreview = {
     status: "ineligible", calculatedAt: calculatedAt.toISOString(), billingMethod: terms.billingMethod,
+    commercialTermsSource:resolvedCommercial.source,...(resolvedCommercial.capturedAt?{commercialCapturedAt:resolvedCommercial.capturedAt}:{}),
     eligibility: { eligible: eligibility.eligible, reasonCodes: [eligibility.reasonCode] },
     evidence: {
       operatingMinutes: totals.operationMinutes, idleMinutes: totals.idleMinutes,
@@ -83,9 +88,6 @@ export function createDeurBillingPreview({ deur, terms, evaluatedAt = new Date()
     }),
     issues: [...issues, ...eligibility.validationIssues.map((message) => ({ code: "INVALID_EVENT_HISTORY", message }))],
   };
-  if (terms.billingMethod === "Per Cubic Meter") {
-    return { ...base, status: "not-calculable", issues: [...base.issues, { code: "QUANTITY_REQUIRED", message: "Canonical DEUR evidence does not include cubic-meter quantity.", field: "quantity" }] };
-  }
   if (issues.length > 0) return { ...base, status: "not-calculable" };
   const provisional = !eligibility.eligible && hasRunningActivity && provisionalCodes.has(eligibility.reasonCode) && eventState.structuralIssues.length === 0;
   if (!eligibility.eligible && !provisional) return base;
@@ -95,6 +97,7 @@ export function createDeurBillingPreview({ deur, terms, evaluatedAt = new Date()
     ...base,
     status: provisional ? "provisional" : "available",
     charges: structuredClone(calculated.charges),
+    ...(calculated.line.quantity !== undefined && calculated.line.unit ? { quantity: { value: calculated.line.quantity, unit: calculated.line.unit } } : {}),
     disclaimer: provisional ? "Live estimate only. Charges may change until the shift is completed and acknowledged." : undefined,
   };
 }

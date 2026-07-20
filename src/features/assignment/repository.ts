@@ -3,6 +3,7 @@ import type { AssignmentRecord } from "./types";
 import { storage } from "@/core/storage";
 
 const STORAGE_KEY = "assignments";
+const clone = <T>(value: T): T => structuredClone(value);
 
 function load(): AssignmentRecord[] {
   try {
@@ -23,26 +24,27 @@ let assignments =
   load();
 
 function save() {
-  storage.set(STORAGE_KEY, assignments);
+  storage.set(STORAGE_KEY, clone(assignments));
 }
 
 export const assignmentRepository =
   {
     getAll() {
-      return [...assignments];
+      return clone(assignments);
     },
 
     getById(id: string) {
-      return assignments.find(
+      const found = assignments.find(
         (a) => a.id === id
       );
+      return found ? clone(found) : undefined;
     },
 
     create(
       assignment: AssignmentRecord
     ) {
       assignments.unshift(
-        assignment
+        clone(assignment)
       );
 
       save();
@@ -54,7 +56,7 @@ export const assignmentRepository =
       assignments =
         assignments.map((a) =>
           a.id === assignment.id
-            ? assignment
+            ? clone(assignment)
             : a
         );
 
@@ -71,9 +73,9 @@ export const assignmentRepository =
     },
 
     getActive() {
-      return assignments.filter(
+      return clone(assignments.filter(
         (a) =>
           a.status === "Active"
-      );
+      ));
     },
   };

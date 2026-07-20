@@ -1,10 +1,16 @@
 import {
   useRentalWorkspaceAggregate,
 } from "..";
+import { evaluateRentalDeurCompliance } from "@/features/rental/deur/compliance/evaluateRentalDeurCompliance";
+import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
+import RentalDeurComplianceSummary from "@/features/rental/deur/compliance/RentalDeurComplianceSummary";
+import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
+import RentalDeurExpectationPolicyCard from "@/features/rental/deur/compliance/RentalDeurExpectationPolicyCard";
 
 export default function RentalWorkspaceHeader() {
   const aggregate =
     useRentalWorkspaceAggregate();
+  const compliance = evaluateRentalDeurCompliance({ rental: aggregate.rental, assignment: aggregate.assignment, deurs: aggregate.deurs, evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
@@ -32,6 +38,8 @@ export default function RentalWorkspaceHeader() {
           <div className="font-semibold">
             {aggregate.rental.status}
           </div>
+
+          <div className="mt-2"><RentalDeurComplianceIndicator result={compliance} /></div>
 
         </div>
 
@@ -70,6 +78,9 @@ export default function RentalWorkspaceHeader() {
         />
 
       </div>
+
+      <RentalDeurComplianceSummary result={compliance} policy={aggregate.rental.deurExpectationPolicy} />
+      <RentalDeurExpectationPolicyCard rental={aggregate.rental} />
 
     </div>
   );

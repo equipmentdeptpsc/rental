@@ -13,11 +13,10 @@ export class BillingRateEngine {
     terms: BillingCalculationTerms
   ): BillingChargeResult {
 
-    let operatingHours =
-      deur.totalOperatingMinutes / 60;
+    const isQuantityBilling = terms.billingMethod === "Per Kilometer" || terms.billingMethod === "Per Trip" || terms.billingMethod === "Per Cubic Meter";
+    let operatingHours = isQuantityBilling ? 0 : deur.totalOperatingMinutes / 60;
 
-    const idleHours =
-      deur.totalIdleMinutes / 60;
+    const idleHours = isQuantityBilling ? 0 : deur.totalIdleMinutes / 60;
 
     const mobilizationHours =
       deur.totalMobilizationMinutes / 60;
@@ -29,7 +28,7 @@ export class BillingRateEngine {
     // Minimum Billable Hours
     //
     if (
-      terms.minimumBillableHours &&
+      !isQuantityBilling && terms.minimumBillableHours &&
       operatingHours <
         terms.minimumBillableHours
     ) {
@@ -67,9 +66,14 @@ export class BillingRateEngine {
           unitRate;
         break;
 
+      case "Per Kilometer":
+        operatingCharge = (deur.odometerTripEvidence?.totalDistance ?? 0) * unitRate;
+        break;
+      case "Per Trip":
+        operatingCharge = (deur.odometerTripEvidence?.tripCount ?? 0) * unitRate;
+        break;
       case "Per Cubic Meter":
-        operatingCharge =
-          0;
+        operatingCharge = (deur.quantityEvidence?.quantity ?? 0) * unitRate;
         break;
 
       case "One Lot":
@@ -83,7 +87,7 @@ export class BillingRateEngine {
     // Idle Charge
     //
     const idleCharge =
-      idleHours *
+      (isQuantityBilling ? 0 : idleHours) *
       (terms.standbyRate ?? 0);
 
     //
@@ -146,6 +150,20 @@ export class BillingRateEngine {
       withholdingTax;
 
     return {
+
+      ...(terms.billingMethod === "Per Kilometer" ? {
+        billingQuantity: deur.odometerTripEvidence?.totalDistance ?? 0,
+        billingUnit: "KILOMETER" as const,
+        unitRate,
+      } : terms.billingMethod === "Per Trip" ? {
+        billingQuantity: deur.odometerTripEvidence?.tripCount ?? 0,
+        billingUnit: "TRIP" as const,
+        unitRate,
+      } : terms.billingMethod === "Per Cubic Meter" ? {
+        billingQuantity: deur.quantityEvidence?.quantity ?? 0,
+        billingUnit: "CUBIC_METER" as const,
+        unitRate,
+      } : {}),
 
       operatingHours,
 

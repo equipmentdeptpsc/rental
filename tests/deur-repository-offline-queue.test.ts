@@ -29,6 +29,15 @@ function buildRecord(id = "deur-1"): DeurRecord {
       { id: "event-3", activityType: "operation", action: "end", timestamp: "2026-01-01T02:00:00.000Z", sequence: 3, source: "user" },
       { id: "event-4", activityType: "shift", action: "end", timestamp: "2026-01-01T03:00:00.000Z", sequence: 4, source: "user" },
     ],
+    operationalMetadata: {
+      costCode: { code: "5031HEAVYEQPT", name: "Heavy Equipment" },
+      activityCode: { code: "LDC", name: "LAUCHANCO DEVELOPMENT CORPORATION" },
+      workDescription: { name: "MATERIAL HAULING", requiresRemarks: false },
+    },
+    creationSource: "RENTAL_COMPANY_MANUAL",
+    manualMetadata: { reason:"SITE_COMPUTER_NOT_AVAILABLE", encodedByName:"Maria Santos", encodedAt:"2026-01-01T00:00:00.000Z", physicalDeurReference:`PAPER-${id}`, operatorConfirmed:true },
+    evidenceMode:"ODOMETER_TRIP", billingMethodSnapshot:"Per Kilometer",
+    odometerTripEvidence:{checkpoints:[{id:"a",location:"Plant",odometerReading:100}],segments:[],startingOdometer:100,endingOdometer:100,totalDistance:0,tripCount:0},
   };
 }
 
@@ -62,11 +71,13 @@ describe("DEUR repository offline queue integration", () => {
       retryCount: 0,
     });
     expect(() => JSON.stringify(deurSyncQueue.getAll()[0].payload)).not.toThrow();
+    expect(deurSyncQueue.getAll()[0].payload).toMatchObject({ operationalMetadata: created.operationalMetadata });
+    expect(deurSyncQueue.getAll()[0].payload).toMatchObject({ evidenceMode:"ODOMETER_TRIP",odometerTripEvidence:{checkpoints:[{location:"Plant"}]}});
   });
 
   it("enqueues exactly one update mutation and does not enqueue reads or a missing update", async () => {
     const { deurRepository, deurSyncQueue } = await loadRepository();
-    const created = deurRepository.create(buildRecord());
+    const created = deurRepository.create({ ...buildRecord(), evidenceMode: "TIME_TIMELINE", billingMethodSnapshot: "Per Hour", odometerTripEvidence: undefined });
     const beforeUpdate = deurSyncQueue.getAll().length;
 
     deurRepository.update({ ...created, acknowledgementRemarks: "corrected" });
@@ -85,7 +96,7 @@ describe("DEUR repository offline queue integration", () => {
 
   it("enqueues delete once with the minimum replay payload and ignores a missing record", async () => {
     const { deurRepository, deurSyncQueue } = await loadRepository();
-    const created = deurRepository.create(buildRecord());
+    const created = deurRepository.create({ ...buildRecord(), evidenceMode: "TIME_TIMELINE", billingMethodSnapshot: "Per Hour", odometerTripEvidence: undefined });
 
     const deleted = deurRepository.delete(created.id);
     expect(deleted?.id).toBe(created.id);
@@ -99,7 +110,7 @@ describe("DEUR repository offline queue integration", () => {
 
   it("enqueues submit, reject, and reopen once in FIFO order without update mutations", async () => {
     const { deurRepository, deurSyncQueue } = await loadRepository();
-    const created = deurRepository.create(buildRecord());
+    const created = deurRepository.create({ ...buildRecord(), evidenceMode: "TIME_TIMELINE", billingMethodSnapshot: "Per Hour", odometerTripEvidence: undefined });
 
     expect(deurRepository.submit(created.id, { name: "Admin" }).success).toBe(true);
     expect(deurRepository.reject(created.id, { name: "Admin" }, "Correct the hours").success).toBe(true);
@@ -114,7 +125,7 @@ describe("DEUR repository offline queue integration", () => {
 
   it("enqueues acknowledge exactly once and does not enqueue a rejected repeat acknowledgement", async () => {
     const { deurRepository, deurSyncQueue } = await loadRepository();
-    const created = deurRepository.create(buildRecord());
+    const created = deurRepository.create({ ...buildRecord(), evidenceMode: "TIME_TIMELINE", billingMethodSnapshot: "Per Hour", odometerTripEvidence: undefined });
     expect(deurRepository.submit(created.id, { name: "Admin" }).success).toBe(true);
     const count = deurSyncQueue.getAll().length;
 

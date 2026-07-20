@@ -72,4 +72,38 @@ describe("LocalEquipmentRepository", () => {
     expect(storage.get<EquipmentRecord[]>(STORAGE_KEY)?.find((item) => item.id === created.id))
       .toBeUndefined();
   });
+
+  it("persists and updates an optional Cost Code reference", () => {
+    const repository = new LocalEquipmentRepository();
+    const created = {
+      ...equipment("cost-coded"),
+      costCodeId: "cost-code-heavy",
+    };
+
+    repository.create(created);
+    expect(new LocalEquipmentRepository().getById(created.id)?.costCodeId)
+      .toBe("cost-code-heavy");
+
+    repository.update({ ...created, costCodeId: "cost-code-light" });
+    expect(new LocalEquipmentRepository().getById(created.id)?.costCodeId)
+      .toBe("cost-code-light");
+  });
+
+  it("loads and reserializes legacy Equipment without a Cost Code", () => {
+    const legacy = equipment("legacy");
+    storage.set(STORAGE_KEY, [legacy]);
+
+    const repository = new LocalEquipmentRepository();
+    expect(repository.getById(legacy.id)?.costCodeId).toBeUndefined();
+
+    repository.update({ ...legacy, equipmentName: "Updated legacy equipment" });
+    expect(storage.get<EquipmentRecord[]>(STORAGE_KEY)).toEqual([
+      expect.objectContaining({
+        id: legacy.id,
+        equipmentName: "Updated legacy equipment",
+      }),
+    ]);
+    expect(storage.get<EquipmentRecord[]>(STORAGE_KEY)?.[0].costCodeId)
+      .toBeUndefined();
+  });
 });

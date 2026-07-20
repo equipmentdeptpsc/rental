@@ -10,6 +10,7 @@ describe("in-memory DEUR sync server persistence", () => {
 
   it("atomically stores identifiers, revision, accepted evidence, and one ordered change", () => {
     const input = conformanceChange("operation-1", "deur-1");
+    input.payload={id:"deur-1",evidenceMode:"ODOMETER_TRIP",odometerTripEvidence:{checkpoints:[{id:"a",location:"Plant",odometerReading:100}],segments:[],totalDistance:0,tripCount:0}};
     const original = structuredClone(input);
 
     const result = persistence.accept({ change: input, expectedRevision: 0 });
@@ -19,6 +20,7 @@ describe("in-memory DEUR sync server persistence", () => {
     expect(persistence.findByIdempotencyKey("operation-1")?.remoteRevision).toBe(1);
     expect(persistence.getEntityState("deur-1")?.revision).toBe(1);
     expect(persistence.readChanges(0, 10).changes).toHaveLength(1);
+    expect(persistence.readChanges(0,10).changes[0].payload).toEqual(input.payload);
     expect(input).toEqual(original);
   });
 

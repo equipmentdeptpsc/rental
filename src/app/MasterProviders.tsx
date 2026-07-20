@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { ActivityCodeProvider } from "@/features/masters/activity-code/context/ActivityCodeContext";
 import { CostCodeProvider } from "@/features/masters/cost-code/context/CostCodeContext";
+import { WorkDescriptionProvider } from "@/features/masters/work-description";
 
 import { EquipmentBrandProvider } from "@/features/masters/equipment-brand/context/EquipmentBrandContext";
 import { EquipmentCategoryProvider } from "@/features/masters/equipment-category/context/EquipmentCategoryContext";
@@ -21,6 +22,8 @@ export default function MasterProviders({
   children: ReactNode;
 }) {
   return (
+    <WorkDescriptionProvider>
+
     <ActivityCodeProvider>
 
       <CostCodeProvider>
@@ -66,5 +69,7 @@ export default function MasterProviders({
       </CostCodeProvider>
 
     </ActivityCodeProvider>
+
+    </WorkDescriptionProvider>
   );
 }

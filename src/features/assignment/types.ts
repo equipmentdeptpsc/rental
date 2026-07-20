@@ -12,6 +12,8 @@ export interface AssignmentRecord {
 
   projectId: string;
 
+  activityCodeId?: string;
+
   assignedDate: string;
 
   expectedReturn: string;
@@ -33,6 +35,8 @@ export interface AssignmentFormData {
   operatorId: string;
 
   projectId: string;
+
+  activityCodeId?: string;
 
   remarks: string;
 }

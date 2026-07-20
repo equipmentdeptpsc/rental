@@ -15,7 +15,7 @@ describe("rental commercial terms", () => {
 
   it("accepts each approved billing method without free-text values", () => {
     expect(rentalBillingMethods).toEqual([
-      "Per Hour", "Per Day", "Per Week", "Per Trip", "Per Kilometer", "Per Cubic Meter", "Per Lot",
+      "Per Hour", "Per Day", "Per Week", "Per Month", "Per Trip", "Per Kilometer", "Per Cubic Meter", "One Lot", "Per Lot",
     ]);
     expect(rentalBillingMethods.every(isRentalBillingMethod)).toBe(true);
     for (const billingMethod of rentalBillingMethods) {

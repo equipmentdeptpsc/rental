@@ -10,6 +10,18 @@ const request = (rentalStatus: CreateDeurRequest["rentalStatus"]): CreateDeurReq
   assignmentId: "assignment-1",
   projectId: "project-1",
   customerId: "customer-1",
+  rental: {
+    id: "rental-1", equipmentId: "equipment-1", customer: "Customer", project: "Project", rentedBy: "Admin",
+    dateOut: "2026-02-27", statusId: "released", status: rentalStatus,
+    operationalMetadata: {
+      costCode: { code: "5031HEAVYEQPT", name: "Heavy Equipment" },
+      activityCode: { code: "LDC", name: "LAUCHANCO DEVELOPMENT CORPORATION" },
+    },
+  },
+  selectedWorkDescription: {
+    id: "work-1", code: "MATERIAL_HAULING", name: "MATERIAL HAULING", active: true,
+    operatorSelectable: true, requiresRemarks: false,
+  },
 });
 
 describe("Daily Operations DEUR creation lifecycle guard", () => {

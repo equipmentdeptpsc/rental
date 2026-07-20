@@ -9,6 +9,7 @@ import type {
 import type {
   BillingStatement,
 } from "@/features/rental/billingstatement/types";
+import type { BillingChargeResult } from "@/features/rental/billing/engine";
 
 export function createBillingStatement(
 
@@ -17,8 +18,9 @@ export function createBillingStatement(
   from: string,
 
   to: string,
-
-  lines: BillingPreviewLine[]
+  lines: BillingPreviewLine[],
+  financials?: Pick<BillingChargeResult, "vat" | "withholdingTax" | "grandTotal">,
+  identity?: { id: string; statementNo: string },
 
 ): BillingStatement {
 
@@ -35,10 +37,10 @@ export function createBillingStatement(
 
   return {
 
-    id: crypto.randomUUID(),
+    id: identity?.id ?? crypto.randomUUID(),
 
     statementNo:
-      `BS-${Date.now()}`,
+      identity?.statementNo ?? `BS-${Date.now()}`,
 
     version: 1,
 
@@ -66,6 +68,9 @@ export function createBillingStatement(
     billingTo: to,
 
     subtotal,
+    vat: financials?.vat,
+    withholdingTax: financials?.withholdingTax,
+    grandTotal: financials?.grandTotal,
 
     approvalStatus:
       "Draft",
@@ -98,6 +103,14 @@ export function createBillingStatement(
         deurId:
           line.deurId,
 
+        deurRevisionChainId: line.deurRevisionChainId,
+
+        deurRevisionNumber: line.deurRevisionNumber,
+
+        effectiveDeurId: line.effectiveDeurId,
+
+        correctedFromDeurId: line.correctedFromDeurId,
+
         workDate:
           line.workDate,
 
@@ -106,6 +119,20 @@ export function createBillingStatement(
 
         costCode:
           line.costCode,
+
+        activityCode: line.activityCode,
+
+        quantity: line.quantity,
+
+        unit: line.unit,
+
+        unitRate: line.unitRate,
+
+        billingMethod: line.billingMethod,
+
+        commercialTermsSource: line.commercialTermsSource,
+
+        commercialCapturedAt: line.commercialCapturedAt,
 
         hours:
           line.operatingHours,

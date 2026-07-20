@@ -75,10 +75,10 @@ describe("DEUR billing preview domain service", () => {
     expect(createDeurBillingPreview({ deur: completed(), terms: terms({ billingMethod: "One Lot", unitRate: 100, contractAmount: 900 }), evaluatedAt: "2026-07-20T10:00:00.000Z" }).charges?.operatingCharge).toBe(900);
   });
 
-  it("returns not-calculable for cubic-meter quantity and missing required rates", () => {
+  it("rejects mismatched cubic-meter evidence and missing required rates", () => {
     const quantity = createDeurBillingPreview({ deur: completed(), terms: terms({ billingMethod: "Per Cubic Meter" }), evaluatedAt: "2026-07-20T10:00:00.000Z" });
     const rate = createDeurBillingPreview({ deur: completed(), terms: terms({ unitRate: 0 }), evaluatedAt: "2026-07-20T10:00:00.000Z" });
-    expect(quantity).toMatchObject({ status: "not-calculable", eligibility: { reasonCodes: ["UNSUPPORTED_BILLING_EVIDENCE"] } });
+    expect(quantity).toMatchObject({ status: "ineligible", eligibility: { reasonCodes: ["EVIDENCE_MODE_MISMATCH"] } });
     expect(rate).toMatchObject({ status: "not-calculable", issues: [{ code: "UNIT_RATE_REQUIRED", field: "unitRate" }] });
     expect(quantity.charges).toBeUndefined(); expect(rate.charges).toBeUndefined();
   });

@@ -18,6 +18,8 @@ import {
 
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { displayAssignmentExpectedReturn } from "@/features/assignment/utils/assignmentDisplay";
+import { useActivityCodes } from "@/features/masters/activity-code";
+import AssignmentActivityCodeDisplay from "@/features/assignment/components/AssignmentActivityCodeDisplay";
 
 export default function AssignmentDetails() {
   const { id } = useParams();
@@ -45,6 +47,8 @@ export default function AssignmentDetails() {
 
   const { logAction } =
     useAudit();
+
+  const { records: activityCodes } = useActivityCodes();
 
   const assignment =
     assignments.find(
@@ -175,6 +179,16 @@ export default function AssignmentDetails() {
               "-"
             }
           />
+
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Activity Code
+            </div>
+            <AssignmentActivityCodeDisplay
+              activityCodeId={assignment.activityCodeId}
+              records={activityCodes}
+            />
+          </div>
 
           <Info
             label="Status"

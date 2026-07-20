@@ -83,6 +83,18 @@ class BillingStatementRepository {
     const all =
       this.getAll();
 
+    const sameIdentity = all.find((item) => item.id === statement.id);
+    if (sameIdentity) {
+      if (sameIdentity.rentalId === statement.rentalId && sameIdentity.lines.map((line) => line.deurId).join("|") === statement.lines.map((line) => line.deurId).join("|")) return;
+      throw new Error("Billing statement identity is already in use.");
+    }
+    if (statement.lines.some((line) => all.some((item) => item.invoiceStatus !== "Cancelled" && item.lines.some((existingLine) =>
+      existingLine.deurId === line.deurId ||
+      Boolean(line.deurRevisionChainId && existingLine.deurRevisionChainId === line.deurRevisionChainId)
+    )))) {
+      throw new Error("A DEUR can belong to only one active billing statement.");
+    }
+
     all.push(statement);
 
     this.saveAll(all);

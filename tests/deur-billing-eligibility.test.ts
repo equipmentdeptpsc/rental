@@ -77,7 +77,7 @@ describe("DEUR billing eligibility", () => {
       { id: "e", activityType: "shift", action: "end", timestamp: "2026-01-01T03:00:00.000Z", sequence: 2, source: "user" },
     ] });
     expect(evaluateDeurBillingEligibility({ deur: noActivity, billingMethod: "Per Hour" }).reasonCode).toBe("NO_BILLABLE_ACTIVITY");
-    expect(evaluateDeurBillingEligibility({ deur: buildDeur(), billingMethod: "Per Cubic Meter" }).reasonCode).toBe("UNSUPPORTED_BILLING_EVIDENCE");
+    expect(evaluateDeurBillingEligibility({ deur: buildDeur(), billingMethod: "Per Cubic Meter" }).reasonCode).toBe("EVIDENCE_MODE_MISMATCH");
     expect(evaluateDeurBillingEligibility({ deur: noActivity, billingMethod: "Per Day" }).eligible).toBe(true);
   });
 

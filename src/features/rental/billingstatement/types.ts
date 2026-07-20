@@ -17,12 +17,28 @@ export interface BillingStatementLine {
   id?: string;
 
   deurId: string;
+  deurRevisionChainId?: string;
+  deurRevisionNumber?: number;
+  effectiveDeurId?: string;
+  correctedFromDeurId?: string;
 
   workDate: string;
 
   description: string;
 
   costCode: string;
+
+  activityCode?: string;
+
+  quantity?: number;
+
+  unit?: "km" | "trip" | "m³";
+
+  unitRate?: number;
+
+  billingMethod?: string;
+  commercialTermsSource?: "IMMUTABLE_SNAPSHOT" | "LEGACY_RENTAL_FALLBACK";
+  commercialCapturedAt?: string;
 
   hours: number;
 
@@ -61,6 +77,11 @@ export interface BillingStatement {
   billingTo: string;
 
   subtotal: number;
+
+  /** Engine-derived financial totals added by explicit DEUR handoffs. */
+  vat?: number;
+  withholdingTax?: number;
+  grandTotal?: number;
 
   // Approval Workflow
 

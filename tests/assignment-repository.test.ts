@@ -34,4 +34,57 @@ describe("assignment repository update", () => {
     expect(reloadedRepository.getAll()).toHaveLength(1);
     expect(reloadedRepository.getById("assignment-1")?.remarks).toBe("Updated");
   });
+
+  it("persists and edits Activity Code without changing identity or unrelated fields", async () => {
+    const { assignmentRepository } = await import("@/features/assignment/repository");
+    const created = { ...record(), activityCodeId: "activity-code-ldc" };
+    assignmentRepository.create(created);
+
+    expect(assignmentRepository.getById(created.id)?.activityCodeId)
+      .toBe("activity-code-ldc");
+
+    assignmentRepository.update({ ...created, activityCodeId: "activity-code-scm" });
+    expect(assignmentRepository.getById(created.id)).toMatchObject({
+      id: "assignment-1",
+      equipmentId: "equipment-1",
+      operatorId: "operator-1",
+      projectId: "project-1",
+      remarks: "Initial",
+      status: "Active",
+      activityCodeId: "activity-code-scm",
+    });
+  });
+
+  it("loads and reserializes legacy Assignment without Activity Code or data loss", async () => {
+    storage.set("assignments", [record()]);
+    const { assignmentRepository } = await import("@/features/assignment/repository");
+
+    const legacy = assignmentRepository.getById("assignment-1");
+    expect(legacy?.activityCodeId).toBeUndefined();
+    assignmentRepository.update({ ...legacy!, remarks: "Legacy updated" });
+
+    vi.resetModules();
+    const { assignmentRepository: reloaded } = await import("@/features/assignment/repository");
+    expect(reloaded.getById("assignment-1")).toMatchObject({
+      id: "assignment-1",
+      equipmentId: "equipment-1",
+      remarks: "Legacy updated",
+    });
+    expect(reloaded.getById("assignment-1")?.activityCodeId).toBeUndefined();
+  });
+
+  it("returns detached Assignment records", async () => {
+    const { assignmentRepository } = await import("@/features/assignment/repository");
+    assignmentRepository.create({ ...record(), activityCodeId: "activity-code-ldc" });
+
+    const found = assignmentRepository.getById("assignment-1")!;
+    found.activityCodeId = "mutated";
+    const listed = assignmentRepository.getAll();
+    listed[0].remarks = "mutated";
+
+    expect(assignmentRepository.getById("assignment-1")).toMatchObject({
+      activityCodeId: "activity-code-ldc",
+      remarks: "Initial",
+    });
+  });
 });

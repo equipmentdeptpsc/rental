@@ -33,6 +33,8 @@ export const APPLICATION_STORAGE_KEYS = [
   "rental-status-master",
   "equipment-rental-activity-codes",
   "equipment-rental-cost-codes",
+  "equipment-rental-work-descriptions",
+  "equipment-rental-deur-shift-windows",
 ] as const;
 
 export type ApplicationStorageKey = (typeof APPLICATION_STORAGE_KEYS)[number];
@@ -69,10 +71,10 @@ function readSection(key: ApplicationStorageKey): unknown | null {
 
 function validateData(data: unknown): data is BackupData {
   if (!isRecord(data)) return false;
-  return APPLICATION_STORAGE_KEYS.every((key) =>
+  return APPLICATION_STORAGE_KEYS.filter((key) => key !== "equipment-rental-deur-shift-windows").every((key) =>
     Object.prototype.hasOwnProperty.call(data, key) &&
     (data[key] === null || Array.isArray(data[key]))
-  );
+  ) && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-deur-shift-windows") || data["equipment-rental-deur-shift-windows"] === null || Array.isArray(data["equipment-rental-deur-shift-windows"]));
 }
 
 export function createApplicationBackup(now = new Date()): ApplicationBackup {
@@ -117,9 +119,10 @@ export function validateApplicationBackup(value: unknown): RestorePreview {
     throw new Error("The backup does not contain every required application storage section.");
   }
 
+  const normalizedData = { ...value.data, "equipment-rental-deur-shift-windows": value.data["equipment-rental-deur-shift-windows"] ?? null } as BackupData;
   const recordCounts = {} as Record<ApplicationStorageKey, number>;
   for (const key of APPLICATION_STORAGE_KEYS) {
-    recordCounts[key] = countRecords(value.data[key]);
+    recordCounts[key] = countRecords(normalizedData[key]);
   }
 
   return {
@@ -128,7 +131,7 @@ export function validateApplicationBackup(value: unknown): RestorePreview {
       schemaVersion: BACKUP_SCHEMA_VERSION,
       exportedAt: value.exportedAt,
       recordCounts,
-      data: value.data,
+      data: normalizedData,
     },
     sections: [...APPLICATION_STORAGE_KEYS],
   };
@@ -164,6 +167,8 @@ export function resetTransactionalData(): void {
     "equipment-category-master", "equipment-condition-master", "equipment-location-master",
     "equipment-ownership-master", "equipment-status-master", "rental-status-master",
     "equipment-rental-activity-codes", "equipment-rental-cost-codes",
+    "equipment-rental-work-descriptions",
+    "equipment-rental-deur-shift-windows",
   ]);
   for (const key of APPLICATION_STORAGE_KEYS) {
     if (!masterKeys.has(key)) storage.remove(key);

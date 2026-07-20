@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
+import { lazy, Suspense } from "react";
 
 import AppLayout from "./AppLayout";
 
@@ -38,6 +39,7 @@ import RentalPage from "@/pages/Rental";
 import NewRental from "@/pages/Rental/New";
 import ReturnRental from "@/pages/Rental/Return";
 import RentalWorkspacePage from "@/pages/RentalWorkspace";
+import OperatorDeurPage from "@/pages/OperatorDeur";
 
 // Maintenance
 import MaintenancePage from "@/pages/Maintenance";
@@ -54,6 +56,9 @@ import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import EquipmentTrash from "@/pages/Equipment/Trash";
 import Login from "@/pages/Login";
+
+const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
+const WorkDescriptionPage = lazy(() => import("@/features/masters/work-description/pages"));
 
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -179,6 +184,10 @@ export const router = createBrowserRouter([
         element: <RentalWorkspacePage />,
       },
       {
+        path: "rentals/:rentalId/operator-deur",
+        element: <OperatorDeurPage />,
+      },
+      {
         path: "rentals/return/:id",
         element: <ReturnRental />,
       },
@@ -225,6 +234,22 @@ export const router = createBrowserRouter([
       {
         path: "settings",
         element: <Settings />,
+      },
+      {
+        path: "settings/activity-codes",
+        element: (
+          <Suspense fallback={<div className="p-8 text-slate-500">Loading Activity Codes…</div>}>
+            <ActivityCodePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "settings/work-descriptions",
+        element: (
+          <Suspense fallback={<div className="p-8 text-slate-500">Loading Work Descriptions…</div>}>
+            <WorkDescriptionPage />
+          </Suspense>
+        ),
       },
     ],
   },

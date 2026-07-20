@@ -66,6 +66,9 @@ export interface EquipmentRecord {
   location?: string;
   locationId?: string;
 
+  /** Optional master reference; operational snapshots are captured downstream. */
+  costCodeId?: string;
+
   /* ===========================
      OPERATION
      =========================== */
@@ -116,6 +119,8 @@ export interface EquipmentFormData {
 
   locationId?: string;
   location?: string;
+
+  costCodeId?: string;
 
   /* Equipment Profile */
 

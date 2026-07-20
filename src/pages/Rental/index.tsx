@@ -8,6 +8,15 @@ import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import ReleaseRentalAction from "@/features/rental/components/ReleaseRentalAction";
 import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
+import { useEffect, useState } from "react";
+import { useAssignment } from "@/features/assignment/context/AssignmentContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
+import { useProject } from "@/features/project/context/ProjectContext";
+import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
+import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
+import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
+import { buildRentalDeurComplianceReport } from "@/features/rental/deur/compliance/buildRentalDeurComplianceReport";
+import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 
 export default function RentalPage() {
   const { rentals, transitionRental } = useRental();
@@ -16,6 +25,12 @@ export default function RentalPage() {
 
   const { getEquipment } =
     useEquipment();
+  const { assignments } = useAssignment();
+  const { operators } = useOperator();
+  const { projects } = useProject();
+  const [, setDeurVersion] = useState(0);
+  useEffect(() => subscribeDeurChanges(() => setDeurVersion((value) => value + 1)), []);
+  const { monitored: monitoredRentals, rows: attentionRows } = buildRentalDeurComplianceReport({ rentals, assignments, deurs: deurRepository.getAll(), evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
 
   return (
     <div className="space-y-6 p-8">
@@ -79,6 +94,10 @@ export default function RentalPage() {
               </th>
 
               <th className="px-4 py-3 text-left">
+                DEUR Compliance
+              </th>
+
+              <th className="px-4 py-3 text-left">
                 Actions
               </th>
 
@@ -93,7 +112,7 @@ export default function RentalPage() {
               <tr>
 
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="py-10 text-center text-slate-500"
                 >
                   No rental transactions found.
@@ -173,6 +192,10 @@ export default function RentalPage() {
                     </td>
 
                     <td className="px-4 py-3">
+                      <RentalDeurComplianceIndicator result={monitoredRentals.find((item) => item.rental.id === rental.id)!.result} />
+                    </td>
+
+                    <td className="px-4 py-3">
 
                       <div className="flex gap-3">
 
@@ -224,6 +247,32 @@ export default function RentalPage() {
         </table>
 
       </div></ResponsiveTable>
+
+      <section className="rounded-lg border bg-white p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <div><h2 className="text-lg font-semibold">Rentals Missing DEUR</h2><p className="text-sm text-slate-500">Operational compliance only; no records or billing actions are generated.</p></div>
+          <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800">{attentionRows.length}</span>
+        </div>
+        <ResponsiveTable><table className="min-w-full text-sm">
+          <thead className="bg-slate-50"><tr>{["Rental No.", "Work Date", "Shift", "Equipment", "Operator", "Project", "Billing Method", "Expectation Policy", "Status", "Existing DEUR", "Reason"].map((heading) => <th key={heading} className="px-3 py-2 text-left">{heading}</th>)}</tr></thead>
+          <tbody>{attentionRows.length === 0 ? <tr><td colSpan={11} className="p-6 text-center text-slate-500">No rentals currently require DEUR attention.</td></tr> : attentionRows.map(({ rental, assignment, result, expectation }) => {
+            const equipment = getEquipment(rental.equipmentId);
+            const operator = operators.find((item) => item.id === (rental.operatorId ?? assignment?.operatorId));
+            const project = projects.find((item) => item.id === rental.projectId);
+            const policy = rental.deurExpectationPolicy;
+            const policyLabel = policy?.frequency === "PER_WORKDAY" ? "Per Workday" : policy?.frequency === "PER_SHIFT" ? `Per Shift — ${policy.expectedShiftCodes?.join(", ")}` : policy?.frequency === "ON_DEMAND" ? "On Demand" : "Legacy Rental Fallback";
+            return <tr key={expectation?.expectationId ?? rental.id} className="border-t">
+              <td className="px-3 py-2"><Link className="text-blue-600 hover:underline" to={`/rentals/${rental.id}/workspace`}>{rental.rentalNumber ?? rental.id}</Link></td>
+              <td className="px-3 py-2">{expectation?.workDate ?? "—"}</td><td className="px-3 py-2">{expectation?.shiftCode ?? "—"}</td>
+              <td className="px-3 py-2">{getRentalEquipmentLabel(equipment)}</td><td className="px-3 py-2">{operator?.name ?? "Not assigned"}</td>
+              <td className="px-3 py-2">{project?.projectName ?? rental.project}</td><td className="px-3 py-2">{rental.billingMethod ?? "Not configured"}</td>
+              <td className="px-3 py-2">{policyLabel}</td><td className="px-3 py-2">{expectation?.status.replace("_", " ") ?? <RentalDeurComplianceIndicator result={result} />}</td>
+              <td className="px-3 py-2">{expectation?.matchingDeurNumber ?? expectation?.matchingEffectiveDeurId ?? "—"}{expectation?.matchingRevisionNumber ? ` R${expectation.matchingRevisionNumber}` : ""}</td>
+              <td className="px-3 py-2">{expectation?.reason ?? result.reason}</td>
+            </tr>;
+          })}</tbody>
+        </table></ResponsiveTable>
+      </section>
 
     </div>
   );

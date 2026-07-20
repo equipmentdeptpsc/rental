@@ -7,6 +7,8 @@ export type BillingMethod =
   | "Per Day"
   | "Per Week"
   | "Per Month"
+  | "Per Kilometer"
+  | "Per Trip"
   | "Per Cubic Meter"
   | "One Lot";
 

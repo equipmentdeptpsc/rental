@@ -15,9 +15,11 @@ export const rentalBillingMethods = [
   "Per Hour",
   "Per Day",
   "Per Week",
+  "Per Month",
   "Per Trip",
   "Per Kilometer",
   "Per Cubic Meter",
+  "One Lot",
   "Per Lot",
 ] as const;
 export type RentalBillingMethod = typeof rentalBillingMethods[number];
@@ -37,6 +39,61 @@ export interface RentalBillingTerms {
   operatorRate?: number;
   vatApplicability?: VatApplicability;
   withholdingTax?: number;
+}
+
+export interface RentalCommercialSnapshot {
+  billingMethod: RentalBillingMethod;
+  unitRate: number;
+  minimumBillableHours?: number;
+  overtimeRate?: number;
+  standbyRate?: number;
+  mobilizationFee?: number;
+  demobilizationFee?: number;
+  fuelCharge?: number;
+  operatorIncluded: boolean;
+  operatorRate?: number;
+  taxRate?: number;
+  withholdingTax?: number;
+  contractAmount?: number;
+  currency: string;
+  capturedAt: string;
+}
+
+export interface OperationalCodeSnapshot {
+  id?: string;
+  code: string;
+  name: string;
+}
+
+export interface RentalOperationalMetadataSnapshot {
+  costCode?: OperationalCodeSnapshot;
+  activityCode?: OperationalCodeSnapshot;
+}
+
+export type DeurExpectationFrequency = "PER_WORKDAY" | "PER_SHIFT" | "ON_DEMAND";
+export type DeurExpectationShiftCode = "DAY" | "NIGHT";
+export type DeurExpectationSource = "EXPLICIT_POLICY" | "LEGACY_RENTAL_FALLBACK";
+export type DeurShiftWindowCode = DeurExpectationShiftCode;
+export type DeurShiftWindowSource = "IMMUTABLE_RENTAL_SNAPSHOT" | "LEGACY_LIVE_WINDOW_FALLBACK";
+export interface DeurShiftWindowDefinition {
+  code: DeurShiftWindowCode;
+  label: string;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  capturedAt?: string;
+}
+export interface RentalDeurShiftWindowSnapshot extends DeurShiftWindowDefinition {
+  capturedAt: string;
+}
+export interface RentalDeurExpectationPolicy {
+  frequency: DeurExpectationFrequency;
+  effectiveFrom: string;
+  effectiveUntil?: string;
+  expectedShiftCodes?: DeurExpectationShiftCode[];
+  excludeDates?: string[];
+  timezone?: string;
+  capturedAt: string;
 }
 
 export function isRentalType(value: unknown): value is RentalType {
@@ -81,6 +138,19 @@ export interface RentalRecord {
   billingMethod?: RentalBillingMethod;
   transactionRelationship?: TransactionRelationship;
   billingTerms?: RentalBillingTerms;
+  commercialSnapshot?: RentalCommercialSnapshot;
+  /** Distinguishes Part 11 records from legacy records that may use live terms. */
+  commercialSnapshotRequired?: boolean;
+
+  /** Immutable values captured from Equipment and Assignment at Rental creation. */
+  operationalMetadata?: RentalOperationalMetadataSnapshot;
+
+  /** Explicit monitoring policy, editable before release and immutable afterward. */
+  deurExpectationPolicy?: RentalDeurExpectationPolicy;
+  deurExpectationPolicyRequired?: boolean;
+  deurExpectationPolicyFrozenAt?: string;
+  /** Selected live windows copied atomically at Release; immutable thereafter. */
+  deurShiftWindowSnapshots?: RentalDeurShiftWindowSnapshot[];
 
   /** Actual transaction timestamps used by the rental workspace timeline. */
   createdAt?: string;

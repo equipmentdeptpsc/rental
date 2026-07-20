@@ -71,7 +71,9 @@ describe("rental form options", () => {
       dateOut: "2026-07-17",
       expectedReturn: "2026-07-18",
       rentalType: "Operated Rental",
-      billingMethod: "Per Hour",
+          billingMethod: "Per Hour",
+          deurExpectationFrequency: "PER_WORKDAY",
+          expectedShiftCodes: ["DAY"],
     };
 
     expect("status" in data).toBe(false);

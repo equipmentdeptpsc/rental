@@ -1,7 +1,7 @@
 import type { CanonicalDeurEvent, DeurTotals } from "../types";
 
 export function calculateDeurTotals(events: CanonicalDeurEvent[]) {
-  const totals: DeurTotals = { shiftMinutes: 0, operationMinutes: 0, idleMinutes: 0, mealBreakMinutes: 0 };
+  const totals: DeurTotals = { shiftMinutes: 0, operationMinutes: 0, idleMinutes: 0, mealBreakMinutes: 0, breakdownMinutes: 0 };
   const open = new Map<string, CanonicalDeurEvent>(); const issues: string[] = [];
   [...events].sort((a,b) => a.sequence - b.sequence).forEach((event) => {
     if (event.action === "start") open.set(event.activityType, event);

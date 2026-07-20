@@ -7,7 +7,11 @@ function change(id = "operation-1"): DeurSyncChangeEnvelope {
   return {
     schemaVersion: 1, entity: { type: "DEUR", id: "deur-1" }, operation: "update",
     operationId: id, idempotencyKey: id, localRevision: 1, baseRemoteRevision: 0,
-    occurredAt: "2026-07-19T08:00:00.000Z", payload: { id: "deur-1", logs: [] },
+    occurredAt: "2026-07-19T08:00:00.000Z", payload: { id: "deur-1", logs: [], operationalMetadata: {
+      costCode: { code: "5031HEAVYEQPT", name: "Heavy Equipment" },
+      activityCode: { code: "LDC", name: "LAUCHANCO DEVELOPMENT CORPORATION" },
+      workDescription: { name: "MATERIAL HAULING", requiresRemarks: false },
+    }, creationSource:"RENTAL_COMPANY_MANUAL", manualMetadata:{reason:"SITE_COMPUTER_NOT_AVAILABLE",encodedByName:"Maria Santos",encodedAt:"2026-07-19T08:00:00.000Z",physicalDeurReference:"PAPER-HTTP",operatorConfirmed:true},evidenceMode:"ODOMETER_TRIP",billingMethodSnapshot:"Per Kilometer",odometerTripEvidence:{checkpoints:[{id:"a",location:"Plant",odometerReading:100}],segments:[],startingOdometer:100,endingOdometer:100,totalDistance:0,tripCount:0} },
   };
 }
 

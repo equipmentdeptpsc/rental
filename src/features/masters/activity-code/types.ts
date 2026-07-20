@@ -7,6 +7,12 @@ export interface ActivityCodeRecord {
     description: string;
   
     active: boolean;
+
+    sortOrder?: number;
+
+    createdAt?: string;
+
+    updatedAt?: string;
   
     remarks?: string;
   

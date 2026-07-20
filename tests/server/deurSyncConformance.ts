@@ -21,7 +21,9 @@ export function defineDeurSyncConformanceSuite(name: string, factory: () => Deur
 
       expect(first.accepted).toHaveLength(1);
       expect(retry.accepted[0]).toMatchObject({ alreadyAccepted: true, remoteRevision: first.accepted[0].remoteRevision });
-      expect((await transport.pull({ cursor: "0" })).changes).toHaveLength(1);
+      const pulled = await transport.pull({ cursor: "0" });
+      expect(pulled.changes).toHaveLength(1);
+      expect(pulled.changes[0].payload).toEqual(input.payload);
       expect(input).toEqual(original);
     });
 

@@ -22,6 +22,15 @@ function record(overrides: Partial<DeurRecord> = {}): DeurRecord {
     status: "In Progress",
     createdAt: "2026-07-19T08:00:00.000Z",
     updatedAt: "2026-07-19T08:00:00.000Z",
+    operationalMetadata: {
+      costCode: { code: "5031HEAVYEQPT", name: "Heavy Equipment" },
+      activityCode: { code: "LDC", name: "LAUCHANCO DEVELOPMENT CORPORATION" },
+      workDescription: { name: "MATERIAL HAULING", requiresRemarks: false },
+    },
+    creationSource: "RENTAL_COMPANY_MANUAL",
+    manualMetadata: { reason:"SITE_COMPUTER_NOT_AVAILABLE", encodedByName:"Maria Santos", encodedAt:"2026-07-19T08:00:00.000Z", physicalDeurReference:"PAPER-NOTIFY", operatorConfirmed:true },
+    evidenceMode:"ODOMETER_TRIP", billingMethodSnapshot:"Per Kilometer",
+    odometerTripEvidence:{checkpoints:[{id:"a",location:"Plant",odometerReading:100}],segments:[],startingOdometer:100,endingOdometer:100,totalDistance:0,tripCount:0},
     ...overrides,
   };
 }
@@ -96,6 +105,17 @@ describe("DEUR change notifications", () => {
     notifyDeurChange(record());
 
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("notifies open views when billing consumption locks a DEUR", async () => {
+    const { subscribeDeurChanges } = await loadNotifications();
+    const { deurRepository } = await import("@/features/rental/deur/repository/deurRepository");
+    deurRepository.create(record({ creationSource: "OPERATOR_DIGITAL", manualMetadata: undefined, evidenceMode: "TIME_TIMELINE", legacy: false }));
+    const listener = vi.fn(); const stop = subscribeDeurChanges(listener); listener.mockClear();
+    deurRepository.lockBilling(["deur-1"], "statement-1");
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener.mock.calls[0][0]).toMatchObject({ id: "deur-1", billingLocked: true, billingStatementId: "statement-1" });
+    stop();
   });
 
   it("translates a changed localStorage record from another tab into one notification", async () => {

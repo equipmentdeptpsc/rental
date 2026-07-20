@@ -9,11 +9,21 @@ import type { DeurRecord } from "@/features/rental/deur/types";
 export interface CalculatedDeurBillingStatementLine {
   id: string;
   deurId: string;
+  deurRevisionChainId?: string;
+  deurRevisionNumber?: number;
+  effectiveDeurId?: string;
+  correctedFromDeurId?: string;
   workDate: string;
   operator: string;
   operatingHours: number;
   actualHours: number;
   billingMethod: BillingCalculationMethod;
+  activityCode?: string;
+  quantity?: number;
+  unit?: "km" | "trip" | "m³";
+  unitRate?: number;
+  commercialTermsSource?: "IMMUTABLE_SNAPSHOT" | "LEGACY_RENTAL_FALLBACK";
+  commercialCapturedAt?: string;
   costCode: string;
   description: string;
   hourlyRate: number;
@@ -29,6 +39,8 @@ const supportedBillingMethods = new Set<BillingCalculationMethod>([
   "Per Day",
   "Per Week",
   "Per Month",
+  "Per Kilometer",
+  "Per Trip",
   "Per Cubic Meter",
   "One Lot",
 ]);
@@ -77,19 +89,20 @@ export function calculateDeurBillingStatementLine(
     return { success: false, code: "INVALID_NUMERIC_INPUT", message: "Billing inputs must be finite non-negative numbers." };
   }
 
+  const quantityBilling = terms.billingMethod === "Per Kilometer" || terms.billingMethod === "Per Trip" || terms.billingMethod === "Per Cubic Meter";
   const totals = calculateDeurTotals(deur.events ?? []);
-  if (totals.calculationIssues.length > 0 || !Object.values(totals.totals).every(hasValidNumber)) {
+  if (!quantityBilling && (totals.calculationIssues.length > 0 || !Object.values(totals.totals).every(hasValidNumber))) {
     return { success: false, code: "INVALID_DEUR_TOTALS", message: "Canonical DEUR totals could not be calculated." };
   }
 
   const engineInput: DeurRecord = {
     ...deur,
-    totalOperatingMinutes: totals.totals.operationMinutes,
-    totalIdleMinutes: totals.totals.idleMinutes,
-    totalMealBreakMinutes: totals.totals.mealBreakMinutes,
+    totalOperatingMinutes: quantityBilling ? 0 : totals.totals.operationMinutes,
+    totalIdleMinutes: quantityBilling ? 0 : totals.totals.idleMinutes,
+    totalMealBreakMinutes: quantityBilling ? 0 : totals.totals.mealBreakMinutes,
   };
   const charges = BillingRateEngine.calculate(engineInput, terms);
-  if (!Object.values(charges).every(hasValidNumber)) {
+  if (!Object.values(charges).every((value) => typeof value !== "number" || hasValidNumber(value))) {
     return { success: false, code: "INVALID_NUMERIC_INPUT", message: "The calculation engine returned an invalid charge value." };
   }
 
@@ -99,13 +112,25 @@ export function calculateDeurBillingStatementLine(
     line: {
       id: deur.id,
       deurId: deur.id,
+      deurRevisionChainId: deur.revision?.chainId,
+      deurRevisionNumber: deur.revision?.revisionNumber,
+      effectiveDeurId: deur.id,
+      correctedFromDeurId: deur.revision?.previousRevisionId,
       workDate: deur.reportDate ?? deur.workDate,
       operator: deur.operatorId,
       operatingHours: charges.operatingHours,
       actualHours: charges.operatingHours,
       billingMethod: terms.billingMethod,
-      costCode: "",
-      description: `Equipment Rental (${terms.billingMethod})`,
+      activityCode: deur.operationalMetadata?.activityCode?.code,
+      costCode: deur.operationalMetadata?.costCode?.code ?? "",
+      description: deur.operationalMetadata?.workDescription?.name ?? `Equipment Rental (${terms.billingMethod})`,
+      ...(charges.billingQuantity !== undefined && charges.billingUnit ? {
+        quantity: charges.billingQuantity,
+        unit: charges.billingUnit === "KILOMETER" ? "km" as const : charges.billingUnit === "TRIP" ? "trip" as const : "m³" as const,
+        unitRate: terms.unitRate,
+      } : {}),
+      commercialTermsSource:deur.commercialSnapshot?"IMMUTABLE_SNAPSHOT":"LEGACY_RENTAL_FALLBACK",
+      commercialCapturedAt:deur.commercialSnapshot?.capturedAt,
       hourlyRate: terms.unitRate,
       amount: charges.subtotal,
     },

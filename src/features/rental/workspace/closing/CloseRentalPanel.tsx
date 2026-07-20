@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/toast/ToastContext";
 
 import { useCloseReadiness } from "./useCloseReadiness";
+import { useState } from "react";
+import { executeRentalBillingHandoff, prepareRentalBillingHandoff, type BillingHandoffReview } from "@/features/rental/billingstatement/services/executeRentalBillingHandoff";
+import { billingHandoffAuditRepository } from "@/features/rental/billingstatement/repository/BillingHandoffAuditRepository";
+import BillingHandoffReviewDialog from "./BillingHandoffReviewDialog";
 
 export default function CloseRentalPanel() {
   const aggregate =
@@ -27,6 +31,9 @@ export default function CloseRentalPanel() {
   } = useToast();
 
   const readiness = useCloseReadiness();
+  const [review, setReview] = useState<BillingHandoffReview>();
+  const [executing, setExecuting] = useState(false);
+  const [statementNumber, setStatementNumber] = useState<string>();
 
   const closed =
     aggregate.rental.status ===
@@ -57,6 +64,37 @@ export default function CloseRentalPanel() {
       "Rental closed successfully.",
       "success"
     );
+  }
+
+  function openBillingHandoff() {
+    const prepared = prepareRentalBillingHandoff({ aggregate });
+    if (prepared.status !== "ready") {
+      showToast(prepared.issues.map((item) => item.message).join(" "), "error");
+      return;
+    }
+    setReview(prepared.review);
+  }
+
+  async function confirmBillingHandoff() {
+    if (!review || executing) return;
+    setExecuting(true);
+    await Promise.resolve();
+    const result = executeRentalBillingHandoff({ aggregate, review }, {
+      closeRental: (rentalId) => transitionRental(rentalId, "Closed"),
+      audit: (event) => billingHandoffAuditRepository.record(event),
+    });
+    setExecuting(false);
+    if (result.status === "created" || result.status === "already-created") {
+      setStatementNumber(result.statementNumber); setReview(undefined);
+      showToast(`Billing statement ${result.statementNumber} created and rental closed.`, "success");
+      return;
+    }
+    if (result.status === "review-stale") {
+      setReview(result.latestReview);
+      showToast("Billing changed. Review the refreshed totals and confirm again.", "error");
+      return;
+    }
+    showToast(result.issues.map((item) => item.message).join(" "), "error");
   }
 
   return (
@@ -94,6 +132,10 @@ export default function CloseRentalPanel() {
             >
               Close Rental
             </Button>
+          ) : aggregate.rental.status === "Returned" && !aggregate.billing.hasStatement ? (
+            <Button onClick={openBillingHandoff}>
+              Review Billing and Close Rental
+            </Button>
           ) : (
             <p className="text-sm text-slate-500">
               {readiness.reasons.join(" ")}
@@ -102,6 +144,11 @@ export default function CloseRentalPanel() {
 
         </div>
 
+      )}
+
+      {statementNumber && <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">Billing statement {statementNumber} was created.</div>}
+      {review && (
+        <BillingHandoffReviewDialog open review={review} currency={aggregate.contract?.currency ?? "PHP"} loading={executing} onCancel={() => setReview(undefined)} onConfirm={() => { void confirmBillingHandoff(); }} />
       )}
 
     </div>

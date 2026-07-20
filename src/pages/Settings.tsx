@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
 
@@ -20,6 +21,9 @@ import {
   serializeApplicationBackup,
   type RestorePreview,
 } from "@/features/settings/services/applicationBackupService";
+import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
+import type { DeurShiftWindowDefinition } from "@/features/rental/types";
+import { normalizeDeurShiftWindow } from "@/features/rental/deur/shift-window/normalizeDeurShiftWindow";
 
 export default function Settings() {
   const {
@@ -35,6 +39,22 @@ export default function Settings() {
     useState(false);
   const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
   const [backupError, setBackupError] = useState("");
+  const [shiftWindows, setShiftWindows] = useState(() => deurShiftWindowRepository.getAll());
+  const [shiftWindowErrors, setShiftWindowErrors] = useState<Record<string, string>>({});
+
+  function changeShiftWindow(code: string, field: keyof DeurShiftWindowDefinition, value: string) {
+    setShiftWindows((current) => current.map((window) => window.code === code ? { ...window, [field]: value } : window));
+  }
+
+  function saveShiftWindow(window: DeurShiftWindowDefinition) {
+    const normalized = normalizeDeurShiftWindow(window);
+    if (!normalized.valid) { setShiftWindowErrors((current) => ({ ...current, [window.code]: normalized.message })); return; }
+    try {
+      deurShiftWindowRepository.update(normalized.value, new Date().toISOString());
+      setShiftWindows(deurShiftWindowRepository.getAll());
+      setShiftWindowErrors((current) => ({ ...current, [window.code]: "" }));
+    } catch (error) { setShiftWindowErrors((current) => ({ ...current, [window.code]: error instanceof Error ? error.message : "Could not save shift window." })); }
+  }
 
   function downloadBackup(json = serializeApplicationBackup()) {
     const anchor = document.createElement("a");
@@ -144,6 +164,22 @@ export default function Settings() {
       </div>
 
       <div className="rounded-xl border bg-white p-6">
+        <h2 className="text-2xl font-semibold">DEUR Shift Windows</h2>
+        <p className="mb-4 text-gray-500">These windows define expectation due times only. Released Rentals retain immutable copies.</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {shiftWindows.map((window) => <div key={window.code} className="rounded-lg border p-4 space-y-3">
+            <h3 className="font-semibold">{window.code}</h3>
+            <label className="block text-sm">Label<input className="mt-1 w-full rounded border p-2" value={window.label} onChange={(event) => changeShiftWindow(window.code, "label", event.target.value)} /></label>
+            <div className="grid grid-cols-2 gap-3"><label className="block text-sm">Start<input type="time" className="mt-1 w-full rounded border p-2" value={window.startTime} onChange={(event) => changeShiftWindow(window.code, "startTime", event.target.value)} /></label><label className="block text-sm">End<input type="time" className="mt-1 w-full rounded border p-2" value={window.endTime} onChange={(event) => changeShiftWindow(window.code, "endTime", event.target.value)} /></label></div>
+            <label className="block text-sm">Timezone<input className="mt-1 w-full rounded border p-2" value={window.timezone} onChange={(event) => changeShiftWindow(window.code, "timezone", event.target.value)} /></label>
+            {window.endTime <= window.startTime && window.endTime !== window.startTime && <p className="text-xs text-blue-700">Crosses midnight (ends next day)</p>}
+            {shiftWindowErrors[window.code] && <p className="text-sm text-red-700">{shiftWindowErrors[window.code]}</p>}
+            <Button onClick={() => saveShiftWindow(window)}>Save {window.code}</Button>
+          </div>)}
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-white p-6">
 
         <h2 className="text-2xl font-semibold">
           Equipment Prefix Master
@@ -158,6 +194,32 @@ export default function Settings() {
           onEdit={editPrefix}
         />
 
+      </div>
+
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="text-2xl font-semibold">Activity Code Master</h2>
+        <p className="mb-4 text-gray-500">
+          Manage operational Activity Codes and their active status.
+        </p>
+        <Link
+          to="/settings/activity-codes"
+          className="inline-flex rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
+        >
+          Manage Activity Codes
+        </Link>
+      </div>
+
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="text-2xl font-semibold">Work Description Master</h2>
+        <p className="mb-4 text-gray-500">
+          Manage the compact list of principal work performed during a DEUR day or shift.
+        </p>
+        <Link
+          to="/settings/work-descriptions"
+          className="inline-flex rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
+        >
+          Manage Work Descriptions
+        </Link>
       </div>
 
       <div className="rounded-xl border bg-white p-6 space-y-4">

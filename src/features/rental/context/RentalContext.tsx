@@ -34,6 +34,12 @@ import {
   createHistoryEvent,
   useEquipmentHistory,
 } from "@/features/equipment/history";
+import { costCodeRepository } from "@/features/masters/cost-code";
+import { activityCodeRepository } from "@/features/masters/activity-code";
+import { createRentalOperationalMetadataSnapshot } from "../services/createRentalOperationalMetadataSnapshot";
+import { createRentalCommercialSnapshot } from "../services/createRentalCommercialSnapshot";
+import { freezeRentalDeurExpectationPolicy } from "../deur/expectation/freezeRentalDeurExpectationPolicy";
+import { deurShiftWindowRepository } from "../deur/shift-window/repository";
 
 interface RentalTransitionResult {
   success: boolean;
@@ -218,8 +224,17 @@ export function RentalProvider({
       };
     }
 
+    const operationalMetadata = createRentalOperationalMetadataSnapshot({
+      equipment,
+      assignment,
+      costCodes: costCodeRepository.getAll(),
+      activityCodes: activityCodeRepository.getAll(),
+    });
+
     const created: RentalRecord = {
       ...item,
+      operationalMetadata: operationalMetadata.snapshot,
+      commercialSnapshotRequired: true,
       expectedReturn: item.expectedReturn || undefined,
       createdAt: new Date().toISOString(),
       status: "Draft",
@@ -366,8 +381,13 @@ export function RentalProvider({
     } as const;
     const timestampField = transitionTimestamp[nextStatus];
 
+    const policyFreeze = nextStatus === "Released"
+      ? freezeRentalDeurExpectationPolicy(current, timestamp, deurShiftWindowRepository.getAll())
+      : { success: true as const, rental: current };
+    if (!policyFreeze.success) return { success: false, message: policyFreeze.message };
+
     const updated: RentalRecord = {
-      ...current,
+      ...policyFreeze.rental,
       status: nextStatus,
       ...(timestampField ? { [timestampField]: timestamp } : {}),
       actualReturn:
@@ -485,6 +505,12 @@ export function RentalProvider({
 
   function addContract(contract: RentalContractRecord) {
     rentalContractRepository.create(contract);
+    const rental = rentalRepository.getById(contract.id);
+    if (rental && !rental.commercialSnapshot) {
+      const captured = createRentalCommercialSnapshot(contract, new Date().toISOString());
+      if (captured.success) rentalRepository.update({ ...rental, commercialSnapshot: captured.snapshot, commercialSnapshotRequired: true });
+      refreshRentals();
+    }
     refreshContracts();
   }
 

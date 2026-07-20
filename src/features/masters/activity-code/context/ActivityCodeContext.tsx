@@ -12,6 +12,7 @@ import {
   
   import {
     activityCodeRepository,
+    type ActivityCodeMutationResult,
   } from "../repository";
   
   interface ActivityCodeContextType {
@@ -22,12 +23,12 @@ import {
     create(
       record:
         ActivityCodeRecord
-    ): void;
+    ): ActivityCodeMutationResult;
   
     update(
       record:
         ActivityCodeRecord
-    ): void;
+    ): ActivityCodeMutationResult;
   
     softDelete(
       id: string
@@ -107,11 +108,12 @@ import {
             record
           ) {
   
-            activityCodeRepository.create(
+            const result = activityCodeRepository.create(
               record
             );
   
-            refresh();
+            if (result.success) refresh();
+            return result;
   
           },
   
@@ -119,11 +121,12 @@ import {
             record
           ) {
   
-            activityCodeRepository.update(
+            const result = activityCodeRepository.update(
               record
             );
   
-            refresh();
+            if (result.success) refresh();
+            return result;
   
           },
   
