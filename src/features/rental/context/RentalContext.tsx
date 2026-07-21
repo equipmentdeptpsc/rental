@@ -12,8 +12,6 @@ import type {
 } from "../types";
 import type { RentalContractRecord } from "../types/RentalContract";
 
-import { rentalRepository } from "../repository";
-import { rentalContractRepository } from "../repository/rentalContractRepository";
 import {
   getRentalCommercialTermsError,
   validateRentalBillingTerms,
@@ -33,15 +31,13 @@ import {
   createHistoryEvent,
   useEquipmentHistory,
 } from "@/features/equipment/history";
-import { costCodeRepository } from "@/features/masters/cost-code";
-import { activityCodeRepository } from "@/features/masters/activity-code";
 import { createRentalOperationalMetadataSnapshot } from "../services/createRentalOperationalMetadataSnapshot";
 import { canEditRentalCommercialTerms, configureRentalCommercialTerms, type RentalCommercialTermsInput } from "../services/configureRentalCommercialTerms";
 import { prepareRentalEquipmentLineRelease, type RentalEquipmentLineReleaseIssue } from "../services/prepareRentalEquipmentLineRelease";
 import { freezeRentalDeurExpectationPolicy } from "../deur/expectation/freezeRentalDeurExpectationPolicy";
-import { deurShiftWindowRepository } from "../deur/shift-window/repository";
-import { rentalEquipmentLineRepository, type NewRentalEquipmentLineInput, type RentalEquipmentLine, type RentalEquipmentLineIssue, type RentalEquipmentLineMigrationIssue } from "../equipment-line";
+import { type NewRentalEquipmentLineInput, type RentalEquipmentLine, type RentalEquipmentLineIssue, type RentalEquipmentLineMigrationIssue } from "../equipment-line";
 import { canRemoveRentalEquipmentLine, validateRentalEquipmentLineInputs } from "../services/manageRentalEquipmentLines";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
 
 interface RentalTransitionResult {
   success: boolean;
@@ -102,6 +98,7 @@ export function RentalProvider({
 }: {
   children: ReactNode;
 }) {
+  const { rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository } = useApplicationDependenciesCompatibility().repositories;
   const [bootstrap] = useState(() => {
     const initialRentals = rentalRepository.getAll();
     const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(initialRentals);
@@ -482,6 +479,7 @@ export function RentalProvider({
     id: string,
     _releasedBy: string
   ): RentalTransitionResult {
+    void _releasedBy;
     if (user?.role !== "Admin") {
       return { success: false, message: "An Admin must release this equipment." };
     }

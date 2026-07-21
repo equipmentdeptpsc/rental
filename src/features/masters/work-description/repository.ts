@@ -1,6 +1,7 @@
 import type { WorkDescriptionRecord } from "./types";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY = "equipment-rental-work-descriptions";
+const persistence = createLegacyLocalRepositoryStorage("WorkDescription");
 const SEED_TIMESTAMP = "2026-07-20T00:00:00.000Z";
 const clone = <T>(value: T): T => structuredClone(value);
 
@@ -73,9 +74,8 @@ function normalizeRecord(record: WorkDescriptionRecord): WorkDescriptionRecord {
 export class WorkDescriptionRepository {
   private initialize(): void {
     let parsed: unknown = [];
-    const raw = localStorage.getItem(STORAGE_KEY);
     try {
-      parsed = raw ? JSON.parse(raw) : [];
+      parsed = persistence.load<unknown>() ?? [];
     } catch {
       parsed = [];
     }
@@ -87,7 +87,7 @@ export class WorkDescriptionRepository {
       !stored.some((record) => matchesSeed(record, candidate))
     );
 
-    if (!raw || !Array.isArray(parsed) || missing) {
+    if (!Array.isArray(parsed) || missing) {
       const seeded = WORK_DESCRIPTION_SEEDS.map((candidate) =>
         stored.find((record) => matchesSeed(record, candidate)) ?? candidate
       );
@@ -101,7 +101,7 @@ export class WorkDescriptionRepository {
   getAll(): WorkDescriptionRecord[] {
     this.initialize();
     try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as unknown;
+      const parsed = persistence.load<unknown>() ?? [];
       return clone(Array.isArray(parsed) ? parsed as WorkDescriptionRecord[] : []);
     } catch {
       return [];
@@ -159,7 +159,7 @@ export class WorkDescriptionRepository {
   }
 
   private saveAll(records: WorkDescriptionRecord[]): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clone(records)));
+    persistence.save(clone(records));
   }
 }
 

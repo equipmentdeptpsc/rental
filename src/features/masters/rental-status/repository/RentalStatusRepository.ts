@@ -1,24 +1,16 @@
 import type {
     RentalStatusRecord,
   } from "../types";
+  import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
   
-  const STORAGE_KEY =
-    "rental-status-master";
+  const persistence = createLegacyLocalRepositoryStorage("RentalStatus");
   
   export class RentalStatusRepository {
   
     getAll(): RentalStatusRecord[] {
   
-      const raw =
-        localStorage.getItem(
-          STORAGE_KEY
-        );
-  
-      if (!raw) return [];
-  
       try {
-  
-        return JSON.parse(raw);
+        return persistence.load<RentalStatusRecord[]>() ?? [];
   
       } catch {
   
@@ -32,10 +24,7 @@ import type {
       records: RentalStatusRecord[]
     ) {
   
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(records)
-      );
+      persistence.save(records);
   
     }
   

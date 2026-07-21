@@ -1,24 +1,16 @@
 import type {
   EquipmentOwnershipRecord,
 } from "../types";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY =
-  "equipment-ownership-master";
+const persistence = createLegacyLocalRepositoryStorage("EquipmentOwnership");
 
 export class EquipmentOwnershipRepository {
 
   getAll(): EquipmentOwnershipRecord[] {
 
-    const raw =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
-
-    if (!raw) return [];
-
     try {
-
-      return JSON.parse(raw);
+      return persistence.load<EquipmentOwnershipRecord[]>() ?? [];
 
     } catch {
 
@@ -32,10 +24,7 @@ export class EquipmentOwnershipRepository {
     records: EquipmentOwnershipRecord[]
   ) {
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(records)
-    );
+    persistence.save(records);
 
   }
 

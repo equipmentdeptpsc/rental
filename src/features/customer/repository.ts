@@ -1,15 +1,12 @@
 import type { CustomerRecord } from "./types";
 import type { CrudRepository } from "@/core/persistence";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY = "customer_records";
+const persistence = createLegacyLocalRepositoryStorage("Customer");
 
 class CustomerRepository implements CrudRepository<CustomerRecord> {
   getAll(): CustomerRecord[] {
-    const data = localStorage.getItem(STORAGE_KEY);
-
-    if (!data) return [];
-
-    return JSON.parse(data);
+    return persistence.load<CustomerRecord[]>() ?? [];
   }
 
   getById(id: string) {
@@ -23,10 +20,7 @@ class CustomerRepository implements CrudRepository<CustomerRecord> {
 
     items.push(customer);
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(items)
-    );
+    persistence.save(items);
   }
 
   update(customer: CustomerRecord) {
@@ -36,10 +30,7 @@ class CustomerRepository implements CrudRepository<CustomerRecord> {
         : item
     );
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(items)
-    );
+    persistence.save(items);
   }
 
   delete(id: string) {
@@ -47,10 +38,7 @@ class CustomerRepository implements CrudRepository<CustomerRecord> {
       (item) => item.id !== id
     );
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(items)
-    );
+    persistence.save(items);
   }
 }
 

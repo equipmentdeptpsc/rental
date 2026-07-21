@@ -12,6 +12,7 @@
 ## Adapter implementation
 
 - Implement repository interfaces behind composition-root injection.
+- Add a new application dependency factory and change only bootstrap selection; do not import vendor clients into features.
 - Keep vendor clients out of domain and UI modules.
 - Implement deterministic paging and domain lookup parity.
 - Translate vendor errors into structured repository errors.

@@ -11,6 +11,10 @@ UI → Context / application service → domain repository contract
 
 `src/core/persistence` defines shared contracts for results, errors, paging, version metadata, schema envelopes, migrations, transaction preparation, and adapter I/O. Existing repositories remain synchronous local adapters; `RepositoryOperation<T>` permits a future asynchronous adapter without encoding a vendor into domain types.
 
+Concrete runtime selection occurs in `src/app/composition/createLocalApplicationDependencies.ts`. A future remote or offline-cache implementation must be selected by another composition factory; feature code must not branch on adapter type.
+
+Repositories that retain compatibility singleton construction use `RepositoryStorage`, a repository-scoped port exposing only `load`, `save`, and `remove`. The core persistence layer resolves logical repository names through `repositoryCatalog`, applies the physical storage key, and delegates serialization to `PersistenceAdapter`. Repository implementations must not call browser storage or JSON serialization directly.
+
 ## Repository categories
 
 - Entity repositories expose read/write CRUD and domain lookups.

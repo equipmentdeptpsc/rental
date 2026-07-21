@@ -1,6 +1,7 @@
 import type { ActivityCodeRecord } from "./types";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY = "equipment-rental-activity-codes";
+const persistence = createLegacyLocalRepositoryStorage("ActivityCode");
 const SEED_TIMESTAMP = "2026-07-20T00:00:00.000Z";
 
 const seed = (
@@ -60,14 +61,13 @@ export function validateActivityCodeWrite(
 
 export class ActivityCodeRepository {
   private initialize(): void {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) as unknown : [];
+    const parsed = persistence.load<unknown>() ?? [];
     const stored = Array.isArray(parsed) ? parsed as ActivityCodeRecord[] : [];
     const seedCodes = new Set(ACTIVITY_CODE_SEEDS.map((item) => normalizeActivityCode(item.activityCode)));
     const byCode = new Map(stored.map((item) => [normalizeActivityCode(item.activityCode), item]));
     const missingSeed = ACTIVITY_CODE_SEEDS.some((item) => !byCode.has(normalizeActivityCode(item.activityCode)));
 
-    if (!raw || !Array.isArray(parsed) || missingSeed) {
+    if (!Array.isArray(parsed) || missingSeed) {
       const seededRecords = ACTIVITY_CODE_SEEDS.map((item) =>
         byCode.get(normalizeActivityCode(item.activityCode)) ?? item
       );
@@ -78,8 +78,7 @@ export class ActivityCodeRepository {
 
   getAll(): ActivityCodeRecord[] {
     this.initialize();
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) as unknown : [];
+    const parsed = persistence.load<unknown>() ?? [];
     return clone(Array.isArray(parsed) ? parsed as ActivityCodeRecord[] : []);
   }
 
@@ -149,7 +148,7 @@ export class ActivityCodeRepository {
   }
 
   private saveAll(records: ActivityCodeRecord[]): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clone(records)));
+    persistence.save(clone(records));
   }
 }
 

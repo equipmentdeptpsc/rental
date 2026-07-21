@@ -1,20 +1,14 @@
 import { mockProjects } from "./mock";
 import type { ProjectRecord } from "./types";
 import type { CrudRepository } from "@/core/persistence";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY = "projects";
+const persistence = createLegacyLocalRepositoryStorage("Project");
 
 function load(): ProjectRecord[] {
-  const data = localStorage.getItem(STORAGE_KEY);
-
-  if (data) {
-    return JSON.parse(data);
-  }
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(mockProjects)
-  );
+  const data = persistence.load<ProjectRecord[]>();
+  if (data) return data;
+  persistence.save(mockProjects);
 
   return mockProjects;
 }
@@ -22,10 +16,7 @@ function load(): ProjectRecord[] {
 let projects = load();
 
 function save() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(projects)
-  );
+  persistence.save(projects);
 }
 
 export const projectRepository = {

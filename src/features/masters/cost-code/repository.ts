@@ -1,9 +1,9 @@
 import type {
     CostCodeRecord,
   } from "./types";
+  import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
   
-  const STORAGE_KEY =
-    "equipment-rental-cost-codes";
+  const persistence = createLegacyLocalRepositoryStorage("CostCode");
 
   const CLASSIFICATION_SEEDS: CostCodeRecord[] = [
     {
@@ -87,10 +87,8 @@ import type {
   class CostCodeRepository {
   
     private initialize() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const stored = raw
-        ? JSON.parse(raw) as CostCodeRecord[]
-        : SEED_DATA;
+      const persisted = persistence.load<CostCodeRecord[]>();
+      const stored = persisted ?? SEED_DATA;
       const existingCodes = new Set(
         stored.map((record) => record.code.trim().toUpperCase())
       );
@@ -98,11 +96,8 @@ import type {
         (seed) => !existingCodes.has(seed.code)
       );
 
-      if (!raw || missingSeeds.length > 0) {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify([...stored, ...missingSeeds])
-        );
+      if (!persisted || missingSeeds.length > 0) {
+        persistence.save([...stored, ...missingSeeds]);
       }
   
     }
@@ -111,16 +106,7 @@ import type {
   
       this.initialize();
   
-      const raw =
-        localStorage.getItem(
-          STORAGE_KEY
-        );
-  
-      if (!raw) {
-        return [];
-      }
-  
-      return JSON.parse(raw);
+      return persistence.load<CostCodeRecord[]>() ?? [];
   
     }
   
@@ -253,15 +239,7 @@ import type {
       records: CostCodeRecord[]
     ) {
   
-      localStorage.setItem(
-  
-        STORAGE_KEY,
-  
-        JSON.stringify(
-          records
-        )
-  
-      );
+      persistence.save(records);
   
     }
   

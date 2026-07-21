@@ -242,9 +242,10 @@ const invoiceTransitions: Record<BillingInvoiceStatus, BillingInvoiceStatus[]> =
 
 export function updateBillingInvoiceStatus(
   statementId: string,
-  nextStatus: BillingInvoiceStatus
+  nextStatus: BillingInvoiceStatus,
+  statements: Pick<typeof billingStatementRepository, "getById" | "update"> = billingStatementRepository,
 ): Result {
-  const statement = billingStatementRepository.getById(statementId);
+  const statement = statements.getById(statementId);
 
   if (!statement) {
     return { success: false, message: "Billing statement not found." };
@@ -255,6 +256,6 @@ export function updateBillingInvoiceStatus(
   }
 
   const updated = { ...statement, invoiceStatus: nextStatus };
-  billingStatementRepository.update(updated);
+  statements.update(updated);
   return { success: true, statement: updated };
 }

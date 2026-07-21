@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 
 import { useToast } from "@/components/ui/toast/ToastContext";
-import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { updateBillingInvoiceStatus } from "@/features/rental/billingstatement/services/BillingStatementWorkflow";
 import type { BillingInvoiceStatus } from "@/features/rental/billingstatement/types";
-import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
 import { useRentalWorkspaceAggregate } from "..";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
 
 export function useBillingDrafts() {
   const aggregate = useRentalWorkspaceAggregate();
+  const { billingStatement: billingStatementRepository, deur: deurRepository } = useApplicationDependenciesCompatibility().repositories;
   const { showToast } = useToast();
   const [keyword, setKeyword] = useState("");
   const [version, setVersion] = useState(0);
@@ -25,7 +25,7 @@ export function useBillingDrafts() {
         statement.approvalStatus,
         statement.invoiceStatus,
       ].some((field) => field.toLowerCase().includes(value)));
-  }, [aggregate, keyword, version]);
+  }, [aggregate, keyword, version, billingStatementRepository]);
 
   function refresh() {
     setVersion((value) => value + 1);
@@ -45,7 +45,7 @@ export function useBillingDrafts() {
   }
 
   function updateInvoiceStatus(id: string, status: BillingInvoiceStatus) {
-    const result = updateBillingInvoiceStatus(id, status);
+    const result = updateBillingInvoiceStatus(id, status, billingStatementRepository);
 
     if (!result.success) {
       showToast(result.message, "error");

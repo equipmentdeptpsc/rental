@@ -1,33 +1,19 @@
 import type {
   EquipmentBrandRecord,
 } from "../types";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY =
-  "equipment-brand-master";
+const persistence = createLegacyLocalRepositoryStorage("EquipmentBrand");
 
 export class EquipmentBrandRepository {
   getAll(): EquipmentBrandRecord[] {
-    const raw =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
-
-    if (!raw) return [];
-
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    try { return persistence.load<EquipmentBrandRecord[]>() ?? []; } catch { return []; }
   }
 
   saveAll(
     records: EquipmentBrandRecord[]
   ) {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(records)
-    );
+    persistence.save(records);
   }
 
   create(

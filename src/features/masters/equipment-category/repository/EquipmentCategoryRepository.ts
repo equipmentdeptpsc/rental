@@ -1,22 +1,21 @@
 import type {
   EquipmentCategoryRecord,
 } from "../types";
-import { storage } from "@/core/storage";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY =
-  "equipment-category-master";
+const persistence = createLegacyLocalRepositoryStorage("EquipmentCategory");
 
 const DEFAULT_CATEGORIES = ["Moving", "Non-moving", "Aerial", "Light Equipment"];
 
 export class EquipmentCategoryRepository {
   getAll(): EquipmentCategoryRecord[] {
-    return storage.get<EquipmentCategoryRecord[]>(STORAGE_KEY) ?? [];
+    return persistence.load<EquipmentCategoryRecord[]>() ?? [];
   }
 
   saveAll(
     records: EquipmentCategoryRecord[]
   ) {
-    storage.set(STORAGE_KEY, records);
+    persistence.save(records);
   }
 
   seedDefaults(): EquipmentCategoryRecord[] {

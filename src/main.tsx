@@ -28,6 +28,7 @@ import { OperatorProvider } from "@/features/operators/context/OperatorContext";
 import { CustomerProvider } from "@/features/customer/context/CustomerContext";
 import { ProjectProvider } from "@/features/project/context/ProjectContext";
 import { createDeurSyncLifecycle } from "@/features/rental/deur/synchronization/lifecycle/createDeurSyncLifecycle";
+import { ApplicationDependencyProvider } from "@/app/composition";
 
 import "./index.css";
 
@@ -108,7 +109,7 @@ ReactDOM.createRoot(
 ).render(
   <React.StrictMode>
     <AppErrorBoundary>
-      <AppProviders />
+      <ApplicationDependencyProvider><AppProviders /></ApplicationDependencyProvider>
     </AppErrorBoundary>
   </React.StrictMode>
 );

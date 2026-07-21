@@ -1,24 +1,15 @@
 import type {
     BillingRecord,
   } from "../types";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
   
-  const STORAGE_KEY =
-    "equipment-rental-billing";
+  const persistence = createLegacyLocalRepositoryStorage("LegacyBilling");
   
   export const billingRepository = {
   
     getAll(): BillingRecord[] {
   
-      const raw =
-        localStorage.getItem(
-          STORAGE_KEY
-        );
-  
-      if (!raw) {
-        return [];
-      }
-  
-      return JSON.parse(raw);
+      return persistence.load<BillingRecord[]>() ?? [];
   
     },
   
@@ -26,10 +17,7 @@ import type {
       records: BillingRecord[]
     ) {
   
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(records)
-      );
+      persistence.save(records);
   
     },
   

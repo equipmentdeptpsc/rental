@@ -9,8 +9,7 @@ import {
 import type { AssignmentRecord } from "../types";
 import { hasActiveAssignmentConflict } from "../utils/selectAvailableEquipment";
 
-import { assignmentRepository } from "../repository";
-import { rentalRepository } from "@/features/rental/repository";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
 
 interface AssignmentContextType {
   assignments: AssignmentRecord[];
@@ -58,6 +57,7 @@ export function AssignmentProvider({
 }: {
   children: ReactNode;
 }) {
+  const { assignment: assignmentRepository, rental: rentalRepository } = useApplicationDependenciesCompatibility().repositories;
   const [
     assignments,
     setAssignments,

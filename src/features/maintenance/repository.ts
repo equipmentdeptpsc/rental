@@ -1,14 +1,11 @@
 import type { MaintenanceRecord } from "./types";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY = "maintenance_records";
+const persistence = createLegacyLocalRepositoryStorage("Maintenance");
 
 class MaintenanceRepository {
   getAll(): MaintenanceRecord[] {
-    const data = localStorage.getItem(STORAGE_KEY);
-
-    if (!data) return [];
-
-    return JSON.parse(data);
+    return persistence.load<MaintenanceRecord[]>() ?? [];
   }
 
   getById(id: string) {
@@ -22,10 +19,7 @@ class MaintenanceRepository {
 
     items.push(item);
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(items)
-    );
+    persistence.save(items);
   }
 
   update(item: MaintenanceRecord) {
@@ -33,10 +27,7 @@ class MaintenanceRepository {
       i.id === item.id ? item : i
     );
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(items)
-    );
+    persistence.save(items);
   }
 
   delete(id: string) {
@@ -44,10 +35,7 @@ class MaintenanceRepository {
       (i) => i.id !== id
     );
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(items)
-    );
+    persistence.save(items);
   }
 }
 

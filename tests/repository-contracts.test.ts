@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { storage } from "@/core/storage";
-import { LocalStoragePersistenceAdapter, checkOptimisticVersion, normalizeStorageEnvelope, paginate, prepareRepositoryTransaction, repositoryCatalog } from "@/core/persistence";
+import { LocalStoragePersistenceAdapter, checkOptimisticVersion, createRepositoryStorage, normalizeStorageEnvelope, paginate, prepareRepositoryTransaction, repositoryCatalog, repositorySuccess, type PersistenceAdapter } from "@/core/persistence";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { APPLICATION_STORAGE_KEYS } from "@/features/settings/services/applicationBackupService";
 
 describe("repository persistence contracts", () => {
@@ -44,5 +46,17 @@ describe("repository persistence contracts", () => {
     const prepared = prepareRepositoryTransaction([mutation], new Date("2026-07-22T00:00:00.000Z"));
     expect(prepared).toMatchObject({ success: true, value: { preparedAt: "2026-07-22T00:00:00.000Z", mutations: [mutation] } });
     expect(prepareRepositoryTransaction([mutation, mutation])).toMatchObject({ success: false, error: { code: "TRANSACTION_MUTATION_DUPLICATE" } });
+  });
+
+  it("routes repository-scoped persistence through the injected adapter", () => {
+    const operations: string[] = []; let value: unknown = null;
+    const adapter: PersistenceAdapter = { read: <T>(key: string) => { operations.push(`read:${key}`); return repositorySuccess(value as T | null); }, write: <T>(key: string, next: T) => { operations.push(`write:${key}`); value = structuredClone(next); return repositorySuccess(undefined); }, remove: (key: string) => { operations.push(`remove:${key}`); value = null; return repositorySuccess(undefined); } };
+    const scoped = createRepositoryStorage("Customer", adapter); scoped.save([{ id: "customer-1" }]); expect(scoped.load()).toEqual([{ id: "customer-1" }]); scoped.remove();
+    expect(operations).toEqual(["write:customer_records", "read:customer_records", "remove:customer_records"]);
+  });
+
+  it("keeps browser serialization mechanics out of repository source files", () => {
+    const files = ["src/features/customer/repository.ts", "src/features/operators/repository.ts", "src/features/project/repository.ts", "src/features/maintenance/repository.ts", "src/features/billing/repository/BillingRepository.ts", "src/features/masters/activity-code/repository.ts", "src/features/masters/cost-code/repository.ts", "src/features/masters/work-description/repository.ts", "src/features/masters/equipment-brand/repository/EquipmentBrandRepository.ts", "src/features/masters/equipment-category/repository/EquipmentCategoryRepository.ts", "src/features/masters/equipment-condition/repository/EquipmentConditionRepository.ts", "src/features/masters/equipment-location/repository/EquipmentLocationRepository.ts", "src/features/masters/equipment-model/repository/EquipmentModelRepository.ts", "src/features/masters/equipment-ownership/repository/EquipmentOwnershipRepository.ts", "src/features/masters/equipment-status/repository/EquipmentStatusRepository.ts", "src/features/masters/equipment-type/repository/EquipmentTypeRepository.ts", "src/features/masters/rental-status/repository/RentalStatusRepository.ts"];
+    for (const file of files) expect(readFileSync(resolve(file), "utf8"), file).not.toMatch(/localStorage\.|JSON\.(parse|stringify)/);
   });
 });

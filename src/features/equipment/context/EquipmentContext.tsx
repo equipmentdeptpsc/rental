@@ -10,11 +10,8 @@ import type {
   EquipmentRecord,
 } from "../types";
 
-import {
-  equipmentRepository,
-} from "../repository";
 import { guardEquipmentDeletion } from "@/features/relationships/deletionGuards";
-import { prefixRepository } from "@/features/settings/repository/prefixRepository";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { createEquipmentWithCategoryAssetNumber } from "../services/categoryAssetNumber";
 
 interface EquipmentContextType {
@@ -65,6 +62,7 @@ export function EquipmentProvider({
 }: {
   children: ReactNode;
 }) {
+  const { equipment: equipmentRepository, prefix: prefixRepository } = useApplicationDependenciesCompatibility().repositories;
   const [
     equipment,
     setEquipment,

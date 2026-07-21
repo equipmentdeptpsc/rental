@@ -8,12 +8,14 @@ import { getCompletedDeursForBillingPeriod } from "./BillingPreviewBuilder";
 
 import { buildRentalLineAwareBillingPreview, createRentalLineAwareBillingStatement } from "@/features/rental/billingstatement/services/buildRentalLineAwareBilling";
 import { useToast } from "@/components/ui/toast/ToastContext";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
 
 export function useBillingWizard() {
   const aggregate =
     useRentalWorkspaceAggregate();
 
   const { showToast } = useToast();
+  const { billingStatement, deur } = useApplicationDependenciesCompatibility().repositories;
 
   const today =
     new Date()
@@ -62,7 +64,7 @@ export function useBillingWizard() {
       return;
     }
 
-    const result = createRentalLineAwareBillingStatement({ aggregate, from, to });
+    const result = createRentalLineAwareBillingStatement({ aggregate, from, to }, { statements: billingStatement, deurs: deur });
 
     if (!result.success) {
       showToast(result.message, "error");

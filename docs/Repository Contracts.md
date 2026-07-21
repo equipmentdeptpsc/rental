@@ -12,6 +12,10 @@
 
 Operations use `RepositoryOperation<T>` so current synchronous adapters and future asynchronous adapters share a vocabulary. Existing application services remain unchanged until adapter injection is introduced at composition roots.
 
+Application consumers receive repository capabilities through `RepositoryDependencies`. Tests can override individual repositories. Concrete singleton exports are temporary compatibility surfaces and should be marked deprecated when their remaining direct consumers are migrated.
+
+`RepositoryStorage` is the persistence-facing contract for repositories that store a complete local collection. Physical keys and serialization remain adapter concerns. Schema-aware repositories may normalize or migrate loaded domain records, but browser encoding and storage access remain outside the repository.
+
 ## Behavioral requirements
 
 Repositories must return defensive copies, keep stable identities, preserve immutable snapshots/audit fields, reject stale expected versions, expose deterministic paging, normalize legacy storage without silent data loss, and distinguish transport failures from domain rejection.

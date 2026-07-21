@@ -18,12 +18,11 @@ import {
   type RentalAggregate,
 } from "@/features/rental/aggregate";
 
-import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
-import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { isInvoicePreparationComplete } from "@/features/rental/billingstatement/services/BillingReadiness";
 import { subscribeRentalWorkspaceChange } from "./workspaceRefresh";
 import { resolveRentalDeurOperator } from "@/features/rental/deur/operator/resolveRentalDeurOperator";
 import { resolveRentalWorkspaceEquipmentLines } from "./resolveRentalWorkspaceEquipmentLines";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -44,6 +43,7 @@ export default function RentalWorkspaceProvider({
   rentalId,
   children,
 }: RentalWorkspaceProviderProps) {
+  const { deur: deurRepository, billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
   const { rentals, contracts, rentalEquipmentLines } = useRental();
   const { assignments } = useAssignment();
   const { equipment: equipmentRecords } = useEquipment();
@@ -121,7 +121,7 @@ export default function RentalWorkspaceProvider({
         subtotal: statements.reduce((sum, statement) => sum + statement.subtotal, 0),
       },
     });
-  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion]);
+  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository]);
 
   if (!aggregate) {
     return (

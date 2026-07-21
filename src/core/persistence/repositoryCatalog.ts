@@ -11,6 +11,7 @@ export const repositoryCatalog: readonly RepositoryDescriptor[] = [
   { name: "DEUR", storageKey: "equipment-rental-deur", schemaVersion: 1, capabilities: [...crud, "BACKGROUND_SYNC"] },
   { name: "DEURShiftWindow", storageKey: "equipment-rental-deur-shift-windows", schemaVersion: 1, capabilities: [...crud, "MIGRATION"] },
   { name: "BillingStatement", storageKey: "equipment-rental-billing-statements", schemaVersion: 1, capabilities: [...crud] },
+  { name: "LegacyBilling", storageKey: "equipment-rental-billing", schemaVersion: 1, capabilities: [...crud] },
   { name: "BillingHandoffAudit", storageKey: "equipment-rental-billing-handoff-audit", schemaVersion: 1, capabilities: ["PAGING", "MIGRATION"] },
   { name: "Customer", storageKey: "customer_records", schemaVersion: 1, capabilities: [...crud] },
   { name: "Project", storageKey: "projects", schemaVersion: 1, capabilities: [...crud] },

@@ -1,24 +1,16 @@
 import type {
   EquipmentLocationRecord,
 } from "../types";
+import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
-const STORAGE_KEY =
-  "equipment-location-master";
+const persistence = createLegacyLocalRepositoryStorage("EquipmentLocation");
 
 export class EquipmentLocationRepository {
 
   getAll(): EquipmentLocationRecord[] {
 
-    const raw =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
-
-    if (!raw) return [];
-
     try {
-
-      return JSON.parse(raw);
+      return persistence.load<EquipmentLocationRecord[]>() ?? [];
 
     } catch {
 
@@ -32,10 +24,7 @@ export class EquipmentLocationRepository {
     records: EquipmentLocationRecord[]
   ) {
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(records)
-    );
+    persistence.save(records);
 
   }
 
