@@ -24,7 +24,7 @@ CREATE TABLE rental_equipment_lines (
   assignment_id text REFERENCES assignments(id), operator_id text NOT NULL REFERENCES operators(id), status rental_status NOT NULL,
   operational_metadata jsonb NOT NULL DEFAULT '{}'::jsonb, commercial_snapshot_required boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(), created_by text, updated_at timestamptz NOT NULL DEFAULT now(), updated_by text, row_version bigint NOT NULL DEFAULT 1,
-  deleted_at timestamptz, deleted_by text, UNIQUE(rental_id, equipment_id), UNIQUE(rental_id, id)
+  deleted_at timestamptz, deleted_by text, UNIQUE(rental_id, equipment_id), UNIQUE(rental_id, id), UNIQUE(id, equipment_id), UNIQUE(id, rental_id, equipment_id)
 );
 
 CREATE TABLE rental_contracts (
@@ -39,7 +39,8 @@ CREATE TABLE rental_contracts (
   CONSTRAINT ck_contract_rates CHECK (unit_rate >= 0 AND coalesce(minimum_billable_hours,0)>=0 AND coalesce(overtime_rate,0)>=0 AND coalesce(standby_rate,0)>=0 AND coalesce(mobilization_fee,0)>=0 AND coalesce(demobilization_fee,0)>=0 AND coalesce(fuel_charge,0)>=0 AND coalesce(operator_rate,0)>=0 AND coalesce(contract_amount,0)>=0),
   CONSTRAINT ck_contract_tax CHECK ((tax_rate IS NULL OR tax_rate BETWEEN 0 AND 100) AND (withholding_tax IS NULL OR withholding_tax BETWEEN 0 AND 100)),
   CONSTRAINT ck_contract_status CHECK (status IN ('Draft','Active','Completed','Cancelled')),
-  CONSTRAINT ck_contract_dates CHECK (expected_end_date >= start_date)
+  CONSTRAINT ck_contract_dates CHECK (expected_end_date >= start_date),
+  CONSTRAINT fk_contract_line_identity FOREIGN KEY (rental_equipment_line_id,rental_id,equipment_id) REFERENCES rental_equipment_lines(id,rental_id,equipment_id)
 );
 CREATE UNIQUE INDEX uq_contract_active_line ON rental_contracts(rental_equipment_line_id) WHERE rental_equipment_line_id IS NOT NULL AND status <> 'Cancelled';
 
@@ -50,7 +51,8 @@ CREATE TABLE commercial_snapshots (
   tax_rate numeric(9,6), withholding_tax numeric(9,6), contract_amount numeric(19,4), currency char(3) NOT NULL, captured_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(), created_by text, snapshot_hash text,
   CONSTRAINT ck_snapshot_values CHECK (unit_rate>=0 AND coalesce(minimum_billable_hours,0)>=0 AND coalesce(overtime_rate,0)>=0 AND coalesce(standby_rate,0)>=0 AND coalesce(mobilization_fee,0)>=0 AND coalesce(demobilization_fee,0)>=0 AND coalesce(fuel_charge,0)>=0 AND coalesce(operator_rate,0)>=0 AND coalesce(contract_amount,0)>=0),
-  UNIQUE(rental_equipment_line_id)
+  UNIQUE(rental_equipment_line_id),
+  CONSTRAINT fk_snapshot_line_rental FOREIGN KEY (rental_equipment_line_id,rental_id) REFERENCES rental_equipment_lines(id,rental_id)
 );
 
 CREATE TABLE rental_shift_window_snapshots (
@@ -75,7 +77,8 @@ CREATE TABLE deurs (
   CONSTRAINT ck_deur_shift CHECK (shift IS NULL OR shift IN ('Day','Night')),
   CONSTRAINT ck_deur_evidence_mode CHECK (evidence_mode IS NULL OR evidence_mode IN ('TIME_TIMELINE','ODOMETER_TRIP','QUANTITY','COMPLETION')),
   CONSTRAINT ck_deur_minutes CHECK (total_operating_minutes>=0 AND total_idle_minutes>=0 AND total_maintenance_minutes>=0 AND total_meal_break_minutes>=0 AND total_mobilization_minutes>=0 AND total_demobilization_minutes>=0),
-  CONSTRAINT ck_deur_revision CHECK ((revision_chain_id IS NULL AND revision_number IS NULL) OR (revision_chain_id IS NOT NULL AND revision_number >= 1))
+  CONSTRAINT ck_deur_revision CHECK ((revision_chain_id IS NULL AND revision_number IS NULL) OR (revision_chain_id IS NOT NULL AND revision_number >= 1)),
+  CONSTRAINT fk_deur_line_identity FOREIGN KEY (rental_equipment_line_id,rental_id,equipment_id) REFERENCES rental_equipment_lines(id,rental_id,equipment_id)
 );
 CREATE UNIQUE INDEX uq_deur_number ON deurs(lower(deur_number)) WHERE deur_number IS NOT NULL;
 CREATE UNIQUE INDEX uq_deur_revision ON deurs(revision_chain_id, revision_number) WHERE revision_chain_id IS NOT NULL;

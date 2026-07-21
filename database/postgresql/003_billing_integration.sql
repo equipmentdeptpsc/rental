@@ -27,7 +27,8 @@ CREATE TABLE billing_statement_lines (
   fuel_charge numeric(19,4) NOT NULL DEFAULT 0, amount numeric(19,4) NOT NULL, vat numeric(19,4) NOT NULL DEFAULT 0, withholding_tax numeric(19,4) NOT NULL DEFAULT 0,
   grand_total numeric(19,4) NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), created_by text,
   CONSTRAINT ck_statement_line_nonnegative CHECK (coalesce(quantity,0)>=0 AND coalesce(unit_rate,0)>=0 AND hours>=0 AND hourly_rate>=0 AND operating_charge>=0 AND idle_charge>=0 AND mobilization_charge>=0 AND demobilization_charge>=0 AND operator_charge>=0 AND fuel_charge>=0 AND amount>=0 AND vat>=0 AND withholding_tax>=0 AND grand_total>=0),
-  CONSTRAINT ck_commercial_source CHECK (commercial_terms_source IS NULL OR commercial_terms_source IN ('IMMUTABLE_SNAPSHOT','LEGACY_RENTAL_FALLBACK'))
+  CONSTRAINT ck_commercial_source CHECK (commercial_terms_source IS NULL OR commercial_terms_source IN ('IMMUTABLE_SNAPSHOT','LEGACY_RENTAL_FALLBACK')),
+  CONSTRAINT fk_statement_line_equipment_identity FOREIGN KEY (rental_equipment_line_id,equipment_id) REFERENCES rental_equipment_lines(id,equipment_id)
 );
 CREATE UNIQUE INDEX uq_active_deur_billing ON billing_statement_lines(deur_id);
 CREATE UNIQUE INDEX uq_active_revision_billing ON billing_statement_lines(deur_revision_chain_id) WHERE deur_revision_chain_id IS NOT NULL;

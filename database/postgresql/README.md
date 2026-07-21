@@ -9,6 +9,15 @@ Apply to a new database in filename order:
 3. `003_billing_integration.sql`
 4. `004_constraints_indexes_immutability.sql`
 5. `005_seed_reference.sql`
+6. `006_import_staging.sql`
+
+With a disposable PostgreSQL database and `psql` installed, run:
+
+```powershell
+.\scripts\validate-postgresql.ps1 -DatabaseUrl 'postgresql://USER:PASSWORD@localhost:5432/DISPOSABLE_DATABASE'
+```
+
+The harness uses `ON_ERROR_STOP`, applies each version once, and validates the resulting catalog. Never point it at a shared or production database.
 
 Application-generated text IDs are retained. Monetary totals use `numeric(19,4)`, rates and quantities use `numeric(19,6)`, elapsed hours use `numeric(14,4)`, and percentages use `numeric(9,6)`. PostgreSQL performs no floating-point arithmetic on billing evidence.
 

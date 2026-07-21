@@ -1,0 +1,4 @@
+import {describe,expect,it} from "vitest";
+import {preserveMigrationRows} from "@/core/migration";
+import {migrationBillingParityFixtures} from "./fixtures/migration-billing-parity";
+describe("migration billing parity evidence",()=>{for(const fixture of migrationBillingParityFixtures)it(fixture.name,()=>{const statement=preserveMigrationRows("BillingStatement",[fixture.statement]);const lines=preserveMigrationRows("BillingStatementLine",[...fixture.lines]);expect(statement.rows[0]).toEqual(fixture.statement);expect(lines.rows).toEqual(fixture.lines);expect(lines.rows.reduce((sum,line)=>sum+Number(line.amount),0)).toBe(fixture.statement.subtotal);expect(lines.rows.reduce((sum,line)=>sum+Number(line.vat),0)).toBe(fixture.statement.vat);expect(lines.rows.reduce((sum,line)=>sum+Number(line.withholdingTax),0)).toBe(fixture.statement.withholdingTax);expect(lines.rows.reduce((sum,line)=>sum+Number(line.grandTotal),0)).toBe(fixture.statement.grandTotal);});});
