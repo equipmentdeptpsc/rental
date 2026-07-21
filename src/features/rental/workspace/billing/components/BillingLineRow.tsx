@@ -5,34 +5,21 @@ import type {
   interface Props {
     line: BillingPreviewLine;
   
-    onChange(
-      line: BillingPreviewLine
-    ): void;
   }
   
   export default function BillingLineRow({
     line,
-    onChange,
   }: Props) {
-  
-    function update(
-      changes: Partial<BillingPreviewLine>
-    ) {
-  
-      const updated = {
-        ...line,
-        ...changes,
-      };
-  
-      updated.amount =
-        updated.actualHours *
-        updated.hourlyRate;
-  
-      onChange(updated);
-    }
-  
+    const optionalCharges = [
+      ["Idle", line.idleCharge], ["Mobilization", line.mobilizationCharge],
+      ["Demobilization", line.demobilizationCharge], ["Operator", line.operatorCharge], ["Fuel", line.fuelCharge],
+    ].filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] > 0);
     return (
       <tr>
+
+        <td className="px-3 py-2">{line.equipmentId ?? "Legacy header equipment"}</td>
+
+        <td className="px-3 py-2">{line.operator || line.operatorId || "—"}</td>
 
         <td className="px-3 py-2">
           {line.deurReference ?? line.deurId}
@@ -44,53 +31,24 @@ import type {
   
         <td className="px-3 py-2">
   
-          <input
-            value={line.description}
-            onChange={(e) =>
-              update({
-                description:
-                  e.target.value,
-              })
-            }
-            className="w-full rounded border px-2 py-1"
-          />
+          <div>{line.description}</div>
+          {optionalCharges.length > 0 && <div className="mt-1 text-xs text-slate-500">{optionalCharges.map(([label, value]) => `${label}: ₱${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`).join(" · ")}</div>}
   
         </td>
   
         <td className="px-3 py-2">
   
-          <input
-            value={line.costCode}
-            onChange={(e) =>
-              update({
-                costCode:
-                  e.target.value,
-              })
-            }
-            className="w-full rounded border px-2 py-1"
-          />
+          {line.costCode || "—"}
   
         </td>
   
         <td className="px-3 py-2 text-right">
-          {line.actualHours.toFixed(2)}
+          {line.quantity !== undefined ? `${line.quantity.toFixed(2)} ${line.unit ?? ""}` : `${line.actualHours.toFixed(2)} h`}
         </td>
   
         <td className="px-3 py-2">
   
-          <input
-            type="number"
-            value={line.hourlyRate}
-            onChange={(e) =>
-              update({
-                hourlyRate:
-                  Number(
-                    e.target.value
-                  ),
-              })
-            }
-            className="w-24 rounded border px-2 py-1 text-right"
-          />
+          {line.hourlyRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
   
         </td>
   

@@ -61,8 +61,9 @@ export function createBillingStatementForRental(
     return { success: false, message: "Cancelled or closed rentals cannot create billing statements." };
   }
 
-  if (!aggregate.rental.id || !aggregate.equipment?.id || !aggregate.operator?.id || !aggregate.contract) {
-    return { success: false, message: "Rental, equipment, operator, and active billing contract are required." };
+  const lineAware = lines.every((line) => Boolean(line.rentalEquipmentLineId && line.equipmentId && line.deurId));
+  if (!aggregate.rental.id || (!lineAware && (!aggregate.equipment?.id || !aggregate.operator?.id || !aggregate.contract))) {
+    return { success: false, message: "Rental and equipment-aware billing evidence are required." };
   }
 
   if (!from || !to || from > to) {

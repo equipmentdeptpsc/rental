@@ -17,6 +17,10 @@ export interface BillingStatementLine {
   id?: string;
 
   deurId: string;
+  rentalEquipmentLineId?: string;
+  equipmentId?: string;
+  operatorId?: string;
+  shift?: "Day" | "Night";
   deurRevisionChainId?: string;
   deurRevisionNumber?: number;
   effectiveDeurId?: string;
@@ -45,6 +49,16 @@ export interface BillingStatementLine {
   hourlyRate: number;
 
   amount: number;
+
+  operatingCharge?: number;
+  idleCharge?: number;
+  mobilizationCharge?: number;
+  demobilizationCharge?: number;
+  operatorCharge?: number;
+  fuelCharge?: number;
+  vat?: number;
+  withholdingTax?: number;
+  grandTotal?: number;
 
 }
 

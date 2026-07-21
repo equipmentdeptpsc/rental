@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import type {
@@ -21,34 +20,15 @@ export default function BillingPreviewTable({
   rateUnavailable = false,
 }: Props) {
 
-  const [billingLines, setBillingLines] =
-    useState(lines);
-
-  useMemo(() => {
-    setBillingLines(lines);
-  }, [lines]);
-
-  function updateLine(
-    updated: BillingPreviewLine
-  ) {
-    setBillingLines((current) =>
-      current.map((line) =>
-        line.deurId === updated.deurId
-          ? updated
-          : line
-      )
-    );
-  }
-
   const subtotal =
-    billingLines.reduce(
+    lines.reduce(
       (total, line) =>
         total + line.amount,
       0
     );
 
   if (
-    billingLines.length === 0
+    lines.length === 0
   ) {
     if (completedDeurs.length > 0) {
       return (
@@ -91,6 +71,10 @@ export default function BillingPreviewTable({
 
           <tr>
 
+            <th className="px-3 py-3 text-left">Equipment</th>
+
+            <th className="px-3 py-3 text-left">Operator</th>
+
             <th className="px-3 py-3 text-left">
               DEUR
             </th>
@@ -108,11 +92,11 @@ export default function BillingPreviewTable({
             </th>
 
             <th className="px-3 py-3 text-right">
-              Hours
+              Quantity / Hours
             </th>
 
             <th className="px-3 py-3 text-right">
-              Hourly Rate
+              Rate
             </th>
 
             <th className="px-3 py-3 text-right">
@@ -125,15 +109,12 @@ export default function BillingPreviewTable({
 
         <tbody>
 
-          {billingLines.map(
+          {lines.map(
             (line) => (
 
               <BillingLineRow
                 key={line.deurId}
                 line={line}
-                onChange={
-                  updateLine
-                }
               />
 
             )
@@ -146,7 +127,7 @@ export default function BillingPreviewTable({
           <tr>
 
             <td
-              colSpan={6}
+              colSpan={8}
               className="px-3 py-3 text-right font-semibold"
             >
               Subtotal

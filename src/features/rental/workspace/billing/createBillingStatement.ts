@@ -34,6 +34,16 @@ export function createBillingStatement(
       0
 
     );
+  const aggregatedVat = lines.reduce((sum, line) => sum + (line.vat ?? 0), 0);
+  const aggregatedWithholding = lines.reduce((sum, line) => sum + (line.withholdingTax ?? 0), 0);
+  const aggregatedGrandTotal = lines.reduce((sum, line) => sum + (line.grandTotal ?? line.amount), 0);
+  const equipmentAwareLines = lines.filter((line) => line.rentalEquipmentLineId && line.equipmentId);
+  const singleEquipmentId = new Set(equipmentAwareLines.map((line) => line.equipmentId)).size === 1
+    ? equipmentAwareLines[0]?.equipmentId
+    : undefined;
+  const singleOperatorId = new Set(equipmentAwareLines.map((line) => line.operatorId).filter(Boolean)).size === 1
+    ? equipmentAwareLines[0]?.operatorId
+    : undefined;
 
   return {
 
@@ -54,11 +64,10 @@ export function createBillingStatement(
       aggregate.project?.projectName ??
       aggregate.rental.project,
 
-    equipmentId:
-      aggregate.rental.equipmentId,
+    equipmentId: equipmentAwareLines.length ? singleEquipmentId ?? "" : aggregate.rental.equipmentId,
 
     operatorId:
-      aggregate.operator?.id ??
+      singleOperatorId ?? aggregate.operator?.id ??
       aggregate.rental.operatorId ??
       aggregate.assignment?.operatorId ??
       "",
@@ -68,9 +77,9 @@ export function createBillingStatement(
     billingTo: to,
 
     subtotal,
-    vat: financials?.vat,
-    withholdingTax: financials?.withholdingTax,
-    grandTotal: financials?.grandTotal,
+    vat: financials?.vat ?? aggregatedVat,
+    withholdingTax: financials?.withholdingTax ?? aggregatedWithholding,
+    grandTotal: financials?.grandTotal ?? aggregatedGrandTotal,
 
     approvalStatus:
       "Draft",
@@ -102,6 +111,10 @@ export function createBillingStatement(
 
         deurId:
           line.deurId,
+        rentalEquipmentLineId: line.rentalEquipmentLineId,
+        equipmentId: line.equipmentId,
+        operatorId: line.operatorId,
+        shift: line.shift,
 
         deurRevisionChainId: line.deurRevisionChainId,
 
@@ -142,6 +155,15 @@ export function createBillingStatement(
 
         amount:
           line.amount,
+        operatingCharge: line.operatingCharge,
+        idleCharge: line.idleCharge,
+        mobilizationCharge: line.mobilizationCharge,
+        demobilizationCharge: line.demobilizationCharge,
+        operatorCharge: line.operatorCharge,
+        fuelCharge: line.fuelCharge,
+        vat: line.vat,
+        withholdingTax: line.withholdingTax,
+        grandTotal: line.grandTotal,
 
       })
 

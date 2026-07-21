@@ -27,19 +27,15 @@ export default function BillingPanel() {
   const drafts =
     useBillingDrafts();
 
-  const completedDeur = aggregate.deurs.some((deur) => Boolean(deur.endOfDay) && !deur.billingLocked);
-  const billingMethod = aggregate.rental.billingMethod ?? aggregate.contract?.billingMethod;
-  const hasConfiguredRate = Boolean(aggregate.contract && Number.isFinite(aggregate.contract.unitRate));
+  const hasDeurEvidence = aggregate.deurs.some((deur) => !deur.billingLocked && deur.status === "Acknowledged");
   const prerequisites = [
     [!["Cancelled", "Closed"].includes(aggregate.rental.status), "Rental is Cancelled or Closed."],
-    [Boolean(aggregate.equipment && aggregate.operator), "Equipment and operator relationships are required."],
-    [completedDeur, "Complete a billable DEUR before generating billing."],
-    [Boolean(billingMethod), "Billing method not specified."],
-    [hasConfiguredRate, "Billing rate not configured."],
+    [aggregate.rentalEquipmentLines.length > 0, "At least one Rental Equipment Line is required."],
+    [hasDeurEvidence, "Acknowledge a billable DEUR before generating billing."],
   ] as const;
   const eligibilityMessage = prerequisites.find(([valid]) => !valid)?.[1];
   const canGenerate = !eligibilityMessage;
-  const canCreate = canGenerate && wizard.hasGenerated && wizard.preview.length > 0;
+  const canCreate = canGenerate && wizard.hasGenerated && wizard.preview.length > 0 && wizard.issues.length === 0;
 
   return (
 
@@ -54,7 +50,7 @@ export default function BillingPanel() {
         onSaveDraft={wizard.saveDraft}
         canGenerate={canGenerate}
         canCreate={canCreate}
-        createUnavailableMessage={wizard.hasGenerated && !wizard.preview.length ? "No billable DEUR entries exist for the selected period." : eligibilityMessage ?? "Generate valid billing lines before creating a statement."}
+        createUnavailableMessage={wizard.hasGenerated && wizard.issues.length ? "Resolve every DEUR eligibility issue before creating the statement." : wizard.hasGenerated && !wizard.preview.length ? "No billable DEUR entries exist for the selected period." : eligibilityMessage ?? "Generate valid billing lines before creating a statement."}
       />
 
       {!canGenerate && (
@@ -68,6 +64,15 @@ export default function BillingPanel() {
         </div>
       )}
 
+      {wizard.hasGenerated && wizard.issues.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <h2 className="font-semibold">Billing eligibility issues</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+            {wizard.issues.map((issue, index) => <li key={`${issue.deurId ?? "rental"}-${issue.code}-${index}`}><span className="font-medium">{issue.equipmentId ?? "Unknown equipment"}</span> / {issue.deurId ?? "Unknown DEUR"}: {issue.message}</li>)}
+          </ul>
+        </div>
+      )}
+
       <BillingHeader
         from={wizard.from}
         to={wizard.to}
@@ -76,7 +81,7 @@ export default function BillingPanel() {
       <BillingPreviewTable
         lines={wizard.preview}
         completedDeurs={wizard.completedDeurs}
-        rateUnavailable={!hasConfiguredRate}
+        rateUnavailable={false}
       />
 
       <div className="grid min-w-0 gap-5 md:grid-cols-3">

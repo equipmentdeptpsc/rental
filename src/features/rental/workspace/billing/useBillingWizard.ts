@@ -4,12 +4,9 @@ import {
   useRentalWorkspaceAggregate,
 } from "..";
 
-import {
-  buildBillingPreview,
-  getCompletedDeursForBillingPeriod,
-} from "./BillingPreviewBuilder";
+import { getCompletedDeursForBillingPeriod } from "./BillingPreviewBuilder";
 
-import { createBillingStatementForRental } from "@/features/rental/billingstatement/services/BillingStatementWorkflow";
+import { buildRentalLineAwareBillingPreview, createRentalLineAwareBillingStatement } from "@/features/rental/billingstatement/services/buildRentalLineAwareBilling";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 export function useBillingWizard() {
@@ -42,33 +39,17 @@ export function useBillingWizard() {
       [aggregate.deurs, from, to]
     );
 
-    const preview =
+  const previewResult =
     useMemo(() => {
-  
       if (!generated) {
-        return [];
+        return { lines: [], issues: [], subtotal: 0, vat: 0, withholdingTax: 0, grandTotal: 0 };
       }
-  
-      const contract =
-        aggregate.contract;
-  
-      if (!contract) {
-        return [];
-      }
-  
-      return buildBillingPreview(
-        completedDeurs,
-        contract,
-        from,
-        to
-      );
-  
+      return buildRentalLineAwareBillingPreview({ aggregate, from, to });
     }, [
-      aggregate.contract,
+      aggregate,
       from,
       to,
       generated,
-      completedDeurs,
     ]);
 
   function generate() {
@@ -81,12 +62,7 @@ export function useBillingWizard() {
       return;
     }
 
-    const result = createBillingStatementForRental(
-      aggregate,
-      from,
-      to,
-      preview
-    );
+    const result = createRentalLineAwareBillingStatement({ aggregate, from, to });
 
     if (!result.success) {
       showToast(result.message, "error");
@@ -106,7 +82,11 @@ export function useBillingWizard() {
 
     setTo,
 
-    preview,
+    preview: previewResult.lines,
+
+    issues: previewResult.issues,
+
+    totals: previewResult,
 
     completedDeurs,
 

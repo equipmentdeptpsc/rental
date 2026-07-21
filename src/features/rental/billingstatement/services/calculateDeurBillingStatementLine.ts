@@ -9,6 +9,10 @@ import type { DeurRecord } from "@/features/rental/deur/types";
 export interface CalculatedDeurBillingStatementLine {
   id: string;
   deurId: string;
+  rentalEquipmentLineId?: string;
+  equipmentId: string;
+  operatorId: string;
+  shift?: "Day" | "Night";
   deurRevisionChainId?: string;
   deurRevisionNumber?: number;
   effectiveDeurId?: string;
@@ -28,6 +32,15 @@ export interface CalculatedDeurBillingStatementLine {
   description: string;
   hourlyRate: number;
   amount: number;
+  operatingCharge: number;
+  idleCharge: number;
+  mobilizationCharge: number;
+  demobilizationCharge: number;
+  operatorCharge: number;
+  fuelCharge: number;
+  vat: number;
+  withholdingTax: number;
+  grandTotal: number;
 }
 
 export type CalculateDeurBillingStatementLineResult =
@@ -112,6 +125,10 @@ export function calculateDeurBillingStatementLine(
     line: {
       id: deur.id,
       deurId: deur.id,
+      rentalEquipmentLineId: deur.rentalEquipmentLineId,
+      equipmentId: deur.equipmentId,
+      operatorId: deur.operatorId,
+      shift: deur.shift,
       deurRevisionChainId: deur.revision?.chainId,
       deurRevisionNumber: deur.revision?.revisionNumber,
       effectiveDeurId: deur.id,
@@ -133,6 +150,15 @@ export function calculateDeurBillingStatementLine(
       commercialCapturedAt:deur.commercialSnapshot?.capturedAt,
       hourlyRate: terms.unitRate,
       amount: charges.subtotal,
+      operatingCharge: charges.operatingCharge,
+      idleCharge: charges.idleCharge,
+      mobilizationCharge: charges.mobilizationCharge,
+      demobilizationCharge: charges.demobilizationCharge,
+      operatorCharge: charges.operatorCharge,
+      fuelCharge: charges.fuelCharge,
+      vat: charges.vat,
+      withholdingTax: charges.withholdingTax,
+      grandTotal: charges.grandTotal,
     },
   };
 }
