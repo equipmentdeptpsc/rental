@@ -16,6 +16,7 @@ import { localCalendarDate, validateNewRentalDates } from "@/features/rental/uti
 import { rentalBillingMethods, rentalTypes, type DeurExpectationFrequency, type DeurExpectationShiftCode, type RentalBillingMethod, type RentalType } from "@/features/rental/types";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import type { AssignmentRecord } from "@/features/assignment/types";
+import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
 import { useActivityCodes } from "@/features/masters/activity-code";
 import { createRentalOperationalMetadataSnapshot } from "@/features/rental/services/createRentalOperationalMetadataSnapshot";
@@ -33,6 +34,7 @@ export interface RentalFormData {
   billingMethod: RentalBillingMethod | "";
   deurExpectationFrequency: DeurExpectationFrequency;
   expectedShiftCodes: DeurExpectationShiftCode[];
+  assignmentIds: string[];
 }
 
 interface Props {
@@ -51,6 +53,7 @@ interface Props {
   initialProjectWarning?: string;
 
   assignment?: AssignmentRecord;
+  initialAssignmentIds?: string[];
 }
 
 export default function RentalForm({
@@ -62,6 +65,7 @@ export default function RentalForm({
   lockOperator = false,
   initialProjectWarning,
   assignment,
+  initialAssignmentIds = [],
 }: Props) {
   const { equipment } =
     useEquipment();
@@ -71,6 +75,7 @@ export default function RentalForm({
 
   const { projects } = useProject();
   const { operators } = useOperator();
+  const { assignments } = useAssignment();
   const { costCodes } = useCostCodes();
   const { records: activityCodes } = useActivityCodes();
 
@@ -192,6 +197,7 @@ export default function RentalForm({
       billingMethod: "",
       deurExpectationFrequency: "PER_WORKDAY",
       expectedShiftCodes: ["DAY"],
+      assignmentIds: initialAssignmentIds,
   
     });
 
@@ -288,6 +294,23 @@ export default function RentalForm({
           options={projectOptions}
           onChange={(e) => update("projectId", e.target.value)}
       />
+
+      <fieldset className="rounded-lg border p-4">
+        <legend className="px-1 text-sm font-medium">Equipment Lines from Active Assignments</legend>
+        <p className="mb-3 text-xs text-slate-500">Select one or more Assignments from the Rental Project. Leave all unchecked to use the single Equipment and Operator fields above.</p>
+        <div className="space-y-2">
+          {assignments.filter((item) => item.status === "Active" && (!form.projectId || item.projectId === form.projectId)).map((item) => {
+            const machine = equipment.find((record) => record.id === item.equipmentId);
+            const operator = operators.find((record) => record.id === item.operatorId);
+            const duplicateSelected = form.assignmentIds.some((id) => id !== item.id && assignments.find((candidate) => candidate.id === id)?.equipmentId === item.equipmentId);
+            const eligible = Boolean(machine && !machine.deleted && machine.active !== false && ["Available", "Assigned"].includes(machine.status));
+            return <label key={item.id} className={`flex items-center gap-3 rounded border p-3 text-sm ${eligible && !duplicateSelected ? "" : "opacity-50"}`}>
+              <input type="checkbox" disabled={!eligible || duplicateSelected} checked={form.assignmentIds.includes(item.id)} onChange={(event) => update("assignmentIds", event.target.checked ? [...form.assignmentIds, item.id] : form.assignmentIds.filter((id) => id !== item.id))} />
+              <span><strong>{machine ? getRentalEquipmentLabel(machine) : item.equipmentId}</strong><br /><span className="text-xs text-slate-500">{operator?.name ?? item.operatorId} · Assignment {item.id}</span></span>
+            </label>;
+          })}
+        </div>
+      </fieldset>
 
       <Select
         label="Operator"

@@ -25,6 +25,7 @@ const rental = (overrides: Partial<RentalRecord> = {}): RentalRecord => ({
 const line = (overrides: Partial<RentalEquipmentLine> = {}): RentalEquipmentLine => ({
   id: compatibilityRentalEquipmentLineId("rental-1", "equipment-1"), rentalId: "rental-1", equipmentId: "equipment-1",
   assignmentId: "assignment-1", operatorId: "operator-1", commercialSnapshotRequired: true,
+  status: "Reserved",
   createdAt: "2026-07-19T00:00:00.000Z", updatedAt: "2026-07-19T00:00:00.000Z", ...overrides,
 });
 const contract: RentalContractRecord = {

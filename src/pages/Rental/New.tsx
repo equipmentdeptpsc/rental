@@ -68,21 +68,27 @@ export default function NewRental() {
       crypto.randomUUID();
 
       
+      const selectedAssignments = data.assignmentIds.map((id) => assignments.find((item) => item.id === id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
+      const lineInputs = selectedAssignments.length
+        ? selectedAssignments.map((item) => ({ equipmentId: item.equipmentId, operatorId: item.operatorId, assignmentId: item.id }))
+        : [{ equipmentId: data.equipmentId, operatorId: data.operatorId, assignmentId: assignmentPrefill.assignmentId }];
+      const soleLine = lineInputs.length === 1 ? lineInputs[0] : undefined;
+
       const rental = {
         id: rentalId,
 
         rentalNumber: generateRentalNumber(rentals),
       
         equipmentId:
-          data.equipmentId,
+          soleLine?.equipmentId ?? "",
 
         customerId: data.customerId,
 
         projectId: data.projectId,
 
-        operatorId: data.operatorId,
+        operatorId: soleLine?.operatorId,
 
-        assignmentId: assignmentPrefill.assignmentId,
+        assignmentId: soleLine?.assignmentId,
       
         customer:
           data.customer,
@@ -114,7 +120,7 @@ export default function NewRental() {
       
       };
 
-    const result = addRental(rental);
+    const result = addRental(rental, lineInputs);
 
     if (!result.success) {
       showToast(
@@ -169,6 +175,7 @@ export default function NewRental() {
         lockOperator={Boolean(assignment)}
         initialProjectWarning={assignmentProjectError}
         assignment={assignment}
+        initialAssignmentIds={assignment ? [assignment.id] : []}
       />}
 
     </div>

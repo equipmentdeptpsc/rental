@@ -74,6 +74,7 @@ describe("rental form options", () => {
           billingMethod: "Per Hour",
           deurExpectationFrequency: "PER_WORKDAY",
           expectedShiftCodes: ["DAY"],
+          assignmentIds: [],
     };
 
     expect("status" in data).toBe(false);

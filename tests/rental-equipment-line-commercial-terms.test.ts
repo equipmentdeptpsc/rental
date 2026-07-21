@@ -15,6 +15,7 @@ const rental = (status: RentalRecord["status"] = "Reserved"): RentalRecord => ({
 });
 const line = (id = "line-1", equipmentId = "equipment-1"): RentalEquipmentLine => ({
   id, rentalId: "rental-1", equipmentId, assignmentId: `assignment-${id}`, operatorId: `operator-${id}`,
+  status: "Reserved",
   commercialSnapshotRequired: true, createdAt: "2026-07-19T00:00:00.000Z", updatedAt: "2026-07-19T00:00:00.000Z",
 });
 const terms = (unitRate = 100, billingMethod: RentalCommercialTermsInput["billingMethod"] = "Per Hour"): RentalCommercialTermsInput => ({

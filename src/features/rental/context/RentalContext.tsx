@@ -15,7 +15,6 @@ import type { RentalContractRecord } from "../types/RentalContract";
 import { rentalRepository } from "../repository";
 import { rentalContractRepository } from "../repository/rentalContractRepository";
 import {
-  findEquipmentBlockingRental,
   getRentalCommercialTermsError,
   validateRentalBillingTerms,
   normalizeRentalBillingTermsInput,
@@ -41,7 +40,8 @@ import { canEditRentalCommercialTerms, configureRentalCommercialTerms, type Rent
 import { prepareRentalEquipmentLineRelease, type RentalEquipmentLineReleaseIssue } from "../services/prepareRentalEquipmentLineRelease";
 import { freezeRentalDeurExpectationPolicy } from "../deur/expectation/freezeRentalDeurExpectationPolicy";
 import { deurShiftWindowRepository } from "../deur/shift-window/repository";
-import { rentalEquipmentLineRepository, type RentalEquipmentLine, type RentalEquipmentLineMigrationIssue } from "../equipment-line";
+import { rentalEquipmentLineRepository, type NewRentalEquipmentLineInput, type RentalEquipmentLine, type RentalEquipmentLineIssue, type RentalEquipmentLineMigrationIssue } from "../equipment-line";
+import { canRemoveRentalEquipmentLine, validateRentalEquipmentLineInputs } from "../services/manageRentalEquipmentLines";
 
 interface RentalTransitionResult {
   success: boolean;
@@ -54,7 +54,8 @@ interface RentalContextType {
   rentals: RentalRecord[];
 
   addRental(
-    item: Omit<RentalRecord, "status" | "statusId">
+    item: Omit<RentalRecord, "status" | "statusId">,
+    equipmentLines?: NewRentalEquipmentLineInput[],
   ): {
     success: boolean;
     message?: string;
@@ -89,6 +90,8 @@ interface RentalContextType {
   saveCommercialTermsForRentalEquipmentLine(rentalId: string, lineId: string, input: RentalCommercialTermsInput): RentalTransitionResult;
   rentalEquipmentLines: RentalEquipmentLine[];
   rentalEquipmentLineMigrationIssues: RentalEquipmentLineMigrationIssue[];
+  addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput): { success: boolean; message?: string; issues?: RentalEquipmentLineIssue[] };
+  removeRentalEquipmentLine(rentalId: string, lineId: string): { success: boolean; message?: string; issues?: RentalEquipmentLineIssue[] };
 }
 
 const RentalContext =
@@ -117,9 +120,9 @@ export function RentalProvider({
   const [rentalEquipmentLines, setRentalEquipmentLines] = useState<RentalEquipmentLine[]>(bootstrap.lines);
   const [rentalEquipmentLineMigrationIssues, setRentalEquipmentLineMigrationIssues] = useState<RentalEquipmentLineMigrationIssue[]>(bootstrap.issues);
 
-  const { getEquipment, updateEquipment } = useEquipment();
+  const { equipment: equipmentRecords, getEquipment, updateEquipment } = useEquipment();
   const { user } = useAuth();
-  const { getAssignment, completeAssignment } = useAssignment();
+  const { assignments, getAssignment, completeAssignment } = useAssignment();
   const { operators } = useOperator();
   const { projects } = useProject();
   const { logAction } = useAudit();
@@ -143,7 +146,14 @@ export function RentalProvider({
     setRentalEquipmentLineMigrationIssues([...lineCompatibility.issues, ...contractCompatibility.issues]);
   }
 
-  function addRental(item: RentalRecord) {
+  function blockingEquipmentIds(excludeRentalId?: string) {
+    const blockingRentalIds = new Set(rentalRepository.getAll().filter((rental) => rental.id !== excludeRentalId && isEquipmentBlockingRental(rental)).map((rental) => rental.id));
+    const ids = new Set(rentalEquipmentLineRepository.getAll().filter((line) => blockingRentalIds.has(line.rentalId)).map((line) => line.equipmentId));
+    for (const rental of rentalRepository.getAll()) if (blockingRentalIds.has(rental.id) && rental.equipmentId) ids.add(rental.equipmentId);
+    return ids;
+  }
+
+  function addRental(item: RentalRecord, equipmentLines?: NewRentalEquipmentLineInput[]) {
     const dateError = validateNewRentalDates(item.dateOut, item.expectedReturn);
     if (dateError) return { success: false, message: dateError };
     const commercialTermsError = getRentalCommercialTermsError(item);
@@ -177,17 +187,26 @@ export function RentalProvider({
       };
     }
 
-    const equipment = getEquipment(item.equipmentId);
+    const requestedLines = equipmentLines?.length ? equipmentLines : [{ equipmentId: item.equipmentId, assignmentId: item.assignmentId, operatorId: item.operatorId ?? "" }];
+    if (!equipmentLines && !item.operatorId?.trim()) return { success: false, message: "Select an operator before creating a rental." };
+    if (!equipmentLines && blockingEquipmentIds().has(item.equipmentId)) return { success: false, message: "Equipment already has a non-final rental." };
+    const lineIssues = validateRentalEquipmentLineInputs({
+      rental: { id: item.id, projectId: item.projectId, status: "Draft" }, requested: requestedLines, existingLines: [],
+      assignments, equipment: equipmentRecords, blockingEquipmentIds: blockingEquipmentIds(), requireAtLeastOne: true,
+    });
+    if (lineIssues.length) return { success: false, message: lineIssues.map((issue) => issue.message).join(" ") };
 
-    if (!equipment || equipment.deleted || equipment.active === false) {
+    const equipment = requestedLines.length === 1 ? getEquipment(requestedLines[0].equipmentId) : undefined;
+
+    if (requestedLines.length === 1 && (!equipment || equipment.deleted || equipment.active === false)) {
       return {
         success: false,
         message: "Equipment is unavailable.",
       };
     }
 
-    const assignment = item.assignmentId
-      ? getAssignment(item.assignmentId)
+    const assignment = requestedLines.length === 1 && requestedLines[0].assignmentId
+      ? getAssignment(requestedLines[0].assignmentId)
       : undefined;
 
     const project = projects.find((candidate) => candidate.id === item.projectId);
@@ -199,21 +218,21 @@ export function RentalProvider({
       };
     }
 
-    if (!item.operatorId?.trim()) {
+    if (requestedLines.length === 1 && !requestedLines[0].operatorId.trim()) {
       return {
         success: false,
         message: "Select an operator before creating a rental.",
       };
     }
 
-    if (!operators.some((operator) => operator.id === item.operatorId)) {
+    if (requestedLines.some((line) => !operators.some((operator) => operator.id === line.operatorId))) {
       return {
         success: false,
         message: "Selected operator was not found.",
       };
     }
 
-    if (item.assignmentId && !assignment) {
+    if (requestedLines.length === 1 && requestedLines[0].assignmentId && !assignment) {
       return {
         success: false,
         message: "Selected assignment was not found.",
@@ -222,8 +241,8 @@ export function RentalProvider({
 
     if (assignment && (
       assignment.status !== "Active" ||
-      assignment.equipmentId !== item.equipmentId ||
-      assignment.operatorId !== item.operatorId
+      assignment.equipmentId !== requestedLines[0].equipmentId ||
+      assignment.operatorId !== requestedLines[0].operatorId
     )) {
       return {
         success: false,
@@ -233,34 +252,34 @@ export function RentalProvider({
 
     // Re-read persisted records immediately before creating to protect against
     // stale pages and repeated submissions.
-    if (findEquipmentBlockingRental(rentalRepository.getAll(), item.equipmentId)) {
+    if (requestedLines.some((line) => blockingEquipmentIds().has(line.equipmentId))) {
       return {
         success: false,
         message: "Equipment already has a non-final rental.",
       };
     }
 
-    const availableForRental =
+    const availableForRental = Boolean(equipment && (
       equipment.status === "Available" ||
       (
         equipment.status === "Assigned" &&
         assignment?.status === "Active" &&
         assignment.equipmentId === equipment.id
-      );
+      )));
 
-    if (!availableForRental) {
+    if (requestedLines.length === 1 && !availableForRental) {
       return {
         success: false,
         message: "Equipment is not available for rental.",
       };
     }
 
-    const operationalMetadata = createRentalOperationalMetadataSnapshot({
+    const operationalMetadata = equipment ? createRentalOperationalMetadataSnapshot({
       equipment,
       assignment,
       costCodes: costCodeRepository.getAll(),
       activityCodes: activityCodeRepository.getAll(),
-    });
+    }) : { snapshot: undefined };
 
     const created: RentalRecord = {
       ...item,
@@ -272,6 +291,15 @@ export function RentalProvider({
       statusId: "",
     };
     rentalRepository.create(created);
+    const timestamp = created.createdAt!;
+    const createdLines: RentalEquipmentLine[] = requestedLines.map((requested) => {
+      const machine = getEquipment(requested.equipmentId)!;
+      const relatedAssignment = requested.assignmentId ? getAssignment(requested.assignmentId) : undefined;
+      const metadata = createRentalOperationalMetadataSnapshot({ equipment: machine, assignment: relatedAssignment, costCodes: costCodeRepository.getAll(), activityCodes: activityCodeRepository.getAll() });
+      return { id: crypto.randomUUID(), rentalId: created.id, equipmentId: requested.equipmentId, assignmentId: requested.assignmentId, operatorId: requested.operatorId, status: "Draft", operationalMetadata: metadata.snapshot, commercialSnapshotRequired: true, createdAt: timestamp, updatedAt: timestamp };
+    });
+    const savedLines = rentalEquipmentLineRepository.createMany(createdLines);
+    if (!savedLines.success) { rentalRepository.delete(created.id); return savedLines; }
     refreshRentals();
     refreshRentalEquipmentLines();
 
@@ -311,93 +339,28 @@ export function RentalProvider({
       };
     }
 
+    const currentLines = rentalEquipmentLineRepository.ensureCompatibility(rentalRepository.getAll()).lines.filter((line) => line.rentalId === current.id);
+    const equipmentChanges: Array<{ before: NonNullable<ReturnType<typeof getEquipment>>; after: NonNullable<ReturnType<typeof getEquipment>> }> = [];
     if (isEquipmentBlockingRental({ status: nextStatus })) {
-      const blockingRental = findEquipmentBlockingRental(
-        rentalRepository.getAll(),
-        current.equipmentId,
-        current.id,
-      );
-      if (blockingRental) {
-        return {
-          success: false,
-          message: "Equipment already has a non-final rental.",
-        };
+      const conflicts = blockingEquipmentIds(current.id);
+      const conflict = currentLines.find((line) => conflicts.has(line.equipmentId));
+      if (conflict) return { success: false, message: `Equipment '${conflict.equipmentId}' already has a non-final Rental.` };
+    }
+    for (const line of currentLines) {
+      const equipment = getEquipment(line.equipmentId);
+      if (!equipment) return { success: false, message: `Equipment '${line.equipmentId}' was not found.` };
+      let updatedEquipment = equipment;
+      if (nextStatus === "Assigned" || nextStatus === "Reserved") updatedEquipment = { ...equipment, status: "Assigned", projectId: current.projectId ?? equipment.projectId, operatorId: line.operatorId };
+      if (nextStatus === "Released") updatedEquipment = { ...equipment, status: "Rented" };
+      if (nextStatus === "Returned") {
+        if (equipment.status !== "Rented") return { success: false, message: `Equipment '${line.equipmentId}' is not currently rented.` };
+        updatedEquipment = blockingEquipmentIds(current.id).has(line.equipmentId) ? { ...equipment, status: "Rented" } : { ...equipment, status: "Available", projectId: "", operatorId: "" };
       }
-    }
-
-    const equipment = getEquipment(current.equipmentId);
-
-    if (!equipment) {
-      return {
-        success: false,
-        message: "Equipment not found.",
-      };
-    }
-
-    let updatedEquipment = equipment;
-
-    if (nextStatus === "Assigned") {
-      updatedEquipment = {
-        ...equipment,
-        status: "Assigned",
-        projectId: current.projectId ?? equipment.projectId,
-        operatorId: current.operatorId ?? equipment.operatorId,
-      };
-    }
-
-    if (nextStatus === "Released") {
-      updatedEquipment = {
-        ...equipment,
-        status: "Rented",
-      };
-    }
-
-    if (nextStatus === "Returned") {
-      if (equipment.status !== "Rented") {
-        return {
-          success: false,
-          message: "Equipment is not currently rented.",
-        };
+      if (nextStatus === "Cancelled") {
+        const assignment = line.assignmentId ? getAssignment(line.assignmentId) : undefined;
+        updatedEquipment = assignment?.status === "Active" ? { ...equipment, status: "Assigned", projectId: assignment.projectId, operatorId: assignment.operatorId } : { ...equipment, status: "Available", projectId: "", operatorId: "" };
       }
-
-      const blockingRental = findEquipmentBlockingRental(
-        rentalRepository.getAll(),
-        current.equipmentId,
-        current.id,
-      );
-      updatedEquipment = blockingRental
-        ? {
-            ...equipment,
-            status: ["Released", "Active"].includes(blockingRental.status) ? "Rented" : "Assigned",
-            projectId: blockingRental.projectId ?? equipment.projectId,
-            operatorId: blockingRental.operatorId ?? equipment.operatorId,
-          }
-        : {
-            ...equipment,
-            status: "Available",
-            projectId: "",
-            operatorId: "",
-          };
-    }
-
-    if (nextStatus === "Cancelled") {
-      const assignment = current.assignmentId
-        ? getAssignment(current.assignmentId)
-        : undefined;
-
-      updatedEquipment = assignment?.status === "Active"
-        ? {
-            ...equipment,
-            status: "Assigned",
-            projectId: assignment.projectId,
-            operatorId: assignment.operatorId,
-          }
-        : {
-            ...equipment,
-            status: "Available",
-            projectId: "",
-            operatorId: "",
-          };
+      if (updatedEquipment !== equipment) equipmentChanges.push({ before: equipment, after: updatedEquipment });
     }
 
     const timestamp = new Date().toISOString();
@@ -422,6 +385,12 @@ export function RentalProvider({
     if (nextStatus === "Released") {
       const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(rentalRepository.getAll());
       const lines = lineCompatibility.lines.filter((line) => line.rentalId === current.id);
+      const lineIssues = validateRentalEquipmentLineInputs({
+        rental: current,
+        requested: lines.map((line) => ({ equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId })),
+        existingLines: [], assignments, equipment: equipmentRecords, blockingEquipmentIds: blockingEquipmentIds(current.id), requireAtLeastOne: true,
+      });
+      if (lineIssues.length) return { success: false, message: lineIssues.map((issue) => issue.message).join(" ") };
       const contractCompatibility = rentalContractRepository.ensureLineAssociations(lineCompatibility.lines);
       const prepared = prepareRentalEquipmentLineRelease({ rental: current, lines, contracts: contractCompatibility.contracts, timestamp });
       if (!prepared.success) return { success: false, message: prepared.issues.map((issue) => issue.message).join(" "), issues: prepared.issues };
@@ -442,18 +411,19 @@ export function RentalProvider({
     };
 
     rentalRepository.update(updated);
+    rentalEquipmentLineRepository.updateRentalStatus(current.id, nextStatus, timestamp);
     refreshRentalEquipmentLines();
 
-    if (updatedEquipment !== equipment) {
-      updateEquipment(updatedEquipment);
+    for (const change of equipmentChanges) {
+      updateEquipment(change.after);
       logAction({
         action: "UPDATE",
-        equipmentId: equipment.id,
-        before: equipment,
-        after: updatedEquipment,
+        equipmentId: change.before.id,
+        before: change.before,
+        after: change.after,
       });
       log(createHistoryEvent(
-        equipment.id,
+        change.before.id,
         `Rental ${nextStatus}`,
         `Rental transitioned to ${nextStatus}.`,
         nextStatus === "Returned" || nextStatus === "Cancelled"
@@ -463,29 +433,16 @@ export function RentalProvider({
     }
 
     if (nextStatus === "Closed") {
-      updateEquipment(equipment);
-      logAction({
-        action: "UPDATE",
-        equipmentId: equipment.id,
-        before: equipment,
-        after: equipment,
-      });
-      log(createHistoryEvent(
-        equipment.id,
-        "Rental Closed",
-        "Rental was closed.",
-        "RENTAL_RETURN"
-      ));
+      for (const line of currentLines) {
+        const equipment = getEquipment(line.equipmentId);
+        if (equipment) log(createHistoryEvent(equipment.id, "Rental Closed", "Rental was closed.", "RENTAL_RETURN"));
+      }
     }
 
-    if (nextStatus === "Returned" && current.assignmentId) {
-      const assignment = getAssignment(current.assignmentId);
-
-      if (assignment?.status === "Active") {
-        completeAssignment(
-          assignment.id,
-          new Date().toISOString().split("T")[0]
-        );
+    if (nextStatus === "Returned") {
+      for (const line of currentLines) {
+        const assignment = line.assignmentId ? getAssignment(line.assignmentId) : undefined;
+        if (assignment?.status === "Active") completeAssignment(assignment.id, new Date().toISOString().split("T")[0]);
       }
     }
 
@@ -606,6 +563,46 @@ export function RentalProvider({
     return { success: true, rental };
   }
 
+  function addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput) {
+    const rental = rentalRepository.getById(rentalId);
+    if (!rental) return { success: false, message: "Rental not found." };
+    const existingLines = rentalEquipmentLineRepository.getByRentalId(rentalId);
+    const issues = validateRentalEquipmentLineInputs({ rental, requested: [input], existingLines, assignments, equipment: equipmentRecords, blockingEquipmentIds: blockingEquipmentIds(rentalId) });
+    if (issues.length) return { success: false, message: issues.map((issue) => issue.message).join(" "), issues };
+    const machine = getEquipment(input.equipmentId)!;
+    const assignment = input.assignmentId ? getAssignment(input.assignmentId) : undefined;
+    const timestamp = new Date().toISOString();
+    const metadata = createRentalOperationalMetadataSnapshot({ equipment: machine, assignment, costCodes: costCodeRepository.getAll(), activityCodes: activityCodeRepository.getAll() });
+    const saved = rentalEquipmentLineRepository.createMany([{ id: crypto.randomUUID(), rentalId, equipmentId: input.equipmentId, assignmentId: input.assignmentId, operatorId: input.operatorId, status: rental.status, operationalMetadata: metadata.snapshot, commercialSnapshotRequired: true, createdAt: timestamp, updatedAt: timestamp }]);
+    if (!saved.success) return saved;
+    if (existingLines.length >= 1) rentalRepository.update({ ...rental, equipmentId: "", assignmentId: undefined, operatorId: undefined, commercialSnapshot: undefined });
+    updateEquipment({ ...machine, status: "Assigned", projectId: rental.projectId ?? machine.projectId, operatorId: input.operatorId });
+    refreshRentals();
+    refreshRentalEquipmentLines();
+    return { success: true };
+  }
+
+  function removeRentalEquipmentLine(rentalId: string, lineId: string) {
+    const rental = rentalRepository.getById(rentalId);
+    const line = rentalEquipmentLineRepository.getById(lineId);
+    if (!rental || !line || line.rentalId !== rentalId) return { success: false, message: "Rental Equipment Line not found." };
+    const issue = canRemoveRentalEquipmentLine(rental, line);
+    if (issue) return { success: false, message: issue.message, issues: [issue] };
+    const machine = getEquipment(line.equipmentId);
+    if (!rentalEquipmentLineRepository.remove(lineId)) return { success: false, message: "Rental Equipment Line not found." };
+    const contract = rentalContractRepository.getByRentalEquipmentLineId(lineId);
+    if (contract.status === "found") rentalContractRepository.delete(contract.contract.id);
+    const remaining = rentalEquipmentLineRepository.getByRentalId(rentalId);
+    if (remaining.length === 1) rentalRepository.update({ ...rental, equipmentId: remaining[0].equipmentId, assignmentId: remaining[0].assignmentId, operatorId: remaining[0].operatorId, operationalMetadata: remaining[0].operationalMetadata });
+    if (machine && !blockingEquipmentIds(rentalId).has(machine.id)) {
+      const assignment = line.assignmentId ? getAssignment(line.assignmentId) : undefined;
+      updateEquipment(assignment?.status === "Active" ? { ...machine, status: "Assigned", projectId: assignment.projectId, operatorId: assignment.operatorId } : { ...machine, status: "Available", projectId: "", operatorId: "" });
+    }
+    refreshRentals();
+    refreshRentalEquipmentLines();
+    return { success: true };
+  }
+
   const value = useMemo(
     () => ({
       rentals,
@@ -626,6 +623,8 @@ export function RentalProvider({
       saveCommercialTermsForRentalEquipmentLine,
       rentalEquipmentLines,
       rentalEquipmentLineMigrationIssues,
+      addRentalEquipmentLine,
+      removeRentalEquipmentLine,
     }),
     [rentals, contracts, rentalEquipmentLines, rentalEquipmentLineMigrationIssues, getAssignment]
   );

@@ -23,6 +23,7 @@ import { billingStatementRepository } from "@/features/rental/billingstatement/r
 import { isInvoicePreparationComplete } from "@/features/rental/billingstatement/services/BillingReadiness";
 import { subscribeRentalWorkspaceChange } from "./workspaceRefresh";
 import { resolveRentalDeurOperator } from "@/features/rental/deur/operator/resolveRentalDeurOperator";
+import { resolveRentalWorkspaceEquipmentLines } from "./resolveRentalWorkspaceEquipmentLines";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -63,7 +64,8 @@ export default function RentalWorkspaceProvider({
     }
 
     const lines = rentalEquipmentLines.filter((item) => item.rentalId === rental.id);
-    const soleLine = lines.length === 1 ? lines[0] : undefined;
+    const lineResolution = resolveRentalWorkspaceEquipmentLines(lines);
+    const soleLine = lineResolution.kind === "sole" ? lineResolution.line : undefined;
     const contract = contracts.find((item) =>
       item.rentalEquipmentLineId === soleLine?.id || item.id === rental.id
     );

@@ -4,7 +4,7 @@ import type { RentalEquipmentLine } from "../equipment-line";
 import { createRentalCommercialSnapshot } from "./createRentalCommercialSnapshot";
 
 export interface RentalEquipmentLineReleaseIssue {
-  code: "RENTAL_EQUIPMENT_LINE_MISSING" | "COMMERCIAL_TERMS_MISSING" | "COMMERCIAL_TERMS_AMBIGUOUS" | "COMMERCIAL_TERMS_LINE_MISMATCH" | "COMMERCIAL_TERMS_INVALID";
+  code: "RENTAL_EQUIPMENT_LINE_MISSING" | "DUPLICATE_EQUIPMENT" | "COMMERCIAL_TERMS_MISSING" | "COMMERCIAL_TERMS_AMBIGUOUS" | "COMMERCIAL_TERMS_LINE_MISMATCH" | "COMMERCIAL_TERMS_INVALID";
   rentalEquipmentLineId?: string;
   equipmentId?: string;
   message: string;
@@ -22,6 +22,11 @@ export function prepareRentalEquipmentLineRelease(input: {
   const lines = input.lines.filter((line) => line.rentalId === input.rental.id);
   if (lines.length === 0) return { success: false, issues: [{ code: "RENTAL_EQUIPMENT_LINE_MISSING", message: "Rental has no equipment line available for release." }] };
   const issues: RentalEquipmentLineReleaseIssue[] = [];
+  const seenEquipment = new Set<string>();
+  for (const line of lines) {
+    if (seenEquipment.has(line.equipmentId)) issues.push({ code: "DUPLICATE_EQUIPMENT", rentalEquipmentLineId: line.id, equipmentId: line.equipmentId, message: `Equipment '${line.equipmentId}' appears more than once in this Rental.` });
+    seenEquipment.add(line.equipmentId);
+  }
   const prepared = lines.map((line) => {
     if (line.commercialSnapshot) return structuredClone(line);
     const contracts = input.contracts.filter((contract) => contract.rentalEquipmentLineId === line.id);

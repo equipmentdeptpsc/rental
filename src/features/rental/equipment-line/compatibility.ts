@@ -18,6 +18,17 @@ export function materializeRentalEquipmentLineCompatibility(
   let changed = false;
 
   for (const rental of rentals) {
+    const existingRentalLines = lines.filter((line) => line.rentalId === rental.id);
+    if (existingRentalLines.length > 0 && !rental.equipmentId?.trim()) {
+      for (const existing of existingRentalLines) {
+        if (!existing.status) {
+          existing.status = rental.status;
+          existing.updatedAt = timestamp;
+          changed = true;
+        }
+      }
+      continue;
+    }
     const equipmentId = rental.equipmentId?.trim();
     if (!equipmentId) {
       issues.push(issue({ code: "LEGACY_RENTAL_EQUIPMENT_MISSING", rentalId: rental.id, message: "Legacy Rental has no equipment identity; no compatibility line was inferred." }));
@@ -42,6 +53,7 @@ export function materializeRentalEquipmentLineCompatibility(
     }
     if (sameRentalEquipment.length === 1) {
       const existing = sameRentalEquipment[0];
+      if (!existing.status) { existing.status = rental.status; existing.updatedAt = timestamp; changed = true; }
       if (!existing.commercialSnapshot && rental.commercialSnapshot) {
         existing.commercialSnapshot = structuredClone(rental.commercialSnapshot);
         existing.commercialSnapshotRequired = rental.commercialSnapshotRequired === true ? true : existing.commercialSnapshotRequired;
@@ -58,6 +70,7 @@ export function materializeRentalEquipmentLineCompatibility(
       equipmentId,
       assignmentId: rental.assignmentId,
       operatorId,
+      status: rental.status,
       operationalMetadata: rental.operationalMetadata ? structuredClone(rental.operationalMetadata) : undefined,
       commercialSnapshotRequired: rental.commercialSnapshotRequired === true ? true : undefined,
       commercialSnapshot: rental.commercialSnapshot ? structuredClone(rental.commercialSnapshot) : undefined,

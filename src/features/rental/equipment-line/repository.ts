@@ -12,6 +12,7 @@ function normalizeLine(line: RentalEquipmentLine): RentalEquipmentLine {
   return {
     ...clone(line),
     assignmentId: line.assignmentId?.trim() || undefined,
+    status: line.status ?? "Draft",
     commercialSnapshotRequired: line.commercialSnapshotRequired === true ? true : undefined,
     commercialSnapshot: normalizeRentalCommercialSnapshot(line.commercialSnapshot),
   };
@@ -50,6 +51,30 @@ class RentalEquipmentLineRepository {
     const records = this.getAll();
     if (records.some((item) => item.id === line.id)) return;
     save([...records, normalizeLine(line)]);
+  }
+
+  createMany(lines: RentalEquipmentLine[]): { success: true } | { success: false; message: string } {
+    const records = this.getAll();
+    const ids = new Set(records.map((line) => line.id));
+    const equipmentByRental = new Set(records.map((line) => `${line.rentalId}:${line.equipmentId}`));
+    for (const line of lines) {
+      const key = `${line.rentalId}:${line.equipmentId}`;
+      if (ids.has(line.id) || equipmentByRental.has(key)) return { success: false, message: "Duplicate equipment is not allowed within a Rental." };
+      ids.add(line.id); equipmentByRental.add(key);
+    }
+    save([...records, ...lines.map(normalizeLine)]);
+    return { success: true };
+  }
+
+  remove(id: string): boolean {
+    const records = this.getAll();
+    if (!records.some((line) => line.id === id)) return false;
+    save(records.filter((line) => line.id !== id));
+    return true;
+  }
+
+  updateRentalStatus(rentalId: string, status: RentalEquipmentLine["status"], timestamp: string) {
+    save(this.getAll().map((line) => line.rentalId === rentalId ? { ...line, status, updatedAt: timestamp } : line));
   }
 
   update(line: RentalEquipmentLine) {

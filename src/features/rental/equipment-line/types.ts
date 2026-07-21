@@ -1,4 +1,4 @@
-import type { RentalCommercialSnapshot, RentalOperationalMetadataSnapshot } from "../types";
+import type { RentalCommercialSnapshot, RentalLifecycleStatus, RentalOperationalMetadataSnapshot } from "../types";
 
 export interface RentalEquipmentLine {
   id: string;
@@ -6,11 +6,31 @@ export interface RentalEquipmentLine {
   equipmentId: string;
   assignmentId?: string;
   operatorId: string;
+  status: RentalLifecycleStatus;
   operationalMetadata?: RentalOperationalMetadataSnapshot;
   commercialSnapshotRequired?: boolean;
   commercialSnapshot?: RentalCommercialSnapshot;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NewRentalEquipmentLineInput {
+  equipmentId: string;
+  assignmentId?: string;
+  operatorId: string;
+}
+
+export type RentalEquipmentLineIssueCode =
+  | "RENTAL_NOT_EDITABLE" | "DUPLICATE_EQUIPMENT" | "EQUIPMENT_UNAVAILABLE"
+  | "EQUIPMENT_RENTAL_CONFLICT" | "ASSIGNMENT_INVALID" | "PROJECT_MISMATCH"
+  | "LINE_NOT_FOUND" | "LINE_SNAPSHOT_LOCKED" | "ZERO_EQUIPMENT_LINES";
+
+export interface RentalEquipmentLineIssue {
+  code: RentalEquipmentLineIssueCode;
+  message: string;
+  rentalEquipmentLineId?: string;
+  equipmentId?: string;
+  assignmentId?: string;
 }
 
 export type RentalEquipmentLineMigrationIssueCode =
