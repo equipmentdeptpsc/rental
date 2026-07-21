@@ -15,6 +15,7 @@ This is the Phase 10 relational target for PostgreSQL. The running application r
 - A Billing Statement owns immutable Billing Statement Lines. Each line identifies the effective DEUR and copies all calculated monetary evidence used by the current billing model.
 - `invoice_projection` exposes invoice-shaped rows without creating a competing invoice aggregate. Future collections can reference the billing statement.
 - Equipment History and Audit Log are append-only evidence.
+- Maintenance Records and Equipment Daily Logs are normalized operational children of Equipment; Daily Logs also reference Operator and Project.
 
 ## ER diagram
 
@@ -42,6 +43,10 @@ erDiagram
   BILLING_STATEMENTS ||--|{ BILLING_STATEMENT_LINES : contains
   DEURS ||--o| BILLING_STATEMENT_LINES : billed_once
   EQUIPMENT ||--o{ EQUIPMENT_HISTORY : history
+  EQUIPMENT ||--o{ MAINTENANCE_RECORDS : maintained_by
+  EQUIPMENT ||--o{ EQUIPMENT_DAILY_LOGS : logged_by
+  OPERATORS ||--o{ EQUIPMENT_DAILY_LOGS : records
+  PROJECTS ||--o{ EQUIPMENT_DAILY_LOGS : reports
   BILLING_STATEMENTS ||--o{ COLLECTIONS : future_receipts
 ```
 
@@ -80,8 +85,9 @@ Only universal status lookups are idempotently seeded. Tenant/business masters a
 3. Deploy billing, invoice projection, history/audit, sync, and future foundations (`003`).
 4. Enable immutability, concurrency triggers, and indexes (`004`).
 5. Seed reference statuses (`005`).
-6. In a future migration project only: import masters, equipment, assignments, rentals, lines, contracts/snapshots, DEUR evidence, billing, then audit/history.
-7. Reconcile counts, foreign keys, hashes, DEUR revision chains, and statement totals; perform rollback rehearsal before any adapter cutover.
+6. Deploy import staging (`006`) and Maintenance/Daily Log targets (`007`).
+7. In a future migration project only: import masters, equipment, assignments, rentals, lines, contracts/snapshots, DEUR evidence, billing, maintenance/logs, then audit/history.
+8. Reconcile counts, foreign keys, hashes, DEUR revision chains, and statement totals; perform rollback rehearsal before any adapter cutover.
 
 ## Index rationale
 

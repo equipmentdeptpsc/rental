@@ -7,7 +7,8 @@
 - [ ] Catalog validation and deterministic seeds pass.
 - [ ] Export manifest checksums and counts pass.
 - [ ] Malformed repositories are resolved or explicitly rejected.
-- [ ] Maintenance and Daily Log target design is approved.
+- [x] Maintenance and Daily Log normalized target design executed in migration 007.
+- [x] PostgreSQL 17.10 clean install, rollback, reinstall, seed, fixture, and restore rehearsals passed.
 - [ ] Parent-first transformations report no unresolved foreign keys.
 - [ ] Snapshot hashes match exported evidence.
 - [ ] Billing and invoice projections match persisted historical values.

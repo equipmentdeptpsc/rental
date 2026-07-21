@@ -24,6 +24,7 @@
 | WorkDescription | `equipment-rental-work-descriptions` | `work_descriptions` | `id` | Map `requiresRemarks`; validate optional code uniqueness during import. |
 | Equipment masters | catalog master keys | equipment master tables | `id` | Import IDs/names; SQL audit metadata exceeds some current TypeScript models. |
 | RentalStatus | `rental-status-master` | `rental_statuses` | `id` | Reconcile current master IDs with deterministic reference seed IDs. |
-| Maintenance/DailyLog | `maintenance_records`, `equipment-daily-logs` | staging pending future normalized schema | `id` | In current catalog but outside Phase 10 relational scope; retain raw JSONB without loss. |
+| Maintenance | `maintenance_records` | `maintenance_records` | `id` | Migration 007 preserves readings, schedule/completion dates, technician, remarks, and status. |
+| DailyLog | `equipment-daily-logs` | `equipment_daily_logs` | `id` | Migration 007 preserves equipment/operator/project identity, date, readings, hours, and remarks. |
 
-Key findings: current JavaScript numbers require decimal-safe string conversion at the loader boundary; Local Storage timestamps are strings or epoch milliseconds while PostgreSQL uses `date`/`timestamptz`; embedded evidence becomes relational child rows; SQL audit/version/deletion columns are future persistence metadata; nullable DEUR line and snapshot references exist only for explicit legacy compatibility. Maintenance and Daily Log have no production target tables yet and remain a cutover blocker, not silently discarded data.
+Key findings: current JavaScript numbers require decimal-safe string conversion at the loader boundary; Local Storage timestamps are strings or epoch milliseconds while PostgreSQL uses `date`/`timestamptz`; embedded evidence becomes relational child rows; SQL audit/version/deletion columns are future persistence metadata; nullable DEUR line and snapshot references exist only for explicit legacy compatibility.

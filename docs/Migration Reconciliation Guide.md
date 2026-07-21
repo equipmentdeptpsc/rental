@@ -14,6 +14,8 @@
 
 The exception suite covers Rentals without lines, duplicate line equipment, released lines without snapshots, unresolved or mismatched DEUR identity, duplicate line/date/shift DEURs, acknowledged DEURs without evidence, statement/line total mismatches, duplicate billing consumption, missing snapshot hashes, invoice-state inconsistencies, excess collections, missing audit actors, and unresolved staging rows. Database keys additionally expose ordinary orphan and duplicate-ID failures during validation/import.
 
+Phase 10C executed the suite against both deliberately inconsistent fixtures and a clean restored fixture. Actionable exceptions were returned for injectable states; states prevented by unique or foreign-key constraints were verified by `constraint_tests.sql`. The clean import and restored backup returned no exceptions.
+
 ## Rollback
 
 Before cutover, rollback means dropping/resetting the disposable database and rerunning all migrations. After a future cutover, restore the verified database backup, switch back to the prior application adapter, and retain the untouched Local Storage export. Versioned migrations are execute-once and have no production downgrade scripts.

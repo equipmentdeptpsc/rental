@@ -2,7 +2,7 @@ param([Parameter(Mandatory=$true)][string]$DatabaseUrl)
 $ErrorActionPreference = 'Stop'
 if (-not (Get-Command psql -ErrorAction SilentlyContinue)) { throw 'psql is required and was not found.' }
 $root = Split-Path -Parent $PSScriptRoot
-$files = @('001_foundation.sql','002_rental_deur.sql','003_billing_integration.sql','004_constraints_indexes_immutability.sql','005_seed_reference.sql','006_import_staging.sql')
+$files = @('001_foundation.sql','002_rental_deur.sql','003_billing_integration.sql','004_constraints_indexes_immutability.sql','005_seed_reference.sql','006_import_staging.sql','007_maintenance_daily_logs.sql')
 foreach ($file in $files) { & psql $DatabaseUrl -v ON_ERROR_STOP=1 -f (Join-Path $root "database/postgresql/$file"); if ($LASTEXITCODE -ne 0) { throw "Migration failed: $file" } }
 & psql $DatabaseUrl -v ON_ERROR_STOP=1 -f (Join-Path $root 'database/postgresql/validation/validate_catalog.sql')
 if ($LASTEXITCODE -ne 0) { throw 'Catalog validation failed.' }

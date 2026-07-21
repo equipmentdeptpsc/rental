@@ -23,7 +23,7 @@ export async function buildMigrationExportManifest(input:{ adapter:PersistenceAd
     const digest=await hashMigrationValue(payload);
     repositories.push({ logicalName:descriptor.name,storageKey:descriptor.storageKey,sourceSchemaVersion:parsed?.schemaVersion ?? descriptor.schemaVersion,recordCount:parsed?.records.length ?? 0,checksum:digest.checksum,checksumAlgorithm:digest.algorithm,dependencyOrder,status,warnings:[...(parsed?.warning?[parsed.warning]:[]),...(status==="Malformed"?["Repository payload is neither an array nor a versioned records envelope."]:[])],payload });
   }
-  const completionStatus=repositories.every((item)=>item.status==="Complete"&&item.warnings.length===0)?"Complete":"CompletedWithWarnings";
+  const completionStatus:MigrationExportManifest["completionStatus"]=repositories.every((item)=>item.status==="Complete"&&item.warnings.length===0)?"Complete":"CompletedWithWarnings";
   const unsigned={ manifestVersion:MIGRATION_EXPORT_MANIFEST_VERSION,applicationSchemaVersion:input.applicationSchemaVersion,exportedAt:input.exportedAt,sourceApplicationVersion:input.sourceApplicationVersion,repositoryCatalogVersion:input.repositoryCatalogVersion,completionStatus,repositories };
   const digest=await hashMigrationValue(unsigned);
   return { ...unsigned, checksum:digest.checksum,checksumAlgorithm:digest.algorithm };

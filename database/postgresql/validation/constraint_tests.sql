@@ -30,6 +30,7 @@ SELECT pg_temp.expect_failure('wrong line identity',$q$INSERT INTO deurs(id,rent
 
 INSERT INTO commercial_snapshots(id,rental_id,rental_equipment_line_id,billing_method,unit_rate,operator_included,currency,captured_at,snapshot_hash) VALUES('test-snapshot','test-r-1','test-line-1','Per Hour',100,false,'PHP',now(),'hash');
 SELECT pg_temp.expect_failure('negative snapshot rate',$q$INSERT INTO commercial_snapshots(id,rental_id,rental_equipment_line_id,billing_method,unit_rate,operator_included,currency,captured_at) VALUES('bad-negative','test-r-1',NULL,'Per Hour',-1,false,'PHP',now())$q$);
+SELECT pg_temp.expect_failure('invalid commercial percentage',$q$INSERT INTO rental_contracts(id,rental_id,rental_equipment_line_id,contract_no,customer_id,equipment_id,project_id,rental_type,billing_method,currency,unit_rate,operator_included,tax_rate,start_date,expected_end_date,status) VALUES('bad-tax','test-r-1','test-line-1','BAD-TAX','test-customer','test-eq-1','test-project','Bare Rental','Per Hour','PHP',100,false,101,'2026-01-01','2026-12-31','Draft')$q$);
 SELECT pg_temp.expect_failure('duplicate line snapshot',$q$INSERT INTO commercial_snapshots(id,rental_id,rental_equipment_line_id,billing_method,unit_rate,operator_included,currency,captured_at) VALUES('bad-snapshot-duplicate','test-r-1','test-line-1','Per Hour',100,false,'PHP',now())$q$);
 SELECT pg_temp.expect_failure('immutable snapshot update',$q$UPDATE commercial_snapshots SET unit_rate=101 WHERE id='test-snapshot'$q$);
 
@@ -41,7 +42,8 @@ SELECT pg_temp.expect_failure('invalid revision chain',$q$INSERT INTO deurs(id,r
 INSERT INTO billing_statements(id,statement_no,rental_id,customer_snapshot,project_snapshot,billing_from,billing_to,subtotal,vat,withholding_tax,grand_total,approval_status,invoice_status,created_by) VALUES('test-bs','TEST-BS','test-r-1','Test','Test','2026-01-01','2026-01-31',100,12,2,110,'Draft','Not Invoiced','test');
 INSERT INTO billing_statement_lines(id,billing_statement_id,rental_equipment_line_id,equipment_id,deur_id,work_date,description,amount,vat,withholding_tax,grand_total) VALUES('test-bsl','test-bs','test-line-1','test-eq-1','test-deur','2026-01-02','Test',100,12,2,110);
 SELECT pg_temp.expect_failure('duplicate DEUR consumption',$q$INSERT INTO billing_statement_lines(id,billing_statement_id,deur_id,work_date,description,amount,grand_total) VALUES('bad-consumption','test-bs','test-deur','2026-01-02','Duplicate',100,100)$q$);
-SELECT pg_temp.expect_failure('orphan statement line',$q$INSERT INTO billing_statement_lines(id,billing_statement_id,deur_id,work_date,description,amount,grand_total) VALUES('bad-orphan','missing','test-deur','2026-01-02','Orphan',100,100)$q$);
+INSERT INTO deurs(id,rental_id,rental_equipment_line_id,equipment_id,operator_id,commercial_snapshot_id,work_date,status) VALUES('test-deur-orphan-probe','test-r-1','test-line-1','test-eq-1','test-op-1','test-snapshot','2026-01-03','Acknowledged');
+SELECT pg_temp.expect_failure('orphan statement line',$q$INSERT INTO billing_statement_lines(id,billing_statement_id,deur_id,work_date,description,amount,grand_total) VALUES('bad-orphan','missing','test-deur-orphan-probe','2026-01-03','Orphan',100,100)$q$);
 UPDATE billing_statements SET approval_status='Approved' WHERE id='test-bs';
 SELECT pg_temp.expect_failure('final billing evidence mutation',$q$UPDATE billing_statement_lines SET amount=99 WHERE id='test-bsl'$q$);
 

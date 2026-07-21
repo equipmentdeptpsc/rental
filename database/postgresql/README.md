@@ -10,6 +10,7 @@ Apply to a new database in filename order:
 4. `004_constraints_indexes_immutability.sql`
 5. `005_seed_reference.sql`
 6. `006_import_staging.sql`
+7. `007_maintenance_daily_logs.sql`
 
 With a disposable PostgreSQL database and `psql` installed, run:
 
