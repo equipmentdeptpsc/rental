@@ -1,8 +1,9 @@
 import type { CustomerRecord } from "./types";
+import type { CrudRepository } from "@/core/persistence";
 
 const STORAGE_KEY = "customer_records";
 
-class CustomerRepository {
+class CustomerRepository implements CrudRepository<CustomerRecord> {
   getAll(): CustomerRecord[] {
     const data = localStorage.getItem(STORAGE_KEY);
 

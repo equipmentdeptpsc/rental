@@ -4,13 +4,7 @@ import {
   useRentalWorkspaceAggregate,
 } from "..";
 
-import {
-    deurRepository,
-  } from "@/features/rental/deur/repository/deurRepository";
-
-import {
-  buildBillingPreview,
-} from "./BillingPreviewBuilder";
+import { buildRentalLineAwareBillingPreview } from "@/features/rental/billingstatement/services/buildRentalLineAwareBilling";
 
 export function useBillingPreview(
   from: string,
@@ -21,25 +15,10 @@ export function useBillingPreview(
 
   return useMemo(() => {
 
-    const deurs =
-      deurRepository.getByRentalId(
-        aggregate.rental.id
-      );
-
-      
-      if (!aggregate.contract) {
-        return [];
-    }
-    
-    return buildBillingPreview(
-        deurs,
-        aggregate.contract,
-        from,
-        to
-    );
+    return buildRentalLineAwareBillingPreview({ aggregate, from, to }).lines;
 
   }, [
-    aggregate.rental.id,
+    aggregate,
     from,
     to,
   ]);

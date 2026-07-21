@@ -1,6 +1,7 @@
 import type { EquipmentRecord } from "../types";
+import type { CrudRepository, SoftDeleteRepository } from "@/core/persistence";
 
-export interface IEquipmentRepository {
+export interface IEquipmentRepository extends CrudRepository<EquipmentRecord>, SoftDeleteRepository<EquipmentRecord> {
   getAll(): EquipmentRecord[];
 
   getDeleted(): EquipmentRecord[];

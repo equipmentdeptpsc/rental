@@ -1,16 +1,15 @@
 import type { RentalContractRecord } from "../types/RentalContract";
 import type { RentalEquipmentLine, RentalEquipmentLineMigrationIssue } from "../equipment-line/types";
 import { associateLegacyContractsWithRentalEquipmentLines } from "../equipment-line/contractCompatibility";
+import { storage } from "@/core/storage";
 
 const STORAGE_KEY = "equipment-rental-contracts";
 const clone = <T>(value: T): T => structuredClone(value);
 
 function read(): RentalContractRecord[] {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try { const value = JSON.parse(raw); return Array.isArray(value) ? value : []; } catch { return []; }
+  try { const value = storage.get<unknown>(STORAGE_KEY); return Array.isArray(value) ? value as RentalContractRecord[] : []; } catch { return []; }
 }
-function save(data: RentalContractRecord[]) { localStorage.setItem(STORAGE_KEY, JSON.stringify(clone(data))); }
+function save(data: RentalContractRecord[]) { storage.set(STORAGE_KEY, clone(data)); }
 
 export type RentalEquipmentLineContractLookup =
   | { status: "found"; contract: RentalContractRecord }

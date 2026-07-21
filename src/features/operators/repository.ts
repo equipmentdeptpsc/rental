@@ -1,5 +1,6 @@
 import type { Operator } from "./types";
 import { mockOperators } from "./mockData";
+import type { CrudRepository } from "@/core/persistence";
 
 const STORAGE_KEY = "operators";
 
@@ -58,4 +59,4 @@ export const operatorRepository = {
 
     save();
   },
-};
+} satisfies CrudRepository<Operator>;

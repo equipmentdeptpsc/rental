@@ -1,6 +1,7 @@
 import type { AssignmentRecord } from "./types";
 
 import { storage } from "@/core/storage";
+import type { CrudRepository } from "@/core/persistence";
 
 const STORAGE_KEY = "assignments";
 const clone = <T>(value: T): T => structuredClone(value);
@@ -78,4 +79,4 @@ export const assignmentRepository =
           a.status === "Active"
       ));
     },
-  };
+  } satisfies CrudRepository<AssignmentRecord> & { getActive(): AssignmentRecord[] };

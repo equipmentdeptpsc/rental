@@ -1,5 +1,6 @@
 import { mockProjects } from "./mock";
 import type { ProjectRecord } from "./types";
+import type { CrudRepository } from "@/core/persistence";
 
 const STORAGE_KEY = "projects";
 
@@ -58,4 +59,4 @@ export const projectRepository = {
 
     save();
   },
-};
+} satisfies CrudRepository<ProjectRecord>;

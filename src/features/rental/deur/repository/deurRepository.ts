@@ -75,8 +75,8 @@ class DeurRepository {
   }
 
   update(record: DeurRecord) {
-
-    const existing = this.getById(record.id);
+    const records = this.getAll();
+    const existing = records.find((item) => item.id === record.id);
     if (!existing) return undefined;
     const protectedRecord = structuredClone(record);
     protectedRecord.creationSource = existing.creationSource;
@@ -101,7 +101,7 @@ class DeurRepository {
     }
 
     const updated =
-      this.getAll().map(x =>
+      records.map(x =>
         x.id === record.id
           ? protectedRecord
           : x
@@ -131,12 +131,13 @@ class DeurRepository {
   }
 
   applyOperatorAction(input: { deurId: string; expectedUpdatedAt: string; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string } }) {
-    const latest = this.getById(input.deurId);
+    const current = this.getAll();
+    const latest = current.find((record) => record.id === input.deurId);
     if (!latest) return { success: false as const, code: "DEUR_NOT_FOUND", message: "DEUR not found." };
     if (latest.updatedAt !== input.expectedUpdatedAt) return { success: false as const, code: "DEUR_STALE_VERSION", message: "This DEUR changed in another view. Latest data has been reloaded.", latest: structuredClone(latest) };
     const result = applyDigitalDeurOperatorAction({ deur: latest, action: input.action, actionTimestamp: input.actionTimestamp, actor: input.actor });
     if (!result.success) return result;
-    const records = this.getAll().map((record) => record.id === latest.id ? result.record : record);
+    const records = current.map((record) => record.id === latest.id ? result.record : record);
     const persisted = this.persistMutation(records, result.record, "update", result.record);
     return { success: true as const, record: persisted, createdEvents: result.createdEvents };
   }

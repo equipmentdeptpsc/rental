@@ -91,9 +91,7 @@ export default function RentalWorkspaceProvider({
         rental.id
       );
 
-    const statements = billingStatementRepository.getAll().filter(
-      statement => statement.rentalId === rental.id
-    );
+    const statements = billingStatementRepository.getByRentalId(rental.id);
     const latestStatement = statements.at(-1);
     const invoicePreparationComplete = isInvoicePreparationComplete(
       latestStatement?.invoiceStatus
