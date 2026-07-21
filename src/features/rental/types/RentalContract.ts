@@ -15,6 +15,12 @@ export type BillingMethod =
 export interface RentalContractRecord {
   id: string;
 
+  /** Added for line-level compatibility; legacy records continue to use id === rentalId. */
+  rentalId?: string;
+
+  /** Stable Rental Equipment Line association for new reads. */
+  rentalEquipmentLineId?: string;
+
   contractNo: string;
 
   customerId: string;
@@ -61,6 +67,10 @@ export interface RentalContractRecord {
 
   // NEW
   withholdingTax?: number;
+
+  transactionRelationship?: import("../types").TransactionRelationship;
+
+  vatApplicability?: import("../types").VatApplicability;
 
   // NEW
   remarks?: string;

@@ -34,7 +34,7 @@ function contract(unitRate = 100): RentalContractRecord {
 }
 
 const commercialTerms = (unitRate = 100): RentalCommercialTermsInput => ({
-  currency: "PHP", unitRate, operatorIncluded: true,
+  billingMethod: "Per Hour", currency: "PHP", unitRate, operatorIncluded: true,
   transactionRelationship: "Non-Affiliate", vatApplicability: "Applicable", taxRate: 12,
 });
 
@@ -194,6 +194,7 @@ describe("rental lifecycle rules", () => {
     expect(canTransitionRental({ status: "Returned" }, "Closed")).toBe(true);
     expect(buildCloseReadiness({
       rental: rental("Returned"),
+      rentalEquipmentLines: [],
       deurs: [],
       billing: {
         totalOperatingCharge: 0,

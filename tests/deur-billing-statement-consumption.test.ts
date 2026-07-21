@@ -7,6 +7,7 @@ import type { BillingStatement } from "@/features/rental/billingstatement/types"
 
 function aggregate(): RentalAggregate {
   return {
+    rentalEquipmentLines: [],
     rental: { id: "rental-1", rentalNumber: "R-001", equipmentId: "equipment-1", operatorId: "operator-1", customerId: "customer-1", projectId: "project-1", customer: "Customer", project: "Project", rentedBy: "", dateOut: "2026-01-01", expectedReturn: "2026-01-02", statusId: "", status: "Returned" },
     equipment: { id: "equipment-1", prefixId: "", assetNo: "EQP-000001", equipmentName: "Excavator", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "project-1", operatorId: "operator-1", status: "Available" },
     operator: { id: "operator-1", name: "Operator", email: "", licenseNumber: "", certificationType: "None", status: "Active", joinedDate: "" },

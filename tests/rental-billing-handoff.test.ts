@@ -14,6 +14,7 @@ function aggregate(overrides: Partial<RentalAggregate> = {}): RentalAggregate {
     contract: { id: "rental-1", contractNo: "C-1", customerId: "customer-1", equipmentId: "equipment-1", projectId: "project-1", rentalType: "Operated Rental", billingMethod: "Per Hour", currency: "PHP", unitRate: 100, operatorIncluded: true, taxRate: 12, withholdingTax: 2, startDate: "2026-07-20", expectedEndDate: "2026-07-20", status: "Active", createdAt: "2026-07-20T00:00:00.000Z", updatedAt: "2026-07-20T00:00:00.000Z" },
     deurs: [], billing: { totalOperatingCharge: 0, totalIdleCharge: 0, totalMobilizationCharge: 0, totalDemobilizationCharge: 0, totalAdjustment: 0, subtotal: 0, invoiced: 0, collected: 0, outstanding: 0 },
     ...overrides,
+    rentalEquipmentLines: overrides.rentalEquipmentLines ?? [],
   };
 }
 function deur(id = "deur-1", overrides: Partial<DeurRecord> = {}): DeurRecord {

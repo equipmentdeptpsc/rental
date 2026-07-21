@@ -1,10 +1,12 @@
-import type { RentalBillingTerms, RentalRecord, TransactionRelationship, VatApplicability } from "../types";
+import type { RentalBillingMethod, RentalBillingTerms, RentalRecord, TransactionRelationship, VatApplicability } from "../types";
 import { isRentalBillingMethod, isRentalType } from "../types";
 import type { RentalContractRecord } from "../types/RentalContract";
+import type { RentalEquipmentLine } from "../equipment-line";
 import { normalizeRentalBillingTermsInput, validateRentalBillingTerms } from "./RentalWorkflowRules";
 import { createRentalCommercialSnapshot } from "./createRentalCommercialSnapshot";
 
 export interface RentalCommercialTermsInput {
+  billingMethod: RentalBillingMethod;
   currency: string;
   unitRate: number;
   minimumBillableHours?: number;
@@ -24,96 +26,71 @@ export interface RentalCommercialTermsInput {
 }
 
 export type ConfigureRentalCommercialTermsResult =
-  | { success: true; rental: RentalRecord; contract: RentalContractRecord }
-  | { success: false; message: string };
+  | { success: true; contract: RentalContractRecord }
+  | { success: false; code: string; message: string };
 
 export function canEditRentalCommercialTerms(rental: Pick<RentalRecord, "status">): boolean {
   return rental.status === "Draft" || rental.status === "Reserved";
 }
 
-export function configureRentalCommercialTerms(
-  rental: RentalRecord,
-  input: RentalCommercialTermsInput,
-  timestamp: string,
-): ConfigureRentalCommercialTermsResult {
-  if (!canEditRentalCommercialTerms(rental)) {
-    return { success: false, message: "Commercial terms are read-only after the Rental is released." };
+export function configureRentalCommercialTerms(input: {
+  rental: RentalRecord;
+  line: RentalEquipmentLine;
+  equipmentId: string;
+  commercialTerms: RentalCommercialTermsInput;
+  existingContract?: RentalContractRecord;
+  timestamp: string;
+}): ConfigureRentalCommercialTermsResult {
+  const { rental, line, equipmentId, commercialTerms, existingContract, timestamp } = input;
+  if (line.rentalId !== rental.id) return { success: false, code: "LINE_RENTAL_MISMATCH", message: "Rental Equipment Line does not belong to this Rental." };
+  if (line.equipmentId !== equipmentId) return { success: false, code: "LINE_EQUIPMENT_MISMATCH", message: "Equipment does not match this Rental Equipment Line." };
+  if (existingContract && (existingContract.rentalId !== rental.id || existingContract.rentalEquipmentLineId !== line.id || existingContract.equipmentId !== line.equipmentId)) {
+    return { success: false, code: "CONTRACT_LINE_MISMATCH", message: "Commercial terms record does not match this Rental Equipment Line." };
   }
-  if (!isRentalType(rental.rentalType) || !isRentalBillingMethod(rental.billingMethod)) {
-    return { success: false, message: "Rental type and billing method must be configured first." };
+  if (!canEditRentalCommercialTerms(rental) || line.commercialSnapshot) {
+    return { success: false, code: "COMMERCIAL_TERMS_READ_ONLY", message: "Commercial terms are read-only after the Rental is released." };
   }
-  if (!rental.customerId || !rental.projectId) {
-    return { success: false, message: "Rental customer and project relationships are required." };
+  if (!isRentalType(rental.rentalType) || !isRentalBillingMethod(commercialTerms.billingMethod)) {
+    return { success: false, code: "COMMERCIAL_IDENTITY_INVALID", message: "Rental type and billing method must be configured first." };
   }
-  if (!Number.isFinite(Date.parse(timestamp))) {
-    return { success: false, message: "Commercial terms timestamp is invalid." };
-  }
+  if (!rental.customerId || !rental.projectId) return { success: false, code: "RENTAL_RELATIONSHIP_MISSING", message: "Rental customer and project relationships are required." };
+  if (!Number.isFinite(Date.parse(timestamp))) return { success: false, code: "COMMERCIAL_TIMESTAMP_INVALID", message: "Commercial terms timestamp is invalid." };
 
   const rawTerms: RentalBillingTerms = {
-    unitRate: input.unitRate,
-    minimumBillableHours: input.minimumBillableHours,
-    overtimeRate: input.overtimeRate,
-    standbyRate: input.standbyRate,
-    mobilizationFee: input.mobilizationFee,
-    demobilizationFee: input.demobilizationFee,
-    fuelCharge: input.fuelCharge,
-    operatorRate: input.operatorRate,
-    vatApplicability: input.vatApplicability,
-    withholdingTax: input.withholdingTax,
+    unitRate: commercialTerms.unitRate, minimumBillableHours: commercialTerms.minimumBillableHours,
+    overtimeRate: commercialTerms.overtimeRate, standbyRate: commercialTerms.standbyRate,
+    mobilizationFee: commercialTerms.mobilizationFee, demobilizationFee: commercialTerms.demobilizationFee,
+    fuelCharge: commercialTerms.fuelCharge, operatorRate: commercialTerms.operatorRate,
+    vatApplicability: commercialTerms.vatApplicability, withholdingTax: commercialTerms.withholdingTax,
   };
-  const normalized = normalizeRentalBillingTermsInput({
-    transactionRelationship: input.transactionRelationship,
-    billingTerms: rawTerms,
-  });
-  if (!normalized.valid) return { success: false, message: normalized.message };
-  const validated = validateRentalBillingTerms({
-    billingMethod: rental.billingMethod,
-    transactionRelationship: normalized.transactionRelationship,
-    billingTerms: normalized.value,
-  });
-  if (!validated.valid) return { success: false, message: validated.message };
+  const normalized = normalizeRentalBillingTermsInput({ transactionRelationship: commercialTerms.transactionRelationship, billingTerms: rawTerms });
+  if (!normalized.valid) return { success: false, code: normalized.code, message: normalized.message };
+  const validated = validateRentalBillingTerms({ billingMethod: commercialTerms.billingMethod, transactionRelationship: normalized.transactionRelationship, billingTerms: normalized.value });
+  if (!validated.valid) return { success: false, code: validated.code, message: validated.message };
 
   const now = new Date(timestamp).toISOString();
   const contract: RentalContractRecord = {
-    id: rental.id,
-    contractNo: rental.rentalNumber ?? rental.id,
+    id: existingContract?.id ?? `rental-contract:${line.id}`,
+    rentalId: rental.id,
+    rentalEquipmentLineId: line.id,
+    contractNo: existingContract?.contractNo ?? rental.rentalNumber ?? rental.id,
     customerId: rental.customerId,
-    equipmentId: rental.equipmentId,
+    equipmentId: line.equipmentId,
     projectId: rental.projectId,
     rentalType: rental.rentalType,
-    billingMethod: rental.billingMethod === "Per Lot" ? "One Lot" : rental.billingMethod,
-    currency: input.currency.trim().toUpperCase(),
-    unitRate: input.unitRate,
-    minimumBillableHours: input.minimumBillableHours,
-    overtimeRate: input.overtimeRate,
-    standbyRate: input.standbyRate,
-    mobilizationFee: input.mobilizationFee,
-    demobilizationFee: input.demobilizationFee,
-    fuelCharge: input.fuelCharge,
-    operatorIncluded: input.operatorIncluded,
-    operatorRate: input.operatorRate,
-    contractAmount: input.contractAmount,
-    taxRate: input.taxRate,
-    withholdingTax: input.withholdingTax,
-    remarks: input.remarks?.trim() || undefined,
-    startDate: rental.dateOut,
-    expectedEndDate: rental.expectedReturn ?? rental.dateOut,
-    status: "Active",
-    createdAt: now,
-    updatedAt: now,
+    billingMethod: commercialTerms.billingMethod === "Per Lot" ? "One Lot" : commercialTerms.billingMethod,
+    currency: commercialTerms.currency.trim().toUpperCase(), unitRate: commercialTerms.unitRate,
+    minimumBillableHours: commercialTerms.minimumBillableHours, overtimeRate: commercialTerms.overtimeRate,
+    standbyRate: commercialTerms.standbyRate, mobilizationFee: commercialTerms.mobilizationFee,
+    demobilizationFee: commercialTerms.demobilizationFee, fuelCharge: commercialTerms.fuelCharge,
+    operatorIncluded: commercialTerms.operatorIncluded, operatorRate: commercialTerms.operatorRate,
+    contractAmount: commercialTerms.contractAmount, taxRate: commercialTerms.taxRate,
+    withholdingTax: commercialTerms.withholdingTax, transactionRelationship: commercialTerms.transactionRelationship,
+    vatApplicability: commercialTerms.vatApplicability, remarks: commercialTerms.remarks?.trim() || undefined,
+    startDate: rental.dateOut, expectedEndDate: rental.expectedReturn ?? rental.dateOut, status: "Active",
+    createdAt: existingContract?.createdAt ?? now, updatedAt: now,
   };
   const snapshotValidation = createRentalCommercialSnapshot(contract, now);
-  if (!snapshotValidation.success) {
-    return { success: false, message: snapshotValidation.issues[0]?.message ?? "Commercial terms are invalid." };
-  }
-
-  return {
-    success: true,
-    rental: {
-      ...rental,
-      transactionRelationship: normalized.transactionRelationship,
-      billingTerms: validated.value,
-    },
-    contract,
-  };
+  if (!snapshotValidation.success) return { success: false, code: snapshotValidation.issues[0]?.code ?? "COMMERCIAL_TERMS_INVALID", message: snapshotValidation.issues[0]?.message ?? "Commercial terms are invalid." };
+  return { success: true, contract };
 }

@@ -10,6 +10,7 @@ import type { Operator } from "@/features/operators/types";
 
 import type { DeurRecord } from "../../deur/types";
 import type { RentalContractRecord } from "../../types/RentalContract";
+import type { RentalEquipmentLine } from "../../equipment-line";
 
 import type {
   RentalAggregate,
@@ -39,6 +40,7 @@ interface BuildRentalAggregateParams {
 
   billing?: Partial<RentalAggregate["billing"]>;
   contract?: RentalContractRecord;
+  rentalEquipmentLines?: RentalEquipmentLine[];
 }
 
 export function buildRentalAggregate({
@@ -51,9 +53,11 @@ export function buildRentalAggregate({
   deurs = [],
   billing,
   contract,
+  rentalEquipmentLines = [],
 }: BuildRentalAggregateParams): RentalAggregate {
   return {
     rental,
+    rentalEquipmentLines,
     contract,
 
     equipment,

@@ -20,6 +20,7 @@ export const APPLICATION_STORAGE_KEYS = [
   "equipment-rental-billing-statements",
   "equipment-rental-billing",
   "equipment-rental-contracts",
+  "equipment-rental-equipment-lines",
   "equipment-daily-logs",
   "equipment-prefixes",
   "equipment-types",
@@ -58,6 +59,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function countRecords(value: unknown): number {
+  if (isRecord(value) && Array.isArray(value.records)) return value.records.length;
   return Array.isArray(value) ? value.length : value === null ? 0 : 1;
 }
 
@@ -71,10 +73,11 @@ function readSection(key: ApplicationStorageKey): unknown | null {
 
 function validateData(data: unknown): data is BackupData {
   if (!isRecord(data)) return false;
-  return APPLICATION_STORAGE_KEYS.filter((key) => key !== "equipment-rental-deur-shift-windows").every((key) =>
+  return APPLICATION_STORAGE_KEYS.filter((key) => key !== "equipment-rental-deur-shift-windows" && key !== "equipment-rental-equipment-lines").every((key) =>
     Object.prototype.hasOwnProperty.call(data, key) &&
     (data[key] === null || Array.isArray(data[key]))
-  ) && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-deur-shift-windows") || data["equipment-rental-deur-shift-windows"] === null || Array.isArray(data["equipment-rental-deur-shift-windows"]));
+  ) && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-deur-shift-windows") || data["equipment-rental-deur-shift-windows"] === null || Array.isArray(data["equipment-rental-deur-shift-windows"]))
+    && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-equipment-lines") || data["equipment-rental-equipment-lines"] === null || (isRecord(data["equipment-rental-equipment-lines"]) && data["equipment-rental-equipment-lines"].schemaVersion === 1 && Array.isArray(data["equipment-rental-equipment-lines"].records)));
 }
 
 export function createApplicationBackup(now = new Date()): ApplicationBackup {
@@ -119,7 +122,11 @@ export function validateApplicationBackup(value: unknown): RestorePreview {
     throw new Error("The backup does not contain every required application storage section.");
   }
 
-  const normalizedData = { ...value.data, "equipment-rental-deur-shift-windows": value.data["equipment-rental-deur-shift-windows"] ?? null } as BackupData;
+  const normalizedData = {
+    ...value.data,
+    "equipment-rental-deur-shift-windows": value.data["equipment-rental-deur-shift-windows"] ?? null,
+    "equipment-rental-equipment-lines": value.data["equipment-rental-equipment-lines"] ?? null,
+  } as BackupData;
   const recordCounts = {} as Record<ApplicationStorageKey, number>;
   for (const key of APPLICATION_STORAGE_KEYS) {
     recordCounts[key] = countRecords(normalizedData[key]);

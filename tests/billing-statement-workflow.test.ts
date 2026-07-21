@@ -6,6 +6,7 @@ import type { RentalAggregate } from "@/features/rental/aggregate";
 
 function aggregate(status: RentalAggregate["rental"]["status"] = "Returned"): RentalAggregate {
   return {
+    rentalEquipmentLines: [],
     rental: {
       id: "rental-1", rentalNumber: "R-001", equipmentId: "equipment-1", operatorId: "operator-1",
       customerId: "customer-1", projectId: "project-1", customer: "Customer", project: "Project",

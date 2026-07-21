@@ -11,6 +11,7 @@ import type { ProjectRecord } from "@/features/project/types";
 import type { AssignmentRecord } from "@/features/assignment/types";
 
 import type { DeurRecord } from "../deur/types";
+import type { RentalEquipmentLine } from "../equipment-line";
 
 export interface BillingSummary {
 
@@ -40,6 +41,8 @@ export interface BillingSummary {
 
 export interface RentalAggregate {
   rental: RentalRecord;
+
+  rentalEquipmentLines: RentalEquipmentLine[];
 
   /**
    * Commercial Contract

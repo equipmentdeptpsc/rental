@@ -37,15 +37,17 @@ import {
 import { costCodeRepository } from "@/features/masters/cost-code";
 import { activityCodeRepository } from "@/features/masters/activity-code";
 import { createRentalOperationalMetadataSnapshot } from "../services/createRentalOperationalMetadataSnapshot";
-import { createRentalCommercialSnapshot } from "../services/createRentalCommercialSnapshot";
-import { configureRentalCommercialTerms, type RentalCommercialTermsInput } from "../services/configureRentalCommercialTerms";
+import { canEditRentalCommercialTerms, configureRentalCommercialTerms, type RentalCommercialTermsInput } from "../services/configureRentalCommercialTerms";
+import { prepareRentalEquipmentLineRelease, type RentalEquipmentLineReleaseIssue } from "../services/prepareRentalEquipmentLineRelease";
 import { freezeRentalDeurExpectationPolicy } from "../deur/expectation/freezeRentalDeurExpectationPolicy";
 import { deurShiftWindowRepository } from "../deur/shift-window/repository";
+import { rentalEquipmentLineRepository, type RentalEquipmentLine, type RentalEquipmentLineMigrationIssue } from "../equipment-line";
 
 interface RentalTransitionResult {
   success: boolean;
   message?: string;
   rental?: RentalRecord;
+  issues?: RentalEquipmentLineReleaseIssue[];
 }
 
 interface RentalContextType {
@@ -83,6 +85,10 @@ interface RentalContextType {
   deleteContract(id: string): void;
   getContract(id: string): RentalContractRecord | undefined;
   saveCommercialTerms(id: string, input: RentalCommercialTermsInput): RentalTransitionResult;
+  getContractForRentalEquipmentLine(lineId: string): RentalContractRecord | undefined;
+  saveCommercialTermsForRentalEquipmentLine(rentalId: string, lineId: string, input: RentalCommercialTermsInput): RentalTransitionResult;
+  rentalEquipmentLines: RentalEquipmentLine[];
+  rentalEquipmentLineMigrationIssues: RentalEquipmentLineMigrationIssue[];
 }
 
 const RentalContext =
@@ -93,10 +99,23 @@ export function RentalProvider({
 }: {
   children: ReactNode;
 }) {
+  const [bootstrap] = useState(() => {
+    const initialRentals = rentalRepository.getAll();
+    const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(initialRentals);
+    const contractCompatibility = rentalContractRepository.ensureLineAssociations(lineCompatibility.lines);
+    return {
+      rentals: initialRentals,
+      lines: lineCompatibility.lines,
+      contracts: contractCompatibility.contracts,
+      issues: [...lineCompatibility.issues, ...contractCompatibility.issues],
+    };
+  });
   const [rentals, setRentals] =
-    useState<RentalRecord[]>(rentalRepository.getAll());
+    useState<RentalRecord[]>(bootstrap.rentals);
   const [contracts, setContracts] =
-    useState<RentalContractRecord[]>(rentalContractRepository.getAll());
+    useState<RentalContractRecord[]>(bootstrap.contracts);
+  const [rentalEquipmentLines, setRentalEquipmentLines] = useState<RentalEquipmentLine[]>(bootstrap.lines);
+  const [rentalEquipmentLineMigrationIssues, setRentalEquipmentLineMigrationIssues] = useState<RentalEquipmentLineMigrationIssue[]>(bootstrap.issues);
 
   const { getEquipment, updateEquipment } = useEquipment();
   const { user } = useAuth();
@@ -111,7 +130,17 @@ export function RentalProvider({
   }
 
   function refreshContracts() {
-    setContracts([...rentalContractRepository.getAll()]);
+    const compatibility = rentalContractRepository.ensureLineAssociations(rentalEquipmentLineRepository.getAll());
+    setContracts([...compatibility.contracts]);
+    if (compatibility.issues.length) setRentalEquipmentLineMigrationIssues((current) => [...current, ...compatibility.issues]);
+  }
+
+  function refreshRentalEquipmentLines() {
+    const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(rentalRepository.getAll());
+    const contractCompatibility = rentalContractRepository.ensureLineAssociations(lineCompatibility.lines);
+    setRentalEquipmentLines([...lineCompatibility.lines]);
+    setContracts([...contractCompatibility.contracts]);
+    setRentalEquipmentLineMigrationIssues([...lineCompatibility.issues, ...contractCompatibility.issues]);
   }
 
   function addRental(item: RentalRecord) {
@@ -244,6 +273,7 @@ export function RentalProvider({
     };
     rentalRepository.create(created);
     refreshRentals();
+    refreshRentalEquipmentLines();
 
     const assigned = transitionRental(created.id, "Assigned");
 
@@ -389,16 +419,16 @@ export function RentalProvider({
     if (!policyFreeze.success) return { success: false, message: policyFreeze.message };
 
     let releaseRental = policyFreeze.rental;
-    if (nextStatus === "Released" && current.commercialSnapshotRequired && !current.commercialSnapshot) {
-      const contract = rentalContractRepository.getById(current.id);
-      if (!contract) {
-        return { success: false, message: "Rental commercial terms must be configured before release." };
-      }
-      const captured = createRentalCommercialSnapshot(contract, timestamp);
-      if (!captured.success) {
-        return { success: false, message: captured.issues[0]?.message ?? "Rental commercial terms could not be captured." };
-      }
-      releaseRental = { ...releaseRental, commercialSnapshot: captured.snapshot };
+    if (nextStatus === "Released") {
+      const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(rentalRepository.getAll());
+      const lines = lineCompatibility.lines.filter((line) => line.rentalId === current.id);
+      const contractCompatibility = rentalContractRepository.ensureLineAssociations(lineCompatibility.lines);
+      const prepared = prepareRentalEquipmentLineRelease({ rental: current, lines, contracts: contractCompatibility.contracts, timestamp });
+      if (!prepared.success) return { success: false, message: prepared.issues.map((issue) => issue.message).join(" "), issues: prepared.issues };
+      const captured = rentalEquipmentLineRepository.saveCommercialSnapshotsOnce(current.id, prepared.lines);
+      if (!captured.success) return { success: false, message: captured.message };
+      const soleSnapshot = captured.lines.length === 1 ? captured.lines[0].commercialSnapshot : undefined;
+      if (!releaseRental.commercialSnapshot && soleSnapshot) releaseRental = { ...releaseRental, commercialSnapshot: structuredClone(soleSnapshot) };
     }
 
     const updated: RentalRecord = {
@@ -412,6 +442,7 @@ export function RentalProvider({
     };
 
     rentalRepository.update(updated);
+    refreshRentalEquipmentLines();
 
     if (updatedEquipment !== equipment) {
       updateEquipment(updatedEquipment);
@@ -524,6 +555,11 @@ export function RentalProvider({
   }
 
   function updateContract(contract: RentalContractRecord) {
+    const rentalId = contract.rentalId ?? contract.id;
+    const rental = rentalRepository.getById(rentalId);
+    const lineId = contract.rentalEquipmentLineId ?? rentalEquipmentLineRepository.getByRentalId(rentalId).at(0)?.id;
+    const line = lineId ? rentalEquipmentLineRepository.getById(lineId) : undefined;
+    if (!rental || !canEditRentalCommercialTerms(rental) || line?.commercialSnapshot) return;
     rentalContractRepository.update(contract);
     refreshContracts();
   }
@@ -534,24 +570,40 @@ export function RentalProvider({
   }
 
   function getContract(id: string) {
-    return contracts.find((contract) => contract.id === id);
+    const direct = contracts.find((contract) => contract.id === id);
+    if (direct) return direct;
+    const lines = rentalEquipmentLines.filter((line) => line.rentalId === id);
+    return lines.length === 1 ? contracts.find((contract) => contract.rentalEquipmentLineId === lines[0].id) : undefined;
   }
 
   function saveCommercialTerms(id: string, input: RentalCommercialTermsInput): RentalTransitionResult {
-    const rental = rentalRepository.getById(id);
+    const lines = rentalEquipmentLineRepository.getByRentalId(id);
+    if (lines.length !== 1) return { success: false, message: "A single Rental Equipment Line is required by the compatibility save path." };
+    return saveCommercialTermsForRentalEquipmentLine(id, lines[0].id, input);
+  }
+
+  function getContractForRentalEquipmentLine(lineId: string) {
+    const lookup = rentalContractRepository.getByRentalEquipmentLineId(lineId);
+    return lookup.status === "found" ? lookup.contract : undefined;
+  }
+
+  function saveCommercialTermsForRentalEquipmentLine(rentalId: string, lineId: string, input: RentalCommercialTermsInput): RentalTransitionResult {
+    const rental = rentalRepository.getById(rentalId);
     if (!rental) return { success: false, message: "Rental not found." };
-    const configured = configureRentalCommercialTerms(rental, input, new Date().toISOString());
+    const line = rentalEquipmentLineRepository.getById(lineId);
+    if (!line) return { success: false, message: "Rental Equipment Line not found." };
+    const lookup = rentalContractRepository.getByRentalEquipmentLineId(lineId);
+    if (lookup.status === "ambiguous") return { success: false, message: lookup.issue.message };
+    const configured = configureRentalCommercialTerms({
+      rental, line, equipmentId: line.equipmentId, commercialTerms: input,
+      existingContract: lookup.status === "found" ? lookup.contract : undefined,
+      timestamp: new Date().toISOString(),
+    });
     if (!configured.success) return configured;
-    const existing = rentalContractRepository.getById(id);
-    if (existing) {
-      rentalContractRepository.update({ ...configured.contract, createdAt: existing.createdAt });
-    } else {
-      rentalContractRepository.create(configured.contract);
-    }
-    rentalRepository.update(configured.rental);
+    const saved = rentalContractRepository.saveForRentalEquipmentLine(configured.contract);
+    if (!saved.success) return { success: false, message: saved.issue.message };
     refreshContracts();
-    refreshRentals();
-    return { success: true, rental: configured.rental };
+    return { success: true, rental };
   }
 
   const value = useMemo(
@@ -570,8 +622,12 @@ export function RentalProvider({
       deleteContract,
       getContract,
       saveCommercialTerms,
+      getContractForRentalEquipmentLine,
+      saveCommercialTermsForRentalEquipmentLine,
+      rentalEquipmentLines,
+      rentalEquipmentLineMigrationIssues,
     }),
-    [rentals, contracts, getAssignment]
+    [rentals, contracts, rentalEquipmentLines, rentalEquipmentLineMigrationIssues, getAssignment]
   );
 
   return (

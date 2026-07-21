@@ -4,6 +4,7 @@ import type { RentalAggregate } from "@/features/rental/aggregate";
 
 function aggregate(overrides: Record<string, unknown> = {}): RentalAggregate {
   return {
+    rentalEquipmentLines: [],
     rental: {
       id: "rental-1", equipmentId: "equipment-1", customer: "Customer", project: "Project", rentedBy: "",
       dateOut: "2026-01-01", expectedReturn: "2026-01-31", statusId: "", status: "Closed",

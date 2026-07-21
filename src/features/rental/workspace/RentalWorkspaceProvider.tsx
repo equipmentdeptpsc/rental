@@ -43,7 +43,7 @@ export default function RentalWorkspaceProvider({
   rentalId,
   children,
 }: RentalWorkspaceProviderProps) {
-  const { rentals, contracts } = useRental();
+  const { rentals, contracts, rentalEquipmentLines } = useRental();
   const { assignments } = useAssignment();
   const { equipment: equipmentRecords } = useEquipment();
   const { operators } = useOperator();
@@ -62,17 +62,23 @@ export default function RentalWorkspaceProvider({
       return undefined;
     }
 
-    const contract = contracts.find((item) => item.id === rental.id);
+    const lines = rentalEquipmentLines.filter((item) => item.rentalId === rental.id);
+    const soleLine = lines.length === 1 ? lines[0] : undefined;
+    const contract = contracts.find((item) =>
+      item.rentalEquipmentLineId === soleLine?.id || item.id === rental.id
+    );
 
     const assignment =
-      rental.assignmentId
-        ? assignments.find((item) => item.id === rental.assignmentId)
+      (soleLine?.assignmentId ?? rental.assignmentId)
+        ? assignments.find((item) => item.id === (soleLine?.assignmentId ?? rental.assignmentId))
         : undefined;
 
     const equipment =
-      equipmentRecords.find((item) => item.id === rental.equipmentId);
+      equipmentRecords.find((item) => item.id === (soleLine?.equipmentId ?? rental.equipmentId));
 
-    const operator = resolveRentalDeurOperator(rental, operators);
+    const operator = soleLine
+      ? operators.find((item) => item.id === soleLine.operatorId)
+      : resolveRentalDeurOperator(rental, operators);
 
     const project =
       projects.find((item) => item.id === rental.projectId);
@@ -100,6 +106,7 @@ export default function RentalWorkspaceProvider({
 
     return buildRentalAggregate({
       rental,
+      rentalEquipmentLines: lines,
       contract,
       equipment,
       assignment,
@@ -114,7 +121,7 @@ export default function RentalWorkspaceProvider({
         subtotal: statements.reduce((sum, statement) => sum + statement.subtotal, 0),
       },
     });
-  }, [rentalId, rentals, contracts, assignments, equipmentRecords, operators, projects, workspaceVersion]);
+  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion]);
 
   if (!aggregate) {
     return (
