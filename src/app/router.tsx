@@ -39,6 +39,7 @@ import RentalPage from "@/pages/Rental";
 import NewRental from "@/pages/Rental/New";
 import ReturnRental from "@/pages/Rental/Return";
 import RentalWorkspacePage from "@/pages/RentalWorkspace";
+import RentalCommercialTermsPage from "@/pages/Rental/CommercialTerms";
 import OperatorDeurPage from "@/pages/OperatorDeur";
 
 // Maintenance
@@ -182,6 +183,10 @@ export const router = createBrowserRouter([
       {
         path: "rentals/:rentalId/workspace",
         element: <RentalWorkspacePage />,
+      },
+      {
+        path: "rentals/:rentalId/commercial-terms",
+        element: <RentalCommercialTermsPage />,
       },
       {
         path: "rentals/:rentalId/operator-deur",

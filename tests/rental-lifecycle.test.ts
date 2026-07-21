@@ -13,6 +13,7 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { RentalLifecycleStatus, RentalRecord } from "@/features/rental/types";
 import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
+import type { RentalCommercialTermsInput } from "@/features/rental/services/configureRentalCommercialTerms";
 
 const equipmentKey = "equipment-records";
 const assignmentKey = "assignments";
@@ -31,6 +32,11 @@ function contract(unitRate = 100): RentalContractRecord {
     status: "Active", createdAt: "2026-07-16T00:00:00.000Z", updatedAt: "2026-07-16T00:00:00.000Z",
   };
 }
+
+const commercialTerms = (unitRate = 100): RentalCommercialTermsInput => ({
+  currency: "PHP", unitRate, operatorIncluded: true,
+  transactionRelationship: "Non-Affiliate", vatApplicability: "Applicable", taxRate: 12,
+});
 
 function equipment(status: EquipmentRecord["status"]): EquipmentRecord {
   return {
@@ -291,6 +297,34 @@ describe("RentalProvider synchronization", () => {
     expect(legacy.harness.rental.getRental("rental-1")?.commercialSnapshot).toBeUndefined();
     expect(legacy.harness.rental.getRental("rental-1")?.commercialSnapshotRequired).toBeUndefined();
     await act(async () => legacy.root.unmount()); legacy.container.remove();
+  });
+
+  it("persists configured pre-release terms, releases with a snapshot, locks editing, and enables DEUR", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(rentalKey, [{
+      ...rental("Reserved", activeAssignment.id), commercialSnapshotRequired: true,
+      operationalMetadata: { costCode: { code: "C", name: "Cost" }, activityCode: { code: "A", name: "Activity" } },
+    }]);
+    const first = await renderHarness();
+
+    await act(async () => expect(first.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: false, message: expect.stringContaining("commercial terms") }));
+    expect(first.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
+    await act(async () => expect(first.harness.rental.saveCommercialTerms("rental-1", commercialTerms())).toMatchObject({ success: true }));
+    expect(first.harness.rental.getContract("rental-1")).toMatchObject({ unitRate: 100, billingMethod: "Per Hour", currency: "PHP" });
+    await act(async () => first.root.unmount()); first.container.remove();
+
+    vi.resetModules();
+    const refreshed = await renderHarness();
+    expect(refreshed.harness.rental.getContract("rental-1")).toMatchObject({ unitRate: 100, billingMethod: "Per Hour" });
+    await act(async () => expect(refreshed.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: true }));
+    const released = refreshed.harness.rental.getRental("rental-1")!;
+    expect(released).toMatchObject({ status: "Released", commercialSnapshot: { unitRate: 100, billingMethod: "Per Hour", currency: "PHP" } });
+    await act(async () => expect(refreshed.harness.rental.saveCommercialTerms("rental-1", commercialTerms(999))).toMatchObject({ success: false, message: expect.stringContaining("read-only") }));
+    expect(refreshed.harness.rental.getContract("rental-1")?.unitRate).toBe(100);
+
+    const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
+    expect(getDeurCreationError({ rentalId: released.id, rentalStatus: released.status, rental: released, equipmentId: released.equipmentId, operatorId: released.operatorId ?? "", assignmentId: released.assignmentId, projectId: released.projectId, customerId: released.customerId })).toBeUndefined();
+    await act(async () => refreshed.root.unmount()); refreshed.container.remove();
   });
 
   it("returns equipment to Available when a reservation without an assignment is cancelled", async () => {

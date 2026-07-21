@@ -38,6 +38,7 @@ import { costCodeRepository } from "@/features/masters/cost-code";
 import { activityCodeRepository } from "@/features/masters/activity-code";
 import { createRentalOperationalMetadataSnapshot } from "../services/createRentalOperationalMetadataSnapshot";
 import { createRentalCommercialSnapshot } from "../services/createRentalCommercialSnapshot";
+import { configureRentalCommercialTerms, type RentalCommercialTermsInput } from "../services/configureRentalCommercialTerms";
 import { freezeRentalDeurExpectationPolicy } from "../deur/expectation/freezeRentalDeurExpectationPolicy";
 import { deurShiftWindowRepository } from "../deur/shift-window/repository";
 
@@ -81,6 +82,7 @@ interface RentalContextType {
   updateContract(contract: RentalContractRecord): void;
   deleteContract(id: string): void;
   getContract(id: string): RentalContractRecord | undefined;
+  saveCommercialTerms(id: string, input: RentalCommercialTermsInput): RentalTransitionResult;
 }
 
 const RentalContext =
@@ -535,6 +537,23 @@ export function RentalProvider({
     return contracts.find((contract) => contract.id === id);
   }
 
+  function saveCommercialTerms(id: string, input: RentalCommercialTermsInput): RentalTransitionResult {
+    const rental = rentalRepository.getById(id);
+    if (!rental) return { success: false, message: "Rental not found." };
+    const configured = configureRentalCommercialTerms(rental, input, new Date().toISOString());
+    if (!configured.success) return configured;
+    const existing = rentalContractRepository.getById(id);
+    if (existing) {
+      rentalContractRepository.update({ ...configured.contract, createdAt: existing.createdAt });
+    } else {
+      rentalContractRepository.create(configured.contract);
+    }
+    rentalRepository.update(configured.rental);
+    refreshContracts();
+    refreshRentals();
+    return { success: true, rental: configured.rental };
+  }
+
   const value = useMemo(
     () => ({
       rentals,
@@ -550,6 +569,7 @@ export function RentalProvider({
       updateContract,
       deleteContract,
       getContract,
+      saveCommercialTerms,
     }),
     [rentals, contracts, getAssignment]
   );

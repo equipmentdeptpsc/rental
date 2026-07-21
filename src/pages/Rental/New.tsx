@@ -132,7 +132,7 @@ export default function NewRental() {
     );
 
     navigate(
-      `/rentals/${rentalId}/workspace`
+      `/rentals/${rentalId}/commercial-terms`
     );
   }
 

@@ -26,6 +26,7 @@ export default function Overview() {
 
       <ContractSection
         rental={aggregate.rental}
+        hasCommercialTerms={Boolean(aggregate.contract)}
         equipmentLabel={
           overview.equipment.assetNo === "-"
             ? "Unknown equipment"
