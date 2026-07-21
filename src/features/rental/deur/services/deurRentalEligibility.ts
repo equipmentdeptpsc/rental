@@ -3,6 +3,7 @@ import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { RentalRecord } from "@/features/rental/types";
+import { resolveRentalDeurOperator } from "../operator/resolveRentalDeurOperator";
 
 export interface EligibleDeurRental {
   rentalId: string; rentalNumber: string; equipmentId: string; equipmentLabel: string;
@@ -10,15 +11,15 @@ export interface EligibleDeurRental {
 }
 export interface IneligibleDeurRental { rentalId: string; reason: string; }
 
-export function getDeurRentalEligibility(rentals: RentalRecord[], equipment: EquipmentRecord[], operators: Operator[], projects: ProjectRecord[], assignments: AssignmentRecord[]) {
+export function getDeurRentalEligibility(rentals: RentalRecord[], equipment: EquipmentRecord[], operators: Operator[], projects: ProjectRecord[], _assignments: AssignmentRecord[]) {
   const eligible: EligibleDeurRental[] = [];
   const excluded: IneligibleDeurRental[] = [];
   rentals.forEach((rental) => {
     if (rental.status !== "Released" && rental.status !== "Active") { excluded.push({ rentalId: rental.id, reason: "Rental must be released or active." }); return; }
     const machine = equipment.find((item) => item.id === rental.equipmentId);
     if (!machine) { excluded.push({ rentalId: rental.id, reason: "Equipment is missing." }); return; }
-    const operatorId = rental.operatorId ?? assignments.find((item) => item.id === rental.assignmentId)?.operatorId;
-    const operator = operators.find((item) => item.id === operatorId);
+    const operator = resolveRentalDeurOperator(rental, operators);
+    const operatorId = operator?.id;
     if (!operator || !operatorId) { excluded.push({ rentalId: rental.id, reason: "Operator is missing." }); return; }
     const project = projects.find((item) => item.id === rental.projectId);
     if (!project) { excluded.push({ rentalId: rental.id, reason: "Project is missing." }); return; }

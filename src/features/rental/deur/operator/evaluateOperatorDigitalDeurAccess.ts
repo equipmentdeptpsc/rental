@@ -16,8 +16,8 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
   if (!rental) return { ...base, issues: [issue("RENTAL_NOT_FOUND", "Rental was not found.")] };
   const identityMatches = actor?.role === "Operator" && (actor.id === operator.id || actor.name?.trim().toLocaleLowerCase() === operator.name.trim().toLocaleLowerCase());
   if (!identityMatches) return { ...base, issues: [issue("DEUR_ACCESS_NOT_AUTHORIZED", "The signed-in Operator is not assigned to this Rental.")] };
-  if (assignment.operatorId !== operator.id) return { ...base, issues: [issue("OPERATOR_ASSIGNMENT_MISMATCH", "Assignment does not belong to this Operator.")] };
-  if (rental.assignmentId !== assignment.id || rental.operatorId !== operator.id || rental.equipmentId !== assignment.equipmentId) return { ...base, issues: [issue("RENTAL_ASSIGNMENT_MISMATCH", "Rental relationships do not match the Assignment.")] };
+  if (rental.operatorId !== operator.id) return { ...base, issues: [issue("RENTAL_OPERATOR_MISMATCH", "Operator does not belong to this Rental.")] };
+  if (rental.assignmentId !== assignment.id || rental.equipmentId !== assignment.equipmentId) return { ...base, issues: [issue("RENTAL_ASSIGNMENT_MISMATCH", "Rental relationships do not match the Assignment.")] };
   if (!["Released", "Active"].includes(rental.status)) return { ...base, issues: [issue("RENTAL_NOT_OPERATIONAL", "Rental must be Released or Active.")] };
   if (!rental.operationalMetadata?.costCode || !rental.operationalMetadata.activityCode) return { ...base, issues: [issue("OPERATIONAL_SNAPSHOT_REQUIRED", "Rental operational metadata snapshot is required.")] };
   if (rental.commercialSnapshotRequired && !rental.commercialSnapshot) return { ...base, issues: [issue("COMMERCIAL_SNAPSHOT_REQUIRED", "Rental commercial snapshot is required.")] };

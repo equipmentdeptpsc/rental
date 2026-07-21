@@ -12,6 +12,7 @@ import {
 import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { RentalLifecycleStatus, RentalRecord } from "@/features/rental/types";
+import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
 
 const equipmentKey = "equipment-records";
 const assignmentKey = "assignments";
@@ -20,6 +21,16 @@ const authUserKey = "auth_user";
 const authTokenKey = "auth_token";
 const projectKey = "projects";
 const operatorKey = "operators";
+const contractKey = "equipment-rental-contracts";
+
+function contract(unitRate = 100): RentalContractRecord {
+  return {
+    id: "rental-1", contractNo: "C-001", customerId: "customer-1", equipmentId: "equipment-1",
+    projectId: "project-1", rentalType: "Operated Rental", billingMethod: "Per Hour", currency: "PHP",
+    unitRate, operatorIncluded: true, startDate: "2026-07-17", expectedEndDate: "2026-07-18",
+    status: "Active", createdAt: "2026-07-16T00:00:00.000Z", updatedAt: "2026-07-16T00:00:00.000Z",
+  };
+}
 
 function equipment(status: EquipmentRecord["status"]): EquipmentRecord {
   return {
@@ -253,6 +264,33 @@ describe("RentalProvider synchronization", () => {
     await act(async () => expect(second.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: false, message: expect.stringContaining("expectation policy") }));
     expect(second.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
     await act(async () => second.root.unmount()); second.container.remove();
+  });
+
+  it("captures required commercial terms exactly once at release without migrating legacy Rentals", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), commercialSnapshotRequired: true }]);
+    storage.set(contractKey, [contract(100)]);
+    const current = await renderHarness();
+
+    expect(current.harness.rental.getRental("rental-1")?.commercialSnapshot).toBeUndefined();
+    await act(async () => expect(current.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: true }));
+    const captured = current.harness.rental.getRental("rental-1")?.commercialSnapshot;
+    expect(captured).toMatchObject({ billingMethod: "Per Hour", unitRate: 100, currency: "PHP", capturedAt: "2026-07-17T04:00:00.000Z" });
+
+    await act(async () => {
+      current.harness.rental.updateContract(contract(999));
+      expect(current.harness.rental.transitionRental("rental-1", "Active").success).toBe(true);
+    });
+    expect(current.harness.rental.getRental("rental-1")?.commercialSnapshot).toEqual(captured);
+    await act(async () => current.root.unmount()); current.container.remove();
+
+    storage.clear(); vi.resetModules(); prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(contractKey, [contract(100)]);
+    const legacy = await renderHarness();
+    await act(async () => expect(legacy.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: true }));
+    expect(legacy.harness.rental.getRental("rental-1")?.commercialSnapshot).toBeUndefined();
+    expect(legacy.harness.rental.getRental("rental-1")?.commercialSnapshotRequired).toBeUndefined();
+    await act(async () => legacy.root.unmount()); legacy.container.remove();
   });
 
   it("returns equipment to Available when a reservation without an assignment is cancelled", async () => {

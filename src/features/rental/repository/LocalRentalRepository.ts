@@ -80,7 +80,7 @@ export class LocalRentalRepository implements IRentalRepository {
     const persistedSnapshots = normalizeRental(persisted ?? this.data[index]).deurShiftWindowSnapshots ?? this.data[index].deurShiftWindowSnapshots;
     const normalized = normalizeRental(item);
     normalized.operationalMetadata = clone(existingMetadata);
-    normalized.commercialSnapshot = clone(existingCommercialSnapshot);
+    normalized.commercialSnapshot = clone(existingCommercialSnapshot ?? normalized.commercialSnapshot);
     if (existingPolicyFrozenAt) {
       normalized.deurExpectationPolicy = clone(existingPolicy);
       normalized.deurExpectationPolicyFrozenAt = existingPolicyFrozenAt;

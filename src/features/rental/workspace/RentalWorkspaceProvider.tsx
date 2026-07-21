@@ -22,6 +22,7 @@ import { deurRepository } from "@/features/rental/deur/repository/deurRepository
 import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { isInvoicePreparationComplete } from "@/features/rental/billingstatement/services/BillingReadiness";
 import { subscribeRentalWorkspaceChange } from "./workspaceRefresh";
+import { resolveRentalDeurOperator } from "@/features/rental/deur/operator/resolveRentalDeurOperator";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -71,10 +72,7 @@ export default function RentalWorkspaceProvider({
     const equipment =
       equipmentRecords.find((item) => item.id === rental.equipmentId);
 
-    const operator =
-      operators.find(
-        (item) => item.id === (rental.operatorId ?? assignment?.operatorId)
-      );
+    const operator = resolveRentalDeurOperator(rental, operators);
 
     const project =
       projects.find((item) => item.id === rental.projectId);

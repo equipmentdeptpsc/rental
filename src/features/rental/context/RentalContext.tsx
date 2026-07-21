@@ -386,8 +386,21 @@ export function RentalProvider({
       : { success: true as const, rental: current };
     if (!policyFreeze.success) return { success: false, message: policyFreeze.message };
 
+    let releaseRental = policyFreeze.rental;
+    if (nextStatus === "Released" && current.commercialSnapshotRequired && !current.commercialSnapshot) {
+      const contract = rentalContractRepository.getById(current.id);
+      if (!contract) {
+        return { success: false, message: "Rental commercial terms must be configured before release." };
+      }
+      const captured = createRentalCommercialSnapshot(contract, timestamp);
+      if (!captured.success) {
+        return { success: false, message: captured.issues[0]?.message ?? "Rental commercial terms could not be captured." };
+      }
+      releaseRental = { ...releaseRental, commercialSnapshot: captured.snapshot };
+    }
+
     const updated: RentalRecord = {
-      ...policyFreeze.rental,
+      ...releaseRental,
       status: nextStatus,
       ...(timestampField ? { [timestampField]: timestamp } : {}),
       actualReturn:
@@ -505,12 +518,6 @@ export function RentalProvider({
 
   function addContract(contract: RentalContractRecord) {
     rentalContractRepository.create(contract);
-    const rental = rentalRepository.getById(contract.id);
-    if (rental && !rental.commercialSnapshot) {
-      const captured = createRentalCommercialSnapshot(contract, new Date().toISOString());
-      if (captured.success) rentalRepository.update({ ...rental, commercialSnapshot: captured.snapshot, commercialSnapshotRequired: true });
-      refreshRentals();
-    }
     refreshContracts();
   }
 

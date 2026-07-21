@@ -15,13 +15,14 @@ import { resolveActiveOperatorDeur } from "@/features/rental/deur/operator/resol
 import { projectDigitalDeurRunningState } from "@/features/rental/deur/operator/projectDigitalDeurRunningState";
 import type { DeurOperatorAction } from "@/features/rental/deur/operator/types";
 import type { DeurRecord } from "@/features/rental/deur/types";
+import { resolveRentalDeurOperator } from "@/features/rental/deur/operator/resolveRentalDeurOperator";
 
 const actionLabels: Record<DeurOperatorAction, string> = { START_OPERATION: "Start Operation", RESUME_OPERATION: "Resume Operation", START_IDLE: "Idle", START_MEAL_BREAK: "Meal Break", START_BREAKDOWN: "Breakdown", END_SHIFT: "End Shift" };
 const formatElapsed = (seconds: number) => [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60].map((part) => String(part).padStart(2, "0")).join(":");
 
 export default function OperatorDeurPage() {
   const { rentalId = "" } = useParams(); const { user } = useAuth(); const { rentals } = useRental(); const { assignments } = useAssignment(); const { operators } = useOperator(); const { equipment } = useEquipment(); const { projects } = useProject(); const { records: workDescriptions } = useWorkDescriptions();
-  const rental = rentals.find((item) => item.id === rentalId), assignment = assignments.find((item) => item.id === rental?.assignmentId), operator = operators.find((item) => item.id === assignment?.operatorId), machine = equipment.find((item) => item.id === rental?.equipmentId), project = projects.find((item) => item.id === rental?.projectId);
+  const rental = rentals.find((item) => item.id === rentalId), assignment = assignments.find((item) => item.id === rental?.assignmentId), operator = rental ? resolveRentalDeurOperator(rental, operators) : undefined, machine = equipment.find((item) => item.id === rental?.equipmentId), project = projects.find((item) => item.id === rental?.projectId);
   const [version, setVersion] = useState(0), [clock, setClock] = useState(() => new Date().toISOString()), [message, setMessage] = useState(""), [remarks, setRemarks] = useState("");
   const [shift, setShift] = useState<DeurRecord["shift"]>(() => rental?.deurExpectationPolicy?.expectedShiftCodes?.[0] === "NIGHT" ? "Night" : "Day");
   const selectable = workDescriptions.filter((item) => item.active && !item.deleted), [workDescriptionId, setWorkDescriptionId] = useState(() => selectable[0]?.id ?? "");
