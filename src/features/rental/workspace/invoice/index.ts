@@ -3,6 +3,7 @@ export * from "./types";
 export * from "./InvoiceBuilder";
 
 export * from "./useInvoiceSummary";
+export * from "./InvoiceDocumentBuilder";
 
 export {
   default as InvoicePanel,

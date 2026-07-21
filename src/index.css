@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@media print {
+  body * { visibility: hidden; }
+  .invoice-document, .invoice-document * { visibility: visible; }
+  .invoice-document { position: absolute; inset: 0; border: 0; }
+  .invoice-document table { width: 100%; font-size: 8pt; }
+  .invoice-document thead { display: table-header-group; }
+  .invoice-document tr { break-inside: avoid; }
+}

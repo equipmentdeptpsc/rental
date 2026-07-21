@@ -8,4 +8,5 @@ export interface InvoiceSummary {
     latestInvoiceNo?: string;
   
     latestInvoiceDate?: string;
+
   }

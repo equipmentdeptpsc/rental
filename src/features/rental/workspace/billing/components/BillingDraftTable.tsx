@@ -29,6 +29,7 @@ export default function BillingDraftTable({
             <th className="px-4 py-3 text-left">Project</th>
             <th className="px-4 py-3 text-center">Period</th>
             <th className="px-4 py-3 text-right">Amount</th>
+            <th className="px-4 py-3 text-center">Equipment / DEUR rows</th>
             <th className="px-4 py-3 text-center">Approval</th>
             <th className="px-4 py-3 text-center">Invoice</th>
             <th className="px-4 py-3 text-center">Actions</th>
@@ -42,6 +43,7 @@ export default function BillingDraftTable({
               <td className="px-4 py-3">{draft.project}</td>
               <td className="px-4 py-3 text-center">{draft.billingFrom} - {draft.billingTo}</td>
               <td className="px-4 py-3 text-right">{draft.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td className="px-4 py-3 text-center">{draft.lines.length}</td>
               <td className="px-4 py-3 text-center">{draft.approvalStatus}</td>
               <td className="px-4 py-3 text-center">{draft.invoiceStatus}</td>
               <td className="px-4 py-3 text-center">

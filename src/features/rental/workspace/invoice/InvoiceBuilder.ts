@@ -26,5 +26,6 @@ import type {
   
       latestInvoiceDate:
         undefined,
+
     };
   }
