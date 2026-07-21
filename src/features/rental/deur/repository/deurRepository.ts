@@ -8,6 +8,8 @@ import { DEUR_STORAGE_KEY, notifyDeurChange } from "../synchronization/deurChang
 import { createDeurCorrectionRevision } from "../services/correction/createDeurCorrectionRevision";
 import { applyDigitalDeurOperatorAction } from "../operator/applyDigitalDeurOperatorAction";
 import type { DeurOperatorAction } from "../operator/types";
+import type { RentalRecord } from "../../types";
+import { resolveLegacyDeurRentalEquipmentLine } from "../services/resolveDeurRentalEquipmentLine";
 
 const STORAGE_KEY = DEUR_STORAGE_KEY;
 
@@ -78,6 +80,11 @@ class DeurRepository {
     if (!existing) return undefined;
     const protectedRecord = structuredClone(record);
     protectedRecord.creationSource = existing.creationSource;
+    protectedRecord.rentalId = existing.rentalId;
+    protectedRecord.rentalEquipmentLineId = existing.rentalEquipmentLineId;
+    protectedRecord.equipmentId = existing.equipmentId;
+    protectedRecord.assignmentId = existing.assignmentId;
+    protectedRecord.operatorId = existing.operatorId;
     protectedRecord.manualMetadata = existing.manualMetadata;
     protectedRecord.evidenceMode = existing.evidenceMode;
     protectedRecord.billingMethodSnapshot = existing.billingMethodSnapshot;
@@ -104,6 +111,25 @@ class DeurRepository {
 
   }
 
+  getByRentalEquipmentLineId(rentalEquipmentLineId: string) {
+    return this.getAll().filter((record) => record.rentalEquipmentLineId === rentalEquipmentLineId);
+  }
+
+  backfillRentalEquipmentLineIds(rentals: RentalRecord[]) {
+    const records = this.getAll();
+    const issues: Array<{ deurId: string; code: string; message: string }> = [];
+    let changed = false;
+    const migrated = records.map((record) => {
+      if (record.rentalEquipmentLineId) return record;
+      const resolution = resolveLegacyDeurRentalEquipmentLine(record, rentals);
+      if (!resolution.success) { issues.push({ deurId: record.id, ...resolution.issue }); return record; }
+      changed = true;
+      return { ...record, rentalEquipmentLineId: resolution.line.id };
+    });
+    if (changed) this.saveAll(migrated);
+    return { changed, records: structuredClone(migrated), issues };
+  }
+
   applyOperatorAction(input: { deurId: string; expectedUpdatedAt: string; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string } }) {
     const latest = this.getById(input.deurId);
     if (!latest) return { success: false as const, code: "DEUR_NOT_FOUND", message: "DEUR not found." };
@@ -120,6 +146,13 @@ class DeurRepository {
     const records = this.getAll();
     const existing = records.find((item) => item.id === record.id);
     const incoming = structuredClone(record);
+    if (existing) {
+      incoming.rentalId = existing.rentalId;
+      incoming.rentalEquipmentLineId = existing.rentalEquipmentLineId;
+      incoming.equipmentId = existing.equipmentId;
+      incoming.assignmentId = existing.assignmentId;
+      incoming.operatorId = existing.operatorId;
+    }
     if (existing) incoming.revision = this.protectRevision(existing, incoming);
     if (existing && ["Submitted","Acknowledged","Rejected","Billed"].includes(existing.status)) {
       incoming.workDate = existing.workDate;

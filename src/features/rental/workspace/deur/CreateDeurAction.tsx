@@ -10,13 +10,16 @@ import { useWorkDescriptions } from "@/features/masters/work-description/context
 import { getSelectableWorkDescriptions } from "@/features/masters/work-description/services/getSelectableWorkDescriptions";
 import { createDeurOperationalMetadataSnapshot } from "@/features/rental/deur/services/createDeurOperationalMetadataSnapshot";
 import { resolveDeurEvidenceMode } from "@/features/rental/deur/services/resolveDeurEvidenceMode";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
 
 export default function CreateDeurAction() {
   const aggregate = useRentalWorkspaceAggregate();
   const { showToast } = useToast();
   const hasActiveDeur = Boolean(aggregate.activeDeur);
-  const equipment = aggregate.equipment;
-  const operator = aggregate.operator;
+  const { equipment: equipmentRecords } = useEquipment(); const { operators } = useOperator();
+  const [lineId, setLineId] = useState(() => aggregate.rentalEquipmentLines.length === 1 ? aggregate.rentalEquipmentLines[0].id : "");
+  const line = aggregate.rentalEquipmentLines.find((item) => item.id === lineId); const equipment = equipmentRecords.find((item) => item.id === line?.equipmentId); const operator = operators.find((item) => item.id === line?.operatorId);
   const { records: workDescriptions } = useWorkDescriptions();
   const options = getSelectableWorkDescriptions({ workDescriptions, equipmentCategoryId: equipment?.categoryId });
   const [workDescriptionId, setWorkDescriptionId] = useState("");
@@ -25,15 +28,16 @@ export default function CreateDeurAction() {
   const [startingOdometer,setStartingOdometer]=useState("");
   const [quantity,setQuantity]=useState("");
   const [shift,setShift]=useState<"Day"|"Night"|"">("");
-  const billingMethod=aggregate.rental.commercialSnapshot?.billingMethod ?? aggregate.rental.billingMethod ?? aggregate.contract?.billingMethod;
+  const billingMethod=line?.commercialSnapshot?.billingMethod ?? aggregate.rental.commercialSnapshot?.billingMethod ?? aggregate.rental.billingMethod ?? aggregate.contract?.billingMethod;
   const resolvedMode=resolveDeurEvidenceMode(billingMethod);
   const selectedWorkDescription = options.find((item) => item.id === workDescriptionId);
   const request = {
     rentalId: aggregate.rental.id,
+    rentalEquipmentLineId: line?.id,
     rentalStatus: aggregate.rental.status,
     equipmentId: equipment?.id ?? "",
     operatorId: operator?.id ?? "",
-    assignmentId: aggregate.assignment?.id,
+    assignmentId: line?.assignmentId,
     projectId: aggregate.project?.id ?? aggregate.rental.projectId,
     customerId: aggregate.rental.customerId,
     rental: aggregate.rental,
@@ -46,7 +50,7 @@ export default function CreateDeurAction() {
     completionEvidence: resolvedMode.supported&&resolvedMode.mode==="COMPLETION" ? {status:"IN_PROGRESS" as const} : undefined,
   } as const;
   const eligibilityError = getDeurCreationError(request);
-  const metadataResult = createDeurOperationalMetadataSnapshot({ rental: aggregate.rental, selectedWorkDescription, remarks });
+  const metadataResult = createDeurOperationalMetadataSnapshot({ rental: { ...aggregate.rental, operationalMetadata: line?.operationalMetadata ?? aggregate.rental.operationalMetadata }, selectedWorkDescription, remarks });
   const metadataError = metadataResult.issues.find((issue) => issue.code.startsWith("WORK_DESCRIPTION"))?.message;
   const evidenceError=!resolvedMode.supported?"Rental billing method is unsupported.":resolvedMode.mode==="ODOMETER_TRIP"&&(!startingLocation.trim()||!Number.isFinite(Number(startingOdometer))||Number(startingOdometer)<0)?"Starting location and odometer are required.":resolvedMode.mode==="QUANTITY"&&(!Number.isFinite(Number(quantity))||Number(quantity)<=0)?"A positive quantity is required.":undefined;
 
@@ -70,6 +74,7 @@ export default function CreateDeurAction() {
         {aggregate.project ? ` · ${aggregate.project.projectCode} - ${aggregate.project.projectName}` : ""}
       </p>
       <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+        {aggregate.rentalEquipmentLines.length > 1 && <label className="sm:col-span-2">Equipment Line<select className="mt-1 block w-full rounded border p-2" value={lineId} onChange={(event) => setLineId(event.target.value)}><option value="">Select Equipment Line</option>{aggregate.rentalEquipmentLines.filter((item) => ["Released", "Active"].includes(item.status)).map((item) => { const machine = equipmentRecords.find((record) => record.id === item.equipmentId); return <option key={item.id} value={item.id}>{machine ? `${machine.assetNo} - ${machine.equipmentName}` : item.equipmentId}</option>; })}</select></label>}
         <div><span className="text-slate-500">Activity Code</span><p>{aggregate.rental.operationalMetadata?.activityCode ? `${aggregate.rental.operationalMetadata.activityCode.code} — ${aggregate.rental.operationalMetadata.activityCode.name}` : "Activity Code not captured on Rental"}</p></div>
         <div><span className="text-slate-500">Cost Code</span><p>{aggregate.rental.operationalMetadata?.costCode ? `${aggregate.rental.operationalMetadata.costCode.code} — ${aggregate.rental.operationalMetadata.costCode.name}` : "Cost Code not captured on Rental"}</p></div>
         <label className="sm:col-span-2">Work Description

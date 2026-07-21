@@ -5,6 +5,7 @@ export interface OperatorDigitalDeurAccessIssue { code: string; message: string 
 export interface OperatorDigitalDeurAccessResult {
   allowed: boolean;
   rentalId?: string;
+  rentalEquipmentLineId?: string;
   assignmentId?: string;
   operatorId?: string;
   activeDeurId?: string;

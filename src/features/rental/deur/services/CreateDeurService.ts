@@ -9,11 +9,13 @@ import { resolveDeurEvidenceMode } from "./resolveDeurEvidenceMode";
 import { normalizeCompletionEvidence,normalizeOdometerTripEvidence,normalizeQuantityEvidence } from "./deurEvidence";
 import { createDeurCommercialSnapshot } from "./createDeurCommercialSnapshot";
 import { calendarDateAt, isCalendarDate } from "../expectation/dateRules";
+import { resolveDeurRentalEquipmentLine } from "./resolveDeurRentalEquipmentLine";
 
 export const MANUAL_DEUR_REASONS: readonly ManualDeurReason[] = ["POWER_NOT_AVAILABLE","SITE_COMPUTER_NOT_AVAILABLE","TECHNICAL_DIFFICULTY","DEVICE_MALFUNCTION","OPERATOR_DEVICE_NOT_ISSUED","APPLICATION_UNAVAILABLE","INTERNET_UNAVAILABLE","DELAYED_DIGITAL_DEPLOYMENT","PHYSICAL_DEUR_USED_AS_BACKUP","OTHER"];
 
 export interface CreateDeurRequest {
   rentalId: string;
+  rentalEquipmentLineId?: string;
   rentalStatus: RentalLifecycleStatus;
   equipmentId: string;
   operatorId: string;
@@ -72,6 +74,8 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
   if (missing) {
     return `Missing required ${missing[0]} relationship.`;
   }
+  const lineResolution = request.rental ? resolveDeurRentalEquipmentLine({ rental: request.rental, rentalEquipmentLineId: request.rentalEquipmentLineId, equipmentId: request.equipmentId, assignmentId: request.assignmentId, operatorId: request.operatorId }) : undefined;
+  if (lineResolution && !lineResolution.success) return lineResolution.issue.message;
 
   const policy = request.rental?.deurExpectationPolicy;
   const now = new Date().toISOString();
@@ -79,8 +83,9 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
   if (!isCalendarDate(workDate)) return "Enter a valid DEUR work date.";
   if (policy?.frequency === "PER_SHIFT" && !request.shift) return "Select the DEUR shift required by this Rental policy.";
   if (policy?.frequency === "PER_SHIFT" && request.shift && !policy.expectedShiftCodes?.includes(request.shift === "Day" ? "DAY" : "NIGHT")) return "The selected DEUR shift is not configured on this Rental.";
+  const resolvedLineId = lineResolution?.success ? lineResolution.line.id : request.rentalEquipmentLineId;
   const hasActiveDeur = deurRepository.getByRentalId(request.rentalId).some(
-    (record) => record.workDate === workDate && record.status !== "Rejected" && (
+    (record) => (record.rentalEquipmentLineId ? record.rentalEquipmentLineId === resolvedLineId : record.equipmentId === request.equipmentId) && record.workDate === workDate && record.status !== "Rejected" && (
       policy?.frequency !== "PER_SHIFT" || record.shift === request.shift
     )
   );
@@ -96,10 +101,12 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
   const error = getDeurCreationError(request);
   if (error) return { success: false, message: error };
   if (!request.rental) return { success: false, message: "Rental operational metadata is required to create a DEUR." };
-  const commercial=createDeurCommercialSnapshot(request.rental);if(!commercial.success)return{success:false,message:commercial.message};
+  const lineResolution=resolveDeurRentalEquipmentLine({rental:request.rental,rentalEquipmentLineId:request.rentalEquipmentLineId,equipmentId:request.equipmentId,assignmentId:request.assignmentId,operatorId:request.operatorId});if(!lineResolution.success)return{success:false,message:lineResolution.issue.message};
+  const line=lineResolution.line;
+  const commercial=line.commercialSnapshot?{success:true as const,snapshot:structuredClone(line.commercialSnapshot)}:createDeurCommercialSnapshot(request.rental);if(!commercial.success)return{success:false,message:commercial.message};
 
   const metadata = createDeurOperationalMetadataSnapshot({
-    rental: request.rental,
+    rental: { ...request.rental, operationalMetadata: line.operationalMetadata ?? request.rental.operationalMetadata },
     selectedWorkDescription: request.selectedWorkDescription,
     remarks: request.remarks,
   });
@@ -119,15 +126,16 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
   const record: DeurRecord = {
     id: crypto.randomUUID(),
     rentalId: request.rentalId,
-    assignmentId: request.assignmentId,
-    equipmentId: request.equipmentId,
-    operatorId: request.operatorId,
+    rentalEquipmentLineId: line.id,
+    assignmentId: line.assignmentId,
+    equipmentId: line.equipmentId,
+    operatorId: line.operatorId,
     projectId: request.projectId,
     customerId: request.customerId,
     creationSource: "OPERATOR_DIGITAL",
     evidenceMode,
     billingMethodSnapshot:typeof billingMethod==="string"?billingMethod:undefined,
-    commercialSnapshot:commercial.snapshot,commercialSnapshotRequired:request.rental.commercialSnapshotRequired,
+    commercialSnapshot:commercial.snapshot,commercialSnapshotRequired:line.commercialSnapshotRequired,
     odometerTripEvidence,quantityEvidence,completionEvidence,
     operationalMetadata: metadata.snapshot,
     operationalRemarks: metadata.remarks,
@@ -163,8 +171,9 @@ export function createManualDeur(request: CreateManualDeurRequest): CreateDeurRe
   if(duplicateReference)return{success:false,message:"This physical DEUR reference is already recorded."};
   const error=getDeurCreationError(request);if(error)return{success:false,message:error};
   if(!request.rental)return{success:false,message:"Rental operational metadata is required to create a DEUR."};
-  const commercial=createDeurCommercialSnapshot(request.rental);if(!commercial.success)return{success:false,message:commercial.message};
-  const metadata=createDeurOperationalMetadataSnapshot({rental:request.rental,selectedWorkDescription:request.selectedWorkDescription,remarks:request.remarks});
+  const lineResolution=resolveDeurRentalEquipmentLine({rental:request.rental,rentalEquipmentLineId:request.rentalEquipmentLineId,equipmentId:request.equipmentId,assignmentId:request.assignmentId,operatorId:request.operatorId});if(!lineResolution.success)return{success:false,message:lineResolution.issue.message};const line=lineResolution.line;
+  const commercial=line.commercialSnapshot?{success:true as const,snapshot:structuredClone(line.commercialSnapshot)}:createDeurCommercialSnapshot(request.rental);if(!commercial.success)return{success:false,message:commercial.message};
+  const metadata=createDeurOperationalMetadataSnapshot({rental:{...request.rental,operationalMetadata:line.operationalMetadata??request.rental.operationalMetadata},selectedWorkDescription:request.selectedWorkDescription,remarks:request.remarks});
   if(!metadata.complete)return{success:false,message:metadata.issues[0].message};
   const billingMethod=commercial.snapshot?.billingMethod??request.billingMethod??request.rental.billingMethod;const resolved=resolveDeurEvidenceMode(billingMethod);if(!resolved.supported)return{success:false,message:"A supported Rental billing method is required."};
   const timeline=resolved.mode==="TIME_TIMELINE"?buildManualDeurTimeline({entries:request.timeline??[]}):undefined;if(timeline&&!timeline.success)return{success:false,message:timeline.issues[0]};
@@ -174,6 +183,6 @@ export function createManualDeur(request: CreateManualDeurRequest): CreateDeurRe
   const completionEvidence=resolved.mode==="COMPLETION"?normalizeCompletionEvidence(request.completionEvidence):undefined;if(resolved.mode==="COMPLETION"&&!completionEvidence)return{success:false,message:"Valid completion evidence is required."};
   const timestamp=new Date().toISOString();
   const manualMetadata:ManualDeurMetadata={reason:request.manualMetadata.reason,...(reasonDetails?{reasonDetails}:{}),...(request.actor.id?.trim()?{encodedByUserId:request.actor.id.trim()}:{}),encodedByName:request.actor.name.trim(),encodedAt:timestamp,physicalDeurReference,sourceDocumentDate:request.manualMetadata.sourceDocumentDate?.trim()||request.workDate,operatorConfirmed:Boolean(request.manualMetadata.operatorConfirmed),...(request.manualMetadata.operatorConfirmedAt?.trim()?{operatorConfirmedAt:request.manualMetadata.operatorConfirmedAt.trim()}:{}),...(request.manualMetadata.operatorConfirmedByName?.trim()?{operatorConfirmedByName:request.manualMetadata.operatorConfirmedByName.trim()}:{}),...(request.manualMetadata.remarks?.trim()?{remarks:request.manualMetadata.remarks.trim()}:{}),};
-  const totals=timeline?.success?timeline.totals:undefined;const record:DeurRecord={id:crypto.randomUUID(),rentalId:request.rentalId,assignmentId:request.assignmentId,equipmentId:request.equipmentId,operatorId:request.operatorId,projectId:request.projectId,customerId:request.customerId,creationSource:"RENTAL_COMPANY_MANUAL",manualMetadata,evidenceMode:resolved.mode,billingMethodSnapshot:String(billingMethod),commercialSnapshot:commercial.snapshot,commercialSnapshotRequired:request.rental.commercialSnapshotRequired,odometerTripEvidence,quantityEvidence,completionEvidence,operationalMetadata:metadata.snapshot,operationalRemarks:metadata.remarks,workDate:request.workDate,reportDate:request.workDate,shift:request.shift,events:timeline?.success?timeline.events:[],totals,legacy:false,logs:[],totalOperatingMinutes:totals?.operationMinutes??0,totalIdleMinutes:totals?.idleMinutes??0,totalMaintenanceMinutes:totals?.breakdownMinutes??0,totalMealBreakMinutes:totals?.mealBreakMinutes??0,totalMobilizationMinutes:0,totalDemobilizationMinutes:0,status:"Draft",billingLocked:false,createdAt:timestamp,updatedAt:timestamp};
+  const totals=timeline?.success?timeline.totals:undefined;const record:DeurRecord={id:crypto.randomUUID(),rentalId:request.rentalId,rentalEquipmentLineId:line.id,assignmentId:line.assignmentId,equipmentId:line.equipmentId,operatorId:line.operatorId,projectId:request.projectId,customerId:request.customerId,creationSource:"RENTAL_COMPANY_MANUAL",manualMetadata,evidenceMode:resolved.mode,billingMethodSnapshot:String(billingMethod),commercialSnapshot:commercial.snapshot,commercialSnapshotRequired:line.commercialSnapshotRequired,odometerTripEvidence,quantityEvidence,completionEvidence,operationalMetadata:metadata.snapshot,operationalRemarks:metadata.remarks,workDate:request.workDate,reportDate:request.workDate,shift:request.shift,events:timeline?.success?timeline.events:[],totals,legacy:false,logs:[],totalOperatingMinutes:totals?.operationMinutes??0,totalIdleMinutes:totals?.idleMinutes??0,totalMaintenanceMinutes:totals?.breakdownMinutes??0,totalMealBreakMinutes:totals?.mealBreakMinutes??0,totalMobilizationMinutes:0,totalDemobilizationMinutes:0,status:"Draft",billingLocked:false,createdAt:timestamp,updatedAt:timestamp};
   return{success:true,record:deurRepository.create(record)};
 }

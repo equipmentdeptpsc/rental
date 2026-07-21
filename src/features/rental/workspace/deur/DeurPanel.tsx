@@ -73,6 +73,7 @@ import {
           {previewRecord?.creationSource === "OPERATOR_DIGITAL" && liveProjection?.valid && <div className="mt-3 grid gap-2 sm:grid-cols-3"><p><span className="block text-slate-500">Digital DEUR</span>{liveProjection.value.isRunning ? `Running — ${liveProjection.value.activeEventType}` : previewRecord.status}</p><p><span className="block text-slate-500">Live / Projected Operation</span>{(liveProjection.value.projectedOperationMinutes / 60).toFixed(2)} hours</p><p><span className="block text-slate-500">Last Updated</span>{new Date(previewRecord.updatedAt).toLocaleString()}</p></div>}
         </div>
 
+        {previewRecord && <p className="rounded border bg-white p-3 text-xs text-slate-600">Equipment: {previewRecord.equipmentId} · Line: {previewRecord.rentalEquipmentLineId ?? "Legacy unresolved"} · Operator: {previewRecord.operatorId} · DEUR: {previewRecord.deurNumber ?? previewRecord.id} · {previewRecord.workDate}{previewRecord.shift ? ` · ${previewRecord.shift}` : ""} · {previewRecord.status}</p>}
         <CreateDeurAction />
         <ManualDeurAction />
         <ManualOdometerDeurAction />

@@ -1,7 +1,7 @@
 import {
   useRentalWorkspaceAggregate,
 } from "..";
-import { evaluateRentalDeurCompliance } from "@/features/rental/deur/compliance/evaluateRentalDeurCompliance";
+import { evaluateRentalDeurCompliance, evaluateRentalEquipmentLineDeurCompliance } from "@/features/rental/deur/compliance/evaluateRentalDeurCompliance";
 import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
 import RentalDeurComplianceSummary from "@/features/rental/deur/compliance/RentalDeurComplianceSummary";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
@@ -11,6 +11,7 @@ export default function RentalWorkspaceHeader() {
   const aggregate =
     useRentalWorkspaceAggregate();
   const compliance = evaluateRentalDeurCompliance({ rental: aggregate.rental, assignment: aggregate.assignment, deurs: aggregate.deurs, evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
+  const lineCompliance = evaluateRentalEquipmentLineDeurCompliance({ rental: aggregate.rental, lines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
@@ -80,6 +81,7 @@ export default function RentalWorkspaceHeader() {
       </div>
 
       <RentalDeurComplianceSummary result={compliance} policy={aggregate.rental.deurExpectationPolicy} />
+      {aggregate.rentalEquipmentLines.length > 1 && <div className="mt-4 space-y-2"><h3 className="text-sm font-semibold">Equipment Line DEUR Compliance</h3>{lineCompliance.map((item) => <p key={item.rentalEquipmentLineId} className={`rounded border p-2 text-sm ${item.result.status === "COMPLIANT" ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>{item.equipmentId}: {item.result.reason}</p>)}</div>}
       <RentalDeurExpectationPolicyCard rental={aggregate.rental} />
 
     </div>

@@ -4,6 +4,7 @@ import type { DeurRecord } from "../types";
 import { resolveEffectiveDeurRevision } from "../services/correction/resolveEffectiveDeurRevision";
 import { generateRentalDeurExpectations } from "../expectation/generateRentalDeurExpectations";
 import { matchDeursToExpectations, type RentalDeurExpectationResult } from "../expectation/matchDeursToExpectations";
+import type { RentalEquipmentLine } from "../../equipment-line";
 
 export type RentalDeurComplianceStatus = "COMPLIANT" | "MISSING_DEUR" | "PENDING_CORRECTION" | "DEUR_INCOMPLETE";
 export interface RentalDeurComplianceIssue { code: string; message: string }
@@ -26,6 +27,19 @@ export interface RentalDeurComplianceResult {
   issues: RentalDeurComplianceIssue[];
 }
 export interface EvaluateRentalDeurComplianceInput { rental: RentalRecord; assignment?: AssignmentRecord; deurs: DeurRecord[]; evaluationTimestamp?: string; liveShiftWindows?: DeurShiftWindowDefinition[] }
+
+export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalDeurComplianceInput & { lines: RentalEquipmentLine[] }) {
+  return input.lines.filter((line) => line.rentalId === input.rental.id).map((line) => ({
+    rentalEquipmentLineId: line.id,
+    equipmentId: line.equipmentId,
+    result: evaluateRentalDeurCompliance({
+      ...input,
+      rental: { ...input.rental, equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId },
+      assignment: undefined,
+      deurs: input.deurs.filter((record) => record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId),
+    }),
+  }));
+}
 
 const requiringStatuses = new Set<RentalRecord["status"]>(["Released", "Active", "Returned", "Closed"]);
 const incompleteStatuses = new Set<DeurRecord["status"]>(["Draft", "In Progress", "Submitted", "Pending Acknowledgement"]);

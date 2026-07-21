@@ -56,6 +56,9 @@ export interface DeurRecord {
 
   rentalId: string;
 
+  /** Required for new records; absent only on legacy persisted DEURs. */
+  rentalEquipmentLineId?: string;
+
   assignmentId?: string;
 
   equipmentId: string;

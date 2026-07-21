@@ -42,7 +42,7 @@ export default function ActivityControls() {
         aggregate.rental.id,
 
       equipmentId:
-        aggregate.rental.equipmentId,
+        aggregate.activeDeur.equipmentId,
 
       operatorId:
         aggregate.activeDeur.operatorId,
