@@ -12,8 +12,9 @@ import { costCodeRepository } from "@/features/masters/cost-code";
 import { activityCodeRepository } from "@/features/masters/activity-code";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import type { ApplicationDependencies, ApplicationDependencyOverrides, RepositoryDependencies } from "./ApplicationDependencies";
+import { LocalEquipmentStatusReadRepository } from "@/features/masters/equipment-status/repository";
 
-const localRepositories: RepositoryDependencies = { equipment: equipmentRepository, assignment: assignmentRepository, rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, prefix: prefixRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository };
+const localRepositories: RepositoryDependencies = { equipment: equipmentRepository, assignment: assignmentRepository, rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, prefix: prefixRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository,equipmentStatusRead:new LocalEquipmentStatusReadRepository() };
 export function createLocalApplicationDependencies(overrides: ApplicationDependencyOverrides = {}): ApplicationDependencies {
-  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories: { ...localRepositories, ...overrides.repositories }, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
+  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories: { ...localRepositories, ...overrides.repositories },configuration:{equipmentStatusSource:"local"}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
 }

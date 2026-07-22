@@ -11,6 +11,9 @@ Apply to a new database in filename order:
 5. `005_seed_reference.sql`
 6. `006_import_staging.sql`
 7. `007_maintenance_daily_logs.sql`
+8. `008_equipment_status_read_policy.sql`
+9. `009_expose_erp_data_api_schema.sql`
+10. `010_reload_postgrest_schema.sql`
 
 With a disposable PostgreSQL database and `psql` installed, run:
 

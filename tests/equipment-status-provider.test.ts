@@ -1,0 +1,14 @@
+import {act,createElement} from "react";
+import {createRoot} from "react-dom/client";
+import {describe,expect,it,vi} from "vitest";
+import {ApplicationDependencyProvider,createLocalApplicationDependencies} from "@/app/composition";
+import {EquipmentStatusProvider,useEquipmentStatuses} from "@/features/masters/equipment-status/context/EquipmentStatusContext";
+import {repositoryFailure,repositorySuccess} from "@/core/persistence";
+
+const record={id:"status-1",status:"Available",description:"Ready",active:true,deleted:false};
+function render(repository:any){const dependencies=createLocalApplicationDependencies({repositories:{equipmentStatusRead:repository}});dependencies.configuration.equipmentStatusSource="supabase";const states:string[]=[];function Probe(){const value=useEquipmentStatuses();states.push(value.loadState);return createElement("div",null,createElement("span",null,value.loadState),createElement("button",{onClick:value.retry},"retry"));}const container=document.createElement("div"),root=createRoot(container);return{container,root,states,element:createElement(ApplicationDependencyProvider,{dependencies},createElement(EquipmentStatusProvider,null,createElement(Probe)))};}
+describe("Equipment Status provider remote state",()=>{
+  it("loads once and exposes loading then loaded",async()=>{let resolve!:(value:any)=>void;const list=vi.fn(()=>new Promise(result=>{resolve=result;}));const rendered=render({list,getById:vi.fn()});await act(async()=>rendered.root.render(rendered.element));expect(rendered.states).toContain("loading");expect(list).toHaveBeenCalledTimes(1);await act(async()=>resolve(repositorySuccess([record])));expect(rendered.container.textContent).toContain("loaded");await act(async()=>rendered.root.unmount());});
+  it("exposes error and retry performs a new request",async()=>{const list=vi.fn().mockResolvedValueOnce(repositoryFailure("NETWORK","Network failed",{context:{},recoverability:"RETRYABLE",recommendedAction:"Retry"})).mockResolvedValueOnce(repositorySuccess([record]));const rendered=render({list,getById:vi.fn()});await act(async()=>rendered.root.render(rendered.element));expect(rendered.container.textContent).toContain("error");await act(async()=>rendered.container.querySelector("button")?.click());expect(list).toHaveBeenCalledTimes(2);expect(rendered.container.textContent).toContain("loaded");await act(async()=>rendered.root.unmount());});
+  it("aborts on unmount and ignores stale completion",async()=>{let resolve!:(value:any)=>void;let signal:AbortSignal|undefined;const list=vi.fn((options:any)=>{signal=options.signal;return new Promise(result=>{resolve=result;});});const rendered=render({list,getById:vi.fn()});await act(async()=>rendered.root.render(rendered.element));await act(async()=>rendered.root.unmount());expect(signal?.aborted).toBe(true);await act(async()=>resolve(repositorySuccess([record])));expect(rendered.container.textContent).toBe("");});
+});

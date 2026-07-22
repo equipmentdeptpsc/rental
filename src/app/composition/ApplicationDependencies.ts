@@ -10,12 +10,15 @@ import type { activityCodeRepository } from "@/features/masters/activity-code";
 import type { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import type { IEquipmentRepository } from "@/features/equipment/repository/IEquipmentRepository";
 import type { IRentalRepository } from "@/features/rental/repository/IRentalRepository";
+import type { ReadOnlyEquipmentStatusRepository } from "@/features/masters/equipment-status/repository";
 
 export interface RepositoryDependencies {
   equipment: IEquipmentRepository; assignment: typeof assignmentRepository; rental: IRentalRepository;
   rentalContract: typeof rentalContractRepository; rentalEquipmentLine: typeof rentalEquipmentLineRepository;
   deur: Pick<typeof deurRepository, "getAll" | "getById" | "getByRentalId" | "update" | "unlockBilling">; billingStatement: Pick<typeof billingStatementRepository, "getAll" | "getById" | "getByRentalId" | "search" | "create" | "update" | "delete">; prefix: typeof prefixRepository;
   costCode: typeof costCodeRepository; activityCode: typeof activityCodeRepository; deurShiftWindow: typeof deurShiftWindowRepository;
+  equipmentStatusRead: ReadOnlyEquipmentStatusRepository;
 }
-export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
+export type EquipmentStatusSource="local"|"supabase";
+export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
 export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies> };

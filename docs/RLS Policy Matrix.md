@@ -2,6 +2,8 @@
 
 This is preparation only; Phase 11A does not enable application RLS.
 
+Phase 11B exception: `erp.equipment_statuses` now has a temporary anonymous read-only policy for non-deleted universal reference rows. Anonymous writes and access to every other ERP table remain denied. This does not activate the broader matrix below.
+
 | Area | Admin | Dispatcher | Operator | Accounting | Manager | Auditor | Trusted server only |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Equipment/masters | Full except historical hard-delete | Read/update operations | Assigned equipment read | Read | Read/update approval scope | Read | Master destructive changes |

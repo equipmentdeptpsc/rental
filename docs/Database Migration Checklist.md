@@ -20,3 +20,5 @@
 - [x] Generated migration mirror checksums match canonical migrations 001–007.
 - [x] Hosted migrations, catalog, constraints, rollback, fixture, hash, and reconciliation passed.
 - [ ] Tenancy choice and authentication/RLS design approved before production schema changes.
+- [x] Equipment Status read-only repository, RLS, browser SELECT, and write/other-table denial validated.
+- [ ] Authentication and table-specific tenancy policy required before Customer or Equipment remote access.

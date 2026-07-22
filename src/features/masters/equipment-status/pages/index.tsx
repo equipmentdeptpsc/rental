@@ -54,6 +54,10 @@ import {
       update,
       remove,
       refresh,
+      retry,
+      loadState,
+      error,
+      readOnly,
     } = useEquipmentStatuses();
   
     const [
@@ -391,6 +395,12 @@ import {
     
               />
     
+            }
+
+            form={
+              loadState === "loading" ? <div className="rounded border bg-white p-4 text-sm text-slate-600">Loading Equipment Status records…</div> :
+              loadState === "error" ? <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p>{error?.message ?? "Equipment Status records could not be loaded."}</p><button type="button" className="mt-2 rounded border border-red-300 px-3 py-1" onClick={retry}>Retry</button></div> :
+              readOnly ? <div className="rounded border bg-slate-50 p-3 text-sm text-slate-600">Remote Equipment Status mode is read-only.</div> : undefined
             }
     
             table={

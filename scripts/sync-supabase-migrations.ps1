@@ -11,6 +11,9 @@ $mapping = [ordered]@{
   '005_seed_reference.sql' = '20260722000500_seed_reference.sql'
   '006_import_staging.sql' = '20260722000600_import_staging.sql'
   '007_maintenance_daily_logs.sql' = '20260722000700_maintenance_daily_logs.sql'
+  '008_equipment_status_read_policy.sql' = '20260722000800_equipment_status_read_policy.sql'
+  '009_expose_erp_data_api_schema.sql' = '20260722000900_expose_erp_data_api_schema.sql'
+  '010_reload_postgrest_schema.sql' = '20260722001000_reload_postgrest_schema.sql'
 }
 if (-not $Check) { New-Item -ItemType Directory -Path $generatedDirectory -Force | Out-Null }
 $expectedNames = [System.Collections.Generic.HashSet[string]]::new([string[]]$mapping.Values)
