@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.local
+.env.*.local
+
+# Database migration safety
+*.dump
+*.backup
+migration-exports/
+*export-manifest*.json

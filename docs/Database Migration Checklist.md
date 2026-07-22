@@ -16,3 +16,7 @@
 - [ ] Constraint and representative workflow tests pass on PostgreSQL.
 - [ ] Backup/restore and adapter rollback rehearsals pass.
 - [ ] Supabase project, credentials, RLS, authentication, and remote adapter are separately approved.
+- [x] Dedicated Supabase development project linked and verified.
+- [x] Generated migration mirror checksums match canonical migrations 001–007.
+- [x] Hosted migrations, catalog, constraints, rollback, fixture, hash, and reconciliation passed.
+- [ ] Tenancy choice and authentication/RLS design approved before production schema changes.

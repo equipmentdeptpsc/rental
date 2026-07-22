@@ -21,7 +21,14 @@ INSERT INTO collections(id,billing_statement_id,amount,currency,collected_at) VA
 INSERT INTO audit_log(id,aggregate_type,aggregate_id,action) VALUES('recon-audit','Rental','recon-r-line','fixture');
 INSERT INTO migration_import_batches(id,manifest_version,application_schema_version,source_application_version,repository_catalog_version,exported_at,manifest_checksum) VALUES('recon-batch',1,1,'fixture',1,now(),'recon-manifest');
 INSERT INTO migration_staging_records(batch_id,source_repository,source_storage_key,source_record_id,source_schema_version,dependency_order,raw_payload,source_checksum) VALUES('recon-batch','Rental','rentals','unresolved',1,1,'{}','recon');
-COMMIT;
+SELECT 'expected_reconciliation_exceptions' validation,
+  (SELECT count(*) FROM rentals r WHERE r.status<>'Cancelled' AND NOT EXISTS(SELECT 1 FROM rental_equipment_lines l WHERE l.rental_id=r.id AND l.deleted_at IS NULL)) rentals_without_lines,
+  (SELECT count(*) FROM rental_equipment_lines l WHERE l.status IN ('Released','Active','Returned','Closed') AND NOT EXISTS(SELECT 1 FROM commercial_snapshots s WHERE s.rental_equipment_line_id=l.id)) released_lines_without_snapshots,
+  (SELECT count(*) FROM deurs WHERE rental_equipment_line_id IS NULL AND legacy=false) deurs_without_lines,
+  (SELECT count(*) FROM commercial_snapshots WHERE snapshot_hash IS NULL OR snapshot_hash='') missing_snapshot_hashes,
+  (SELECT count(*) FROM audit_log WHERE actor_id IS NULL AND actor_name IS NULL) audit_actors_missing,
+  (SELECT count(*) FROM migration_staging_records WHERE validation_status<>'Valid' OR transformation_status NOT IN ('Ready','Imported')) unresolved_staging;
+ROLLBACK;
 
 -- Identity mismatches, duplicate Rental Equipment Lines, duplicate DEUR
 -- consumption, and ordinary orphans cannot be injected because relational
