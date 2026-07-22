@@ -9,3 +9,5 @@ Error mapping must preserve PostgreSQL SQLSTATE, constraint name, operation, agg
 Abort/cancellation belongs on queries and synchronization requests. Idempotency keys belong on commands/outbox records, not ordinary reads. Server timestamps become authoritative while local timestamps remain source evidence during offline reconciliation.
 
 Phase 11B validates this direction for Equipment Status only: a separate async read port, singleton browser client, explicit composition flag, cancellation, loading/error/retry states, row validation, and SQLSTATE mapping. It does not validate remote writes, transactions, authentication, tenant scoping, or operational aggregate performance.
+
+Phase 11C extracts these reusable concerns into `src/core/remote`. Future adapters must use its base class, result/error mapping, safe-read retry, query options, row readers, redacted logging, configuration validation, capabilities, and metrics. Provider-specific query construction and domain mapping remain inside the feature repository. Local Storage behavior and operational repositories are unchanged.

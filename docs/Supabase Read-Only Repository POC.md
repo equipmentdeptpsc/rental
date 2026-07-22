@@ -23,3 +23,7 @@ Option A was selected temporarily because Equipment Status is non-sensitive univ
 Hosted parity: four rows in stable order—Available, Assigned, Rented, Maintenance—with canonical IDs/codes, active=true, and sort orders 10/20/30/40. No source is overwritten.
 
 Before any Customer or Equipment remote repository, authentication, approved tenancy ownership, table-specific RLS, server transaction boundaries, asynchronous Context design, and backup/restore readiness are required.
+
+## Shared Remote Core
+
+Phase 11C moved provider-neutral behavior into `src/core/remote`. Equipment Status now supplies only its explicit Supabase query, deterministic domain ordering, and Equipment Status row mapping. The composition root injects the shared core and singleton client. Errors, safe-read retries, cancellation, paging/ordering options, capabilities, redacted logs, configuration validation, and timing metrics must not be reimplemented by later repositories.
