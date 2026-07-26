@@ -64,6 +64,11 @@ export default function NewRental() {
   function handleSubmit(
     data: RentalFormData
   ) {
+    const selectedProject = projects.find((project) => project.id === data.projectId);
+    if (!selectedProject || selectedProject.customerId !== data.customerId) {
+      showToast("The selected Project must belong to the selected Customer.", "error");
+      return;
+    }
     const rentalId =
       crypto.randomUUID();
 
@@ -93,8 +98,7 @@ export default function NewRental() {
         customer:
           data.customer,
       
-        project:
-          projects.find((project) => project.id === data.projectId)?.projectName ?? "",
+        project: selectedProject.projectName,
       
         rentedBy:
           "",

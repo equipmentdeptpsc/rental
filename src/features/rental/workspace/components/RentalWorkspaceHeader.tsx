@@ -6,6 +6,8 @@ import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/Ren
 import RentalDeurComplianceSummary from "@/features/rental/deur/compliance/RentalDeurComplianceSummary";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import RentalDeurExpectationPolicyCard from "@/features/rental/deur/compliance/RentalDeurExpectationPolicyCard";
+import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
+import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
 
 export default function RentalWorkspaceHeader() {
   const aggregate =
@@ -83,6 +85,8 @@ export default function RentalWorkspaceHeader() {
       <RentalDeurComplianceSummary result={compliance} policy={aggregate.rental.deurExpectationPolicy} />
       {aggregate.rentalEquipmentLines.length > 1 && <div className="mt-4 space-y-2"><h3 className="text-sm font-semibold">Equipment Line DEUR Compliance</h3>{lineCompliance.map((item) => <p key={item.rentalEquipmentLineId} className={`rounded border p-2 text-sm ${item.result.status === "COMPLIANT" ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>{item.equipmentId}: {item.result.reason}</p>)}</div>}
       <RentalDeurExpectationPolicyCard rental={aggregate.rental} />
+      <div className="mt-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} /></div>
+      <ApprovalInvalidationNotice rental={aggregate.rental} />
 
     </div>
   );

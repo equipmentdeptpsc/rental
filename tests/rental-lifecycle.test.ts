@@ -72,6 +72,7 @@ function rental(status: RentalLifecycleStatus, assignmentId?: string): RentalRec
     billingMethod: "Per Hour",
     statusId: "reserved",
     status,
+    approvalStatus: "Approved",
   };
 }
 
@@ -87,6 +88,7 @@ const activeAssignment: AssignmentRecord = {
 };
 
 interface RentalHarness {
+  auth: ReturnType<typeof import("@/features/auth/AuthContext")["useAuth"]>;
   rental: ReturnType<typeof import("@/features/rental/context/RentalContext")["useRental"]>;
   equipment: ReturnType<typeof import("@/features/equipment/context/EquipmentContext")["useEquipment"]>;
   assignment: ReturnType<typeof import("@/features/assignment/context/AssignmentContext")["useAssignment"]>;
@@ -96,7 +98,7 @@ interface RentalHarness {
 
 async function renderHarness(): Promise<{ harness: RentalHarness; root: Root; container: HTMLDivElement }> {
   vi.resetModules();
-  const [{ AuthProvider }, { AuditProvider, useAudit }, { EquipmentProvider, useEquipment },
+  const [{ AuthProvider, useAuth }, { AuditProvider, useAudit }, { EquipmentProvider, useEquipment },
     { EquipmentHistoryProvider, useEquipmentHistory }, { AssignmentProvider, useAssignment },
     { OperatorProvider }, { ProjectProvider },
     { RentalProvider, useRental }] = await Promise.all([
@@ -111,6 +113,7 @@ async function renderHarness(): Promise<{ harness: RentalHarness; root: Root; co
   ]);
   const harness = {} as RentalHarness;
   function Probe() {
+    harness.auth = useAuth();
     harness.rental = useRental();
     harness.equipment = useEquipment();
     harness.assignment = useAssignment();
@@ -165,7 +168,7 @@ function prepareCreateState(status: EquipmentRecord["status"], assignment?: Assi
   storage.set(assignmentKey, assignment ? [assignment] : []);
   storage.set(projectKey, [{
     id: "project-1", projectCode: "PRJ-000001", projectName: "Test Project", client: "", location: "",
-    projectManager: "", startDate: "", targetCompletion: "", status: "Active",
+    customerId: "customer-1", projectManager: "", startDate: "", targetCompletion: "", status: "Active",
   }]);
   storage.set(operatorKey, [{
     id: "operator-1", name: "Test Operator", email: "", licenseNumber: "", certificationType: "None",
@@ -257,6 +260,87 @@ describe("RentalProvider synchronization", () => {
     container.remove();
   });
 
+  it("uses the current canonical Admin session after login and persists the selected release actor", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.remove(authUserKey);
+    storage.remove(authTokenKey);
+    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), commercialSnapshotRequired: true }]);
+    storage.set(contractKey, [contract(100)]);
+    const current = await renderHarness();
+
+    await act(async () => current.harness.auth.login("Live Admin", "Admin"));
+    await act(async () => expect(current.harness.rental.releaseRental("rental-1", "Live Admin")).toMatchObject({ success: true }));
+    expect(current.harness.rental.getRental("rental-1")).toMatchObject({ status: "Released", rentedBy: "Live Admin" });
+    expect(current.harness.rental.releaseRental("rental-1", "Live Admin")).toMatchObject({ success: false });
+    await act(async () => current.root.unmount()); current.container.remove();
+
+    vi.resetModules();
+    const refreshed = await renderHarness();
+    expect(refreshed.harness.rental.getRental("rental-1")).toMatchObject({ status: "Released", rentedBy: "Live Admin" });
+    await act(async () => refreshed.root.unmount()); refreshed.container.remove();
+  });
+
+  it("requires separate Manager approval before Admin release and audits both actors", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set("equipment-rental-manager-approver-configuration", [{ id: "manager-approver-default", name: "Test Manager", email: "test.manager@example.test", active: true, createdAt: "2026-07-17T00:00:00Z", updatedAt: "2026-07-17T00:00:00Z" }]);
+    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), approvalStatus: "NotSubmitted", commercialSnapshotRequired: true }]);
+    storage.set(contractKey, [contract(100)]);
+    const current = await renderHarness();
+
+    await act(async () => expect(current.harness.rental.submitForApproval("rental-1")).toMatchObject({ success: true, rental: { approvalStatus: "Pending" } }));
+    const { developmentApprovalEmailOutbox } = await import("@/features/rental/approval-email/developmentApprovalEmailOutbox");
+    const approvalEmail = developmentApprovalEmailOutbox.getAll()[0];
+    expect(approvalEmail).toMatchObject({ rentalId: "rental-1", rentalNumber: "R-001", status: "Pending", recipientName: "Test Manager", recipient: "test.manager@example.test", snapshot: { approvalStatus: "Pending", requestedBy: "Test Admin" } });
+    await act(async () => expect(current.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: false, message: expect.stringContaining("Manager approval") }));
+    await act(async () => current.harness.auth.login("Test Manager", "Manager"));
+    await act(async () => expect(current.harness.rental.approveRental("rental-1", "Approved for release")).toMatchObject({ success: true, rental: { approvalStatus: "Approved", approvalApprovedBy: { name: "Test Manager", role: "Manager" } } }));
+    expect(developmentApprovalEmailOutbox.getById(approvalEmail.id)?.status).toBe("Approved");
+    await act(async () => current.harness.auth.login("Release Admin", "Admin"));
+    await act(async () => expect(current.harness.rental.releaseRental("rental-1", "Release Admin")).toMatchObject({ success: true, rental: { status: "Released", rentedBy: "Release Admin" } }));
+
+    const { rentalAuditRepository } = await import("@/features/rental/audit/rentalAuditRepository");
+    expect(rentalAuditRepository.getByRentalId("rental-1")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "RENTAL_APPROVAL_SUBMITTED", actorRole: "Admin", remarks: expect.stringContaining("Test Manager <test.manager@example.test>") }),
+      expect.objectContaining({ action: "RENTAL_APPROVED", actorName: "Test Manager", actorRole: "Manager" }),
+      expect.objectContaining({ action: "RENTAL_RELEASED", actorName: "Release Admin", actorRole: "Admin" }),
+    ]));
+    await act(async () => current.root.unmount()); current.container.remove();
+
+    vi.resetModules();
+    const refreshed = await renderHarness();
+    expect(refreshed.harness.rental.getRental("rental-1")).toMatchObject({ status: "Released", approvalStatus: "Approved", approvalApprovedBy: { name: "Test Manager" }, rentedBy: "Release Admin" });
+    await act(async () => refreshed.root.unmount()); refreshed.container.remove();
+  });
+
+  it("blocks approval submission when no active Manager approver is configured", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), approvalStatus: "NotSubmitted", commercialSnapshotRequired: true }]);
+    storage.set(contractKey, [contract(100)]);
+    const current = await renderHarness();
+    await act(async () => expect(current.harness.rental.submitForApproval("rental-1")).toMatchObject({ success: false, message: expect.stringContaining("Configure an active Manager approver") }));
+    expect(current.harness.rental.getRental("rental-1")?.approvalStatus).toBe("NotSubmitted");
+    const { developmentApprovalEmailOutbox } = await import("@/features/rental/approval-email/developmentApprovalEmailOutbox");
+    const { rentalAuditRepository } = await import("@/features/rental/audit/rentalAuditRepository");
+    expect(developmentApprovalEmailOutbox.getAll()).toEqual([]);
+    expect(rentalAuditRepository.getByRentalId("rental-1")).toEqual([]);
+    await act(async () => current.root.unmount()); current.container.remove();
+  });
+
+  it("rejects Operators and does not confuse a selected display label with Admin authorization", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(authUserKey, { id: "operator-user", name: "Admin", role: "Operator" });
+    const operator = await renderHarness();
+    await act(async () => expect(operator.harness.rental.releaseRental("rental-1", "Admin")).toMatchObject({ success: false, message: "An Admin must release this equipment." }));
+    expect(operator.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
+    await act(async () => operator.root.unmount()); operator.container.remove();
+
+    storage.clear(); vi.resetModules(); prepareState("Assigned", "Reserved", activeAssignment);
+    const admin = await renderHarness();
+    await act(async () => expect(admin.harness.rental.releaseRental("rental-1", "Different Admin")).toMatchObject({ success: false, message: "Select the signed-in Admin as Released By." }));
+    expect(admin.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
+    await act(async () => admin.root.unmount()); admin.container.remove();
+  });
+
   it("freezes a required DEUR expectation policy at release and rejects a marked Rental without one", async () => {
     prepareState("Assigned", "Reserved", activeAssignment);
     storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), deurExpectationPolicyRequired: true, deurExpectationPolicy: { frequency: "PER_WORKDAY", effectiveFrom: "2026-07-17", timezone: "Asia/Manila", capturedAt: "2026-07-16T00:00:00Z" } }]);
@@ -271,6 +355,21 @@ describe("RentalProvider synchronization", () => {
     await act(async () => expect(second.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: false, message: expect.stringContaining("expectation policy") }));
     expect(second.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
     await act(async () => second.root.unmount()); second.container.remove();
+  });
+
+  it("removes the final configurable line without compatibility recreating it and removes only its terms", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    storage.set(contractKey, [contract(100)]);
+    const current = await renderHarness();
+    const lineId = current.harness.rental.rentalEquipmentLines[0].id;
+    await act(async () => expect(current.harness.rental.removeRentalEquipmentLine("rental-1", lineId)).toMatchObject({ success: true }));
+    expect(current.harness.rental.rentalEquipmentLines).toEqual([]);
+    expect(current.harness.rental.getRental("rental-1")).toMatchObject({ equipmentId: "", assignmentId: undefined, operatorId: undefined });
+    expect(storage.get<unknown[]>(contractKey)).toEqual([]);
+    await act(async () => current.root.unmount()); current.container.remove();
+    vi.resetModules(); const refreshed = await renderHarness();
+    expect(refreshed.harness.rental.rentalEquipmentLines).toEqual([]);
+    await act(async () => refreshed.root.unmount()); refreshed.container.remove();
   });
 
   it("captures required commercial terms exactly once at release without migrating legacy Rentals", async () => {
@@ -314,6 +413,7 @@ describe("RentalProvider synchronization", () => {
     expect(first.harness.rental.getContract("rental-1")).toMatchObject({ unitRate: 100, billingMethod: "Per Hour", currency: "PHP" });
     await act(async () => first.root.unmount()); first.container.remove();
 
+    storage.set(rentalKey, (storage.get<RentalRecord[]>(rentalKey) ?? []).map((item) => ({ ...item, approvalStatus: "Approved" })));
     vi.resetModules();
     const refreshed = await renderHarness();
     expect(refreshed.harness.rental.getContract("rental-1")).toMatchObject({ unitRate: 100, billingMethod: "Per Hour" });

@@ -6,6 +6,20 @@ import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 const persistence = createLegacyLocalRepositoryStorage("EquipmentStatus");
 
 export class EquipmentStatusRepository {
+  seedDefaults(): EquipmentStatusRecord[] {
+    const existing = this.getAll();
+    if (existing.length > 0) return existing;
+    const seeded = ["Available", "Assigned", "Rented", "Maintenance"].map((status) => ({
+      id: `equipment-status-${status.toLowerCase()}`,
+      status,
+      description: `${status} equipment`,
+      active: true,
+      deleted: false,
+    }));
+    this.saveAll(seeded);
+    return seeded;
+  }
+
   getAll(): EquipmentStatusRecord[] {
     try {
       return persistence.load<EquipmentStatusRecord[]>() ?? [];

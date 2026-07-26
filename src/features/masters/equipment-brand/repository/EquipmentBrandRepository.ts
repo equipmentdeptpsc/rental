@@ -6,6 +6,14 @@ import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 const persistence = createLegacyLocalRepositoryStorage("EquipmentBrand");
 
 export class EquipmentBrandRepository {
+  seedDefaults(): EquipmentBrandRecord[] {
+    const existing = this.getAll();
+    if (existing.length > 0) return existing;
+    const seeded = [{ id: "equipment-brand-generic", brand: "Generic", description: "Generic or unspecified manufacturer brand", active: true, deleted: false }];
+    this.saveAll(seeded);
+    return seeded;
+  }
+
   getAll(): EquipmentBrandRecord[] {
     try { return persistence.load<EquipmentBrandRecord[]>() ?? []; } catch { return []; }
   }

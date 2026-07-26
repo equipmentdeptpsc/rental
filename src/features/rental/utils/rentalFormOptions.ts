@@ -11,9 +11,10 @@ export function getRentalEquipmentLabel(
     : "Unknown equipment";
 }
 
-export function getRentalProjectOptions(projects: ProjectRecord[]) {
+export function getRentalProjectOptions(projects: ProjectRecord[], customerId: string) {
+  if (!customerId) return [];
   return projects
-    .filter((project) => !project.deleted && project.status === "Active")
+    .filter((project) => !project.deleted && project.status === "Active" && project.customerId === customerId)
     .map((project) => ({
       value: project.id,
       label: `${project.projectCode} - ${project.projectName}`,

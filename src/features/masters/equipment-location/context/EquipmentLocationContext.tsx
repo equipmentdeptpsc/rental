@@ -50,7 +50,7 @@ export function EquipmentLocationProvider({
   const [records, setRecords] =
     useState<
       EquipmentLocationRecord[]
-    >([]);
+    >(() => equipmentLocationRepository.getAll());
 
   function refresh() {
     setRecords(

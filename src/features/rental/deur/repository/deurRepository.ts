@@ -179,10 +179,10 @@ class DeurRepository {
   }
 
   submit(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => submitDeur(record, actor), "submit"); }
-  acknowledge(id: string, actor: { name: string; id?: string }) {
+  acknowledge(id: string, actor: { name: string; id?: string; email?:string }, remarks="") {
     const record = this.getById(id);
     if (record?.revision?.previousRevisionId) return this.acknowledgeCorrection(id, actor);
-    return this.review(id, (item) => acknowledgeDeur(item, actor), "acknowledge");
+    return this.review(id, (item) => acknowledgeDeur(item, actor, new Date().toISOString(), remarks), "acknowledge");
   }
   reject(id: string, actor: { name: string; id?: string }, reason: string) { return this.review(id, (record) => rejectDeur(record, actor, reason), "reject"); }
   reopen(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => reopenDeur(record, actor), "reopen"); }

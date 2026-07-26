@@ -2,14 +2,16 @@ import type { RentalContractRecord } from "../types/RentalContract";
 import type { RentalEquipmentLine, RentalEquipmentLineMigrationIssue } from "../equipment-line/types";
 import { associateLegacyContractsWithRentalEquipmentLines } from "../equipment-line/contractCompatibility";
 import { storage } from "@/core/storage";
+import { normalizeRentalBillingMethod } from "../types";
 
 const STORAGE_KEY = "equipment-rental-contracts";
 const clone = <T>(value: T): T => structuredClone(value);
 
 function read(): RentalContractRecord[] {
-  try { const value = storage.get<unknown>(STORAGE_KEY); return Array.isArray(value) ? value as RentalContractRecord[] : []; } catch { return []; }
+  try { const value = storage.get<unknown>(STORAGE_KEY); return Array.isArray(value) ? value.map((item) => normalizeContract(item as RentalContractRecord)) : []; } catch { return []; }
 }
-function save(data: RentalContractRecord[]) { storage.set(STORAGE_KEY, clone(data)); }
+function normalizeContract(contract: RentalContractRecord): RentalContractRecord { return { ...clone(contract), billingMethod: normalizeRentalBillingMethod(contract.billingMethod) ?? contract.billingMethod }; }
+function save(data: RentalContractRecord[]) { storage.set(STORAGE_KEY, data.map(normalizeContract)); }
 
 export type RentalEquipmentLineContractLookup =
   | { status: "found"; contract: RentalContractRecord }
@@ -52,14 +54,14 @@ export const rentalContractRepository = {
     }
     const identityCollision = records.find((item) => item.id === contract.id && item.rentalEquipmentLineId !== lineId);
     if (identityCollision) return { success: false, issue: { code: "AMBIGUOUS_LEGACY_CONTRACT_LINES", rentalId, equipmentId: contract.equipmentId, lineIds: [lineId], message: "Commercial terms identity is already used by another Rental Equipment Line." } };
-    const normalized = clone(contract);
+    const normalized = normalizeContract(contract);
     save(matches.length === 1
       ? records.map((item) => item.id === normalized.id ? normalized : item)
       : [...records, normalized]);
     return { success: true, contract: clone(normalized) };
   },
 
-  create(contract: RentalContractRecord) { const records = read(); records.push(clone(contract)); save(records); },
-  update(contract: RentalContractRecord) { const records = read(); const index = records.findIndex((item) => item.id === contract.id); if (index >= 0) { records[index] = clone(contract); save(records); } },
+  create(contract: RentalContractRecord) { const records = read(); records.push(normalizeContract(contract)); save(records); },
+  update(contract: RentalContractRecord) { const records = read(); const index = records.findIndex((item) => item.id === contract.id); if (index >= 0) { records[index] = normalizeContract(contract); save(records); } },
   delete(id: string) { save(read().filter((contract) => contract.id !== id)); },
 };

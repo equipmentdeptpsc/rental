@@ -6,10 +6,6 @@ import type {
   IEquipmentRepository,
 } from "./IEquipmentRepository";
 
-import {
-  equipmentData,
-} from "../data/equipment.mock";
-
 import { storage } from "@/core/storage";
 
 const STORAGE_KEY = "equipment-records";
@@ -22,7 +18,7 @@ export class LocalEquipmentRepository
   constructor() {
     this.data =
       storage.get<EquipmentRecord[]>(STORAGE_KEY) ??
-      equipmentData.map((item) => ({ ...item }));
+      [];
   }
 
   getAll() {

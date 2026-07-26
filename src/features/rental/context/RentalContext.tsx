@@ -38,6 +38,11 @@ import { freezeRentalDeurExpectationPolicy } from "../deur/expectation/freezeRen
 import { type NewRentalEquipmentLineInput, type RentalEquipmentLine, type RentalEquipmentLineIssue, type RentalEquipmentLineMigrationIssue } from "../equipment-line";
 import { canRemoveRentalEquipmentLine, validateRentalEquipmentLineInputs } from "../services/manageRentalEquipmentLines";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { decideRentalApproval, getRentalApprovalStatus, invalidateRentalApproval, submitRentalApproval } from "../approval/rentalApproval";
+import { rentalAuditRepository } from "../audit/rentalAuditRepository";
+import { buildManagerApprovalEmailSnapshot } from "../approval-email/buildManagerApprovalEmailSnapshot";
+import { developmentApprovalEmailOutbox } from "../approval-email/developmentApprovalEmailOutbox";
+import { resolveActiveManagerApprover } from "@/features/settings/manager-approver/managerApproverService";
 
 interface RentalTransitionResult {
   success: boolean;
@@ -72,6 +77,10 @@ interface RentalContextType {
     id: string,
     releasedBy: string
   ): RentalTransitionResult;
+
+  submitForApproval(id: string): RentalTransitionResult;
+  approveRental(id: string, remarks?: string): RentalTransitionResult;
+  rejectRental(id: string, reason: string): RentalTransitionResult;
 
   getRental(id: string): RentalRecord | undefined;
 
@@ -141,6 +150,20 @@ export function RentalProvider({
     setRentalEquipmentLines([...lineCompatibility.lines]);
     setContracts([...contractCompatibility.contracts]);
     setRentalEquipmentLineMigrationIssues([...lineCompatibility.issues, ...contractCompatibility.issues]);
+  }
+
+  function auditRental(previous: RentalRecord, resulting: RentalRecord, action: string, remarks?: string) {
+    rentalAuditRepository.append({ id: crypto.randomUUID(), rentalId: previous.id, rentalNumber: previous.rentalNumber, action, timestamp: new Date().toISOString(), actorId: user?.id, actorName: user?.name, actorRole: user?.role, previousApprovalStatus: getRentalApprovalStatus(previous), resultingApprovalStatus: getRentalApprovalStatus(resulting), previousRentalStatus: previous.status, resultingRentalStatus: resulting.status, ...(remarks?.trim() ? { remarks: remarks.trim() } : {}) });
+  }
+
+  function invalidateApprovedRental(rentalId: string, reason: string) {
+    const current = rentalRepository.getById(rentalId);
+    if (!current) return;
+    const invalidated = invalidateRentalApproval(current, user, reason, new Date().toISOString());
+    if (!invalidated.event) return;
+    rentalRepository.update(invalidated.rental);
+    auditRental(current, invalidated.rental, "APPROVAL_INVALIDATED", reason);
+    refreshRentals();
   }
 
   function blockingEquipmentIds(excludeRentalId?: string) {
@@ -215,6 +238,10 @@ export function RentalProvider({
       };
     }
 
+    if (!project.customerId || project.customerId !== item.customerId) {
+      return { success: false, message: "The selected Project must belong to the selected Customer." };
+    }
+
     if (requestedLines.length === 1 && !requestedLines[0].operatorId.trim()) {
       return {
         success: false,
@@ -286,6 +313,7 @@ export function RentalProvider({
       createdAt: new Date().toISOString(),
       status: "Draft",
       statusId: "",
+      approvalStatus: "NotSubmitted",
     };
     rentalRepository.create(created);
     const timestamp = created.createdAt!;
@@ -310,7 +338,12 @@ export function RentalProvider({
   }
 
   function updateRental(item: RentalRecord) {
-    rentalRepository.update(item);
+    const current = rentalRepository.getById(item.id);
+    if (!current) return;
+    const materialChanged = current.customerId !== item.customerId || current.projectId !== item.projectId || current.dateOut !== item.dateOut || current.expectedReturn !== item.expectedReturn || JSON.stringify(current.deurExpectationPolicy) !== JSON.stringify(item.deurExpectationPolicy);
+    const next = materialChanged ? invalidateRentalApproval(item, user, "Material Rental details changed.", new Date().toISOString()).rental : item;
+    rentalRepository.update(next);
+    if (materialChanged && current.approvalStatus === "Approved") auditRental(current, next, "APPROVAL_INVALIDATED", "Material Rental details changed.");
     refreshRentals();
   }
 
@@ -325,6 +358,10 @@ export function RentalProvider({
         success: false,
         message: "Rental not found.",
       };
+    }
+
+    if (nextStatus === "Released" && getRentalApprovalStatus(current) !== "Approved") {
+      return { success: false, message: "Manager approval is required before equipment can be released." };
     }
 
     const error = getRentalTransitionError(current, nextStatus);
@@ -445,6 +482,8 @@ export function RentalProvider({
 
     refreshRentals();
 
+    if (["Released", "Active", "Returned", "Closed"].includes(nextStatus)) auditRental(current, updated, `RENTAL_${nextStatus.toUpperCase()}`);
+
     return {
       success: true,
       rental: updated,
@@ -477,11 +516,19 @@ export function RentalProvider({
 
   function releaseRental(
     id: string,
-    _releasedBy: string
+    releasedBy: string
   ): RentalTransitionResult {
-    void _releasedBy;
     if (user?.role !== "Admin") {
       return { success: false, message: "An Admin must release this equipment." };
+    }
+
+    const current = rentalRepository.getById(id);
+    if (!current) return { success: false, message: "Rental not found." };
+    if (getRentalApprovalStatus(current) !== "Approved") return { success: false, message: "Manager approval is required before equipment can be released." };
+
+    const actorName = releasedBy.trim();
+    if (!actorName || actorName !== user.name) {
+      return { success: false, message: "Select the signed-in Admin as Released By." };
     }
 
     const result = transitionRental(id, "Released");
@@ -492,12 +539,63 @@ export function RentalProvider({
 
     const updated = {
       ...result.rental,
-      rentedBy: user.name,
+      rentedBy: actorName,
     };
     rentalRepository.update(updated);
     refreshRentals();
 
     return { success: true, rental: updated };
+  }
+
+  function submitForApproval(id: string): RentalTransitionResult {
+    const rental = rentalRepository.getById(id);
+    if (!rental) return { success: false, message: "Rental not found." };
+    const lines = rentalEquipmentLineRepository.getByRentalId(id);
+    const contracts = rentalContractRepository.ensureLineAssociations(rentalEquipmentLineRepository.getAll()).contracts;
+    const requestedAt = new Date().toISOString();
+    const prepared = prepareRentalEquipmentLineRelease({ rental, lines, contracts, timestamp: requestedAt });
+    const result = submitRentalApproval(rental, user, prepared.success, requestedAt);
+    if (!result.success) return { success: false, message: prepared.success ? result.message : prepared.issues.map((issue) => issue.message).join(" ") };
+    const approver = resolveActiveManagerApprover();
+    if (!approver.success) return { success: false, message: approver.message };
+    const snapshot = buildManagerApprovalEmailSnapshot({
+      rental: result.rental,
+      lines,
+      contracts,
+      equipment: equipmentRecords,
+      assignments,
+      operators,
+      project: projects.find((project) => project.id === rental.projectId),
+      requestedBy: user?.name ?? "Unknown requester",
+      requestedAt,
+      commercialTermsComplete: prepared.success,
+      conflictsDetected: lines.some((line) => blockingEquipmentIds(rental.id).has(line.equipmentId)),
+    });
+    rentalRepository.update(result.rental);
+    developmentApprovalEmailOutbox.create({ rentalId: rental.id, recipientName: approver.configuration.name, recipient: approver.configuration.email, generatedAt: requestedAt, snapshot });
+    auditRental(rental, result.rental, result.event.action === "Resubmitted" ? "RENTAL_APPROVAL_RESUBMITTED" : "RENTAL_APPROVAL_SUBMITTED", `Approval Requested. Recipient: ${approver.configuration.name} <${approver.configuration.email}>.`);
+    refreshRentals();
+    return { success: true, rental: result.rental };
+  }
+
+  function approveRental(id: string, remarks = ""): RentalTransitionResult {
+    return decideApproval(id, "Approved", remarks);
+  }
+
+  function rejectRental(id: string, reason: string): RentalTransitionResult {
+    return decideApproval(id, "Rejected", reason);
+  }
+
+  function decideApproval(id: string, decision: "Approved" | "Rejected", remarks: string): RentalTransitionResult {
+    const rental = rentalRepository.getById(id);
+    if (!rental) return { success: false, message: "Rental not found." };
+    const result = decideRentalApproval(rental, user, decision, remarks, new Date().toISOString());
+    if (!result.success) return { success: false, message: result.message };
+    rentalRepository.update(result.rental);
+    developmentApprovalEmailOutbox.setDecision(rental.id, decision, result.event.timestamp);
+    auditRental(rental, result.rental, decision === "Approved" ? "RENTAL_APPROVED" : "RENTAL_REJECTED", remarks);
+    refreshRentals();
+    return { success: true, rental: result.rental };
   }
 
   function getRental(id: string) {
@@ -516,6 +614,7 @@ export function RentalProvider({
     const line = lineId ? rentalEquipmentLineRepository.getById(lineId) : undefined;
     if (!rental || !canEditRentalCommercialTerms(rental) || line?.commercialSnapshot) return;
     rentalContractRepository.update(contract);
+    invalidateApprovedRental(rentalId, "Commercial Terms changed.");
     refreshContracts();
   }
 
@@ -543,6 +642,7 @@ export function RentalProvider({
   }
 
   function saveCommercialTermsForRentalEquipmentLine(rentalId: string, lineId: string, input: RentalCommercialTermsInput): RentalTransitionResult {
+    if (user?.role !== "Admin") return { success: false, message: "Only an Admin can edit Commercial Terms. Managers approve or reject the prepared transaction." };
     const rental = rentalRepository.getById(rentalId);
     if (!rental) return { success: false, message: "Rental not found." };
     const line = rentalEquipmentLineRepository.getById(lineId);
@@ -558,6 +658,7 @@ export function RentalProvider({
     const saved = rentalContractRepository.saveForRentalEquipmentLine(configured.contract);
     if (!saved.success) return { success: false, message: saved.issue.message };
     refreshContracts();
+    invalidateApprovedRental(rentalId, "Commercial Terms changed.");
     return { success: true, rental };
   }
 
@@ -577,6 +678,7 @@ export function RentalProvider({
     updateEquipment({ ...machine, status: "Assigned", projectId: rental.projectId ?? machine.projectId, operatorId: input.operatorId });
     refreshRentals();
     refreshRentalEquipmentLines();
+    invalidateApprovedRental(rentalId, "Rental Equipment Lines changed.");
     return { success: true };
   }
 
@@ -592,12 +694,14 @@ export function RentalProvider({
     if (contract.status === "found") rentalContractRepository.delete(contract.contract.id);
     const remaining = rentalEquipmentLineRepository.getByRentalId(rentalId);
     if (remaining.length === 1) rentalRepository.update({ ...rental, equipmentId: remaining[0].equipmentId, assignmentId: remaining[0].assignmentId, operatorId: remaining[0].operatorId, operationalMetadata: remaining[0].operationalMetadata });
+    if (remaining.length === 0) rentalRepository.update({ ...rental, equipmentId: "", assignmentId: undefined, operatorId: undefined, operationalMetadata: undefined, commercialSnapshot: undefined });
     if (machine && !blockingEquipmentIds(rentalId).has(machine.id)) {
       const assignment = line.assignmentId ? getAssignment(line.assignmentId) : undefined;
       updateEquipment(assignment?.status === "Active" ? { ...machine, status: "Assigned", projectId: assignment.projectId, operatorId: assignment.operatorId } : { ...machine, status: "Available", projectId: "", operatorId: "" });
     }
     refreshRentals();
     refreshRentalEquipmentLines();
+    invalidateApprovedRental(rentalId, "Rental Equipment Lines changed.");
     return { success: true };
   }
 
@@ -610,6 +714,9 @@ export function RentalProvider({
       deleteRental,
       returnRental,
       releaseRental,
+      submitForApproval,
+      approveRental,
+      rejectRental,
       getRental,
       contracts,
       addContract,
@@ -624,7 +731,7 @@ export function RentalProvider({
       addRentalEquipmentLine,
       removeRentalEquipmentLine,
     }),
-    [rentals, contracts, rentalEquipmentLines, rentalEquipmentLineMigrationIssues, getAssignment]
+    [rentals, contracts, rentalEquipmentLines, rentalEquipmentLineMigrationIssues, getAssignment, user]
   );
 
   return (

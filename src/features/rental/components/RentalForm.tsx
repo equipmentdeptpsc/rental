@@ -161,14 +161,6 @@ export default function RentalForm({
       [customers]
     );
 
-  const projectOptions = useMemo(
-    () => [
-      { value: "", label: "Select Project" },
-      ...getRentalProjectOptions(projects),
-    ],
-    [projects]
-  );
-
   const operatorOptions = useMemo(() => {
     const available = operators.filter((operator) => operator.status === "Active");
     const selected = initialOperatorId ? operators.find((operator) => operator.id === initialOperatorId) : undefined;
@@ -200,6 +192,14 @@ export default function RentalForm({
       assignmentIds: initialAssignmentIds,
   
     });
+
+  const projectOptions = useMemo(
+    () => [
+      { value: "", label: form.customerId ? "Select Project" : "Select Customer first" },
+      ...getRentalProjectOptions(projects, form.customerId),
+    ],
+    [projects, form.customerId]
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -276,21 +276,18 @@ export default function RentalForm({
         options={
           customerOptions
         }
-        onChange={(e) =>
-          {
+        onChange={(e) => {
             const customer = customers.find(
               (item) => item.id === e.target.value
             );
-
-            update("customerId", e.target.value);
-            update("customer", customer?.companyName ?? "");
-          }
-        }
+            setForm((previous) => ({ ...previous, customerId: e.target.value, customer: customer?.companyName ?? "", projectId: projects.some((project) => project.id === previous.projectId && project.customerId === e.target.value) ? previous.projectId : "", assignmentIds: [] }));
+          }}
       />
 
       <Select
           label="Project"
           value={form.projectId}
+          disabled={!form.customerId}
           options={projectOptions}
           onChange={(e) => update("projectId", e.target.value)}
       />
@@ -355,9 +352,9 @@ export default function RentalForm({
 
       {initialProjectWarning && <p className="text-sm text-amber-700">The assignment’s project is unavailable or inactive. Select another active project.</p>}
 
-      {projectOptions.length === 1 && (
+      {form.customerId && projectOptions.length === 1 && (
         <p className="text-sm text-slate-500">
-          No active projects are available. Create or activate a project before creating a rental.
+          This Customer has no active Projects. <a className="text-blue-600 underline" href="/projects/new">Create Project</a> before creating a Rental.
         </p>
       )}
 

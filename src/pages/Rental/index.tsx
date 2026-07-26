@@ -5,8 +5,7 @@ import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useToast } from "@/components/ui/toast/ToastContext";
-import ReleaseRentalAction from "@/features/rental/components/ReleaseRentalAction";
+import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
 import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
 import { useEffect, useState } from "react";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
@@ -17,11 +16,10 @@ import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deu
 import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
 import { buildRentalDeurComplianceReport } from "@/features/rental/deur/compliance/buildRentalDeurComplianceReport";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
+import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
 
 export default function RentalPage() {
-  const { rentals, transitionRental } = useRental();
-
-  const { showToast } = useToast();
+  const { rentals } = useRental();
 
   const { getEquipment } =
     useEquipment();
@@ -129,24 +127,6 @@ export default function RentalPage() {
                     rental.equipmentId
                   );
 
-                const returnable = rental.status === "Active";
-
-                function transition(
-                  nextStatus: "Released" | "Active"
-                ) {
-                  const result = transitionRental(
-                    rental.id,
-                    nextStatus
-                  );
-
-                  if (!result.success) {
-                    showToast(
-                      result.message ?? "Unable to update rental.",
-                      "error"
-                    );
-                  }
-                }
-
                 return (
 
                   <tr
@@ -206,31 +186,10 @@ export default function RentalPage() {
                           Open Workspace
                         </Link>
 
-                        {rental.status === "Reserved" && (
-                          <ReleaseRentalAction rentalId={rental.id} />
-                        )}
-
-                        {rental.status === "Released" && (
-                          <Button
-                            variant="secondary"
-                            onClick={() => transition("Active")}
-                          >
-                            Activate
-                          </Button>
-                        )}
-
-                        {returnable && (
-
-                          <Link
-                            to={`/rentals/return/${rental.id}`}
-                            className="font-medium text-emerald-600 hover:underline"
-                          >
-                            Return
-                          </Link>
-
-                        )}
+                        <RentalQuickActions rental={rental} />
 
                       </div>
+                      <ApprovalInvalidationNotice rental={rental} />
 
                     </td>
 

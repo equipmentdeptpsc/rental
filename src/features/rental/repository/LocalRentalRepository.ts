@@ -1,4 +1,4 @@
-import type { OperationalCodeSnapshot, RentalOperationalMetadataSnapshot, RentalRecord } from "../types";
+import { normalizeRentalBillingMethod, type OperationalCodeSnapshot, type RentalOperationalMetadataSnapshot, type RentalRecord } from "../types";
 import type { IRentalRepository } from "./IRentalRepository";
 
 import { storage } from "@/core/storage";
@@ -40,6 +40,7 @@ function normalizeRental(record: RentalRecord): RentalRecord {
   }) : undefined;
   return {
     ...clone(record), operationalMetadata: normalizeMetadata(record.operationalMetadata),
+    billingMethod: normalizeRentalBillingMethod(record.billingMethod),
     commercialSnapshot: normalizeRentalCommercialSnapshot(record.commercialSnapshot), commercialSnapshotRequired: record.commercialSnapshotRequired === true ? true : undefined,
     deurExpectationPolicy: policy.valid ? policy.value : undefined,
     deurExpectationPolicyRequired: record.deurExpectationPolicyRequired === true ? true : undefined,
@@ -79,6 +80,7 @@ export class LocalRentalRepository implements IRentalRepository {
     const existingPolicyFrozenAt = persistedPolicyFrozenAt ?? this.data[index].deurExpectationPolicyFrozenAt;
     const persistedSnapshots = normalizeRental(persisted ?? this.data[index]).deurShiftWindowSnapshots ?? this.data[index].deurShiftWindowSnapshots;
     const normalized = normalizeRental(item);
+    const existingApproval = this.data[index];
     normalized.operationalMetadata = clone(existingMetadata);
     normalized.commercialSnapshot = clone(existingCommercialSnapshot ?? normalized.commercialSnapshot);
     if (existingPolicyFrozenAt) {
@@ -86,6 +88,17 @@ export class LocalRentalRepository implements IRentalRepository {
       normalized.deurExpectationPolicyFrozenAt = existingPolicyFrozenAt;
       normalized.deurExpectationPolicyRequired = persisted?.deurExpectationPolicyRequired === true || this.data[index].deurExpectationPolicyRequired === true ? true : undefined;
       normalized.deurShiftWindowSnapshots = clone(persistedSnapshots);
+    }
+    if (["Released", "Active", "Returned", "Closed"].includes(existingApproval.status)) {
+      normalized.approvalStatus = existingApproval.approvalStatus;
+      normalized.approvalRequestedAt = existingApproval.approvalRequestedAt;
+      normalized.approvalRequestedBy = clone(existingApproval.approvalRequestedBy);
+      normalized.approvalApprovedAt = existingApproval.approvalApprovedAt;
+      normalized.approvalApprovedBy = clone(existingApproval.approvalApprovedBy);
+      normalized.approvalRejectedAt = existingApproval.approvalRejectedAt;
+      normalized.approvalRejectedBy = clone(existingApproval.approvalRejectedBy);
+      normalized.approvalDecisionRemarks = existingApproval.approvalDecisionRemarks;
+      normalized.approvalHistory = clone(existingApproval.approvalHistory);
     }
     this.data[index] = normalized;
     this.save();

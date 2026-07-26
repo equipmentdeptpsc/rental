@@ -50,7 +50,7 @@ export function EquipmentConditionProvider({
   const [records, setRecords] =
     useState<
       EquipmentConditionRecord[]
-    >([]);
+    >(() => equipmentConditionRepository.getAll());
 
   function refresh() {
     setRecords(

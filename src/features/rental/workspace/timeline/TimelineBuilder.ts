@@ -19,6 +19,9 @@ export function buildTimeline(aggregate: RentalAggregate): TimelineEvent[] {
 
   addRecordedEvent("rental-created", "Rental Created", rental.createdAt);
   addRecordedEvent("rental-reserved", "Reserved", rental.reservedAt);
+  for (const approvalEvent of rental.approvalHistory ?? []) {
+    events.push({ id: `approval-${approvalEvent.id}`, type: "rental", title: approvalEvent.action === "Submitted" ? "Sent for Approval" : approvalEvent.action, description: [approvalEvent.actor?.name, approvalEvent.remarks].filter(Boolean).join(" — ") || `${rental.customer} • ${rental.project}`, date: approvalEvent.timestamp, completed: true });
+  }
   addRecordedEvent("rental-released", "Released", rental.releasedAt);
   addRecordedEvent("rental-activated", "Activated", rental.activatedAt);
   addRecordedEvent("rental-returned", "Returned", rental.returnedAt ?? rental.actualReturn);

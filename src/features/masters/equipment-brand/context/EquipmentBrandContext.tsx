@@ -50,7 +50,7 @@ export function EquipmentBrandProvider({
   const [records, setRecords] =
     useState<
       EquipmentBrandRecord[]
-    >([]);
+    >(() => equipmentBrandRepository.getAll());
 
   function refresh() {
     setRecords(

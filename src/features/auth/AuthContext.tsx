@@ -103,3 +103,8 @@ export function useAuth() {
 
   return context;
 }
+
+/** Allows reusable Settings sections to render in isolation; the application root still supplies AuthProvider. */
+export function useOptionalAuth() {
+  return useContext(AuthContext);
+}

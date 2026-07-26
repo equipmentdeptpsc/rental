@@ -7,6 +7,14 @@ const persistence = createLegacyLocalRepositoryStorage("EquipmentLocation");
 
 export class EquipmentLocationRepository {
 
+  seedDefaults(): EquipmentLocationRecord[] {
+    const existing = this.getAll();
+    if (existing.length > 0) return existing;
+    const seeded = [{ id: "equipment-location-main-yard", location: "Main Yard", description: "Primary equipment holding yard", active: true, deleted: false }];
+    this.saveAll(seeded);
+    return seeded;
+  }
+
   getAll(): EquipmentLocationRecord[] {
 
     try {

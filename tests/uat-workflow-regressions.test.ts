@@ -25,6 +25,7 @@ const project = (status: ProjectRecord["status"] = "Active"): ProjectRecord => (
   id: "project-1",
   projectCode: "PRJ-000001",
   projectName: "UAT Project",
+  customerId: "customer-1",
   client: "",
   location: "",
   projectManager: "",
@@ -45,7 +46,7 @@ describe("UAT workflow regressions", () => {
       projectId: "project-1",
     });
     expect(getAssignmentProjectError(assignment, [project()])).toBeUndefined();
-    expect(getRentalProjectOptions([project()])).toEqual([
+    expect(getRentalProjectOptions([project()], "customer-1")).toEqual([
       { value: "project-1", label: "PRJ-000001 - UAT Project" },
     ]);
   });

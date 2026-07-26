@@ -8,6 +8,24 @@ export type RentalLifecycleStatus =
   | "Closed"
   | "Cancelled";
 
+export type RentalApprovalStatus = "NotSubmitted" | "Pending" | "Approved" | "Rejected";
+
+export interface RentalApprovalActor {
+  id: string;
+  name: string;
+  role: "Admin" | "Manager" | "Operator";
+}
+
+export interface RentalApprovalEvent {
+  id: string;
+  action: "Submitted" | "Resubmitted" | "Approved" | "Rejected" | "Invalidated";
+  timestamp: string;
+  actor?: RentalApprovalActor;
+  previousStatus: RentalApprovalStatus;
+  resultingStatus: RentalApprovalStatus;
+  remarks?: string;
+}
+
 export const rentalTypes = ["Bare Rental", "Operated Rental"] as const;
 export type RentalType = typeof rentalTypes[number];
 
@@ -20,7 +38,6 @@ export const rentalBillingMethods = [
   "Per Kilometer",
   "Per Cubic Meter",
   "One Lot",
-  "Per Lot",
 ] as const;
 export type RentalBillingMethod = typeof rentalBillingMethods[number];
 
@@ -104,6 +121,12 @@ export function isRentalBillingMethod(value: unknown): value is RentalBillingMet
   return typeof value === "string" && rentalBillingMethods.includes(value as RentalBillingMethod);
 }
 
+/** Read compatibility for the retired duplicate label; new values are always canonical. */
+export function normalizeRentalBillingMethod(value: unknown): RentalBillingMethod | undefined {
+  if (value === "Per Lot") return "One Lot";
+  return isRentalBillingMethod(value) ? value : undefined;
+}
+
 export interface RentalRecord {
   id: string;
 
@@ -160,6 +183,16 @@ export interface RentalRecord {
   returnedAt?: string;
   closedAt?: string;
   cancelledAt?: string;
+
+  approvalStatus?: RentalApprovalStatus;
+  approvalRequestedAt?: string;
+  approvalRequestedBy?: RentalApprovalActor;
+  approvalApprovedAt?: string;
+  approvalApprovedBy?: RentalApprovalActor;
+  approvalRejectedAt?: string;
+  approvalRejectedBy?: RentalApprovalActor;
+  approvalDecisionRemarks?: string;
+  approvalHistory?: RentalApprovalEvent[];
 
   remarks?: string;
 

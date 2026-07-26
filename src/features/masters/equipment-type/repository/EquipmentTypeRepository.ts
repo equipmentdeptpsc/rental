@@ -6,6 +6,14 @@ import type {
   const persistence = createLegacyLocalRepositoryStorage("EquipmentType");
   
   class EquipmentTypeRepository {
+
+    seedDefaults(): EquipmentTypeRecord[] {
+      const existing = this.getAll();
+      if (existing.length > 0) return existing;
+      const seeded = [{ id: "equipment-type-general", equipmentType: "General Equipment", description: "General-purpose rental equipment", active: true, deleted: false }];
+      this.save(seeded);
+      return seeded;
+    }
   
     getAll(): EquipmentTypeRecord[] {
   

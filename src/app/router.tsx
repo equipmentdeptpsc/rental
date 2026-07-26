@@ -27,6 +27,7 @@ import EditOperator from "@/pages/Operators/Edit";
 // Projects
 import Projects from "@/pages/Projects";
 import NewProject from "@/pages/Projects/New";
+import EditProject from "@/pages/Projects/Edit";
 
 // Assignments
 import Assignments from "@/pages/Assignments";
@@ -57,6 +58,10 @@ import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import EquipmentTrash from "@/pages/Equipment/Trash";
 import Login from "@/pages/Login";
+import DevelopmentEmailOutboxPage from "@/pages/DevelopmentEmailOutbox";
+import DevelopmentEmailPreviewPage from "@/pages/DevelopmentEmailOutbox/Preview";
+import RentalApprovalPage from "@/pages/RentalApproval";
+import CustomerDeurReviewPage from "@/pages/CustomerDeurReview";
 
 const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
 const WorkDescriptionPage = lazy(() => import("@/features/masters/work-description/pages"));
@@ -148,6 +153,10 @@ export const router = createBrowserRouter([
         path: "projects/new",
         element: <NewProject />,
       },
+      {
+        path: "projects/:id/edit",
+        element: <EditProject />,
+      },
 
       // ====================================
       // Assignments
@@ -196,6 +205,14 @@ export const router = createBrowserRouter([
         path: "rentals/return/:id",
         element: <ReturnRental />,
       },
+      {
+        path: "rental-approval/:token",
+        element: <RentalApprovalPage />,
+      },
+      {
+        path: "customer-deur-review/:deurId",
+        element: <CustomerDeurReviewPage />,
+      },
 
       // ====================================
       // Maintenance
@@ -239,6 +256,14 @@ export const router = createBrowserRouter([
       {
         path: "settings",
         element: <Settings />,
+      },
+      {
+        path: "development-email-outbox",
+        element: <DevelopmentEmailOutboxPage />,
+      },
+      {
+        path: "development-email-outbox/:id",
+        element: <DevelopmentEmailPreviewPage />,
       },
       {
         path: "settings/activity-codes",

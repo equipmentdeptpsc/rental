@@ -6,6 +6,15 @@ import type {
   const persistence = createLegacyLocalRepositoryStorage("RentalStatus");
   
   export class RentalStatusRepository {
+
+    seedDefaults(): RentalStatusRecord[] {
+      const existing = this.getAll();
+      if (existing.length > 0) return existing;
+      const statuses: RentalStatusRecord["status"][] = ["Draft", "Assigned", "Reserved", "Released", "Active", "Returned", "Closed", "Cancelled"];
+      const seeded = statuses.map((status) => ({ id: `rental-status-${status.toLowerCase()}`, status, description: `${status} rental`, active: true, deleted: false }));
+      this.saveAll(seeded);
+      return seeded;
+    }
   
     getAll(): RentalStatusRecord[] {
   

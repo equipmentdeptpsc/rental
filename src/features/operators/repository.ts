@@ -1,16 +1,11 @@
 import type { Operator } from "./types";
-import { mockOperators } from "./mockData";
 import type { CrudRepository } from "@/core/persistence";
 import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 
 const persistence = createLegacyLocalRepositoryStorage("Operator");
 
 function load(): Operator[] {
-  const data = persistence.load<Operator[]>();
-  if (data) return data;
-  persistence.save(mockOperators);
-
-  return mockOperators;
+  return persistence.load<Operator[]>() ?? [];
 }
 
 let operators = load();

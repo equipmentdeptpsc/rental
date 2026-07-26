@@ -1,4 +1,5 @@
 import { storage } from "@/core/storage";
+import { initializeRequiredMasterData } from "@/features/masters/initializeRequiredMasterData";
 
 export const BACKUP_APPLICATION_ID = "equipment-rental-system";
 export const BACKUP_SCHEMA_VERSION = 1;
@@ -19,6 +20,9 @@ export const APPLICATION_STORAGE_KEYS = [
   "equipment-rental-deur",
   "equipment-rental-billing-statements",
   "equipment-rental-billing",
+  "equipment-rental-audit-events",
+  "equipment-rental-development-approval-email-outbox",
+  "equipment-rental-manager-approver-configuration",
   "equipment-rental-contracts",
   "equipment-rental-equipment-lines",
   "equipment-daily-logs",
@@ -73,10 +77,12 @@ function readSection(key: ApplicationStorageKey): unknown | null {
 
 function validateData(data: unknown): data is BackupData {
   if (!isRecord(data)) return false;
-  return APPLICATION_STORAGE_KEYS.filter((key) => key !== "equipment-rental-deur-shift-windows" && key !== "equipment-rental-equipment-lines").every((key) =>
+  return APPLICATION_STORAGE_KEYS.filter((key) => key !== "equipment-rental-deur-shift-windows" && key !== "equipment-rental-equipment-lines" && key !== "equipment-rental-audit-events" && key !== "equipment-rental-development-approval-email-outbox" && key !== "equipment-rental-manager-approver-configuration").every((key) =>
     Object.prototype.hasOwnProperty.call(data, key) &&
     (data[key] === null || Array.isArray(data[key]))
   ) && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-deur-shift-windows") || data["equipment-rental-deur-shift-windows"] === null || Array.isArray(data["equipment-rental-deur-shift-windows"]))
+    && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-development-approval-email-outbox") || data["equipment-rental-development-approval-email-outbox"] === null || Array.isArray(data["equipment-rental-development-approval-email-outbox"]))
+    && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-manager-approver-configuration") || data["equipment-rental-manager-approver-configuration"] === null || Array.isArray(data["equipment-rental-manager-approver-configuration"]))
     && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-equipment-lines") || data["equipment-rental-equipment-lines"] === null || (isRecord(data["equipment-rental-equipment-lines"]) && data["equipment-rental-equipment-lines"].schemaVersion === 1 && Array.isArray(data["equipment-rental-equipment-lines"].records)));
 }
 
@@ -126,6 +132,9 @@ export function validateApplicationBackup(value: unknown): RestorePreview {
     ...value.data,
     "equipment-rental-deur-shift-windows": value.data["equipment-rental-deur-shift-windows"] ?? null,
     "equipment-rental-equipment-lines": value.data["equipment-rental-equipment-lines"] ?? null,
+    "equipment-rental-audit-events": value.data["equipment-rental-audit-events"] ?? null,
+    "equipment-rental-development-approval-email-outbox": value.data["equipment-rental-development-approval-email-outbox"] ?? null,
+    "equipment-rental-manager-approver-configuration": value.data["equipment-rental-manager-approver-configuration"] ?? null,
   } as BackupData;
   const recordCounts = {} as Record<ApplicationStorageKey, number>;
   for (const key of APPLICATION_STORAGE_KEYS) {
@@ -164,8 +173,11 @@ export function restoreApplicationBackup(preview: RestorePreview): void {
 }
 
 export function resetApplicationData(): void {
+  const managerApproverConfiguration = storage.get<unknown>("equipment-rental-manager-approver-configuration");
   for (const key of APPLICATION_STORAGE_KEYS) storage.remove(key);
   storage.remove(STORAGE_METADATA_KEY);
+  if (managerApproverConfiguration !== null) storage.set("equipment-rental-manager-approver-configuration", managerApproverConfiguration);
+  initializeRequiredMasterData();
 }
 
 export function resetTransactionalData(): void {
@@ -176,6 +188,7 @@ export function resetTransactionalData(): void {
     "equipment-rental-activity-codes", "equipment-rental-cost-codes",
     "equipment-rental-work-descriptions",
     "equipment-rental-deur-shift-windows",
+    "equipment-rental-manager-approver-configuration",
   ]);
   for (const key of APPLICATION_STORAGE_KEYS) {
     if (!masterKeys.has(key)) storage.remove(key);

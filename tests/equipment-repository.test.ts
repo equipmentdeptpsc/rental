@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { storage } from "@/core/storage";
-import { equipmentData } from "@/features/equipment/data/equipment.mock";
 import { LocalEquipmentRepository } from "@/features/equipment/repository/LocalEquipmentRepository";
 import type { EquipmentRecord } from "@/features/equipment/types";
 
@@ -28,12 +27,11 @@ describe("LocalEquipmentRepository", () => {
     storage.clear();
   });
 
-  it("loads the seed records when storage is empty", () => {
+  it("keeps transactional Equipment empty when storage is empty", () => {
     const repository = new LocalEquipmentRepository();
 
-    expect(repository.getAll()).toHaveLength(equipmentData.length);
-    expect(repository.getAll().map((item) => item.assetNo))
-      .toEqual(equipmentData.map((item) => item.assetNo));
+    expect(repository.getAll()).toEqual([]);
+    expect(repository.getDeleted()).toEqual([]);
   });
 
   it("persists create, update, status, project, operator, delete, restore, and permanent delete", () => {

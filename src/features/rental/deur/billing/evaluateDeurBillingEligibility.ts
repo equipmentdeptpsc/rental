@@ -190,7 +190,7 @@ export function evaluateDeurBillingEligibility({
   }
   if(deur.commercialSnapshotRequired&&!deur.commercialSnapshot)return ineligible(deur,"COMMERCIAL_SNAPSHOT_NOT_CAPTURED","Immutable commercial terms were not captured for this DEUR.");
   if(deur.commercialSnapshot){
-    const snapshotMethod=deur.commercialSnapshot.billingMethod==="Per Lot"?"One Lot":deur.commercialSnapshot.billingMethod;
+    const snapshotMethod=deur.commercialSnapshot.billingMethod;
     if(billingMethod&&snapshotMethod!==billingMethod)return ineligible(deur,"COMMERCIAL_TERMS_MISMATCH","The supplied billing method does not match the immutable commercial snapshot.");
     if(deur.billingMethodSnapshot&&snapshotMethod!==deur.billingMethodSnapshot)return ineligible(deur,"COMMERCIAL_BILLING_METHOD_MISMATCH","The DEUR billing method does not match its immutable commercial snapshot.");
     const resolved=resolveDeurEvidenceMode(snapshotMethod);

@@ -7,6 +7,14 @@ const persistence = createLegacyLocalRepositoryStorage("EquipmentOwnership");
 
 export class EquipmentOwnershipRepository {
 
+  seedDefaults(): EquipmentOwnershipRecord[] {
+    const existing = this.getAll();
+    if (existing.length > 0) return existing;
+    const seeded = [{ id: "equipment-ownership-company", ownership: "Company Owned", description: "Equipment owned by the rental company", active: true, deleted: false }];
+    this.saveAll(seeded);
+    return seeded;
+  }
+
   getAll(): EquipmentOwnershipRecord[] {
 
     try {

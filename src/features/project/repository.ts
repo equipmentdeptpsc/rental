@@ -1,4 +1,3 @@
-import { mockProjects } from "./mock";
 import type { ProjectRecord } from "./types";
 import type { CrudRepository } from "@/core/persistence";
 import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
@@ -6,11 +5,7 @@ import { createLegacyLocalRepositoryStorage } from "@/core/persistence";
 const persistence = createLegacyLocalRepositoryStorage("Project");
 
 function load(): ProjectRecord[] {
-  const data = persistence.load<ProjectRecord[]>();
-  if (data) return data;
-  persistence.save(mockProjects);
-
-  return mockProjects;
+  return persistence.load<ProjectRecord[]>() ?? [];
 }
 
 let projects = load();

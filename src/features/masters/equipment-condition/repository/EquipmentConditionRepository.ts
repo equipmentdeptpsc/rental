@@ -7,6 +7,14 @@ const persistence = createLegacyLocalRepositoryStorage("EquipmentCondition");
 
 export class EquipmentConditionRepository {
 
+  seedDefaults(): EquipmentConditionRecord[] {
+    const existing = this.getAll();
+    if (existing.length > 0) return existing;
+    const seeded = [{ id: "equipment-condition-serviceable", condition: "Serviceable", description: "Available for normal operation", active: true, deleted: false }];
+    this.saveAll(seeded);
+    return seeded;
+  }
+
   getAll(): EquipmentConditionRecord[] {
 
     try {

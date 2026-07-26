@@ -50,7 +50,7 @@ export function EquipmentCategoryProvider({
   const [records, setRecords] =
     useState<
       EquipmentCategoryRecord[]
-    >([]);
+    >(() => equipmentCategoryRepository.getAll());
 
   function refresh() {
     setRecords(

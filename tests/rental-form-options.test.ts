@@ -40,7 +40,19 @@ describe("rental form options", () => {
       project("active", "Active"),
       project("planning", "Planning"),
       project("deleted", "Active", true),
-    ])).toEqual([{ value: "active", label: "PRJ-active - Project active" }]);
+    ].map((item) => ({ ...item, customerId: "customer-a" })), "customer-a")).toEqual([{ value: "active", label: "PRJ-active - Project active" }]);
+  });
+
+  it("offers only active Projects belonging to the selected Customer and excludes legacy unassigned Projects", () => {
+    const projects = [
+      { ...project("a1", "Active"), customerId: "customer-a" },
+      { ...project("a2", "Active"), customerId: "customer-a" },
+      { ...project("b1", "Active"), customerId: "customer-b" },
+      project("legacy", "Active"),
+    ];
+    expect(getRentalProjectOptions(projects, "customer-a").map((item) => item.value)).toEqual(["a1", "a2"]);
+    expect(getRentalProjectOptions(projects, "customer-b").map((item) => item.value)).toEqual(["b1"]);
+    expect(getRentalProjectOptions(projects, "")).toEqual([]);
   });
 
   it("uses stable assignment relationships and readable equipment fallbacks", () => {

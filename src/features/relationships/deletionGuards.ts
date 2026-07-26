@@ -47,6 +47,7 @@ export function guardOperatorDeletion(id: string): DeletionGuardResult {
 }
 
 export function guardCustomerDeletion(id: string): DeletionGuardResult {
+  if (projectRepository.getAll().some(x => x.customerId === id)) return blocked("Customer", "project");
   if (rentalRepository.getAll().some(x => x.customerId === id)) return blocked("Customer", "rental");
   if (rentalContractRepository.getAll().some(x => x.customerId === id)) return blocked("Customer", "rental contract");
   return { success: true };

@@ -14,6 +14,7 @@ import { EquipmentStatusProvider } from "@/features/masters/equipment-status/con
 import { EquipmentTypeProvider } from "@/features/masters/equipment-type/context/EquipmentTypeContext";
 
 import { RentalStatusProvider } from "@/features/masters/rental-status/context/RentalStatusContext";
+import { initializeRequiredMasterData } from "@/features/masters/initializeRequiredMasterData";
 
 
 export default function MasterProviders({
@@ -21,6 +22,8 @@ export default function MasterProviders({
 }: {
   children: ReactNode;
 }) {
+  initializeRequiredMasterData();
+
   return (
     <WorkDescriptionProvider>
 

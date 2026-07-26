@@ -76,11 +76,18 @@ describe("deterministic expectation generation", () => {
 
 describe("policy-aware compliance aggregation", () => {
   it("does not let one compliant date hide another missing date and reports exact counts", () => {
-    const result = evaluateRentalDeurCompliance({ rental: rental(), deurs: [deur()], evaluationTimestamp: "2026-07-21T04:00:00.000Z" });
-    expect(result).toMatchObject({ source: "EXPLICIT_POLICY", status: "MISSING_DEUR", expectedCount: 2, compliantCount: 1, missingCount: 1, incompleteCount: 0, pendingCorrectionCount: 0 });
+    const result = evaluateRentalDeurCompliance({ rental: rental(), deurs: [deur()], evaluationTimestamp: "2026-07-22T04:00:00.000Z" });
+    expect(result).toMatchObject({ source: "EXPLICIT_POLICY", status: "MISSING_DEUR", expectedCount: 3, compliantCount: 1, missingCount: 1, incompleteCount: 0, pendingCorrectionCount: 0 });
+  });
+  it("does not mark the current local workday missing immediately after release, including near UTC midnight", () => {
+    expect(evaluateRentalDeurCompliance({ rental: rental({ status: "Released", releasedAt: "2026-07-20T23:59:00.000Z" }), deurs: [], evaluationTimestamp: "2026-07-21T00:01:00.000Z" })).toMatchObject({ status: "COMPLIANT", missingCount: 0, expectations: [{ status: "CURRENT", reason: "Reporting period is still in progress." }] });
+  });
+  it("keeps a current-period draft incomplete and marks only a prior completed workday missing", () => {
+    expect(evaluateRentalDeurCompliance({ rental: rental(), deurs: [deur({ status: "Draft" })], evaluationTimestamp: "2026-07-20T04:00:00.000Z" })).toMatchObject({ status: "DEUR_INCOMPLETE", incompleteCount: 1, missingCount: 0 });
+    expect(evaluateRentalDeurCompliance({ rental: rental(), deurs: [], evaluationTimestamp: "2026-07-21T04:00:00.000Z" })).toMatchObject({ status: "MISSING_DEUR", missingCount: 1 });
   });
   it("uses missing before incomplete and pending correction before missing", () => {
-    expect(evaluateRentalDeurCompliance({ rental: rental(), deurs: [deur({ status: "Draft" })], evaluationTimestamp: "2026-07-21T04:00:00.000Z" })).toMatchObject({ status: "MISSING_DEUR", incompleteCount: 1, missingCount: 1 });
+    expect(evaluateRentalDeurCompliance({ rental: rental(), deurs: [deur({ status: "Draft" })], evaluationTimestamp: "2026-07-22T04:00:00.000Z" })).toMatchObject({ status: "MISSING_DEUR", incompleteCount: 1, missingCount: 1 });
     const original = deur({ revision: { chainId: "deur", revisionNumber: 1, originalDeurId: "deur" } });
     const correction = deur({ id: "correction", status: "Submitted", revision: { chainId: "deur", revisionNumber: 2, originalDeurId: "deur", previousRevisionId: "deur" } });
     expect(evaluateRentalDeurCompliance({ rental: rental(), deurs: [original, correction], evaluationTimestamp: "2026-07-21T04:00:00.000Z" })).toMatchObject({ status: "PENDING_CORRECTION", pendingCorrectionCount: 1 });
@@ -89,7 +96,7 @@ describe("policy-aware compliance aggregation", () => {
     expect(evaluateRentalDeurCompliance({ rental: rental({ deurExpectationPolicy: undefined }), deurs: [], evaluationTimestamp: "2026-07-20T04:00:00.000Z" })).toMatchObject({ status: "MISSING_DEUR", issues: [{ code: "DEUR_EXPECTATION_POLICY_REQUIRED" }] });
   });
   it("builds one read-only report row per missing or incomplete expectation", () => {
-    const input = { rentals: [rental()], assignments: [], deurs: [deur({ status: "Submitted", deurNumber: "DEUR-000123" })], evaluationTimestamp: "2026-07-21T04:00:00.000Z" };
+    const input = { rentals: [rental()], assignments: [], deurs: [deur({ status: "Submitted", deurNumber: "DEUR-000123" })], evaluationTimestamp: "2026-07-22T04:00:00.000Z" };
     const before = structuredClone(input), report = buildRentalDeurComplianceReport(input);
     expect(report.rows).toHaveLength(2);
     expect(report.rows.map((row) => [row.expectation?.workDate, row.expectation?.matchingDeurNumber])).toEqual([["2026-07-20", "DEUR-000123"], ["2026-07-21", undefined]]);
@@ -106,7 +113,7 @@ describe("expectation matching", () => {
   it("reports draft/submitted as incomplete, unrelated records as missing, and billed records as compliant", () => {
     const expectations = generateRentalDeurExpectations({ rental: rental(), evaluationTimestamp: "2026-07-20T04:00:00.000Z" }).expectations;
     expect(matchDeursToExpectations({ expectations, deurs: [deur({ status: "Submitted" })] }).results[0].status).toBe("INCOMPLETE");
-    expect(matchDeursToExpectations({ expectations, deurs: [deur({ rentalId: "other" })] }).results[0].status).toBe("MISSING");
+    expect(matchDeursToExpectations({ expectations, deurs: [deur({ rentalId: "other" })] }).results[0].status).toBe("CURRENT");
     expect(matchDeursToExpectations({ expectations, deurs: [deur({ status: "Billed", billingLocked: true })] }).results[0].status).toBe("COMPLIANT");
   });
   it("uses only the effective correction and marks unresolved correction chains pending", () => {

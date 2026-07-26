@@ -216,4 +216,4 @@ export interface DeurTotals {
   breakdownMinutes: number;
 }
 
-export interface DeurReviewHistoryEntry { action: "submitted" | "acknowledged" | "rejected" | "reopened"; actorName: string; actorId?: string; timestamp: string; reason?: string; }
+export interface DeurReviewHistoryEntry { action: "submitted" | "acknowledged" | "rejected" | "reopened"; actorName: string; actorId?: string; actorEmail?: string; timestamp: string; reason?: string; }

@@ -9,6 +9,7 @@ export function getProjectCustomerOptions(customers: CustomerRecord[]) {
 }
 
 export function getProjectCustomerLabel(project: Pick<ProjectRecord, "customerId" | "client">, customers: CustomerRecord[]) {
+  if (!project.customerId) return "Customer assignment required";
   const customer = project.customerId ? customers.find((item) => item.id === project.customerId) : undefined;
   return customer ? `${customer.customerCode} — ${customer.companyName}` : project.client || "Customer unavailable";
 }

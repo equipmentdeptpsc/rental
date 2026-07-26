@@ -1,4 +1,4 @@
-export type Role = "Admin" | "Operator";
+export type Role = "Admin" | "Manager" | "Operator";
 
 export type Permission =
   | "canEdit"
@@ -14,6 +14,13 @@ export const RolePermissions: RolePermissionsMap = {
     canDelete: true,
     canChangeStatus: true,
     canRestore: true,
+  },
+
+  Manager: {
+    canEdit: false,
+    canDelete: false,
+    canChangeStatus: true,
+    canRestore: false,
   },
 
   Operator: {

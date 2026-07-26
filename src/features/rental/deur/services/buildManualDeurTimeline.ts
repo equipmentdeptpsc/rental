@@ -4,6 +4,16 @@ import { calculateDeurTotals } from "./calculateDeurTotals";
 export interface ManualDeurTimelineEntry { activityType: Exclude<DeurActivityTypeCanonical,"shift">; start: string; end: string }
 type Result = { success:true;events:CanonicalDeurEvent[];totals:DeurTotals } | { success:false;issues:string[] };
 const allowed=new Set(["operation","idle","mealBreak","breakdown"]);
+export function combineManualTimelineDateAndTimes(workDate:string,entries:ManualDeurTimelineEntry[]):ManualDeurTimelineEntry[]{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(workDate))throw new Error("A valid DEUR Work Date is required.");
+  return entries.map((entry)=>{
+    if(!/^\d{2}:\d{2}$/.test(entry.start)||!/^\d{2}:\d{2}$/.test(entry.end))throw new Error("Each Paper Timeline row requires valid Start Time and End Time.");
+    const start=new Date(`${workDate}T${entry.start}:00`);
+    const end=new Date(`${workDate}T${entry.end}:00`);
+    if(end<=start)end.setDate(end.getDate()+1);
+    return{...entry,start:start.toISOString(),end:end.toISOString()};
+  });
+}
 export function buildManualDeurTimeline({entries,shiftStart,shiftEnd}:{entries:ManualDeurTimelineEntry[];shiftStart?:string;shiftEnd?:string}):Result{
   const input=structuredClone(entries);const issues:string[]=[];
   if(!input.length)issues.push("At least one timeline entry is required.");

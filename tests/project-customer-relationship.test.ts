@@ -31,7 +31,7 @@ describe("project customer relationship", () => {
 
   it("prefers resolved customer labels while preserving legacy client compatibility", () => {
     expect(getProjectCustomerLabel(project({ customerId: "a", client: "Legacy" }), [activeA])).toBe("CUS-000002 — Customer CUS-000002");
-    expect(getProjectCustomerLabel(project({ client: "Legacy Client" }), [])).toBe("Legacy Client");
+    expect(getProjectCustomerLabel(project({ client: "Legacy Client" }), [])).toBe("Customer assignment required");
     expect(getProjectCustomerLabel(project({ customerId: "raw-id" }), [])).toBe("Customer unavailable");
   });
 

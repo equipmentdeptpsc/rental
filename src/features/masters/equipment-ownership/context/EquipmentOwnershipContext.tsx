@@ -50,7 +50,7 @@ export function EquipmentOwnershipProvider({
   const [records, setRecords] =
     useState<
       EquipmentOwnershipRecord[]
-    >([]);
+    >(() => equipmentOwnershipRepository.getAll());
 
   function refresh() {
     setRecords(

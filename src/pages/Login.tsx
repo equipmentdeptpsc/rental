@@ -10,7 +10,7 @@ export default function Login() {
 
   const [name, setName] = useState("");
   const [role, setRole] =
-    useState<"Admin" | "Operator">("Admin");
+    useState<"Admin" | "Manager" | "Operator">("Admin");
 
   function handleLogin() {
     if (!name.trim()) {
@@ -44,12 +44,13 @@ export default function Login() {
           value={role}
           onChange={(e) =>
             setRole(
-              e.target.value as "Admin" | "Operator"
+              e.target.value as "Admin" | "Manager" | "Operator"
             )
           }
           className="w-full rounded border px-3 py-2 text-sm"
         >
           <option value="Admin">Admin</option>
+          <option value="Manager">Manager</option>
           <option value="Operator">Operator</option>
         </select>
 

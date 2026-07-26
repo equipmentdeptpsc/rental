@@ -78,7 +78,7 @@ export function configureRentalCommercialTerms(input: {
     equipmentId: line.equipmentId,
     projectId: rental.projectId,
     rentalType: rental.rentalType,
-    billingMethod: commercialTerms.billingMethod === "Per Lot" ? "One Lot" : commercialTerms.billingMethod,
+    billingMethod: commercialTerms.billingMethod,
     currency: commercialTerms.currency.trim().toUpperCase(), unitRate: commercialTerms.unitRate,
     minimumBillableHours: commercialTerms.minimumBillableHours, overtimeRate: commercialTerms.overtimeRate,
     standbyRate: commercialTerms.standbyRate, mobilizationFee: commercialTerms.mobilizationFee,

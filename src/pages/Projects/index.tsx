@@ -66,6 +66,7 @@ export default function ProjectPage() {
               <th className="p-3 text-left">
                 Status
               </th>
+              <th className="p-3 text-left">Action</th>
 
             </tr>
 
@@ -99,6 +100,7 @@ export default function ProjectPage() {
                 <td className="p-3">
                   {project.status}
                 </td>
+                <td className="p-3"><Link className="text-blue-600 underline" to={`/projects/${project.id}/edit`}>Edit</Link></td>
 
               </tr>
 

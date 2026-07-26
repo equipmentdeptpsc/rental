@@ -62,7 +62,7 @@ export function EquipmentStatusProvider({
   const [records, setRecords] =
     useState<
       EquipmentStatusRecord[]
-    >([]);
+    >(() => equipmentStatusRepository.getAll());
   const [loadState,setLoadState]=useState<EquipmentStatusLoadState>("idle");
   const [error,setError]=useState<RepositoryError>();
   const requestSequence=useRef(0);
