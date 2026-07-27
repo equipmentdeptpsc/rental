@@ -24,6 +24,7 @@ export default function CloseRentalPanel() {
 
   const {
     transitionRental,
+    returnRental,
   } = useRental();
 
   const {
@@ -64,6 +65,12 @@ export default function CloseRentalPanel() {
       "Rental closed successfully.",
       "success"
     );
+  }
+  function handleReturnEquipment(){
+    if(!window.confirm(`Return ${aggregate.rentalEquipmentLines.length} Rental Equipment Line${aggregate.rentalEquipmentLines.length===1?"":"s"}, complete linked active Assignments, and mark the Rental Returned?`))return;
+    const result=returnRental(aggregate.rental.id);
+    if(!result.success){showToast(result.message??"Unable to return equipment.","error");return}
+    showToast("Equipment returned and linked Assignments completed.","success");
   }
 
   function openBillingHandoff() {
@@ -125,6 +132,7 @@ export default function CloseRentalPanel() {
       {!closed && (
 
         <div className="rounded-xl border bg-white p-6">
+          {["Released","Active"].includes(aggregate.rental.status)&&<div className="mb-4 space-y-3"><h3 className="font-semibold">Return readiness</h3>{aggregate.rentalEquipmentLines.map((line,index)=><p className="rounded border p-3 text-sm" key={line.id}>Rental Line {index+1}: Equipment not returned · Assignment {line.assignmentId?"active or pending completion":"unavailable"}</p>)}<Button onClick={handleReturnEquipment}>Return Equipment and Complete Assignments</Button></div>}
 
           {aggregate.rental.status === "Returned" && readiness.canClose ? (
             <Button

@@ -16,14 +16,16 @@ import { projectDigitalDeurRunningState } from "@/features/rental/deur/operator/
 import type { DeurOperatorAction } from "@/features/rental/deur/operator/types";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
+import { resolveAuthenticatedOperator } from "@/features/rental/deur/operator/resolveAuthenticatedOperator";
 
-const actionLabels: Record<DeurOperatorAction, string> = { START_OPERATION: "Start Operation", RESUME_OPERATION: "Resume Operation", START_IDLE: "Idle", START_MEAL_BREAK: "Meal Break", START_BREAKDOWN: "Breakdown", END_SHIFT: "End Shift" };
+const actionLabels: Record<DeurOperatorAction, string> = { START_OPERATION: "Start Operation", RESUME_OPERATION: "Resume Operation", START_IDLE: "Idle", START_MEAL_BREAK: "Meal Break", START_BREAKDOWN: "Breakdown", END_ACTIVITY:"End Activity", END_SHIFT: "End Shift" };
 const formatElapsed = (seconds: number) => [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60].map((part) => String(part).padStart(2, "0")).join(":");
+export const operatorActionSuccessMessage = (action: DeurOperatorAction) => `${actionLabels[action]} saved locally.`;
 
 export default function OperatorDeurPage() {
   const { rentalId = "" } = useParams(); const [searchParams,setSearchParams]=useSearchParams(); const { user } = useAuth(); const { rentals, rentalEquipmentLines } = useRental(); const { assignments } = useAssignment(); const { operators } = useOperator(); const { equipment } = useEquipment(); const { projects } = useProject(); const { records: workDescriptions } = useWorkDescriptions();
   const rental = rentals.find((item) => item.id === rentalId); const operatorLines = rentalEquipmentLines.filter((line) => line.rentalId === rentalId && ["Released", "Active"].includes(line.status));
-  const requestedLineId=searchParams.get("lineId")??""; const [selectedLineId, setSelectedLineId] = useState(() => operatorLines.some(line=>line.id===requestedLineId)?requestedLineId:operatorLines.length === 1 ? operatorLines[0].id : ""); const selectedLine = operatorLines.find((line) => line.id === selectedLineId); const assignment = assignments.find((item) => item.id === selectedLine?.assignmentId), operator = operators.find((item) => item.id === assignment?.operatorId), machine = equipment.find((item) => item.id === selectedLine?.equipmentId), project = projects.find((item) => item.id === rental?.projectId);
+  const requestedLineId=searchParams.get("lineId")??""; const [selectedLineId, setSelectedLineId] = useState(() => operatorLines.some(line=>line.id===requestedLineId)?requestedLineId:operatorLines.length === 1 ? operatorLines[0].id : ""); const selectedLine = operatorLines.find((line) => line.id === selectedLineId); const assignment = assignments.find((item) => item.id === selectedLine?.assignmentId), linkedIdentity=resolveAuthenticatedOperator(user??undefined,operators), operator = operators.find(item=>item.id===assignment?.operatorId), machine = equipment.find((item) => item.id === selectedLine?.equipmentId), project = projects.find((item) => item.id === rental?.projectId);
   const [version, setVersion] = useState(0), [clock, setClock] = useState(() => new Date().toISOString()), [message, setMessage] = useState(""), [remarks, setRemarks] = useState("");
   const [shift, setShift] = useState<DeurRecord["shift"]>(() => rental?.deurExpectationPolicy?.expectedShiftCodes?.[0] === "NIGHT" ? "Night" : "Day");
   const selectable = workDescriptions.filter((item) => item.active && !item.deleted), [workDescriptionId, setWorkDescriptionId] = useState(() => selectable[0]?.id ?? "");
@@ -32,7 +34,9 @@ export default function OperatorDeurPage() {
   const resolved = resolveActiveOperatorDeur({ rentalId, rentalEquipmentLineId: selectedLine?.id, equipmentId: selectedLine?.equipmentId, operatorId: operator?.id ?? "", deurs }); const active = resolved.status === "RESOLVED" ? resolved.record : undefined;
   const projection = active ? projectDigitalDeurRunningState({ deur: active, evaluationTimestamp: clock }) : undefined;
   useEffect(() => { if (!projection?.valid || !projection.value.isRunning) return; const timer = window.setInterval(() => setClock(new Date().toISOString()), 1_000); return () => window.clearInterval(timer); }, [active?.id, active?.updatedAt, projection?.valid && projection.value.isRunning]);
-  const access = evaluateOperatorDigitalDeurAccess({ actor: user ?? undefined, operator, assignment, rental, rentalEquipmentLine: selectedLine, deurs, evaluationTimestamp: clock, shift });
+  const access = linkedIdentity.status === "RESOLVED"
+    ? evaluateOperatorDigitalDeurAccess({ actor: user ?? undefined, authenticatedOperatorId: linkedIdentity.operator.id, operator: linkedIdentity.operator, assignment, rental, rentalEquipmentLine: selectedLine, deurs, evaluationTimestamp: clock, shift })
+    : { allowed: false as const, allowedActions: [] as DeurOperatorAction[], issues: [{ code: linkedIdentity.status, message: "message" in linkedIdentity ? linkedIdentity.message : "Operator access requires an Operator login." }] };
   const policyCodes=rental?.deurExpectationPolicy?.expectedShiftCodes??[]; const configuredWindows=(rental?.deurShiftWindowSnapshots?.length?rental.deurShiftWindowSnapshots:deurShiftWindowRepository.getAll()).filter(item=>!policyCodes.length||policyCodes.includes(item.code)); const windowSnapshot = configuredWindows.find((item) => item.code === (shift === "Night" ? "NIGHT" : "DAY"));
   function startDigitalDeur() {
     if (!access.allowed || !rental || !selectedLine || !assignment || !operator) return setMessage(access.issues[0]?.message ?? "Select an eligible equipment line.");
@@ -42,11 +46,15 @@ export default function OperatorDeurPage() {
   }
   function applyAction(action: DeurOperatorAction) {
     if (!active || !user) return; if (action === "END_SHIFT" && !window.confirm("End the current shift and close its active activity?")) return;
-    const result = deurRepository.applyOperatorAction({ deurId: active.id, expectedUpdatedAt: active.updatedAt, action, actionTimestamp: new Date().toISOString(), actor: user });
-    setMessage(result.success ? `${actionLabels[action]} saved locally.` : result.message); setVersion((value) => value + 1);
+    const actionTimestamp = new Date().toISOString();
+    const result = deurRepository.applyOperatorAction({ deurId: active.id, expectedUpdatedAt: active.updatedAt, action, actionTimestamp, actor: user });
+    setMessage(result.success ? operatorActionSuccessMessage(action) : result.message);
+    if (result.success) setClock(actionTimestamp);
+    setVersion((value) => value + 1);
   }
   function submit() { if (!active || !user || !window.confirm("Submit this DEUR for acknowledgement? It will no longer be editable.")) return; const result = deurRepository.submit(active.id, user); setMessage(result.success ? "DEUR submitted for acknowledgement." : result.message); setVersion((value) => value + 1); }
   if (!rental) return <main className="p-6">Rental not found.</main>;
+  if (rental.status === "Closed") return <main className="p-6"><Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link><p className="mt-4 rounded bg-slate-100 p-4">This Rental has been closed. Historical records are read-only.</p></main>;
   return <main className="mx-auto max-w-xl space-y-4 p-4 sm:p-6">
     <header><Link className="text-sm text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link><h1 className="mt-2 text-2xl font-bold">Operator Digital DEUR</h1><p className="text-sm text-slate-600">Local real-time sync active</p><p className="text-xs text-slate-500">Changes update across open tabs and windows in this browser. Remote physical-device synchronization requires a future server-connected deployment.</p></header>
     {operatorLines.length > 1 && <label className="block rounded-xl border bg-white p-4 text-sm">Equipment Line<select className="mt-2 w-full rounded border p-3" value={selectedLineId} onChange={(event) => {const value=event.target.value;setSelectedLineId(value);setSearchParams(value?{lineId:value}:{},{replace:true});}}><option value="">Select equipment</option>{operatorLines.map((line,index) => { const item = equipment.find((machine) => machine.id === line.equipmentId); return <option key={line.id} value={line.id}>{item ? `${item.equipmentName} (${item.assetNo}) / Rental Line ${index+1}` : `Rental Line ${index+1}`}</option>; })}</select></label>}

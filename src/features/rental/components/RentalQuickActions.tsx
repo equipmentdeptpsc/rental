@@ -4,10 +4,10 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useRental } from "../context/RentalContext";
 import type { RentalRecord } from "../types";
-import { deriveRentalQuickActions, type RentalQuickActionId } from "../quick-actions/rentalQuickActions";
+import { deriveRentalQuickActions, visibleRentalQuickActions, type RentalQuickActionId } from "../quick-actions/rentalQuickActions";
 import { Link } from "react-router-dom";
 
-export default function RentalQuickActions({ rental }: { rental: RentalRecord }) {
+export default function RentalQuickActions({ rental, hideClose = false }: { rental: RentalRecord; hideClose?: boolean }) {
   const { user } = useAuth();
   const { transitionRental, returnRental, releaseRental, submitForApproval, approveRental, rejectRental } = useRental();
   const { showToast } = useToast();
@@ -29,5 +29,6 @@ export default function RentalQuickActions({ rental }: { rental: RentalRecord })
     setPending(undefined);
   }
   const canEditTerms=user?.role==="Admin"&&["Draft","Reserved"].includes(rental.status);
-  return <div className="flex flex-wrap items-center gap-2">{model.message && <span className="text-sm text-slate-600">{model.message}</span>}{canEditTerms&&<Link className="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700" to={`/rentals/${rental.id}/commercial-terms`}>Edit Commercial Terms</Link>}{model.actions.map((action) => <Button key={action.id} variant="secondary" disabled={Boolean(pending)} onClick={() => run(action.id)}>{pending === action.id ? "Working…" : action.label}</Button>)}</div>;
+  const actions = visibleRentalQuickActions(model, hideClose);
+  return <div className="flex flex-wrap items-center gap-2">{model.message && <span className="text-sm text-slate-600">{model.message}</span>}{canEditTerms&&<Link className="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700" to={`/rentals/${rental.id}/commercial-terms`}>Edit Commercial Terms</Link>}{actions.map((action) => <Button key={action.id} variant="secondary" disabled={Boolean(pending)} onClick={() => run(action.id)}>{pending === action.id ? "Working…" : action.label}</Button>)}</div>;
 }

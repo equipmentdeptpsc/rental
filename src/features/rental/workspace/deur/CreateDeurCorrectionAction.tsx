@@ -21,7 +21,7 @@ export default function CreateDeurCorrectionAction({ deur }: { deur: DeurRecord 
   const [open, setOpen] = useState(false);
   const [reasonCode, setReasonCode] = useState<DeurCorrectionReasonCode>("INCORRECT_TIME_ENTRY");
   const [reasonDetails, setReasonDetails] = useState("");
-  if (user?.role !== "Admin" || deur.status !== "Acknowledged" || deur.billingLocked || deur.revision?.supersededByRevisionId) return null;
+  if (user?.role !== "Admin" || !["Acknowledged","Rejected"].includes(deur.status) || deur.billingLocked || deur.revision?.supersededByRevisionId) return null;
   if (!open) return <Button type="button" onClick={() => setOpen(true)}>CREATE CORRECTION</Button>;
   const save = () => {
     const result = deurRepository.createCorrection({ sourceId: deur.id, reasonCode, reasonDetails, actor: user });
@@ -31,7 +31,7 @@ export default function CreateDeurCorrectionAction({ deur }: { deur: DeurRecord 
   };
   return <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
     <h3 className="font-semibold">Create controlled correction</h3>
-    <p className="mt-1 text-xs text-slate-600">The acknowledged DEUR remains unchanged until this replacement is acknowledged.</p>
+    <p className="mt-1 text-xs text-slate-600">The prior DEUR and Customer decision remain unchanged while this replacement is reviewed.</p>
     <div className="mt-3 grid gap-3">
       <select value={reasonCode} onChange={(event) => setReasonCode(event.target.value as DeurCorrectionReasonCode)}>
         {reasons.map(([value, label]) => <option key={value} value={value}>{label}</option>)}

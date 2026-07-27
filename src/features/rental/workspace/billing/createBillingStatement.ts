@@ -56,6 +56,9 @@ export function createBillingStatement(
 
     rentalId:
       aggregate.rental.id,
+    rentalNumber: aggregate.rental.rentalNumber,
+    customerRepresentativeName: aggregate.rental.customerContactSnapshot?.representativeName,
+    customerRepresentativeEmail: aggregate.rental.customerContactSnapshot?.representativeEmail,
 
     customer:
       aggregate.rental.customer,
@@ -77,8 +80,10 @@ export function createBillingStatement(
     billingTo: to,
 
     subtotal,
-    vat: financials?.vat ?? aggregatedVat,
-    withholdingTax: financials?.withholdingTax ?? aggregatedWithholding,
+    vatApplicable: lines.some(line=>line.vat!==undefined),
+    withholdingTaxApplicable: lines.some(line=>line.withholdingTax!==undefined),
+    ...(lines.some(line=>line.vat!==undefined)?{vat:financials?.vat??aggregatedVat}:{}),
+    ...(lines.some(line=>line.withholdingTax!==undefined)?{withholdingTax:financials?.withholdingTax??aggregatedWithholding}:{}),
     grandTotal: financials?.grandTotal ?? aggregatedGrandTotal,
 
     approvalStatus:
@@ -123,6 +128,9 @@ export function createBillingStatement(
         effectiveDeurId: line.effectiveDeurId,
 
         correctedFromDeurId: line.correctedFromDeurId,
+        deurReference: line.deurReference,
+        equipmentLabel: line.equipmentLabel,
+        operatorLabel: line.operatorLabel,
 
         workDate:
           line.workDate,

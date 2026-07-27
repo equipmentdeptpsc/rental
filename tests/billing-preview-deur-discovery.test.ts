@@ -71,7 +71,7 @@ describe("completed DEUR billing preview discovery", () => {
 
     expect(discovered).toHaveLength(2);
     expect(discovered.map(getDeurPreviewReference)).toEqual(["DEUR-000001", "DEUR-000002"]);
-    expect(getDeurPreviewReference({ ...record(), id: "canonical-id", deurNumber: "   " })).toBe("canonical-id");
+    expect(getDeurPreviewReference({ ...record(), id: "canonical-id", deurNumber: "   " })).toBe("DEUR number unavailable");
   });
 
   it("includes and excludes completed DEURs strictly by persisted workDate", () => {

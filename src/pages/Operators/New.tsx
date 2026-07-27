@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import OperatorForm from "@/features/operators/components/OperatorForm";
 import { useOperator } from "@/features/operators/context/OperatorContext";
+import { operatorUserLinkRepository } from "@/features/operators/operatorUserLink";
 
 export default function NewOperator() {
   const navigate = useNavigate();
@@ -17,13 +18,16 @@ export default function NewOperator() {
 
       <OperatorForm
         onSubmit={(data) => {
+          const { linkedLoginName, ...operatorData } = data;
+          const id = crypto.randomUUID();
           addOperator({
-            id: crypto.randomUUID(),
+            id,
             joinedDate: new Date()
               .toISOString()
               .split("T")[0],
-            ...data,
+            ...operatorData,
           });
+          if (linkedLoginName.trim()) operatorUserLinkRepository.link(linkedLoginName, id);
 
           navigate("/operators");
         }}

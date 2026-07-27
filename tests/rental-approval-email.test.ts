@@ -46,10 +46,23 @@ describe("Manager Rental Approval Email Snapshot", () => {
     expect(email.status).toBe("Pending");
     expect(email).toMatchObject({ recipientName: "UAT Manager", recipient: "uat.manager@example.test" });
     expect(new Date(email.expiresAt).getTime() - new Date(requestedAt).getTime()).toBe(APPROVAL_EMAIL_EXPIRY_HOURS * 60 * 60 * 1000);
-    expect(developmentApprovalEmailOutbox.getByToken(email.approvalToken)?.snapshot.rentalNumber).toBe("RENT-00001");
+    expect(developmentApprovalEmailOutbox.getByToken(email.approvalToken,requestedAt)?.snapshot.rentalNumber).toBe("RENT-00001");
     developmentApprovalEmailOutbox.setDecision(rental.id, "Approved", "2026-07-22T02:00:00.000Z");
-    expect(developmentApprovalEmailOutbox.getById(email.id)?.status).toBe("Approved");
+    expect(developmentApprovalEmailOutbox.getById(email.id,"2026-07-22T02:00:00.000Z")?.status).toBe("Approved");
     expect(JSON.parse(localStorage.getItem(DEVELOPMENT_APPROVAL_EMAIL_OUTBOX_KEY) ?? "[]")).toHaveLength(1);
+  });
+  it("uses deterministic expiry boundaries and preserves terminal decisions",()=>{
+    const email=developmentApprovalEmailOutbox.create({rentalId:rental.id,recipientName:"Manager",recipient:"m@test.dev",generatedAt:requestedAt,snapshot:createSnapshot()});
+    expect(developmentApprovalEmailOutbox.getByToken(email.approvalToken,new Date(Date.parse(email.expiresAt)-1).toISOString())?.status).toBe("Pending");
+    expect(developmentApprovalEmailOutbox.getByToken(email.approvalToken,email.expiresAt)?.status).toBe("Expired");
+    localStorage.clear();
+    const approved=developmentApprovalEmailOutbox.create({rentalId:rental.id,recipientName:"Manager",recipient:"m@test.dev",generatedAt:requestedAt,snapshot:createSnapshot()});
+    developmentApprovalEmailOutbox.setDecision(rental.id,"Approved","2026-07-22T02:00:00Z");
+    expect(developmentApprovalEmailOutbox.getById(approved.id,"2030-01-01T00:00:00Z")?.status).toBe("Approved");
+    localStorage.clear();
+    const rejected=developmentApprovalEmailOutbox.create({rentalId:rental.id,recipientName:"Manager",recipient:"m@test.dev",generatedAt:requestedAt,snapshot:createSnapshot()});
+    developmentApprovalEmailOutbox.setDecision(rental.id,"Rejected","2026-07-22T02:00:00Z");
+    expect(developmentApprovalEmailOutbox.getById(rejected.id,"2030-01-01T00:00:00Z")?.status).toBe("Rejected");
   });
 
   it("expires an unused token and surfaces readiness warnings without weakening submission rules", () => {

@@ -1,8 +1,9 @@
 import type { DeurRecord } from "../types";
 import { applyDeurAction } from "../services/deurEventStateMachine";
 import type { DeurOperatorAction } from "./types";
+import { deriveDeurEventState } from "../services/deriveDeurEventState";
 
-const mapping: Record<Exclude<DeurOperatorAction, "END_SHIFT">, "operation" | "idle" | "mealBreak" | "breakdown"> = { START_OPERATION: "operation", RESUME_OPERATION: "operation", START_IDLE: "idle", START_MEAL_BREAK: "mealBreak", START_BREAKDOWN: "breakdown" };
+const mapping: Record<Exclude<DeurOperatorAction, "END_SHIFT"|"END_ACTIVITY">, "operation" | "idle" | "mealBreak" | "breakdown"> = { START_OPERATION: "operation", RESUME_OPERATION: "operation", START_IDLE: "idle", START_MEAL_BREAK: "mealBreak", START_BREAKDOWN: "breakdown" };
 export function applyDigitalDeurOperatorAction({ deur, action, actionTimestamp, actor, idFactory }: { deur: DeurRecord; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string }; idFactory?: () => string }) {
   const input = structuredClone(deur), timestamp = Date.parse(actionTimestamp);
   if (!Number.isFinite(timestamp)) return { success: false as const, code: "DEUR_ACTION_TIMESTAMP_INVALID", message: "Action timestamp is invalid." };
@@ -12,10 +13,12 @@ export function applyDigitalDeurOperatorAction({ deur, action, actionTimestamp, 
   const latestTimestamp = Math.max(...(input.events ?? []).map((event) => Date.parse(event.timestamp)).filter(Number.isFinite), -Infinity);
   if (timestamp < latestTimestamp) return { success: false as const, code: "DEUR_ACTION_TIMESTAMP_OUT_OF_ORDER", message: "Action timestamp cannot precede existing evidence." };
   let current = input; const createdStart = current.events?.length ?? 0;
-  if (action !== "END_SHIFT" && !(current.events ?? []).some((event) => event.activityType === "shift" && event.action === "start")) {
+  if (action !== "END_SHIFT" && action !== "END_ACTIVITY" && !(current.events ?? []).some((event) => event.activityType === "shift" && event.action === "start")) {
     const started = applyDeurAction(current, { activityType: "shift", action: "start", timestamp: actionTimestamp, idFactory }); if (!started.success) return { ...started, code: "DEUR_ACTION_INVALID" }; current = started.record;
   }
-  const applied = applyDeurAction(current, { activityType: action === "END_SHIFT" ? "shift" : mapping[action], action: action === "END_SHIFT" ? "end" : "start", timestamp: actionTimestamp, idFactory });
+  const state=deriveDeurEventState(current);
+  if(action==="END_ACTIVITY"&&!state.openPrimaryActivity)return{success:false as const,code:"DEUR_NO_ACTIVITY",message:"No activity in progress."};
+  const applied = applyDeurAction(current, { activityType: action === "END_SHIFT" ? "shift" : action==="END_ACTIVITY"?state.openPrimaryActivity!:mapping[action], action: action === "END_SHIFT"||action==="END_ACTIVITY" ? "end" : "start", timestamp: actionTimestamp, idFactory });
   if (!applied.success) return { ...applied, code: "DEUR_ACTION_INVALID" };
   const record = structuredClone(applied.record), totals = record.totals;
   record.events = record.events?.map((event, index) => index >= createdStart ? { ...event, actorId: actor.id, actorName: actor.name } : event);

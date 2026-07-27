@@ -20,8 +20,8 @@ export const developmentApprovalEmailOutbox = {
     if (changed) storage.set(DEVELOPMENT_APPROVAL_EMAIL_OUTBOX_KEY, normalized);
     return normalized;
   },
-  getById(id: string) { return this.getAll().find((record) => record.id === id); },
-  getByToken(token: string) { return this.getAll().find((record) => record.approvalToken === token); },
+  getById(id: string, now?:string) { return this.getAll(now).find((record) => record.id === id); },
+  getByToken(token: string, now?:string) { return this.getAll(now).find((record) => record.approvalToken === token); },
   create(input: { rentalId: string; recipientName: string; recipient: string; generatedAt: string; snapshot: ManagerApprovalEmailSnapshot }): DevelopmentApprovalEmail {
     const approvalToken = crypto.randomUUID();
     const id = crypto.randomUUID();

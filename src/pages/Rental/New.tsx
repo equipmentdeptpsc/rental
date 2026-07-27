@@ -13,6 +13,7 @@ import { useRental } from "@/features/rental/context/RentalContext";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { useProject } from "@/features/project/context/ProjectContext";
+import { useCustomer } from "@/features/customer/context/CustomerContext";
 
 import { generateRentalNumber } from "@/features/rental/utils/generateRentalNumber";
 import {
@@ -55,6 +56,7 @@ export default function NewRental() {
   } = useRental();
 
   const { projects } = useProject();
+  const {customers}=useCustomer();
   const assignmentProjectError = getAssignmentProjectError(assignment, projects);
 
     const {
@@ -65,6 +67,8 @@ export default function NewRental() {
     data: RentalFormData
   ) {
     const selectedProject = projects.find((project) => project.id === data.projectId);
+    const selectedCustomer=customers.find(customer=>customer.id===data.customerId);
+    if(!selectedCustomer||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(selectedCustomer.email)){showToast("A valid Customer representative email is required.","error");return}
     if (!selectedProject || selectedProject.customerId !== data.customerId) {
       showToast("The selected Project must belong to the selected Customer.", "error");
       return;
@@ -88,6 +92,7 @@ export default function NewRental() {
           soleLine?.equipmentId ?? "",
 
         customerId: data.customerId,
+        customerContactSnapshot:{representativeName:selectedCustomer.contactPerson,representativeEmail:selectedCustomer.email,contactNumber:selectedCustomer.contactNumber,capturedAt:new Date().toISOString()},
 
         projectId: data.projectId,
 

@@ -17,7 +17,7 @@ describe("multi-equipment invoice document", () => {
     const source = statement([line("1", "equipment-1", 200, 100), line("2", "equipment-2", 750, 250, "Per Day", { hours: 3, mobilizationCharge: 50 })]);
     const document = buildInvoiceDocument(source, [{ id: "equipment-1", prefixId: "", assetNo: "EX-01", equipmentName: "Excavator", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "", operatorId: "", status: "Rented" }, { id: "equipment-2", prefixId: "", assetNo: "CR-02", equipmentName: "Crane", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "", operatorId: "", status: "Rented" }]);
     expect(document.lines).toHaveLength(2);
-    expect(document.lines[1]).toMatchObject({ rentalEquipmentLineId: "line-2", equipmentId: "equipment-2", deurId: "deur-2", billingMethod: "Per Day", hourlyRate: 250, amount: 750, equipmentLabel: "CR-02" });
+    expect(document.lines[1]).toMatchObject({ rentalEquipmentLineId: "line-2", equipmentId: "equipment-2", deurId: "deur-2", billingMethod: "Per Day", hourlyRate: 250, amount: 750, equipmentLabel: "Crane (CR-02)" });
     expect(document.lines[0].optionalCharges).toEqual([]);
     expect(document.lines[1].optionalCharges).toEqual([{ label: "Mobilization", amount: 50 }]);
     expect(document).toMatchObject({ subtotal: source.subtotal, vat: source.vat, withholdingTax: source.withholdingTax, grandTotal: source.grandTotal, warnings: [] });
@@ -26,7 +26,7 @@ describe("multi-equipment invoice document", () => {
   it("renders every equipment row, mixed methods, non-zero charges, and print control", () => {
     const document = buildInvoiceDocument(statement([line("1", "equipment-1", 200, 100), line("2", "equipment-2", 300, 300, "One Lot", { fuelCharge: 25 })]));
     const html = renderToStaticMarkup(createElement(InvoiceDocumentView, { document }));
-    expect(html).toContain("equipment-1"); expect(html).toContain("equipment-2"); expect(html).toContain("Per Hour"); expect(html).toContain("One Lot"); expect(html).toContain("Fuel:"); expect(html).not.toContain("Mobilization:"); expect(html).toContain("Print");
+    expect(html).toContain("Equipment record unavailable"); expect(html).not.toContain("equipment-1"); expect(html).not.toContain("equipment-2"); expect(html).toContain("Per Hour"); expect(html).toContain("One Lot"); expect(html).toContain("Fuel:"); expect(html).not.toContain("Mobilization:"); expect(html).toContain("Print");
   });
 
   it("keeps a legacy header-only document readable without fabricating detail", () => {

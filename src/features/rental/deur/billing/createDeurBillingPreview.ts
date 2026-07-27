@@ -89,7 +89,8 @@ export function createDeurBillingPreview({ deur, terms, evaluatedAt = new Date()
     issues: [...issues, ...eligibility.validationIssues.map((message) => ({ code: "INVALID_EVENT_HISTORY", message }))],
   };
   if (issues.length > 0) return { ...base, status: "not-calculable" };
-  const provisional = !eligibility.eligible && hasRunningActivity && provisionalCodes.has(eligibility.reasonCode) && eventState.structuralIssues.length === 0;
+  const provisional = !eligibility.eligible && provisionalCodes.has(eligibility.reasonCode) && eventState.structuralIssues.length === 0
+    && (eligibility.reasonCode === "NOT_ACKNOWLEDGED" || hasRunningActivity);
   if (!eligibility.eligible && !provisional) return base;
   const calculated = calculateDeurBillingStatementLine({ ...structuredClone(deur), events: evidenceEvents }, structuredClone(terms));
   if (!calculated.success) return { ...base, status: "not-calculable", issues: [...base.issues, { code: calculated.code, message: calculated.message }] };

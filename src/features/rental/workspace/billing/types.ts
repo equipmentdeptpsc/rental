@@ -30,6 +30,8 @@ export interface BillingPreviewLine {
   correctedFromDeurId?: string;
 
   deurReference?: string;
+  equipmentLabel?: string;
+  operatorLabel?: string;
 
   workDate: string;
 

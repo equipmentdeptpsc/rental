@@ -12,6 +12,7 @@ import {
 
 import { NavLink } from "react-router-dom";
 import { Building2 } from "lucide-react";
+import OrganizationBrand from "@/shared/branding/OrganizationBrand";
 
 const menuGroups = [
   {
@@ -117,13 +118,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }:
     <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-slate-900 text-white transition-transform md:static md:translate-x-0 ${collapsed ? "md:w-16" : "md:w-64"}`}>
       <div className="border-b border-slate-700 p-4">
         <button aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} aria-expanded={!collapsed} onClick={onToggle} className="hidden rounded p-2 hover:bg-slate-800 md:block">☰</button>
-        {!collapsed && <><h2 className="text-lg font-bold">
-          Legacy ERP
-        </h2>
-
-        <p className="text-xs text-slate-400">
-          Equipment Rental Platform
-        </p></>}
+        {!collapsed && <div className="mt-3"><OrganizationBrand compact inverse /></div>}
       </div>
 
       <nav className="flex-1 overflow-y-auto p-4">

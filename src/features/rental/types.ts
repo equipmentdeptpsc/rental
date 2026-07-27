@@ -136,6 +136,7 @@ export interface RentalRecord {
   equipmentId: string;
 
   customerId?: string;
+  customerContactSnapshot?:{representativeName:string;representativeEmail:string;designation?:string;contactNumber?:string;capturedAt:string;updatedAt?:string;updatedBy?:string};
 
   projectId?: string;
 

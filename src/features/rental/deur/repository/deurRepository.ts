@@ -10,6 +10,7 @@ import { applyDigitalDeurOperatorAction } from "../operator/applyDigitalDeurOper
 import type { DeurOperatorAction } from "../operator/types";
 import type { RentalRecord } from "../../types";
 import { resolveLegacyDeurRentalEquipmentLine } from "../services/resolveDeurRentalEquipmentLine";
+import { createCustomerReviewRequestForSubmittedDeur } from "../../customer-review/createCustomerReviewRequestForSubmittedDeur";
 
 const STORAGE_KEY = DEUR_STORAGE_KEY;
 
@@ -178,7 +179,12 @@ class DeurRepository {
     return true;
   }
 
-  submit(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => submitDeur(record, actor), "submit"); }
+  submit(id: string, actor: { name: string; id?: string }) {
+    const result = this.review(id, (record) => submitDeur(record, actor), "submit");
+    if (!result.success) return result;
+    const request = createCustomerReviewRequestForSubmittedDeur(result.record);
+    return { ...result, customerReviewRequest: request.success ? request.entry : undefined, customerReviewWarning: request.success ? undefined : request.message };
+  }
   acknowledge(id: string, actor: { name: string; id?: string; email?:string }, remarks="") {
     const record = this.getById(id);
     if (record?.revision?.previousRevisionId) return this.acknowledgeCorrection(id, actor);

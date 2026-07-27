@@ -15,13 +15,16 @@ export const APPLICATION_STORAGE_KEYS = [
   "equipment-rental-records",
   "projects",
   "operators",
+  "equipment-rental-operator-user-links",
   "customer_records",
   "maintenance_records",
   "equipment-rental-deur",
   "equipment-rental-billing-statements",
+  "equipment-rental-collections",
   "equipment-rental-billing",
   "equipment-rental-audit-events",
   "equipment-rental-development-approval-email-outbox",
+  "equipment-rental-development-customer-review-outbox",
   "equipment-rental-manager-approver-configuration",
   "equipment-rental-contracts",
   "equipment-rental-equipment-lines",
@@ -77,11 +80,14 @@ function readSection(key: ApplicationStorageKey): unknown | null {
 
 function validateData(data: unknown): data is BackupData {
   if (!isRecord(data)) return false;
-  return APPLICATION_STORAGE_KEYS.filter((key) => key !== "equipment-rental-deur-shift-windows" && key !== "equipment-rental-equipment-lines" && key !== "equipment-rental-audit-events" && key !== "equipment-rental-development-approval-email-outbox" && key !== "equipment-rental-manager-approver-configuration").every((key) =>
+  return APPLICATION_STORAGE_KEYS.filter((key) => key !== "equipment-rental-collections" && key !== "equipment-rental-operator-user-links" && key !== "equipment-rental-development-customer-review-outbox" && key !== "equipment-rental-deur-shift-windows" && key !== "equipment-rental-equipment-lines" && key !== "equipment-rental-audit-events" && key !== "equipment-rental-development-approval-email-outbox" && key !== "equipment-rental-manager-approver-configuration").every((key) =>
     Object.prototype.hasOwnProperty.call(data, key) &&
     (data[key] === null || Array.isArray(data[key]))
-  ) && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-deur-shift-windows") || data["equipment-rental-deur-shift-windows"] === null || Array.isArray(data["equipment-rental-deur-shift-windows"]))
+  ) && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-collections") || data["equipment-rental-collections"] === null || Array.isArray(data["equipment-rental-collections"]))
+    && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-operator-user-links") || data["equipment-rental-operator-user-links"] === null || Array.isArray(data["equipment-rental-operator-user-links"]))
+    && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-deur-shift-windows") || data["equipment-rental-deur-shift-windows"] === null || Array.isArray(data["equipment-rental-deur-shift-windows"]))
     && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-development-approval-email-outbox") || data["equipment-rental-development-approval-email-outbox"] === null || Array.isArray(data["equipment-rental-development-approval-email-outbox"]))
+    && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-development-customer-review-outbox") || data["equipment-rental-development-customer-review-outbox"] === null || Array.isArray(data["equipment-rental-development-customer-review-outbox"]))
     && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-manager-approver-configuration") || data["equipment-rental-manager-approver-configuration"] === null || Array.isArray(data["equipment-rental-manager-approver-configuration"]))
     && (!Object.prototype.hasOwnProperty.call(data, "equipment-rental-equipment-lines") || data["equipment-rental-equipment-lines"] === null || (isRecord(data["equipment-rental-equipment-lines"]) && data["equipment-rental-equipment-lines"].schemaVersion === 1 && Array.isArray(data["equipment-rental-equipment-lines"].records)));
 }
@@ -130,10 +136,13 @@ export function validateApplicationBackup(value: unknown): RestorePreview {
 
   const normalizedData = {
     ...value.data,
+    "equipment-rental-collections": value.data["equipment-rental-collections"] ?? null,
+    "equipment-rental-operator-user-links": value.data["equipment-rental-operator-user-links"] ?? null,
     "equipment-rental-deur-shift-windows": value.data["equipment-rental-deur-shift-windows"] ?? null,
     "equipment-rental-equipment-lines": value.data["equipment-rental-equipment-lines"] ?? null,
     "equipment-rental-audit-events": value.data["equipment-rental-audit-events"] ?? null,
     "equipment-rental-development-approval-email-outbox": value.data["equipment-rental-development-approval-email-outbox"] ?? null,
+    "equipment-rental-development-customer-review-outbox": value.data["equipment-rental-development-customer-review-outbox"] ?? null,
     "equipment-rental-manager-approver-configuration": value.data["equipment-rental-manager-approver-configuration"] ?? null,
   } as BackupData;
   const recordCounts = {} as Record<ApplicationStorageKey, number>;

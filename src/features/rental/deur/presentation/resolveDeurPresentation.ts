@@ -3,6 +3,12 @@ import type { Operator } from "@/features/operators/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
 import type { DeurRecord } from "../types";
 
+export function resolveRentalLinePresentation(line:RentalEquipmentLine,lines:RentalEquipmentLine[],equipment:EquipmentRecord[]){
+  const machine=equipment.find(item=>item.id===line.equipmentId);
+  const sequence=lines.filter(item=>item.rentalId===line.rentalId).findIndex(item=>item.id===line.id)+1;
+  return{label:machine?`Rental Line ${sequence} — ${machine.equipmentName} (${machine.assetNo})`:`Rental Line ${sequence} — Equipment record unavailable`,equipment:machine};
+}
+
 export function resolveDeurPresentation(input:{deur:DeurRecord;lines:RentalEquipmentLine[];equipment:EquipmentRecord[];operators:Operator[]}){
   const line=input.lines.find(item=>item.id===input.deur.rentalEquipmentLineId);
   const machine=input.equipment.find(item=>item.id===(line?.equipmentId??input.deur.equipmentId));

@@ -16,10 +16,15 @@ import {
   useBillingDrafts,
 } from "./useBillingDrafts";
 import { useRentalWorkspaceAggregate } from "..";
+import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
+import { resolveRentalBillingBlockers } from "@/features/rental/billing/resolveRentalBillingBlockers";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
 
 export default function BillingPanel() {
 
   const aggregate = useRentalWorkspaceAggregate();
+  const { equipment } = useEquipment();
 
   const wizard =
     useBillingWizard();
@@ -28,10 +33,17 @@ export default function BillingPanel() {
     useBillingDrafts();
 
   const hasDeurEvidence = aggregate.deurs.some((deur) => !deur.billingLocked && deur.status === "Acknowledged");
+  const workflow=resolveRentalWorkflowStatus({rental:aggregate.rental,effectiveDeur:aggregate.deurs.at(-1),commercialTermsAvailable:Boolean(aggregate.contract||aggregate.deurs.at(-1)?.commercialSnapshot),billableEvidence:hasDeurEvidence});
+  const lineBlockers = resolveRentalBillingBlockers({
+    lines: aggregate.rentalEquipmentLines,
+    deurs: aggregate.deurs,
+    equipment,
+    pendingReviewDeurIds: new Set(developmentCustomerReviewOutbox.getAll().filter((entry) => entry.status === "Pending").map((entry) => entry.deurId)),
+  });
   const prerequisites = [
     [!["Cancelled", "Closed"].includes(aggregate.rental.status), "Rental is Cancelled or Closed."],
     [aggregate.rentalEquipmentLines.length > 0, "At least one Rental Equipment Line is required."],
-    [hasDeurEvidence, "Acknowledge a billable DEUR before generating billing."],
+    [lineBlockers.length === 0, "Resolve Rental Equipment Line billing blockers."],
   ] as const;
   const eligibilityMessage = prerequisites.find(([valid]) => !valid)?.[1];
   const canGenerate = !eligibilityMessage;
@@ -57,18 +69,28 @@ export default function BillingPanel() {
         <div className="min-w-0 rounded-xl border bg-white p-4 sm:p-6">
           <h2 className="text-lg font-semibold">Billing prerequisites</h2>
           <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
-            {prerequisites.filter(([valid]) => !valid).map(([, message]) => (
+            {lineBlockers.map((blocker) => <li key={blocker.rentalEquipmentLineId}><b>{blocker.label}</b><br/>{blocker.message} Next: {blocker.nextAction}.</li>)}
+            {prerequisites.filter(([valid, message]) => !valid && message !== "Resolve Rental Equipment Line billing blockers.").map(([, message]) => (
               <li key={message}>{message}</li>
             ))}
           </ul>
         </div>
       )}
+      <p className="rounded border bg-slate-50 p-3 text-sm"><b>Workflow: {workflow.label}</b> — {workflow.explanation} Next: {workflow.recommendedNextAction}.</p>
 
       {wizard.hasGenerated && wizard.issues.length > 0 && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
           <h2 className="font-semibold">Billing eligibility issues</h2>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
             {wizard.issues.map((issue, index) => <li key={`${issue.deurId ?? "rental"}-${issue.code}-${index}`}><span className="font-medium">{issue.equipmentId ?? "Unknown equipment"}</span> / {issue.deurId ?? "Unknown DEUR"}: {issue.message}</li>)}
+          </ul>
+        </div>
+      )}
+      {wizard.hasGenerated && wizard.notices.length > 0 && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h2 className="font-semibold">Already billed</h2>
+          <ul className="mt-2 space-y-2 text-sm">
+            {wizard.notices.map((notice, index) => <li key={`${notice.label}-${index}`}><span className="font-medium">{notice.label}</span><br/>{notice.message}</li>)}
           </ul>
         </div>
       )}
@@ -139,6 +161,7 @@ export default function BillingPanel() {
   onInvoiceStatus={
     drafts.updateInvoiceStatus
   }
+  onCollect={drafts.collect}
 />
 
       </div>

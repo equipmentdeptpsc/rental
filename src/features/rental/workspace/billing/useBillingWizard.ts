@@ -9,6 +9,8 @@ import { getCompletedDeursForBillingPeriod } from "./BillingPreviewBuilder";
 import { buildRentalLineAwareBillingPreview, createRentalLineAwareBillingStatement } from "@/features/rental/billingstatement/services/buildRentalLineAwareBilling";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
 
 export function useBillingWizard() {
   const aggregate =
@@ -16,6 +18,7 @@ export function useBillingWizard() {
 
   const { showToast } = useToast();
   const { billingStatement, deur } = useApplicationDependenciesCompatibility().repositories;
+  const {equipment}=useEquipment();const{operators}=useOperator();
 
   const today =
     new Date()
@@ -44,9 +47,9 @@ export function useBillingWizard() {
   const previewResult =
     useMemo(() => {
       if (!generated) {
-        return { lines: [], issues: [], subtotal: 0, vat: 0, withholdingTax: 0, grandTotal: 0 };
+        return { lines: [], issues: [], notices: [], subtotal: 0, vat: 0, withholdingTax: 0, grandTotal: 0 };
       }
-      return buildRentalLineAwareBillingPreview({ aggregate, from, to });
+      return buildRentalLineAwareBillingPreview({ aggregate, from, to, equipment, operators });
     }, [
       aggregate,
       from,
@@ -64,7 +67,7 @@ export function useBillingWizard() {
       return;
     }
 
-    const result = createRentalLineAwareBillingStatement({ aggregate, from, to }, { statements: billingStatement, deurs: deur });
+    const result = createRentalLineAwareBillingStatement({ aggregate, from, to, equipment, operators }, { statements: billingStatement, deurs: deur });
 
     if (!result.success) {
       showToast(result.message, "error");
@@ -87,6 +90,7 @@ export function useBillingWizard() {
     preview: previewResult.lines,
 
     issues: previewResult.issues,
+    notices: previewResult.notices,
 
     totals: previewResult,
 

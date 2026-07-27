@@ -38,8 +38,8 @@ export interface CalculatedDeurBillingStatementLine {
   demobilizationCharge: number;
   operatorCharge: number;
   fuelCharge: number;
-  vat: number;
-  withholdingTax: number;
+  vat?: number;
+  withholdingTax?: number;
   grandTotal: number;
 }
 
@@ -156,8 +156,8 @@ export function calculateDeurBillingStatementLine(
       demobilizationCharge: charges.demobilizationCharge,
       operatorCharge: charges.operatorCharge,
       fuelCharge: charges.fuelCharge,
-      vat: charges.vat,
-      withholdingTax: charges.withholdingTax,
+      ...(terms.taxRate !== undefined ? { vat: charges.vat } : {}),
+      ...(terms.withholdingTax !== undefined ? { withholdingTax: charges.withholdingTax } : {}),
       grandTotal: charges.grandTotal,
     },
   };

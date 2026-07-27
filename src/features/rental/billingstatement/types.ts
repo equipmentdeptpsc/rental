@@ -25,6 +25,9 @@ export interface BillingStatementLine {
   deurRevisionNumber?: number;
   effectiveDeurId?: string;
   correctedFromDeurId?: string;
+  deurReference?: string;
+  equipmentLabel?: string;
+  operatorLabel?: string;
 
   workDate: string;
 
@@ -75,6 +78,9 @@ export interface BillingStatement {
   // References
 
   rentalId: string;
+  rentalNumber?: string;
+  customerRepresentativeName?: string;
+  customerRepresentativeEmail?: string;
 
   equipmentId: string;
 
@@ -96,6 +102,9 @@ export interface BillingStatement {
   vat?: number;
   withholdingTax?: number;
   grandTotal?: number;
+  /** Frozen tax-visibility evidence. Legacy statements fall back to field presence. */
+  vatApplicable?: boolean;
+  withholdingTaxApplicable?: boolean;
 
   // Approval Workflow
 
@@ -118,6 +127,10 @@ export interface BillingStatement {
   // Financial Workflow
 
   invoiceStatus: BillingInvoiceStatus;
+  /** Optional transition evidence for records invoiced after RC1; legacy records fall back to createdAt. */
+  invoiceStatusUpdatedAt?: string;
+  invoiceStatusUpdatedBy?: string;
+  invoiceNumber?: string;
 
   // Lines
 

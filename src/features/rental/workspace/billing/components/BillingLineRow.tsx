@@ -1,6 +1,7 @@
 import type {
     BillingPreviewLine,
   } from "../types";
+import { formatOperationalHours, formatPhpCurrency } from "@/features/rental/presentation/formatBusinessValues";
   
   interface Props {
     line: BillingPreviewLine;
@@ -17,12 +18,12 @@ import type {
     return (
       <tr>
 
-        <td className="px-3 py-2">{line.equipmentId ?? "Legacy header equipment"}</td>
+        <td className="px-3 py-2">{line.equipmentLabel ?? "Equipment record unavailable"}</td>
 
-        <td className="px-3 py-2">{line.operator || line.operatorId || "—"}</td>
+        <td className="px-3 py-2">{line.operatorLabel ?? "Operator not assigned"}</td>
 
         <td className="px-3 py-2">
-          {line.deurReference ?? line.deurId}
+          {line.deurReference ?? "DEUR number unavailable"}
         </td>
   
         <td className="px-3 py-2">
@@ -32,7 +33,7 @@ import type {
         <td className="px-3 py-2">
   
           <div>{line.description}</div>
-          {optionalCharges.length > 0 && <div className="mt-1 text-xs text-slate-500">{optionalCharges.map(([label, value]) => `${label}: ₱${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`).join(" · ")}</div>}
+          {optionalCharges.length > 0 && <div className="mt-1 text-xs text-slate-500">{optionalCharges.map(([label, value]) => `${label}: ${formatPhpCurrency(value)}`).join(" · ")}</div>}
   
         </td>
   
@@ -43,24 +44,18 @@ import type {
         </td>
   
         <td className="px-3 py-2 text-right">
-          {line.quantity !== undefined ? `${line.quantity.toFixed(2)} ${line.unit ?? ""}` : `${line.actualHours.toFixed(2)} h`}
+          {line.quantity !== undefined ? `${line.quantity.toFixed(2)} ${line.unit ?? ""}` : formatOperationalHours(line.actualHours)}
         </td>
   
         <td className="px-3 py-2">
   
-          {line.hourlyRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          {formatPhpCurrency(line.hourlyRate)}
   
         </td>
   
         <td className="px-3 py-2 text-right">
   
-          ₱
-          {line.amount.toLocaleString(
-            undefined,
-            {
-              minimumFractionDigits:2,
-            }
-          )}
+          {formatPhpCurrency(line.amount)}
   
         </td>
   

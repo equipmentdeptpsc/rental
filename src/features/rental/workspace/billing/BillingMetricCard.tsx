@@ -1,3 +1,5 @@
+import { formatPhpCurrency } from "@/features/rental/presentation/formatBusinessValues";
+
 interface Props {
     label: string;
   
@@ -16,7 +18,7 @@ interface Props {
         </div>
   
         <div className="mt-2 text-2xl font-bold">
-          ₱ {value.toLocaleString()}
+          {formatPhpCurrency(value)}
         </div>
   
       </div>

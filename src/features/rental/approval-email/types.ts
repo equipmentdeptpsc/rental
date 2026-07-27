@@ -19,6 +19,7 @@ export interface ManagerApprovalCommercialSnapshot {
   commercialTermsConfigured: boolean;
   commercialSnapshotLocked: boolean;
   currency: string;
+  summary?: import("../commercial/resolveCommercialSummary").CommercialSummaryRow[];
 }
 
 export interface ManagerApprovalEmailSnapshot {

@@ -22,8 +22,8 @@ import {
     const { billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
   
     return useMemo(() => {
-      const summary = buildInvoiceSummary(aggregate);
       const statements = billingStatementRepository.getByRentalId(aggregate.rental.id).filter((statement) => statement.invoiceStatus !== "Cancelled");
+      const summary = buildInvoiceSummary(aggregate, statements);
       return { ...summary, documents: statements.map((statement) => buildInvoiceDocument(statement, equipment, operators, aggregate.contract?.currency ?? "PHP", statements.length === 1 ? { amountCollected: aggregate.billing.collected, outstandingBalance: aggregate.billing.outstanding } : undefined)) };
     }, [aggregate, equipment, operators, billingStatementRepository]);
   }

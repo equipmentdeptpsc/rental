@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import OperatorForm from "@/features/operators/components/OperatorForm";
 import { useOperator } from "@/features/operators/context/OperatorContext";
+import { operatorUserLinkRepository } from "@/features/operators/operatorUserLink";
 
 export default function EditOperator() {
   const { id } = useParams();
@@ -34,11 +35,14 @@ export default function EditOperator() {
 
       <OperatorForm
         initialData={operator}
+        initialLinkedLoginName={operatorUserLinkRepository.getByOperatorId(operator.id)?.loginName}
         onSubmit={(data) => {
+          const { linkedLoginName, ...operatorData } = data;
           updateOperator({
             ...operator,
-            ...data,
+            ...operatorData,
           });
+          if (linkedLoginName.trim()) operatorUserLinkRepository.link(linkedLoginName, operator.id);
 
           navigate("/operators");
         }}

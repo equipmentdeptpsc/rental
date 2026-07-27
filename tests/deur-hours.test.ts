@@ -10,7 +10,7 @@ describe("DEUR operator hours", () => {
   it("persists valid hours and completes the existing record", () => {
     deurRepository.create(record());
     expect(saveDeurHours("deur-1", "20", "4", "2026-07-17", true).success).toBe(true);
-    expect(deurRepository.getById("deur-1")).toMatchObject({ totalOperatingMinutes: 1200, totalIdleMinutes: 240, status: "Pending Acknowledgement" });
+    expect(deurRepository.getById("deur-1")).toMatchObject({ totalOperatingMinutes: 1200, totalIdleMinutes: 240, status: "Submitted", legacy: false });
     expect(deurRepository.getById("deur-1")?.endOfDay).toBeTruthy();
   });
   it("rejects invalid and over-limit hour entries without changing the record", () => {

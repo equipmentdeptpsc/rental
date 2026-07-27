@@ -1,7 +1,7 @@
 import type { DeurBillingPreview } from "@/features/rental/deur/billing/createDeurBillingPreview";
 import { mapDeurBillingPreviewCharges } from "@/features/rental/deur/billing/mapDeurBillingPreviewCharges";
 
-interface Props { preview?: DeurBillingPreview; currency?: string }
+interface Props { preview?: DeurBillingPreview; currency?: string; identity?:{equipment:string;operator:string;line:string;deur:string;statement?:string} }
 const statusLabel: Record<DeurBillingPreview["status"], string> = {
   available: "Final preview", provisional: "Live estimate", "not-calculable": "Not calculable", ineligible: "Ineligible",
 };
@@ -10,6 +10,9 @@ const reasonMessage: Partial<Record<DeurBillingPreview["eligibility"]["reasonCod
   REJECTED: "Rejected DEUR records cannot be previewed for billing.", LEGACY_RECORD: "Legacy DEUR evidence is not supported.",
   RECORD_NOT_CANONICAL: "Canonical DEUR activity evidence is required.", INVALID_EVENT_HISTORY: "The DEUR activity history is invalid.",
   UNSUPPORTED_BILLING_EVIDENCE: "The billing method requires evidence that is not recorded in this DEUR.",
+  NOT_ACKNOWLEDGED: "Awaiting Customer Acknowledgement.",
+  OPEN_ACTIVITY: "Operation activity is still open.",
+  SHIFT_NOT_COMPLETED: "The DEUR shift is not complete.",
 };
 
 function money(value: number, currency: string): string {
@@ -18,7 +21,7 @@ function money(value: number, currency: string): string {
   catch { return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(safe); }
 }
 
-export default function BillingPreviewPanel({ preview, currency = "PHP" }: Props) {
+export default function BillingPreviewPanel({ preview, currency = "PHP", identity }: Props) {
   return (
     <section className="rounded-xl border bg-white p-4 shadow-sm sm:p-6" aria-label="Billing preview">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -34,6 +37,7 @@ export default function BillingPreviewPanel({ preview, currency = "PHP" }: Props
           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
             <div><div className="text-slate-500">Billing method</div><div className="font-semibold">{preview.billingMethod}</div></div>
             <div><div className="text-slate-500">{preview.quantity ? "Quantity" : "Operating evidence"}</div><div className="font-semibold">{preview.quantity ? `${preview.quantity.value.toFixed(preview.quantity.unit === "trip" ? 0 : 2)} ${preview.quantity.unit === "trip" && preview.quantity.value !== 1 ? "trips" : preview.quantity.unit}` : `${(preview.evidence.operatingMinutes / 60).toFixed(2)} hours`}</div></div>
+            {!preview.quantity && <div><div className="text-slate-500">Idle / standby-rate evidence</div><div className="font-semibold">{(preview.evidence.idleMinutes / 60).toFixed(2)} hours</div></div>}
             <div><div className="text-slate-500">Calculated</div><div className="font-semibold">{new Date(preview.calculatedAt).toLocaleString()}</div></div>
           </div>
           <div className="mt-3 text-sm"><span className="text-slate-500">Commercial terms source</span><div className="font-semibold">{preview.commercialTermsSource === "IMMUTABLE_SNAPSHOT" ? "Immutable Rental Snapshot" : "Current Rental Terms — Legacy Record"}</div></div>
@@ -55,6 +59,7 @@ export default function BillingPreviewPanel({ preview, currency = "PHP" }: Props
               {preview.issues.length === 0 && preview.eligibility.reasonCodes.map((code) => <li key={code}>{reasonMessage[code] ?? "This DEUR is not eligible for billing preview."}</li>)}
             </ul>
           )}
+          {preview.eligibility.reasonCodes.includes("BILLING_LOCKED") && identity && <dl className="mt-4 grid gap-2 rounded border bg-slate-50 p-4 text-sm sm:grid-cols-2"><div><dt className="text-slate-500">Equipment</dt><dd>{identity.equipment}</dd></div><div><dt className="text-slate-500">Operator</dt><dd>{identity.operator}</dd></div><div><dt className="text-slate-500">Rental Line</dt><dd>{identity.line}</dd></div><div><dt className="text-slate-500">DEUR</dt><dd>{identity.deur}</dd></div><div className="sm:col-span-2"><dt className="text-slate-500">Reason</dt><dd>Already consumed by Billing Statement {identity.statement ?? "reference unavailable"}.</dd></div></dl>}
           {preview.disclaimer && <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{preview.disclaimer}</p>}
         </>
       )}

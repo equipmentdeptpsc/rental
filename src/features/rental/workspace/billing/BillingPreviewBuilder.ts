@@ -14,6 +14,7 @@ import type {
 import type {
   BillingPreviewLine,
 } from "./types";
+import { resolveEffectiveDeurRevision } from "@/features/rental/deur/services/correction/resolveEffectiveDeurRevision";
 
 export function buildBillingPreview(
   deurs: DeurRecord[],
@@ -78,15 +79,24 @@ export function getCompletedDeursForBillingPeriod(
   from: string,
   to: string
 ): DeurRecord[] {
-  return deurs.filter(
-    deur =>
-      !deur.billingLocked &&
-      Boolean(deur.endOfDay) &&
-      deur.workDate >= from &&
-      deur.workDate <= to
-  );
+  const chains = new Map<string, DeurRecord[]>();
+  for (const deur of deurs) {
+    const key = deur.revision?.chainId ?? deur.id;
+    chains.set(key, [...(chains.get(key) ?? []), deur]);
+  }
+  return [...chains.values()].flatMap((chain) => {
+    const resolved = resolveEffectiveDeurRevision(chain);
+    const compatibilityCompleted = chain.filter(item=>!item.revision?.supersededByRevisionId&&(
+      Boolean(item.endOfDay) || item.events?.some(event=>event.activityType==="shift"&&event.action==="end")
+    )&&["Submitted","Pending Acknowledgement"].includes(item.status)).at(-1);
+    const hasRevision=chain.some(item=>Boolean(item.revision));
+    const deur = resolved.valid ? resolved.currentEffective ?? (!hasRevision?compatibilityCompleted:undefined) : undefined;
+    if (!deur || deur.billingLocked) return [];
+    const date = deur.reportDate ?? deur.workDate;
+    return date >= from && date <= to ? [deur] : [];
+  });
 }
 
 export function getDeurPreviewReference(deur: DeurRecord): string {
-  return deur.deurNumber?.trim() || deur.id;
+  return deur.deurNumber?.trim() || "DEUR number unavailable";
 }

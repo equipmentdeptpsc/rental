@@ -5,6 +5,9 @@ import { getRentalApprovalStatus } from "../approval/rentalApproval";
 export type RentalQuickActionId = "reserve" | "submit" | "approve" | "reject" | "release" | "activate" | "return" | "close";
 export interface RentalQuickAction { id: RentalQuickActionId; label: string; }
 export interface RentalQuickActionModel { actions: RentalQuickAction[]; message?: string; }
+export function visibleRentalQuickActions(model: RentalQuickActionModel, hideClose: boolean) {
+  return hideClose ? model.actions.filter((action) => action.id !== "close") : model.actions;
+}
 
 export function deriveRentalQuickActions(rental: RentalRecord, role?: Role): RentalQuickActionModel {
   const approval = getRentalApprovalStatus(rental);

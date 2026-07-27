@@ -10,7 +10,7 @@ import type { RentalEquipmentLine } from "../../equipment-line";
 import { resolveDeurRentalEquipmentLine } from "../services/resolveDeurRentalEquipmentLine";
 
 const issue = (code: string, message: string): OperatorDigitalDeurAccessIssue => ({ code, message });
-export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string; name?: string; role?: string }; operator?: Operator; assignment?: AssignmentRecord; rental?: RentalRecord; rentalEquipmentLine?: RentalEquipmentLine; deurs: DeurRecord[]; evaluationTimestamp: string; shift?: DeurRecord["shift"] }): OperatorDigitalDeurAccessResult {
+export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string; name?: string; role?: string }; authenticatedOperatorId?: string; operator?: Operator; assignment?: AssignmentRecord; rental?: RentalRecord; rentalEquipmentLine?: RentalEquipmentLine; deurs: DeurRecord[]; evaluationTimestamp: string; shift?: DeurRecord["shift"] }): OperatorDigitalDeurAccessResult {
   const { actor, operator, assignment, rental, deurs, shift } = input;
   const base = { allowed: false, allowedActions: [] as DeurOperatorAction[], issues: [] as OperatorDigitalDeurAccessIssue[] };
   if (!operator) return { ...base, issues: [issue("OPERATOR_NOT_FOUND", "Operator was not found.")] };
@@ -22,9 +22,12 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
   if (!lineResolution.success) return { ...base, issues: [issue(lineResolution.issue.code === "DEUR_LINE_COMMERCIAL_SNAPSHOT_REQUIRED" ? "COMMERCIAL_SNAPSHOT_REQUIRED" : lineResolution.issue.code, lineResolution.issue.message)] };
   const line = lineResolution.line;
   if (line.assignmentId && !assignment) return { ...base, issues: [issue("ASSIGNMENT_NOT_FOUND", "Assignment was not found.")] };
-  const identityMatches = actor?.role === "Operator" && (actor.id === operator.id || actor.name?.trim().toLocaleLowerCase() === operator.name.trim().toLocaleLowerCase());
-  if (!identityMatches) return { ...base, issues: [issue("DEUR_ACCESS_NOT_AUTHORIZED", "The signed-in Operator is not assigned to this Rental.")] };
-  if (line.operatorId !== operator.id) return { ...base, issues: [issue("RENTAL_OPERATOR_MISMATCH", "Operator does not belong to this Rental Equipment Line.")] };
+  if(actor?.role!=="Operator")return{...base,issues:[issue("DEUR_ACCESS_NOT_AUTHORIZED","Your login is not linked to an Operator record.")]};
+  const identityMatches = input.authenticatedOperatorId
+    ? input.authenticatedOperatorId === operator.id
+    : actor.id === operator.id;
+  if (!identityMatches) return { ...base, issues: [issue("DEUR_ACCESS_NOT_AUTHORIZED", "Your login is not linked to this Operator record.")] };
+  if (line.operatorId !== operator.id) return { ...base, issues: [issue("RENTAL_OPERATOR_MISMATCH", "You are not assigned to this Rental Equipment Line.")] };
   if (line.assignmentId && (line.assignmentId !== assignment?.id || line.equipmentId !== assignment.equipmentId)) return { ...base, issues: [issue("RENTAL_ASSIGNMENT_MISMATCH", "Rental Equipment Line relationships do not match the Assignment.")] };
   if (!rental.operationalMetadata?.costCode || !rental.operationalMetadata.activityCode) return { ...base, issues: [issue("OPERATIONAL_SNAPSHOT_REQUIRED", "Rental operational metadata snapshot is required.")] };
   if (line.commercialSnapshotRequired && !line.commercialSnapshot) return { ...base, issues: [issue("COMMERCIAL_SNAPSHOT_REQUIRED", "Rental Equipment Line commercial snapshot is required.")] };
@@ -48,6 +51,7 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
       if (state.openPrimaryActivity !== "idle") allowedActions.push("START_IDLE");
       if (state.openPrimaryActivity !== "mealBreak") allowedActions.push("START_MEAL_BREAK");
       if (state.openPrimaryActivity !== "breakdown") allowedActions.push("START_BREAKDOWN");
+      if(state.openPrimaryActivity)allowedActions.push("END_ACTIVITY");
       allowedActions.push("END_SHIFT");
     }
   }

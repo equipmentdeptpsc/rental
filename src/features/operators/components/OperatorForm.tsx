@@ -19,10 +19,12 @@ export interface OperatorFormData {
     | "Active"
     | "On Leave"
     | "Suspended";
+  linkedLoginName: string;
 }
 
 interface Props {
   initialData?: Operator;
+  initialLinkedLoginName?: string;
 
   onSubmit(
     data: OperatorFormData
@@ -31,6 +33,7 @@ interface Props {
 
 export default function OperatorForm({
   initialData,
+  initialLinkedLoginName,
   onSubmit,
 }: Props) {
   const [form, setForm] =
@@ -53,6 +56,7 @@ export default function OperatorForm({
       status:
         initialData?.status ??
         "Active",
+      linkedLoginName: initialLinkedLoginName ?? "",
     });
 
   function update<
@@ -145,6 +149,15 @@ export default function OperatorForm({
           },
         ]}
       />
+
+      <Input
+        label="Linked Local UAT Operator Login Name"
+        value={form.linkedLoginName}
+        onChange={(e) => update("linkedLoginName", e.target.value)}
+      />
+      <p className="text-xs text-slate-500">
+        Enter the exact name used on the local Login page with the Operator role.
+      </p>
 
       <Select
         label="Status"

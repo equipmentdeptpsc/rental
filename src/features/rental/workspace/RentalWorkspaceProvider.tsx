@@ -23,6 +23,8 @@ import { subscribeRentalWorkspaceChange } from "./workspaceRefresh";
 import { resolveRentalDeurOperator } from "@/features/rental/deur/operator/resolveRentalDeurOperator";
 import { resolveRentalWorkspaceEquipmentLines } from "./resolveRentalWorkspaceEquipmentLines";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { collectionRepository } from "@/features/rental/collections/repository";
+import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -66,8 +68,16 @@ export default function RentalWorkspaceProvider({
     const lines = rentalEquipmentLines.filter((item) => item.rentalId === rental.id);
     const lineResolution = resolveRentalWorkspaceEquipmentLines(lines);
     const soleLine = lineResolution.kind === "sole" ? lineResolution.line : undefined;
+    const deurs = deurRepository.getByRentalId(rental.id);
+    const activeDeur = deurs.find(
+      (d) =>
+        !d.endOfDay &&
+        (d.status === "Draft" || d.status === "In Progress") &&
+        !d.revision?.supersededByRevisionId,
+    );
+    const effectiveLineId=activeDeur?.rentalEquipmentLineId??soleLine?.id;
     const contract = contracts.find((item) =>
-      item.rentalEquipmentLineId === soleLine?.id || item.id === rental.id
+      item.rentalEquipmentLineId === effectiveLineId || (!item.rentalEquipmentLineId&&item.id === rental.id)
     );
 
     const assignment =
@@ -85,24 +95,12 @@ export default function RentalWorkspaceProvider({
     const project =
       projects.find((item) => item.id === rental.projectId);
 
-    // NEW
-    const deurs =
-      deurRepository.getByRentalId(
-        rental.id
-      );
-
     const statements = billingStatementRepository.getByRentalId(rental.id);
     const latestStatement = statements.at(-1);
+    const collectionTotals = statements.map((statement) => reconcileStatementCollections(statement, collectionRepository.getByStatementId(statement.id)));
     const invoicePreparationComplete = isInvoicePreparationComplete(
       latestStatement?.invoiceStatus
     );
-
-      const activeDeur =
-      deurs.find(
-        (d) =>
-          !d.endOfDay &&
-          d.status !== "Billed"
-      );
 
     return buildRentalAggregate({
       rental,
@@ -119,6 +117,9 @@ export default function RentalWorkspaceProvider({
         invoiceStatus: latestStatement?.invoiceStatus,
         invoicePreparationComplete,
         subtotal: statements.reduce((sum, statement) => sum + statement.subtotal, 0),
+        invoiced: collectionTotals.reduce((sum,item)=>sum+item.invoiceTotal,0),
+        collected: collectionTotals.reduce((sum,item)=>sum+item.totalCollected,0),
+        outstanding: collectionTotals.reduce((sum,item)=>sum+item.outstandingBalance,0),
       },
     });
   }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository]);

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
+import OrganizationBrand from "@/shared/branding/OrganizationBrand";
 
 export default function Dashboard({ onMenu }: { onMenu(): void }) {
     const { user, logout } = useAuth();
@@ -15,8 +16,8 @@ export default function Dashboard({ onMenu }: { onMenu(): void }) {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3 min-w-0">
           <button aria-label="Open navigation" className="rounded p-2 hover:bg-slate-100 md:hidden" onClick={onMenu}><Menu size={22} /></button>
-          <div><h1 className="text-base font-bold sm:text-xl">Equipment Rental Management System</h1>
-          <p className="text-xs text-gray-500">Local UAT/demo authentication only</p>
+          <div className="min-w-0"><OrganizationBrand />
+          <p className="mt-1 text-[10px] text-gray-500 sm:text-xs">Local UAT/demo authentication only</p>
           </div></div>
         {user ? (
           <div className="flex items-center gap-2 text-sm">

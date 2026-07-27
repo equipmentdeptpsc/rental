@@ -6,7 +6,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 
-import type { User } from "./user";
+import { localUatUserId, type User } from "./user";
 import { storage } from "@/core/storage";
 
 const AUTH_USER_KEY = "auth_user";
@@ -54,7 +54,7 @@ export function AuthProvider({
     role: User["role"]
   ) {
     const newUser: User = {
-      id: crypto.randomUUID(),
+      id: localUatUserId(name, role),
       name,
       role,
     };

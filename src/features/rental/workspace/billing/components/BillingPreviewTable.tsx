@@ -7,6 +7,7 @@ import type { DeurRecord } from "@/features/rental/deur/types";
 import { getDeurPreviewReference } from "../BillingPreviewBuilder";
 
 import BillingLineRow from "./BillingLineRow";
+import { formatOperationalHours, formatPhpCurrency } from "@/features/rental/presentation/formatBusinessValues";
 
 interface Props {
   lines: BillingPreviewLine[];
@@ -44,8 +45,8 @@ export default function BillingPreviewTable({
               <div key={deur.id} className="flex flex-wrap justify-between gap-2 rounded border p-3">
                 <span>DEUR: {getDeurPreviewReference(deur)}</span>
                 <span>{deur.workDate}</span>
-                <span>Operating: {deur.totalOperatingMinutes / 60} h</span>
-                <span>Idle: {deur.totalIdleMinutes / 60} h</span>
+                <span>Operating: {formatOperationalHours(deur.totalOperatingMinutes / 60)}</span>
+                <span>Idle: {formatOperationalHours(deur.totalIdleMinutes / 60)}</span>
               </div>
             ))}
           </div>
@@ -135,14 +136,7 @@ export default function BillingPreviewTable({
 
             <td className="px-3 py-3 text-right font-bold">
 
-              ₱
-              {subtotal.toLocaleString(
-                undefined,
-                {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }
-              )}
+              {formatPhpCurrency(subtotal)}
 
             </td>
 

@@ -43,6 +43,8 @@ import { rentalAuditRepository } from "../audit/rentalAuditRepository";
 import { buildManagerApprovalEmailSnapshot } from "../approval-email/buildManagerApprovalEmailSnapshot";
 import { developmentApprovalEmailOutbox } from "../approval-email/developmentApprovalEmailOutbox";
 import { resolveActiveManagerApprover } from "@/features/settings/manager-approver/managerApproverService";
+import { developmentCustomerReviewOutbox } from "../customer-review/developmentCustomerReviewOutbox";
+import { maskEmail, updateRentalCustomerContact, type RentalCustomerContactInput } from "../services/updateRentalCustomerContact";
 
 interface RentalTransitionResult {
   success: boolean;
@@ -63,6 +65,7 @@ interface RentalContextType {
   };
 
   updateRental(item: RentalRecord): void;
+  updateCustomerContact(id:string,input:RentalCustomerContactInput):RentalTransitionResult;
 
   transitionRental(
     id: string,
@@ -346,6 +349,7 @@ export function RentalProvider({
     if (materialChanged && current.approvalStatus === "Approved") auditRental(current, next, "APPROVAL_INVALIDATED", "Material Rental details changed.");
     refreshRentals();
   }
+  function updateCustomerContact(id:string,input:RentalCustomerContactInput):RentalTransitionResult{const current=rentalRepository.getById(id);if(!current)return{success:false,message:"Rental not found."};const result=updateRentalCustomerContact(current,input,{id:user?.id,name:user?.name??"",role:user?.role},new Date().toISOString(),developmentCustomerReviewOutbox.hasPendingForRental(current.rentalNumber??current.id));if(!result.success)return result;rentalRepository.update(result.rental);auditRental(current,result.rental,"CUSTOMER_CONTACT_UPDATED",`Customer review recipient changed from ${maskEmail(current.customerContactSnapshot?.representativeEmail)} to ${maskEmail(result.rental.customerContactSnapshot?.representativeEmail)}.`);refreshRentals();return{success:true,rental:result.rental}}
 
   function transitionRental(
     id: string,
@@ -710,6 +714,7 @@ export function RentalProvider({
       rentals,
       addRental,
       updateRental,
+      updateCustomerContact,
       transitionRental,
       deleteRental,
       returnRental,

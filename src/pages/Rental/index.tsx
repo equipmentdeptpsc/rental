@@ -17,6 +17,7 @@ import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/Ren
 import { buildRentalDeurComplianceReport } from "@/features/rental/deur/compliance/buildRentalDeurComplianceReport";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
+import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
 
 export default function RentalPage() {
   const { rentals } = useRental();
@@ -126,6 +127,7 @@ export default function RentalPage() {
                   getEquipment(
                     rental.equipmentId
                   );
+                const rentalDeurs=deurRepository.getByRentalId(rental.id),effectiveDeur=rentalDeurs.at(-1),workflow=resolveRentalWorkflowStatus({rental,effectiveDeur,commercialTermsAvailable:Boolean(effectiveDeur?.commercialSnapshot),billableEvidence:Boolean(effectiveDeur?.totals?.operationMinutes||effectiveDeur?.totalOperatingMinutes)});
 
                 return (
 
@@ -168,6 +170,7 @@ export default function RentalPage() {
                       >
                         {rental.status}
                       </span>
+                      <p className="mt-1 text-xs text-slate-600">{workflow.label}</p>
 
                     </td>
 

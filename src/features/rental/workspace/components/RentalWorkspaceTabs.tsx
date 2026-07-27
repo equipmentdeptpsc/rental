@@ -3,7 +3,8 @@ import {
   type WorkspaceTab,
 } from "../types";
 
-export default function RentalWorkspaceTabs({ activeTab, onChange }: { activeTab: WorkspaceTab; onChange(tab: WorkspaceTab): void }) {
+const closedAllowed = new Set<WorkspaceTab>(["overview", "timeline", "invoices", "collections"]);
+export default function RentalWorkspaceTabs({ activeTab, onChange, readOnly=false }: { activeTab: WorkspaceTab; onChange(tab: WorkspaceTab): void; readOnly?:boolean }) {
 
   return (
     <div className="rounded-xl border bg-white shadow-sm">
@@ -17,9 +18,9 @@ export default function RentalWorkspaceTabs({ activeTab, onChange }: { activeTab
               key={tab.id}
               type="button"
               disabled={
-                tab.disabled
+                tab.disabled || (readOnly && !closedAllowed.has(tab.id))
               }
-              onClick={() => onChange(tab.id)}
+              onClick={() => (!readOnly || closedAllowed.has(tab.id)) && onChange(tab.id)}
               className={`border-b-2 px-6 py-4 text-sm font-medium transition ${
                 activeTab ===
                 tab.id

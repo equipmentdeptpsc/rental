@@ -7,6 +7,8 @@ import type { RentalEquipmentLine } from "../equipment-line";
 import type { RentalRecord } from "../types";
 import type { RentalContractRecord } from "../types/RentalContract";
 import type { ManagerApprovalCommercialSnapshot, ManagerApprovalEmailSnapshot } from "./types";
+import { createRentalCommercialSnapshot } from "../services/createRentalCommercialSnapshot";
+import { resolveCommercialSummary } from "../commercial/resolveCommercialSummary";
 
 export function buildManagerApprovalEmailSnapshot(input: {
   rental: RentalRecord;
@@ -48,6 +50,8 @@ export function buildManagerApprovalEmailSnapshot(input: {
     const contract = input.contracts.find((candidate) => candidate.rentalEquipmentLineId === line.id)
       ?? (input.lines.length === 1 ? input.contracts.find((candidate) => candidate.rentalId === input.rental.id || candidate.id === input.rental.id) : undefined);
     const snapshot = line.commercialSnapshot;
+    const captured = !snapshot && contract ? createRentalCommercialSnapshot(contract, input.requestedAt) : undefined;
+    const effectiveSnapshot = snapshot ?? (captured?.success ? captured.snapshot : undefined);
     return {
       equipmentCode: equipment[index]?.equipmentCode ?? item?.assetNo ?? "Unavailable",
       billingMethod: snapshot?.billingMethod ?? contract?.billingMethod ?? "Not configured",
@@ -59,6 +63,7 @@ export function buildManagerApprovalEmailSnapshot(input: {
       commercialTermsConfigured: Boolean(snapshot || contract),
       commercialSnapshotLocked: Boolean(snapshot),
       currency: snapshot?.currency ?? contract?.currency ?? "PHP",
+      summary: resolveCommercialSummary(effectiveSnapshot),
     };
   });
 

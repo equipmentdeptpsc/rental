@@ -4,6 +4,7 @@ import {
   
   import InvoiceMetricCard from "./InvoiceMetricCard";
   import InvoiceDocumentView from "./InvoiceDocumentView";
+  import { formatPhpCurrency } from "@/features/rental/presentation/formatBusinessValues";
   
   export default function InvoicePanel() {
     const invoice =
@@ -22,12 +23,12 @@ import {
   
         <InvoiceMetricCard
           label="Total Invoiced"
-          value={`₱ ${invoice.totalInvoiced.toLocaleString()}`}
+          value={formatPhpCurrency(invoice.totalInvoiced)}
         />
   
         <InvoiceMetricCard
           label="Outstanding"
-          value={`₱ ${invoice.outstanding.toLocaleString()}`}
+          value={formatPhpCurrency(invoice.outstanding)}
         />
   
         <InvoiceMetricCard

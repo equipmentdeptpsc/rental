@@ -62,6 +62,9 @@ import DevelopmentEmailOutboxPage from "@/pages/DevelopmentEmailOutbox";
 import DevelopmentEmailPreviewPage from "@/pages/DevelopmentEmailOutbox/Preview";
 import RentalApprovalPage from "@/pages/RentalApproval";
 import CustomerDeurReviewPage from "@/pages/CustomerDeurReview";
+import DevelopmentCustomerReviewOutboxPage from "@/pages/DevelopmentCustomerReviewOutbox";
+import DevelopmentCustomerReviewPreview from "@/pages/DevelopmentCustomerReviewOutbox/Preview";
+import RentalCustomerContactPage from "@/pages/Rental/CustomerContact";
 
 const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
 const WorkDescriptionPage = lazy(() => import("@/features/masters/work-description/pages"));
@@ -198,6 +201,10 @@ export const router = createBrowserRouter([
         element: <RentalCommercialTermsPage />,
       },
       {
+        path: "rentals/:rentalId/customer-contact",
+        element: <RentalCustomerContactPage />,
+      },
+      {
         path: "rentals/:rentalId/operator-deur",
         element: <OperatorDeurPage />,
       },
@@ -212,6 +219,14 @@ export const router = createBrowserRouter([
       {
         path: "customer-deur-review/:deurId",
         element: <CustomerDeurReviewPage />,
+      },
+      {
+        path: "development-customer-review-outbox",
+        element: <DevelopmentCustomerReviewOutboxPage />,
+      },
+      {
+        path: "development-customer-review-outbox/:id",
+        element: <DevelopmentCustomerReviewPreview />,
       },
 
       // ====================================
