@@ -1,110 +1,166 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import type { ReactNode } from "react";
 
-import { localUatUserId, type User } from "./user";
-import { storage } from "@/core/storage";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import type { AuthSession } from "./domain/session";
+import type { Permission } from "./domain/permission";
+import type { LoginCredentials } from "./repository/AuthRepository";
+import type { LoginResult } from "./services/AuthenticationService";
+import type { AuthenticationRequest } from "./providers/AuthenticationProvider";
+import { LOCAL_AUTH_PROVIDER_ID } from "./providers/local/LocalAuthenticationProvider";
+import type { Role } from "./role";
+import {
+  adaptDomainUser,
+  adaptLegacyUser,
+  type AuthenticatedUser,
+} from "./services/legacyAuthCompatibility";
 
-const AUTH_USER_KEY = "auth_user";
-const AUTH_TOKEN_KEY = "auth_token";
-
-interface AuthContextType {
-  user: User | null;
-  login: (name: string, role: User["role"]) => void;
-  logout: () => void;
+export interface AuthContextType {
+  user: AuthenticatedUser | null;
+  session: AuthSession | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
+  isSubmitting: boolean;
+  authenticate: (request: AuthenticationRequest) => Promise<LoginResult>;
+  login: {
+    (credentials: LoginCredentials): Promise<LoginResult>;
+    /** @deprecated Legacy test/workflow adapter. Production UI must use credentials. */
+    (name: string, role: Role): Promise<LoginResult>;
+  };
+  logout: () => void;
+  hasPermission: (permission: Permission) => boolean;
+  /** @deprecated Use session instead. Retained for legacy consumers during RBAC migration. */
   token: string | null;
-  refreshSession: () => void;
+  /** @deprecated Session restoration is automatic. Retained for isolated legacy tests. */
+  refreshSession: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [user, setUser] = useState<User | null>(
-    () => storage.get<User>(AUTH_USER_KEY)
-  );
-  const [token, setToken] = useState<string | null>(
-    () => storage.get<string>(AUTH_TOKEN_KEY)
-  );
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const { authentication } = useApplicationDependenciesCompatibility();
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const refreshSession = useCallback(async () => {
+    setIsInitializing(true);
+    await Promise.resolve();
+    const restored = authentication.authenticationService.initialize();
+    if (restored.user && restored.session) {
+      setUser(adaptDomainUser(restored.user));
+      setSession(restored.session);
+    } else {
+      const legacyUser =
+        authentication.legacyCompatibilityRepository.getCurrentUser();
+      setUser(legacyUser ? adaptLegacyUser(legacyUser) : null);
+      setSession(null);
+    }
+    setIsInitializing(false);
+  }, [authentication]);
 
   useEffect(() => {
-    refreshSession();
-  }, []);
+    void refreshSession();
+  }, [refreshSession]);
 
-  function refreshSession() {
-    const savedUser = storage.get<User>(AUTH_USER_KEY);
-    const savedToken = storage.get<string>(AUTH_TOKEN_KEY);
-
-    setUser(savedUser);
-    setToken(savedToken);
-  }
-
-  function login(
-    name: string,
-    role: User["role"]
-  ) {
-    const newUser: User = {
-      id: localUatUserId(name, role),
-      name,
-      role,
-    };
-
-    const newToken = crypto.randomUUID();
-
-    storage.set(AUTH_USER_KEY, newUser);
-    storage.set(AUTH_TOKEN_KEY, newToken);
-
-    setUser(newUser);
-    setToken(newToken);
-  }
-
-  function logout() {
-    storage.remove(AUTH_USER_KEY);
-    storage.remove(AUTH_TOKEN_KEY);
-
-    setUser(null);
-    setToken(null);
-  }
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        login,
-        logout,
-        isAuthenticated: !!user,
-        token,
-        refreshSession,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const authenticate = useCallback(
+    async (request: AuthenticationRequest): Promise<LoginResult> => {
+      if (isSubmitting) {
+        return {
+          success: false,
+          reason: "INVALID_CREDENTIALS",
+          message: "A sign-in request is already in progress.",
+        };
+      }
+      setIsSubmitting(true);
+      try {
+        await Promise.resolve();
+        const result = authentication.authenticationService.login(request);
+        if (result.success) {
+          setUser(adaptDomainUser(result.user));
+          setSession(result.session);
+        }
+        return result;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [authentication, isSubmitting],
   );
+
+  const login = useCallback(
+    async (credentialsOrName: LoginCredentials | string, legacyRole?: Role): Promise<LoginResult> => {
+      if (typeof credentialsOrName === "string") {
+        const legacy = authentication.legacyCompatibilityRepository.login(
+          credentialsOrName,
+          legacyRole ?? "Operator",
+        );
+        const adapted = adaptLegacyUser(legacy);
+        const compatibilitySession: AuthSession = {
+          id: crypto.randomUUID(),
+          userId: adapted.id,
+          providerId: "legacy-local-compatibility",
+          createdAt: new Date().toISOString(),
+        };
+        setUser(adapted);
+        setSession(compatibilitySession);
+        return {
+          success: true,
+          session: compatibilitySession,
+          user: adapted,
+        };
+      }
+      return authenticate({
+        providerId: LOCAL_AUTH_PROVIDER_ID,
+        payload: credentialsOrName,
+      });
+    },
+    [authenticate, authentication],
+  );
+
+  const logout = useCallback(() => {
+    authentication.authenticationService.logout();
+    authentication.legacyCompatibilityRepository.clear();
+    setUser(null);
+    setSession(null);
+  }, [authentication]);
+
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      session,
+      isAuthenticated: user !== null,
+      isInitializing,
+      isSubmitting,
+      authenticate,
+      login,
+      logout,
+      hasPermission: (permission) =>
+        authentication.authorizationService.hasPermission(user, permission),
+      token: session?.id ?? null,
+      refreshSession,
+    }),
+    [authenticate, authentication, isInitializing, isSubmitting, login, logout, refreshSession, session, user],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error(
-      "useAuth must be used within AuthProvider"
-    );
-  }
-
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 }
 
-/** Allows reusable Settings sections to render in isolation; the application root still supplies AuthProvider. */
-export function useOptionalAuth() {
+/** Allows reusable Settings sections to render in isolation. */
+export function useOptionalAuth(): AuthContextType | undefined {
   return useContext(AuthContext);
 }

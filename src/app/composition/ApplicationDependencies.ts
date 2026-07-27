@@ -11,6 +11,12 @@ import type { deurShiftWindowRepository } from "@/features/rental/deur/shift-win
 import type { IEquipmentRepository } from "@/features/equipment/repository/IEquipmentRepository";
 import type { IRentalRepository } from "@/features/rental/repository/IRentalRepository";
 import type { ReadOnlyEquipmentStatusRepository } from "@/features/masters/equipment-status/repository";
+import type { AuthRepository } from "@/features/auth/repository/AuthRepository";
+import type { UserRepository } from "@/features/auth/repository/UserRepository";
+import type { AuthenticationService } from "@/features/auth/services/AuthenticationService";
+import type { AuthorizationService } from "@/features/auth/services/AuthorizationService";
+import type { LegacyAuthCompatibilityRepository } from "@/features/auth/repository/LegacyAuthCompatibilityRepository";
+import type { AuthenticationProvider } from "@/features/auth/providers/AuthenticationProvider";
 
 export interface RepositoryDependencies {
   equipment: IEquipmentRepository; assignment: typeof assignmentRepository; rental: IRentalRepository;
@@ -20,5 +26,13 @@ export interface RepositoryDependencies {
   equipmentStatusRead: ReadOnlyEquipmentStatusRepository;
 }
 export type EquipmentStatusSource="local"|"supabase";
-export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
-export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies> };
+export interface AuthenticationDependencies {
+  authRepository: AuthRepository;
+  authenticationProviders: readonly AuthenticationProvider[];
+  userRepository: UserRepository;
+  authenticationService: AuthenticationService;
+  authorizationService: AuthorizationService;
+  legacyCompatibilityRepository: LegacyAuthCompatibilityRepository;
+}
+export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; authentication: AuthenticationDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
+export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies>; authentication?: Partial<AuthenticationDependencies> };
