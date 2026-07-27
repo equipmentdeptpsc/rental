@@ -113,6 +113,8 @@ export interface DeurRecord {
 
   closingMeter?: number;
 
+  meterReadingType?: "HOUR_METER" | "ODOMETER";
+
   totalOperatingMinutes: number;
 
   totalIdleMinutes: number;
@@ -204,6 +206,10 @@ export interface CanonicalDeurEvent {
   logicalActionId?: string;
   actorId?: string;
   actorName?: string;
+  deurId?: string;
+  operatorId?: string;
+  equipmentId?: string;
+  assignmentId?: string;
   createdOffline?: boolean;
   localCreatedAt?: string;
 }

@@ -36,6 +36,7 @@ import RentalWorkspacePage from "@/pages/RentalWorkspace";
 import RentalCommercialTermsPage from "@/pages/Rental/CommercialTerms";
 import RentalCustomerContactPage from "@/pages/Rental/CustomerContact";
 import OperatorDeurPage from "@/pages/OperatorDeur";
+import OperatorLandingPage from "@/pages/OperatorLanding";
 import RentalApprovalPage from "@/pages/RentalApproval";
 import CustomerDeurReviewPage from "@/pages/CustomerDeurReview";
 import MaintenancePage from "@/pages/Maintenance";
@@ -101,6 +102,7 @@ export const router = createBrowserRouter([
       { path: "rentals/:rentalId/commercial-terms", element: permitted("rental.commercialTerms.manage", <RentalCommercialTermsPage />) },
       { path: "rentals/:rentalId/customer-contact", element: permitted("rental.manage", <RentalCustomerContactPage />) },
       { path: "rentals/:rentalId/operator-deur", element: permitted("deur.read", <OperatorDeurPage />) },
+      { path: "operator", element: permitted("deur.read", <OperatorLandingPage />) },
       { path: "rentals/return/:id", element: permitted("rental.return", <ReturnRental />) },
       { path: "maintenance", element: permitted("maintenance.read", <MaintenancePage />) },
       { path: "maintenance/new", element: permitted("maintenance.manage", <NewMaintenance />) },

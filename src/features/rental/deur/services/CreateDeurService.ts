@@ -17,6 +17,7 @@ export const MANUAL_DEUR_REASONS: readonly ManualDeurReason[] = ["POWER_NOT_AVAI
 
 export interface CreateDeurRequest {
   authenticatedUser?: User | null;
+  enforceOperatorOwnership?: boolean;
   rentalId: string;
   rentalEquipmentLineId?: string;
   rentalStatus: RentalLifecycleStatus;
@@ -36,6 +37,8 @@ export interface CreateDeurRequest {
   odometerCheckpoints?: DeurOdometerCheckpoint[];
   quantityEvidence?: DeurQuantityEvidence;
   completionEvidence?: DeurCompletionEvidence;
+  openingMeter?: number;
+  meterReadingType?: "HOUR_METER" | "ODOMETER";
 }
 
 export interface CreateManualDeurRequest extends CreateDeurRequest {
@@ -102,6 +105,12 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
 
 export function createDeur(request: CreateDeurRequest): CreateDeurResult {
   assertMutationPermission(request.authenticatedUser, "deur.create");
+  if (request.enforceOperatorOwnership && request.authenticatedUser?.operatorId !== request.operatorId) {
+    return { success: false, message: "Your application user is not linked to this Operator assignment." };
+  }
+  if (request.meterReadingType && (!Number.isFinite(request.openingMeter) || request.openingMeter! < 0)) {
+    return { success: false, message: "A valid beginning meter reading is required." };
+  }
   const error = getDeurCreationError(request);
   if (error) return { success: false, message: error };
   if (!request.rental) return { success: false, message: "Rental operational metadata is required to create a DEUR." };
@@ -141,6 +150,8 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
     billingMethodSnapshot:typeof billingMethod==="string"?billingMethod:undefined,
     commercialSnapshot:commercial.snapshot,commercialSnapshotRequired:line.commercialSnapshotRequired,
     odometerTripEvidence,quantityEvidence,completionEvidence,
+    openingMeter: request.openingMeter,
+    meterReadingType: request.meterReadingType,
     operationalMetadata: metadata.snapshot,
     operationalRemarks: metadata.remarks,
     workDate,

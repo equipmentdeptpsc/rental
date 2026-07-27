@@ -54,12 +54,18 @@ export function getVisibleNavigation(
   user: User | null | undefined,
   authorization: AuthorizationService,
 ): readonly NavigationGroup[] {
-  return APP_NAVIGATION_GROUPS.map((group) => ({
+  const groups = APP_NAVIGATION_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) =>
       authorization.hasPermission(user, item.permission),
     ),
   })).filter((group) => group.items.length > 0);
+  if (user?.operatorId && authorization.hasPermission(user, "deur.read")) {
+    return groups.map((group) => group.title === "OPERATIONS"
+      ? { ...group, items: [...group.items, { icon: "operators" as const, label: "My Shift", path: "/operator", permission: "deur.read" as const }] }
+      : group);
+  }
+  return groups;
 }
 
 const LANDING_ORDER = ["/", "/rentals", "/billing", "/equipment", "/reports"];

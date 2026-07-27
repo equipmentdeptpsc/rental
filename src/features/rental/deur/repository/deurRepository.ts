@@ -13,6 +13,9 @@ import { resolveLegacyDeurRentalEquipmentLine } from "../services/resolveDeurRen
 import { createCustomerReviewRequestForSubmittedDeur } from "../../customer-review/createCustomerReviewRequestForSubmittedDeur";
 import type { User } from "@/features/auth/domain/user";
 import { assertMutationPermission } from "@/features/auth/services/assertMutationPermission";
+import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
+import { setOperatorMeterReading } from "../operator/setOperatorMeterReading";
+import { appendDeurOdometerCheckpoint } from "../services/appendDeurOdometerCheckpoint";
 
 const STORAGE_KEY = DEUR_STORAGE_KEY;
 
@@ -138,6 +141,7 @@ class DeurRepository {
     const current = this.getAll();
     const latest = current.find((record) => record.id === input.deurId);
     if (!latest) return { success: false as const, code: "DEUR_NOT_FOUND", message: "DEUR not found." };
+    if (input.authenticatedUser && input.authenticatedUser.operatorId !== latest.operatorId) throw new AuthorizationError("deur.create");
     if (latest.updatedAt !== input.expectedUpdatedAt) return { success: false as const, code: "DEUR_STALE_VERSION", message: "This DEUR changed in another view. Latest data has been reloaded.", latest: structuredClone(latest) };
     const result = applyDigitalDeurOperatorAction({ deur: latest, action: input.action, actionTimestamp: input.actionTimestamp, actor: input.actor });
     if (!result.success) return result;
@@ -184,10 +188,59 @@ class DeurRepository {
 
   submit(id: string, actor: { name: string; id?: string }, authenticatedUser?: User | null) {
     assertMutationPermission(authenticatedUser, "deur.review");
+    const current = this.getById(id);
+    if (authenticatedUser && authenticatedUser.operatorId !== current?.operatorId) throw new AuthorizationError("deur.review");
     const result = this.review(id, (record) => submitDeur(record, actor), "submit");
     if (!result.success) return result;
     const request = createCustomerReviewRequestForSubmittedDeur(result.record);
     return { ...result, customerReviewRequest: request.success ? request.entry : undefined, customerReviewWarning: request.success ? undefined : request.message };
+  }
+
+  setOperatorMeterReading(input: {
+    deurId: string;
+    expectedUpdatedAt: string;
+    phase: "opening" | "closing";
+    reading: number;
+    readingType: "HOUR_METER" | "ODOMETER";
+    timestamp: string;
+    authenticatedUser?: User | null;
+  }) {
+    assertMutationPermission(input.authenticatedUser, "deur.create");
+    const current = this.getById(input.deurId);
+    if (!current) return { success: false as const, message: "DEUR not found." };
+    if (input.authenticatedUser && input.authenticatedUser.operatorId !== current.operatorId) throw new AuthorizationError("deur.create");
+    if (current.updatedAt !== input.expectedUpdatedAt) {
+      return { success: false as const, message: "This DEUR changed in another view. Reload and try again." };
+    }
+    const result = setOperatorMeterReading({ deur: current, phase: input.phase, reading: input.reading, readingType: input.readingType, timestamp: input.timestamp });
+    if (!result.success) return result;
+    const records = this.getAll().map((record) => record.id === current.id ? result.record : record);
+    return { success: true as const, record: this.persistMutation(records, result.record, "update", result.record) };
+  }
+
+  appendOperatorOdometerCheckpoint(input: {
+    deurId: string;
+    expectedUpdatedAt: string;
+    location: string;
+    reading: number;
+    timestamp: string;
+    authenticatedUser?: User | null;
+  }) {
+    assertMutationPermission(input.authenticatedUser, "deur.create");
+    const current = this.getById(input.deurId);
+    if (!current) return { success: false as const, message: "DEUR not found." };
+    if (input.authenticatedUser && input.authenticatedUser.operatorId !== current.operatorId) throw new AuthorizationError("deur.create");
+    if (current.updatedAt !== input.expectedUpdatedAt) return { success: false as const, message: "This DEUR changed in another view. Reload and try again." };
+    const result = appendDeurOdometerCheckpoint(current, {
+      id: crypto.randomUUID(),
+      location: input.location,
+      odometerReading: input.reading,
+      recordedAt: input.timestamp,
+    });
+    if (!result.success) return result;
+    const record = { ...result.record, updatedAt: input.timestamp };
+    const records = this.getAll().map((item) => item.id === current.id ? record : item);
+    return { success: true as const, record: this.persistMutation(records, record, "update", record) };
   }
   acknowledge(id: string, actor: { name: string; id?: string; email?:string }, remarks="", authenticatedUser?: User | null, publicWorkflow = false) {
     if (!publicWorkflow) assertMutationPermission(authenticatedUser, "deur.review");
