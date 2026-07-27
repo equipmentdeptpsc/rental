@@ -11,8 +11,8 @@ export function getRentalApprovalStatus(rental: Pick<RentalRecord, "status" | "a
 const actor = (user: User): RentalApprovalActor => ({ id: user.id, name: user.name, role: user.role });
 const event = (action: RentalApprovalEvent["action"], previousStatus: RentalApprovalStatus, resultingStatus: RentalApprovalStatus, timestamp: string, user?: User, remarks?: string): RentalApprovalEvent => ({ id: crypto.randomUUID(), action, timestamp: new Date(timestamp).toISOString(), ...(user ? { actor: actor(user) } : {}), previousStatus, resultingStatus, ...(remarks?.trim() ? { remarks: remarks.trim() } : {}) });
 
-export function submitRentalApproval(rental: RentalRecord, user: User | null, commercialTermsValid: boolean, timestamp: string): RentalApprovalResult {
-  if (user?.role !== "Admin") return { success: false, code: "APPROVAL_SUBMIT_UNAUTHORIZED", message: "Only an Admin can send a Rental for approval." };
+export function submitRentalApproval(rental: RentalRecord, user: User | null, commercialTermsValid: boolean, timestamp: string, permissionGranted = false): RentalApprovalResult {
+  if (!user || (!permissionGranted && user.role !== "Admin")) return { success: false, code: "APPROVAL_SUBMIT_UNAUTHORIZED", message: "Rental approval permission is required." };
   if (rental.status !== "Reserved") return { success: false, code: "APPROVAL_REQUIRES_RESERVED", message: "Only a Reserved Rental can be sent for approval." };
   const previous = getRentalApprovalStatus(rental);
   if (previous === "Pending") return { success: false, code: "APPROVAL_ALREADY_PENDING", message: "This Rental is already awaiting Manager approval." };
@@ -24,8 +24,8 @@ export function submitRentalApproval(rental: RentalRecord, user: User | null, co
   return { success: true, event: nextEvent, rental: { ...rental, approvalStatus: "Pending", approvalRequestedAt: nextEvent.timestamp, approvalRequestedBy: actor(user), approvalDecisionRemarks: undefined, approvalHistory: [...(rental.approvalHistory ?? []), nextEvent] } };
 }
 
-export function decideRentalApproval(rental: RentalRecord, user: User | null, decision: "Approved" | "Rejected", remarks: string, timestamp: string): RentalApprovalResult {
-  if (user?.role !== "Manager") return { success: false, code: "APPROVAL_DECISION_UNAUTHORIZED", message: "Only a Manager can approve or reject a Rental." };
+export function decideRentalApproval(rental: RentalRecord, user: User | null, decision: "Approved" | "Rejected", remarks: string, timestamp: string, permissionGranted = false): RentalApprovalResult {
+  if (!user || (!permissionGranted && user.role !== "Manager")) return { success: false, code: "APPROVAL_DECISION_UNAUTHORIZED", message: "Rental approval permission is required." };
   if (rental.status !== "Reserved" || getRentalApprovalStatus(rental) !== "Pending") return { success: false, code: "APPROVAL_NOT_PENDING", message: "Only a pending Reserved Rental can be approved or rejected." };
   if (decision === "Rejected" && !remarks.trim()) return { success: false, code: "APPROVAL_REJECTION_REASON_REQUIRED", message: "A rejection reason is required." };
   const nextEvent = event(decision, "Pending", decision, timestamp, user, remarks);

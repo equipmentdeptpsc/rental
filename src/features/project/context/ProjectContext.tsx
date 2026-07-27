@@ -9,6 +9,8 @@ import {
   import type { ProjectRecord } from "../types";
   import { projectRepository } from "../repository";
   import { guardProjectDeletion } from "@/features/relationships/deletionGuards";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface ProjectContextType {
     projects: ProjectRecord[];
@@ -34,6 +36,10 @@ import {
   }: {
     children: ReactNode;
   }) {
+    const auth = useOptionalAuth();
+    const authorize = () => {
+      if (auth && !auth.hasPermission("project.manage")) throw new AuthorizationError("project.manage");
+    };
     const [projects, setProjects] =
       useState<ProjectRecord[]>(
         projectRepository.getAll()
@@ -48,6 +54,7 @@ import {
     function addProject(
       project: ProjectRecord
     ) {
+      authorize();
       projectRepository.create(project);
       refresh();
     }
@@ -55,11 +62,13 @@ import {
     function updateProject(
       project: ProjectRecord
     ) {
+      authorize();
       projectRepository.update(project);
       refresh();
     }
   
     function deleteProject(id: string) {
+      authorize();
       const result = guardProjectDeletion(id);
 
       if (!result.success) return result;

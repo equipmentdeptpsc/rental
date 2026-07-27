@@ -12,7 +12,7 @@ export function useBillingDrafts() {
   const aggregate = useRentalWorkspaceAggregate();
   const { billingStatement: billingStatementRepository, deur: deurRepository } = useApplicationDependenciesCompatibility().repositories;
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [keyword, setKeyword] = useState("");
   const [version, setVersion] = useState(0);
 
@@ -35,6 +35,7 @@ export function useBillingDrafts() {
   }
 
   function deleteDraft(id: string) {
+    if (!hasPermission("billing.update")) return;
     const confirmed = window.confirm("Delete this Billing Statement?");
 
     if (!confirmed) return;
@@ -43,12 +44,12 @@ export function useBillingDrafts() {
 
     if (!deleted) return;
 
-    deurRepository.unlockBilling(deleted.id);
+    deurRepository.unlockBilling(deleted.id, user);
     refresh();
   }
 
   function updateInvoiceStatus(id: string, status: BillingInvoiceStatus) {
-    const result = updateBillingInvoiceStatus(id, status, billingStatementRepository);
+    const result = updateBillingInvoiceStatus(id, status, billingStatementRepository, user);
 
     if (!result.success) {
       showToast(result.message, "error");
@@ -65,7 +66,7 @@ export function useBillingDrafts() {
   }
 
   function collect(id: string, input: { mode: "partial" | "full"; amount?: number; paymentDate: string; referenceNumber: string; paymentMethod?: string; remarks?: string }) {
-    const result = recordCollection({ statementId: id, ...input, actor: { id: user?.id, name: user?.name ?? "Admin" } });
+    const result = recordCollection({ statementId: id, ...input, authenticatedUser: user, actor: { id: user?.id, name: user?.name ?? "Unknown user" } });
     if (!result.success) { showToast(result.message, "error"); return result; }
     showToast(input.mode === "full" ? "Remaining balance collected." : "Partial Collection recorded.", "success");
     refresh();

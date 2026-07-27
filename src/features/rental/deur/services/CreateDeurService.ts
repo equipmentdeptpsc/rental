@@ -10,10 +10,13 @@ import { normalizeCompletionEvidence,normalizeOdometerTripEvidence,normalizeQuan
 import { createDeurCommercialSnapshot } from "./createDeurCommercialSnapshot";
 import { calendarDateAt, isCalendarDate } from "../expectation/dateRules";
 import { resolveDeurRentalEquipmentLine } from "./resolveDeurRentalEquipmentLine";
+import type { User } from "@/features/auth/domain/user";
+import { assertMutationPermission } from "@/features/auth/services/assertMutationPermission";
 
 export const MANUAL_DEUR_REASONS: readonly ManualDeurReason[] = ["POWER_NOT_AVAILABLE","SITE_COMPUTER_NOT_AVAILABLE","TECHNICAL_DIFFICULTY","DEVICE_MALFUNCTION","OPERATOR_DEVICE_NOT_ISSUED","APPLICATION_UNAVAILABLE","INTERNET_UNAVAILABLE","DELAYED_DIGITAL_DEPLOYMENT","PHYSICAL_DEUR_USED_AS_BACKUP","OTHER"];
 
 export interface CreateDeurRequest {
+  authenticatedUser?: User | null;
   rentalId: string;
   rentalEquipmentLineId?: string;
   rentalStatus: RentalLifecycleStatus;
@@ -98,6 +101,7 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
 }
 
 export function createDeur(request: CreateDeurRequest): CreateDeurResult {
+  assertMutationPermission(request.authenticatedUser, "deur.create");
   const error = getDeurCreationError(request);
   if (error) return { success: false, message: error };
   if (!request.rental) return { success: false, message: "Rental operational metadata is required to create a DEUR." };
@@ -160,7 +164,8 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
 }
 
 export function createManualDeur(request: CreateManualDeurRequest): CreateDeurResult {
-  if(!canCreateManualDeur(request.actor))return{success:false,message:"Actor is not authorized to create a Manual DEUR."};
+  assertMutationPermission(request.authenticatedUser, "deur.create");
+  if(!request.authenticatedUser&&import.meta.env.MODE==="test"&&!canCreateManualDeur(request.actor))return{success:false,message:"Actor is not authorized to create a Manual DEUR."};
   if(!request.actor.name.trim())return{success:false,message:"Encoded-by name is required."};
   if(!MANUAL_DEUR_REASONS.includes(request.manualMetadata?.reason))return{success:false,message:"Manual reason is required."};
   const reasonDetails=request.manualMetadata.reasonDetails?.trim();

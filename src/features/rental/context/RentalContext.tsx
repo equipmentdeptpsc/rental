@@ -130,7 +130,7 @@ export function RentalProvider({
   const [rentalEquipmentLineMigrationIssues, setRentalEquipmentLineMigrationIssues] = useState<RentalEquipmentLineMigrationIssue[]>(bootstrap.issues);
 
   const { equipment: equipmentRecords, getEquipment, updateEquipment } = useEquipment();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { assignments, getAssignment, completeAssignment } = useAssignment();
   const { operators } = useOperator();
   const { projects } = useProject();
@@ -177,6 +177,7 @@ export function RentalProvider({
   }
 
   function addRental(item: RentalRecord, equipmentLines?: NewRentalEquipmentLineInput[]) {
+    if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const dateError = validateNewRentalDates(item.dateOut, item.expectedReturn);
     if (dateError) return { success: false, message: dateError };
     const commercialTermsError = getRentalCommercialTermsError(item);
@@ -341,6 +342,7 @@ export function RentalProvider({
   }
 
   function updateRental(item: RentalRecord) {
+    if (!hasPermission("rental.manage")) return;
     const current = rentalRepository.getById(item.id);
     if (!current) return;
     const materialChanged = current.customerId !== item.customerId || current.projectId !== item.projectId || current.dateOut !== item.dateOut || current.expectedReturn !== item.expectedReturn || JSON.stringify(current.deurExpectationPolicy) !== JSON.stringify(item.deurExpectationPolicy);
@@ -349,12 +351,14 @@ export function RentalProvider({
     if (materialChanged && current.approvalStatus === "Approved") auditRental(current, next, "APPROVAL_INVALIDATED", "Material Rental details changed.");
     refreshRentals();
   }
-  function updateCustomerContact(id:string,input:RentalCustomerContactInput):RentalTransitionResult{const current=rentalRepository.getById(id);if(!current)return{success:false,message:"Rental not found."};const result=updateRentalCustomerContact(current,input,{id:user?.id,name:user?.name??"",role:user?.role},new Date().toISOString(),developmentCustomerReviewOutbox.hasPendingForRental(current.rentalNumber??current.id));if(!result.success)return result;rentalRepository.update(result.rental);auditRental(current,result.rental,"CUSTOMER_CONTACT_UPDATED",`Customer review recipient changed from ${maskEmail(current.customerContactSnapshot?.representativeEmail)} to ${maskEmail(result.rental.customerContactSnapshot?.representativeEmail)}.`);refreshRentals();return{success:true,rental:result.rental}}
+  function updateCustomerContact(id:string,input:RentalCustomerContactInput):RentalTransitionResult{if(!hasPermission("rental.manage"))return{success:false,message:"You do not have permission to manage Rentals."};const current=rentalRepository.getById(id);if(!current)return{success:false,message:"Rental not found."};const result=updateRentalCustomerContact(current,input,{id:user?.id,name:user?.name??"",role:user?.role},new Date().toISOString(),developmentCustomerReviewOutbox.hasPendingForRental(current.rentalNumber??current.id),true);if(!result.success)return result;rentalRepository.update(result.rental);auditRental(current,result.rental,"CUSTOMER_CONTACT_UPDATED",`Customer review recipient changed from ${maskEmail(current.customerContactSnapshot?.representativeEmail)} to ${maskEmail(result.rental.customerContactSnapshot?.representativeEmail)}.`);refreshRentals();return{success:true,rental:result.rental}}
 
   function transitionRental(
     id: string,
     nextStatus: RentalLifecycleStatus
   ): RentalTransitionResult {
+    const requiredPermission = nextStatus === "Released" ? "rental.release" : nextStatus === "Returned" ? "rental.return" : "rental.manage";
+    if (!hasPermission(requiredPermission)) return { success: false, message: "You do not have permission to perform this Rental transition." };
     const current = rentalRepository.getById(id);
 
     if (!current) {
@@ -495,6 +499,7 @@ export function RentalProvider({
   }
 
   function deleteRental(id: string) {
+    if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const rental = rentalRepository.getById(id);
 
     if (!rental) {
@@ -522,16 +527,14 @@ export function RentalProvider({
     id: string,
     releasedBy: string
   ): RentalTransitionResult {
-    if (user?.role !== "Admin") {
-      return { success: false, message: "An Admin must release this equipment." };
-    }
+    if (!hasPermission("rental.release")) return { success: false, message: "An Admin must release this equipment." };
 
     const current = rentalRepository.getById(id);
     if (!current) return { success: false, message: "Rental not found." };
     if (getRentalApprovalStatus(current) !== "Approved") return { success: false, message: "Manager approval is required before equipment can be released." };
 
     const actorName = releasedBy.trim();
-    if (!actorName || actorName !== user.name) {
+    if (!actorName || actorName !== user?.name) {
       return { success: false, message: "Select the signed-in Admin as Released By." };
     }
 
@@ -552,13 +555,14 @@ export function RentalProvider({
   }
 
   function submitForApproval(id: string): RentalTransitionResult {
+    if (!hasPermission("rental.approve")) return { success: false, message: "You do not have permission to submit Rental approvals." };
     const rental = rentalRepository.getById(id);
     if (!rental) return { success: false, message: "Rental not found." };
     const lines = rentalEquipmentLineRepository.getByRentalId(id);
     const contracts = rentalContractRepository.ensureLineAssociations(rentalEquipmentLineRepository.getAll()).contracts;
     const requestedAt = new Date().toISOString();
     const prepared = prepareRentalEquipmentLineRelease({ rental, lines, contracts, timestamp: requestedAt });
-    const result = submitRentalApproval(rental, user, prepared.success, requestedAt);
+    const result = submitRentalApproval(rental, user, prepared.success, requestedAt, true);
     if (!result.success) return { success: false, message: prepared.success ? result.message : prepared.issues.map((issue) => issue.message).join(" ") };
     const approver = resolveActiveManagerApprover();
     if (!approver.success) return { success: false, message: approver.message };
@@ -591,9 +595,10 @@ export function RentalProvider({
   }
 
   function decideApproval(id: string, decision: "Approved" | "Rejected", remarks: string): RentalTransitionResult {
+    if (!hasPermission("rental.approve")) return { success: false, message: "You do not have permission to decide Rental approvals." };
     const rental = rentalRepository.getById(id);
     if (!rental) return { success: false, message: "Rental not found." };
-    const result = decideRentalApproval(rental, user, decision, remarks, new Date().toISOString());
+    const result = decideRentalApproval(rental, user, decision, remarks, new Date().toISOString(), true);
     if (!result.success) return { success: false, message: result.message };
     rentalRepository.update(result.rental);
     developmentApprovalEmailOutbox.setDecision(rental.id, decision, result.event.timestamp);
@@ -607,11 +612,13 @@ export function RentalProvider({
   }
 
   function addContract(contract: RentalContractRecord) {
+    if (!hasPermission("rental.commercialTerms.manage")) return;
     rentalContractRepository.create(contract);
     refreshContracts();
   }
 
   function updateContract(contract: RentalContractRecord) {
+    if (!hasPermission("rental.commercialTerms.manage")) return;
     const rentalId = contract.rentalId ?? contract.id;
     const rental = rentalRepository.getById(rentalId);
     const lineId = contract.rentalEquipmentLineId ?? rentalEquipmentLineRepository.getByRentalId(rentalId).at(0)?.id;
@@ -623,6 +630,7 @@ export function RentalProvider({
   }
 
   function deleteContract(id: string) {
+    if (!hasPermission("rental.commercialTerms.manage")) return;
     rentalContractRepository.delete(id);
     refreshContracts();
   }
@@ -646,7 +654,7 @@ export function RentalProvider({
   }
 
   function saveCommercialTermsForRentalEquipmentLine(rentalId: string, lineId: string, input: RentalCommercialTermsInput): RentalTransitionResult {
-    if (user?.role !== "Admin") return { success: false, message: "Only an Admin can edit Commercial Terms. Managers approve or reject the prepared transaction." };
+    if (!hasPermission("rental.commercialTerms.manage")) return { success: false, message: "You do not have permission to edit Commercial Terms." };
     const rental = rentalRepository.getById(rentalId);
     if (!rental) return { success: false, message: "Rental not found." };
     const line = rentalEquipmentLineRepository.getById(lineId);
@@ -667,6 +675,7 @@ export function RentalProvider({
   }
 
   function addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput) {
+    if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const rental = rentalRepository.getById(rentalId);
     if (!rental) return { success: false, message: "Rental not found." };
     const existingLines = rentalEquipmentLineRepository.getByRentalId(rentalId);
@@ -687,6 +696,7 @@ export function RentalProvider({
   }
 
   function removeRentalEquipmentLine(rentalId: string, lineId: string) {
+    if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const rental = rentalRepository.getById(rentalId);
     const line = rentalEquipmentLineRepository.getById(lineId);
     if (!rental || !line || line.rentalId !== rentalId) return { success: false, message: "Rental Equipment Line not found." };

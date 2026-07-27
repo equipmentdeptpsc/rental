@@ -17,7 +17,8 @@ export interface NavigationItem {
     | "customers"
     | "billing"
     | "reports"
-    | "settings";
+    | "settings"
+    | "users";
   readonly permission: Permission;
 }
 
@@ -43,7 +44,10 @@ export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
   },
   { title: "FINANCE", items: [{ icon: "billing", label: "Billing", path: "/billing", permission: "billing.read" }] },
   { title: "ANALYTICS", items: [{ icon: "reports", label: "Reports", path: "/reports", permission: "reports.view" }] },
-  { title: "SYSTEM", items: [{ icon: "settings", label: "Settings", path: "/settings", permission: "settings.manage" }] },
+  { title: "SYSTEM", items: [
+    { icon: "users", label: "Users", path: "/users", permission: "users.manage" },
+    { icon: "settings", label: "Settings", path: "/settings", permission: "settings.manage" },
+  ] },
 ]);
 
 export function getVisibleNavigation(

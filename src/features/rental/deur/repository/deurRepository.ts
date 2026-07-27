@@ -11,6 +11,8 @@ import type { DeurOperatorAction } from "../operator/types";
 import type { RentalRecord } from "../../types";
 import { resolveLegacyDeurRentalEquipmentLine } from "../services/resolveDeurRentalEquipmentLine";
 import { createCustomerReviewRequestForSubmittedDeur } from "../../customer-review/createCustomerReviewRequestForSubmittedDeur";
+import type { User } from "@/features/auth/domain/user";
+import { assertMutationPermission } from "@/features/auth/services/assertMutationPermission";
 
 const STORAGE_KEY = DEUR_STORAGE_KEY;
 
@@ -131,7 +133,8 @@ class DeurRepository {
     return { changed, records: structuredClone(migrated), issues };
   }
 
-  applyOperatorAction(input: { deurId: string; expectedUpdatedAt: string; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string } }) {
+  applyOperatorAction(input: { deurId: string; expectedUpdatedAt: string; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string }; authenticatedUser?: User | null }) {
+    assertMutationPermission(input.authenticatedUser, "deur.create");
     const current = this.getAll();
     const latest = current.find((record) => record.id === input.deurId);
     if (!latest) return { success: false as const, code: "DEUR_NOT_FOUND", message: "DEUR not found." };
@@ -179,19 +182,21 @@ class DeurRepository {
     return true;
   }
 
-  submit(id: string, actor: { name: string; id?: string }) {
+  submit(id: string, actor: { name: string; id?: string }, authenticatedUser?: User | null) {
+    assertMutationPermission(authenticatedUser, "deur.review");
     const result = this.review(id, (record) => submitDeur(record, actor), "submit");
     if (!result.success) return result;
     const request = createCustomerReviewRequestForSubmittedDeur(result.record);
     return { ...result, customerReviewRequest: request.success ? request.entry : undefined, customerReviewWarning: request.success ? undefined : request.message };
   }
-  acknowledge(id: string, actor: { name: string; id?: string; email?:string }, remarks="") {
+  acknowledge(id: string, actor: { name: string; id?: string; email?:string }, remarks="", authenticatedUser?: User | null, publicWorkflow = false) {
+    if (!publicWorkflow) assertMutationPermission(authenticatedUser, "deur.review");
     const record = this.getById(id);
     if (record?.revision?.previousRevisionId) return this.acknowledgeCorrection(id, actor);
     return this.review(id, (item) => acknowledgeDeur(item, actor, new Date().toISOString(), remarks), "acknowledge");
   }
-  reject(id: string, actor: { name: string; id?: string }, reason: string) { return this.review(id, (record) => rejectDeur(record, actor, reason), "reject"); }
-  reopen(id: string, actor: { name: string; id?: string }) { return this.review(id, (record) => reopenDeur(record, actor), "reopen"); }
+  reject(id: string, actor: { name: string; id?: string }, reason: string, authenticatedUser?: User | null, publicWorkflow = false) { if (!publicWorkflow) assertMutationPermission(authenticatedUser, "deur.review"); return this.review(id, (record) => rejectDeur(record, actor, reason), "reject"); }
+  reopen(id: string, actor: { name: string; id?: string }, authenticatedUser?: User | null) { assertMutationPermission(authenticatedUser, "deur.review"); return this.review(id, (record) => reopenDeur(record, actor), "reopen"); }
 
   createCorrection(input: {
     sourceId: string;
@@ -200,7 +205,9 @@ class DeurRepository {
     actor: { id?: string; name: string; role?: string };
     timestamp?: string;
     newId?: string;
+    authenticatedUser?: User | null;
   }) {
+    assertMutationPermission(input.authenticatedUser, "deur.correct");
     const source = this.getById(input.sourceId);
     if (!source) return { success: false as const, code: "DEUR_NOT_FOUND", message: "DEUR not found." };
     const chainId = source.revision?.chainId ?? source.id;
@@ -208,7 +215,7 @@ class DeurRepository {
     const timestamp = input.timestamp ?? new Date().toISOString();
     const result = createDeurCorrectionRevision({
       source, chain, reasonCode: input.reasonCode, reasonDetails: input.reasonDetails,
-      actor: input.actor, timestamp, newId: input.newId ?? crypto.randomUUID(),
+      actor: { ...input.actor, permissionGranted: true }, timestamp, newId: input.newId ?? crypto.randomUUID(),
       newDeurNumber: generateDeurNumber(this.getAll()),
     });
     if (!result.success) return result;
@@ -265,7 +272,8 @@ class DeurRepository {
     return { success: true as const, record: this.persistMutation(records, result.record, queueOperation, result.record) };
   }
 
-  delete(id: string) {
+  delete(id: string, authenticatedUser?: User | null) {
+    assertMutationPermission(authenticatedUser, "deur.correct");
 
     const deleted = this.getById(id);
     if (!deleted) return undefined;
@@ -276,8 +284,10 @@ class DeurRepository {
 
   lockBilling(
     deurIds: string[],
-    billingStatementId: string
+    billingStatementId: string,
+    authenticatedUser?: User | null,
   ) {
+    assertMutationPermission(authenticatedUser, "billing.create");
 
     const updated =
       this.getAll().map(deur => {
@@ -308,8 +318,10 @@ class DeurRepository {
   }
 
   unlockBilling(
-    billingStatementId: string
+    billingStatementId: string,
+    authenticatedUser?: User | null,
   ) {
+    assertMutationPermission(authenticatedUser, "billing.update");
     const affectedIds = new Set(this.getAll().filter((record) => record.billingStatementId === billingStatementId).map((record) => record.id));
 
     const updated =

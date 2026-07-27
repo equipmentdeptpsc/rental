@@ -7,6 +7,8 @@ import { deurRepository } from "@/features/rental/deur/repository/deurRepository
 import { billingStatementRepository } from "../repository";
 import type { BillingStatement } from "../types";
 import { consumeDeurIntoBillingStatement, type BillingStatementWorkflowDependencies } from "./BillingStatementWorkflow";
+import type { User } from "@/features/auth/domain/user";
+import { assertMutationPermission } from "@/features/auth/services/assertMutationPermission";
 
 export interface BillingHandoffIssue { code: string; message: string }
 export interface BillingHandoffReview {
@@ -92,7 +94,8 @@ function matchingStatement(deur: DeurRecord, statements: StatementPort): Billing
   return statement?.rentalId === deur.rentalId && statement.lines.some((line) => line.deurId === deur.id) ? statement : undefined;
 }
 
-export function executeRentalBillingHandoff(input: { aggregate: RentalAggregate; review: BillingHandoffReview }, dependencies: BillingHandoffDependencies): BillingHandoffResult {
+export function executeRentalBillingHandoff(input: { aggregate: RentalAggregate; review: BillingHandoffReview; authenticatedUser?: User | null }, dependencies: BillingHandoffDependencies): BillingHandoffResult {
+  assertMutationPermission(input.authenticatedUser, "billing.create");
   const statements = dependencies.statements ?? billingStatementRepository; const deurs = dependencies.deurs ?? deurRepository;
   try {
     const latest = deurs.getById(input.review.deurId);
@@ -137,6 +140,7 @@ export function executeRentalBillingHandoff(input: { aggregate: RentalAggregate;
       deurId: latest.id, expectedDeurUpdatedAt: latest.updatedAt,
       statementInput: { aggregate: input.aggregate, billingFrom: latest.reportDate ?? latest.workDate, billingTo: latest.reportDate ?? latest.workDate },
       statementIdentity: expectedIdentity,
+      authenticatedUser: input.authenticatedUser,
     }, workflowDependencies);
     if (!consumed.success) return { status: "failed", issues: [issue(consumed.code, consumed.message)] };
     dependencies.checkpoint?.("after-consumption");

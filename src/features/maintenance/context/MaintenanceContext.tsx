@@ -9,6 +9,8 @@ import {
   import type { MaintenanceRecord } from "../types";
   
   import { maintenanceRepository } from "../repository";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface MaintenanceContextType {
     maintenance: MaintenanceRecord[];
@@ -36,6 +38,8 @@ import {
   }: {
     children: ReactNode;
   }) {
+    const auth = useOptionalAuth();
+    const authorize = () => { if (auth && !auth.hasPermission("maintenance.manage")) throw new AuthorizationError("maintenance.manage"); };
     const [maintenance, setMaintenance] =
       useState(
         maintenanceRepository.getAll()
@@ -50,6 +54,7 @@ import {
     function addMaintenance(
       item: MaintenanceRecord
     ) {
+      authorize();
       maintenanceRepository.create(item);
       refresh();
     }
@@ -57,6 +62,7 @@ import {
     function updateMaintenance(
       item: MaintenanceRecord
     ) {
+      authorize();
       maintenanceRepository.update(item);
       refresh();
     }
@@ -64,6 +70,7 @@ import {
     function deleteMaintenance(
       id: string
     ) {
+      authorize();
       maintenanceRepository.delete(id);
       refresh();
     }

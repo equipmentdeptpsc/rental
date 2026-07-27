@@ -8,6 +8,8 @@ import { evaluateDeurBillingEligibility, type DeurBillingEligibilityResult } fro
 import type { DeurRecord } from "@/features/rental/deur/types";
 import { calculateDeurBillingStatementLine } from "./calculateDeurBillingStatementLine";
 import { mapRentalContractToBillingCalculationTerms, resolveDeurBillingCalculationTerms, type BillingChargeResult } from "@/features/rental/billing/engine";
+import type { User } from "@/features/auth/domain/user";
+import { assertMutationPermission } from "@/features/auth/services/assertMutationPermission";
 
 type Result =
   | { success: true; statement: BillingStatement }
@@ -31,6 +33,7 @@ export interface ConsumeDeurIntoBillingStatementCommand {
   expectedDeurUpdatedAt?: string;
   statementInput: SingleDeurBillingStatementInput;
   statementIdentity?: { id: string; statementNo: string };
+  authenticatedUser?: User | null;
 }
 
 export type ConsumeDeurIntoBillingStatementResult =
@@ -56,7 +59,9 @@ export function createBillingStatementForRental(
   statements: Pick<BillingStatementRepositoryPort, "getByRentalId" | "create"> = billingStatementRepository,
   financials?: Pick<BillingChargeResult, "vat" | "withholdingTax" | "grandTotal">,
   identity?: { id: string; statementNo: string },
+  authenticatedUser?: User | null,
 ): Result {
+  assertMutationPermission(authenticatedUser, "billing.create");
   if (["Cancelled", "Closed"].includes(aggregate.rental.status)) {
     return { success: false, message: "Cancelled or closed rentals cannot create billing statements." };
   }
@@ -141,6 +146,7 @@ export function consumeDeurIntoBillingStatement(
   command: ConsumeDeurIntoBillingStatementCommand,
   dependencies: BillingStatementWorkflowDependencies = {},
 ): ConsumeDeurIntoBillingStatementResult {
+  assertMutationPermission(command.authenticatedUser, "billing.create");
   const statements = dependencies.statements ?? billingStatementRepository;
   const deurs = dependencies.deurs ?? deurRepository;
 
@@ -201,7 +207,7 @@ export function consumeDeurIntoBillingStatement(
   try {
     const creation = createBillingStatementForRental(
       aggregate, billingFrom, billingTo, [calculatedLine.line], statements,
-      calculatedLine.charges, command.statementIdentity,
+      calculatedLine.charges, command.statementIdentity, command.authenticatedUser,
     );
     if (!creation.success) {
       return failure("STATEMENT_CREATION_FAILED", creation.message);
@@ -244,7 +250,9 @@ export function updateBillingInvoiceStatus(
   statementId: string,
   nextStatus: BillingInvoiceStatus,
   statements: Pick<typeof billingStatementRepository, "getById" | "update"> = billingStatementRepository,
+  authenticatedUser?: User | null,
 ): Result {
+  assertMutationPermission(authenticatedUser, "billing.update");
   const statement = statements.getById(statementId);
 
   if (!statement) {

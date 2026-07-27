@@ -17,8 +17,10 @@ import { useState } from "react";
 import { executeRentalBillingHandoff, prepareRentalBillingHandoff, type BillingHandoffReview } from "@/features/rental/billingstatement/services/executeRentalBillingHandoff";
 import { billingHandoffAuditRepository } from "@/features/rental/billingstatement/repository/BillingHandoffAuditRepository";
 import BillingHandoffReviewDialog from "./BillingHandoffReviewDialog";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function CloseRentalPanel() {
+  const { user } = useAuth();
   const aggregate =
     useRentalWorkspaceAggregate();
 
@@ -86,7 +88,7 @@ export default function CloseRentalPanel() {
     if (!review || executing) return;
     setExecuting(true);
     await Promise.resolve();
-    const result = executeRentalBillingHandoff({ aggregate, review }, {
+    const result = executeRentalBillingHandoff({ aggregate, review, authenticatedUser: user }, {
       closeRental: (rentalId) => transitionRental(rentalId, "Closed"),
       audit: (event) => billingHandoffAuditRepository.record(event),
     });

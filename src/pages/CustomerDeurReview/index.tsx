@@ -39,8 +39,8 @@ export default function CustomerDeurReviewPage() {
 
     const result =
       decision === "acknowledge"
-        ? deurRepository.acknowledge(deur.id, actor, remarks)
-        : deurRepository.reject(deur.id, actor, reason);
+        ? deurRepository.acknowledge(deur.id, actor, remarks, undefined, true)
+        : deurRepository.reject(deur.id, actor, reason, undefined, true);
 
     if (result.success) {
       developmentCustomerReviewOutbox.decide(

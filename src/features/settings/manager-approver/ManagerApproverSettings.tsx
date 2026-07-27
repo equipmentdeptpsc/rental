@@ -11,7 +11,7 @@ export default function ManagerApproverSettings() {
   const [email, setEmail] = useState(existing?.email ?? "");
   const [active, setActive] = useState(existing?.active ?? true);
   const [message, setMessage] = useState("");
-  const canEdit = !auth || auth.user?.role === "Admin";
+  const canEdit = !auth || auth.hasPermission("settings.manage");
   function save() {
     const result = saveManagerApproverConfiguration({ name, email, active });
     setMessage(result.success ? "Manager approver configuration saved." : result.message);

@@ -19,7 +19,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
   const aggregate =
     useRentalWorkspaceAggregate();
   const {equipment}=useEquipment();
-  const {user}=useAuth();
+  const {hasPermission}=useAuth();
   const workflow=resolveRentalWorkflowStatus({rental:aggregate.rental,effectiveDeur:aggregate.deurs.at(-1),commercialTermsAvailable:Boolean(aggregate.contract||aggregate.deurs.at(-1)?.commercialSnapshot),billableEvidence:Boolean(aggregate.deurs.at(-1)?.totals?.operationMinutes||aggregate.deurs.at(-1)?.totalOperatingMinutes)});
   const compliance = evaluateRentalDeurCompliance({ rental: aggregate.rental, assignment: aggregate.assignment, deurs: aggregate.deurs, evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
   const lineCompliance = evaluateRentalEquipmentLineDeurCompliance({ rental: aggregate.rental, lines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
@@ -95,7 +95,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       {aggregate.rentalEquipmentLines.length > 1 && <div className="mt-4 space-y-2"><h3 className="text-sm font-semibold">Equipment Line DEUR Compliance</h3>{lineCompliance.map((item) => {const line=aggregate.rentalEquipmentLines.find(candidate=>candidate.id===item.rentalEquipmentLineId);const label=line?resolveRentalLinePresentation(line,aggregate.rentalEquipmentLines,equipment).label:"Equipment record unavailable";return <p key={item.rentalEquipmentLineId} className={`rounded border p-2 text-sm ${item.result.status === "COMPLIANT" ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>{label}: {item.result.reason}</p>})}</div>}
       {aggregate.rental.status!=="Closed"&&<RentalDeurExpectationPolicyCard rental={aggregate.rental} />}
       {aggregate.rental.status!=="Closed"&&<div className="mt-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} hideClose={activeTab==="closing"} /></div>}
-      {aggregate.rental.status!=="Closed"&&user?.role==="Admin"&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
+      {aggregate.rental.status!=="Closed"&&hasPermission("rental.manage")&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
       <ApprovalInvalidationNotice rental={aggregate.rental} />
       <p className="mt-3 rounded bg-slate-50 p-3 text-sm"><b>{workflow.label}</b> — {workflow.explanation} Next: {workflow.recommendedNextAction}.</p>
 

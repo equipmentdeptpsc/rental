@@ -19,6 +19,7 @@ import { AuthenticationService } from "@/features/auth/services/AuthenticationSe
 import { AuthorizationService } from "@/features/auth/services/AuthorizationService";
 import { LegacyAuthCompatibilityRepository } from "@/features/auth/repository/LegacyAuthCompatibilityRepository";
 import { LocalAuthenticationProvider } from "@/features/auth/providers/local/LocalAuthenticationProvider";
+import { UserManagementService } from "@/features/users/services/UserManagementService";
 
 const localRepositories: RepositoryDependencies = { equipment: equipmentRepository, assignment: assignmentRepository, rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, prefix: prefixRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository,equipmentStatusRead:new LocalEquipmentStatusReadRepository() };
 export function createLocalApplicationDependencies(overrides: ApplicationDependencyOverrides = {}): ApplicationDependencies {
@@ -29,6 +30,13 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     new LocalAuthenticationProvider(authRepository, userRepository),
   ];
   const authenticationService = overrides.authentication?.authenticationService ?? new AuthenticationService(authenticationProviders, userRepository);
+  const userManagementService = overrides.authentication?.userManagementService ?? new UserManagementService(
+    userRepository,
+    { create: (user, initialPassword) => {
+      if (!(userRepository instanceof LocalUserRepository)) throw new Error("Local user provisioning is unavailable.");
+      return userRepository.createUser(user, initialPassword);
+    } },
+  );
   const authentication = {
     authRepository,
     authenticationProviders,
@@ -36,6 +44,7 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     authenticationService,
     authorizationService: overrides.authentication?.authorizationService ?? new AuthorizationService(),
     legacyCompatibilityRepository: overrides.authentication?.legacyCompatibilityRepository ?? new LegacyAuthCompatibilityRepository(storage),
+    userManagementService,
   };
   return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories: { ...localRepositories, ...overrides.repositories },authentication,configuration:{equipmentStatusSource:"local"}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
 }

@@ -13,6 +13,8 @@ import type {
 import { guardEquipmentDeletion } from "@/features/relationships/deletionGuards";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { createEquipmentWithCategoryAssetNumber } from "../services/categoryAssetNumber";
+import { useOptionalAuth } from "@/features/auth/AuthContext";
+import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
 
 interface EquipmentContextType {
   equipment: EquipmentRecord[];
@@ -63,6 +65,10 @@ export function EquipmentProvider({
   children: ReactNode;
 }) {
   const { equipment: equipmentRepository, prefix: prefixRepository } = useApplicationDependenciesCompatibility().repositories;
+  const auth = useOptionalAuth();
+  const authorize = (permission: "equipment.create" | "equipment.update" | "equipment.delete" | "equipment.restore") => {
+    if (auth && !auth.hasPermission(permission)) throw new AuthorizationError(permission);
+  };
   const [
     equipment,
     setEquipment,
@@ -79,6 +85,7 @@ export function EquipmentProvider({
   function addEquipment(
     item: EquipmentRecord
   ) {
+    authorize("equipment.create");
     const prepared = createEquipmentWithCategoryAssetNumber(item, prefixRepository.getAll(), equipmentRepository.getAll());
     if (!prepared.success) return { success: false, message: prepared.message };
     equipmentRepository.create(prepared.record);
@@ -89,6 +96,7 @@ export function EquipmentProvider({
   function updateEquipment(
     item: EquipmentRecord
   ) {
+    authorize("equipment.update");
     equipmentRepository.update(item);
     refresh();
   }
@@ -96,6 +104,7 @@ export function EquipmentProvider({
   function deleteEquipment(
     id: string
   ) {
+    authorize("equipment.delete");
     equipmentRepository.delete(id);
     refresh();
   }
@@ -103,6 +112,7 @@ export function EquipmentProvider({
   function restoreEquipment(
     id: string
   ) {
+    authorize("equipment.restore");
     equipmentRepository.restore(id);
     refresh();
   }
@@ -110,6 +120,7 @@ export function EquipmentProvider({
   function permanentlyDeleteEquipment(
     id: string
   ) {
+    authorize("equipment.delete");
     const result = guardEquipmentDeletion(id);
 
     if (!result.success) return result;
@@ -138,6 +149,7 @@ export function EquipmentProvider({
     id: string,
     status: EquipmentRecord["status"]
   ) {
+    authorize("equipment.update");
     const machine =
       equipmentRepository.getById(id);
 

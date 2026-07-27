@@ -16,15 +16,15 @@ const reasons: Array<[DeurCorrectionReasonCode, string]> = [
 ];
 
 export default function CreateDeurCorrectionAction({ deur }: { deur: DeurRecord }) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [reasonCode, setReasonCode] = useState<DeurCorrectionReasonCode>("INCORRECT_TIME_ENTRY");
   const [reasonDetails, setReasonDetails] = useState("");
-  if (user?.role !== "Admin" || !["Acknowledged","Rejected"].includes(deur.status) || deur.billingLocked || deur.revision?.supersededByRevisionId) return null;
+  if (!user || !hasPermission("deur.correct") || !["Acknowledged","Rejected"].includes(deur.status) || deur.billingLocked || deur.revision?.supersededByRevisionId) return null;
   if (!open) return <Button type="button" onClick={() => setOpen(true)}>CREATE CORRECTION</Button>;
   const save = () => {
-    const result = deurRepository.createCorrection({ sourceId: deur.id, reasonCode, reasonDetails, actor: user });
+    const result = deurRepository.createCorrection({ sourceId: deur.id, reasonCode, reasonDetails, actor: user, authenticatedUser: user });
     if (!result.success) { showToast(result.message, "error"); return; }
     showToast(`Correction revision ${result.revision.revision?.revisionNumber} created as Draft.`, "success");
     setOpen(false);

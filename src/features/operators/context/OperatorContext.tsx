@@ -10,6 +10,8 @@ import {
   
   import { operatorRepository } from "../repository";
   import { guardOperatorDeletion } from "@/features/relationships/deletionGuards";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface OperatorContextType {
     operators: Operator[];
@@ -37,6 +39,10 @@ import {
   }: {
     children: ReactNode;
   }) {
+    const auth = useOptionalAuth();
+    const authorize = () => {
+      if (auth && !auth.hasPermission("operator.manage")) throw new AuthorizationError("operator.manage");
+    };
     const [operators, setOperators] =
       useState(
         operatorRepository.getAll()
@@ -51,6 +57,7 @@ import {
     function addOperator(
       operator: Operator
     ) {
+      authorize();
       operatorRepository.create(
         operator
       );
@@ -60,6 +67,7 @@ import {
     function updateOperator(
       operator: Operator
     ) {
+      authorize();
       operatorRepository.update(
         operator
       );
@@ -69,6 +77,7 @@ import {
     function deleteOperator(
       id: string
     ) {
+      authorize();
       const result = guardOperatorDeletion(id);
 
       if (!result.success) return result;

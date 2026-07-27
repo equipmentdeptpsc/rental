@@ -22,7 +22,7 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
   if (!lineResolution.success) return { ...base, issues: [issue(lineResolution.issue.code === "DEUR_LINE_COMMERCIAL_SNAPSHOT_REQUIRED" ? "COMMERCIAL_SNAPSHOT_REQUIRED" : lineResolution.issue.code, lineResolution.issue.message)] };
   const line = lineResolution.line;
   if (line.assignmentId && !assignment) return { ...base, issues: [issue("ASSIGNMENT_NOT_FOUND", "Assignment was not found.")] };
-  if(actor?.role!=="Operator")return{...base,issues:[issue("DEUR_ACCESS_NOT_AUTHORIZED","Your login is not linked to an Operator record.")]};
+  if(!actor||(!input.authenticatedOperatorId&&actor.role!=="Operator"))return{...base,issues:[issue("DEUR_ACCESS_NOT_AUTHORIZED","Your application user is not linked to an Operator record.")]};
   const identityMatches = input.authenticatedOperatorId
     ? input.authenticatedOperatorId === operator.id
     : actor.id === operator.id;

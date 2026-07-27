@@ -34,6 +34,7 @@ const icons: Readonly<Record<NavigationItem["icon"], LucideIcon>> = {
   billing: FileText,
   reports: BarChart3,
   settings: Settings,
+  users: Users,
 };
 
 export default function Sidebar({

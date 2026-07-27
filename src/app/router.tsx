@@ -50,6 +50,7 @@ import DevelopmentEmailOutboxPage from "@/pages/DevelopmentEmailOutbox";
 import DevelopmentEmailPreviewPage from "@/pages/DevelopmentEmailOutbox/Preview";
 import DevelopmentCustomerReviewOutboxPage from "@/pages/DevelopmentCustomerReviewOutbox";
 import DevelopmentCustomerReviewPreview from "@/pages/DevelopmentCustomerReviewOutbox/Preview";
+import UsersPage from "@/features/users/pages/UsersPage";
 
 const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
 const WorkDescriptionPage = lazy(() => import("@/features/masters/work-description/pages"));
@@ -109,6 +110,7 @@ export const router = createBrowserRouter([
       { path: "billing", element: permitted("billing.read", <Billing />) },
       { path: "reports", element: permitted("reports.view", <Reports />) },
       { path: "settings", element: permitted("settings.manage", <Settings />) },
+      { path: "users", element: permitted("users.manage", <UsersPage />) },
       { path: "development-email-outbox", element: permitted("settings.manage", <DevelopmentEmailOutboxPage />) },
       { path: "development-email-outbox/:id", element: permitted("settings.manage", <DevelopmentEmailPreviewPage />) },
       { path: "development-customer-review-outbox", element: permitted("settings.manage", <DevelopmentCustomerReviewOutboxPage />) },

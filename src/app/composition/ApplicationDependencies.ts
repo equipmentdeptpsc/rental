@@ -17,6 +17,7 @@ import type { AuthenticationService } from "@/features/auth/services/Authenticat
 import type { AuthorizationService } from "@/features/auth/services/AuthorizationService";
 import type { LegacyAuthCompatibilityRepository } from "@/features/auth/repository/LegacyAuthCompatibilityRepository";
 import type { AuthenticationProvider } from "@/features/auth/providers/AuthenticationProvider";
+import type { UserManagementService } from "@/features/users/services/UserManagementService";
 
 export interface RepositoryDependencies {
   equipment: IEquipmentRepository; assignment: typeof assignmentRepository; rental: IRentalRepository;
@@ -33,6 +34,7 @@ export interface AuthenticationDependencies {
   authenticationService: AuthenticationService;
   authorizationService: AuthorizationService;
   legacyCompatibilityRepository: LegacyAuthCompatibilityRepository;
+  userManagementService: UserManagementService;
 }
 export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; authentication: AuthenticationDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
 export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies>; authentication?: Partial<AuthenticationDependencies> };

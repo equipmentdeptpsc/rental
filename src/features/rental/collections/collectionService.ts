@@ -2,6 +2,8 @@ import type { BillingStatement } from "../billingstatement/types";
 import { billingStatementRepository } from "../billingstatement/repository";
 import { collectionRepository } from "./repository";
 import type { CollectionTransaction } from "./types";
+import type { User } from "@/features/auth/domain/user";
+import { assertMutationPermission } from "@/features/auth/services/assertMutationPermission";
 
 export function reconcileStatementCollections(statement: BillingStatement, transactions: CollectionTransaction[]) {
   const invoiceTotal = Math.max(0, statement.grandTotal ?? statement.subtotal);
@@ -12,8 +14,9 @@ export function reconcileStatementCollections(statement: BillingStatement, trans
 export function recordCollection(input: {
   statementId: string; mode: "partial" | "full"; amount?: number; paymentDate: string;
   referenceNumber: string; paymentMethod?: string; remarks?: string;
-  actor: { id?: string; name: string }; transactionId?: string; recordedAt?: string;
+  actor: { id?: string; name: string }; authenticatedUser?: User | null; transactionId?: string; recordedAt?: string;
 }) {
+  assertMutationPermission(input.authenticatedUser, "collections.manage");
   const statement = billingStatementRepository.getById(input.statementId);
   if (!statement) return { success: false as const, message: "Billing statement not found." };
   if (!["Invoiced", "Partially Collected"].includes(statement.invoiceStatus)) return { success: false as const, message: "Only an invoiced statement with an outstanding balance can receive a Collection." };

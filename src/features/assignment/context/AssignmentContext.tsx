@@ -10,6 +10,8 @@ import type { AssignmentRecord } from "../types";
 import { hasActiveAssignmentConflict } from "../utils/selectAvailableEquipment";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { useOptionalAuth } from "@/features/auth/AuthContext";
+import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
 
 interface AssignmentContextType {
   assignments: AssignmentRecord[];
@@ -58,6 +60,10 @@ export function AssignmentProvider({
   children: ReactNode;
 }) {
   const { assignment: assignmentRepository, rental: rentalRepository } = useApplicationDependenciesCompatibility().repositories;
+  const auth = useOptionalAuth();
+  const authorize = () => {
+    if (auth && !auth.hasPermission("assignment.manage")) throw new AuthorizationError("assignment.manage");
+  };
   const [
     assignments,
     setAssignments,
@@ -101,6 +107,7 @@ export function AssignmentProvider({
   function addAssignment(
     assignment: AssignmentRecord
   ) {
+    authorize();
     if (
       isEquipmentAssigned(
         assignment.equipmentId
@@ -127,6 +134,7 @@ export function AssignmentProvider({
   function updateAssignment(
     assignment: AssignmentRecord
   ) {
+    authorize();
     if (assignment.status === "Active") {
       if (hasActiveAssignmentConflict(activeAssignments, assignment, assignment.id)) {
         return false;
@@ -146,6 +154,7 @@ export function AssignmentProvider({
     id: string,
     returnedDate: string
   ) {
+    authorize();
     const existing =
       assignmentRepository.getById(
         id
@@ -173,6 +182,7 @@ export function AssignmentProvider({
   function deleteAssignment(
     id: string
   ) {
+    authorize();
     if (rentalRepository.getAll().some((rental) => rental.assignmentId === id)) {
       return {
         success: false,

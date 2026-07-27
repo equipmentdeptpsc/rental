@@ -10,6 +10,8 @@ import {
   
   import { customerRepository } from "../repository";
   import { guardCustomerDeletion } from "@/features/relationships/deletionGuards";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface CustomerContextType {
     customers: CustomerRecord[];
@@ -37,6 +39,10 @@ import {
   }: {
     children: ReactNode;
   }) {
+    const auth = useOptionalAuth();
+    const authorize = () => {
+      if (auth && !auth.hasPermission("customer.manage")) throw new AuthorizationError("customer.manage");
+    };
     const [customers, setCustomers] =
       useState(
         customerRepository.getAll()
@@ -51,6 +57,7 @@ import {
     function addCustomer(
       customer: CustomerRecord
     ) {
+      authorize();
       customerRepository.create(customer);
       refresh();
     }
@@ -58,6 +65,7 @@ import {
     function updateCustomer(
       customer: CustomerRecord
     ) {
+      authorize();
       customerRepository.update(customer);
       refresh();
     }
@@ -65,6 +73,7 @@ import {
     function deleteCustomer(
       id: string
     ) {
+      authorize();
       const result = guardCustomerDeletion(id);
 
       if (!result.success) return result;

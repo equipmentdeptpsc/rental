@@ -8,11 +8,17 @@ import { deriveRentalQuickActions, visibleRentalQuickActions, type RentalQuickAc
 import { Link } from "react-router-dom";
 
 export default function RentalQuickActions({ rental, hideClose = false }: { rental: RentalRecord; hideClose?: boolean }) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { transitionRental, returnRental, releaseRental, submitForApproval, approveRental, rejectRental } = useRental();
   const { showToast } = useToast();
   const [pending, setPending] = useState<RentalQuickActionId>();
-  const model = deriveRentalQuickActions(rental, user?.role);
+  const model = deriveRentalQuickActions(rental, {
+    manage: hasPermission("rental.manage"),
+    approve: hasPermission("rental.approve"),
+    submit: hasPermission("rental.approve"),
+    release: hasPermission("rental.release"),
+    return: hasPermission("rental.return"),
+  });
   function run(id: RentalQuickActionId) {
     if (pending) return;
     setPending(id);
@@ -28,7 +34,7 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
     showToast(result.success ? `${model.actions.find((item) => item.id === id)?.label ?? "Rental action"} completed.` : result.message ?? "Rental action failed.", result.success ? "success" : "error");
     setPending(undefined);
   }
-  const canEditTerms=user?.role==="Admin"&&["Draft","Reserved"].includes(rental.status);
+  const canEditTerms=hasPermission("rental.commercialTerms.manage")&&["Draft","Reserved"].includes(rental.status);
   const actions = visibleRentalQuickActions(model, hideClose);
   return <div className="flex flex-wrap items-center gap-2">{model.message && <span className="text-sm text-slate-600">{model.message}</span>}{canEditTerms&&<Link className="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700" to={`/rentals/${rental.id}/commercial-terms`}>Edit Commercial Terms</Link>}{actions.map((action) => <Button key={action.id} variant="secondary" disabled={Boolean(pending)} onClick={() => run(action.id)}>{pending === action.id ? "Working…" : action.label}</Button>)}</div>;
 }

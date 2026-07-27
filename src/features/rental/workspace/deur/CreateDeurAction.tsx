@@ -12,8 +12,10 @@ import { createDeurOperationalMetadataSnapshot } from "@/features/rental/deur/se
 import { resolveDeurEvidenceMode } from "@/features/rental/deur/services/resolveDeurEvidenceMode";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function CreateDeurAction() {
+  const { user } = useAuth();
   const aggregate = useRentalWorkspaceAggregate();
   const { showToast } = useToast();
   const hasActiveDeur = Boolean(aggregate.activeDeur);
@@ -32,6 +34,7 @@ export default function CreateDeurAction() {
   const resolvedMode=resolveDeurEvidenceMode(billingMethod);
   const selectedWorkDescription = options.find((item) => item.id === workDescriptionId);
   const request = {
+    authenticatedUser: user,
     rentalId: aggregate.rental.id,
     rentalEquipmentLineId: line?.id,
     rentalStatus: aggregate.rental.status,

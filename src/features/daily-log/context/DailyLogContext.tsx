@@ -8,6 +8,8 @@ import {
   
   import type { DailyLogRecord } from "../types";
   import { dailyLogRepository } from "../repository";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface DailyLogContextType {
     logs: DailyLogRecord[];
@@ -39,6 +41,8 @@ import {
   }: {
     children: ReactNode;
   }) {
+    const auth = useOptionalAuth();
+    const authorize = () => { if (auth && !auth.hasPermission("dailyLog.manage")) throw new AuthorizationError("dailyLog.manage"); };
     const [logs, setLogs] =
       useState(
         dailyLogRepository.getAll()
@@ -53,6 +57,7 @@ import {
     function addLog(
       log: DailyLogRecord
     ) {
+      authorize();
       dailyLogRepository.create(log);
       refresh();
     }
@@ -60,6 +65,7 @@ import {
     function updateLog(
       log: DailyLogRecord
     ) {
+      authorize();
       dailyLogRepository.update(log);
       refresh();
     }
@@ -67,6 +73,7 @@ import {
     function deleteLog(
       id: string
     ) {
+      authorize();
       dailyLogRepository.delete(id);
       refresh();
     }

@@ -6,7 +6,6 @@ import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useRental } from "@/features/rental/context/RentalContext";
-import { selectAdminUsers } from "@/features/rental/utils/rentalFormOptions";
 
 interface Props {
   rentalId: string;
@@ -17,7 +16,7 @@ export default function ReleaseRentalAction({ rentalId }: Props) {
   const { releaseRental } = useRental();
   const { showToast } = useToast();
   const location = useLocation();
-  const adminUsers = useMemo(() => selectAdminUsers(user ? [user] : []), [user]);
+  const adminUsers = useMemo(() => user ? [user] : [], [user]);
   const [releasedById, setReleasedById] = useState("");
 
   useEffect(() => {

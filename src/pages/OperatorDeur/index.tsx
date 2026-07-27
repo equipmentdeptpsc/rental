@@ -41,18 +41,18 @@ export default function OperatorDeurPage() {
   function startDigitalDeur() {
     if (!access.allowed || !rental || !selectedLine || !assignment || !operator) return setMessage(access.issues[0]?.message ?? "Select an eligible equipment line.");
     const selected = selectable.find((item) => item.id === workDescriptionId); if (!selected) return setMessage("Select a Work Description.");
-    const result = createDeur({ rentalId: rental.id, rentalEquipmentLineId: selectedLine.id, rentalStatus: rental.status, rental, assignmentId: selectedLine.assignmentId, equipmentId: selectedLine.equipmentId, operatorId: selectedLine.operatorId, projectId: rental.projectId, customerId: rental.customerId, selectedWorkDescription: selected, remarks, shift });
+    const result = createDeur({ authenticatedUser: user, rentalId: rental.id, rentalEquipmentLineId: selectedLine.id, rentalStatus: rental.status, rental, assignmentId: selectedLine.assignmentId, equipmentId: selectedLine.equipmentId, operatorId: selectedLine.operatorId, projectId: rental.projectId, customerId: rental.customerId, selectedWorkDescription: selected, remarks, shift });
     setMessage(result.success ? "Digital DEUR created and saved locally." : result.message); if (result.success) setVersion((value) => value + 1);
   }
   function applyAction(action: DeurOperatorAction) {
     if (!active || !user) return; if (action === "END_SHIFT" && !window.confirm("End the current shift and close its active activity?")) return;
     const actionTimestamp = new Date().toISOString();
-    const result = deurRepository.applyOperatorAction({ deurId: active.id, expectedUpdatedAt: active.updatedAt, action, actionTimestamp, actor: user });
+    const result = deurRepository.applyOperatorAction({ deurId: active.id, expectedUpdatedAt: active.updatedAt, action, actionTimestamp, actor: user, authenticatedUser: user });
     setMessage(result.success ? operatorActionSuccessMessage(action) : result.message);
     if (result.success) setClock(actionTimestamp);
     setVersion((value) => value + 1);
   }
-  function submit() { if (!active || !user || !window.confirm("Submit this DEUR for acknowledgement? It will no longer be editable.")) return; const result = deurRepository.submit(active.id, user); setMessage(result.success ? "DEUR submitted for acknowledgement." : result.message); setVersion((value) => value + 1); }
+  function submit() { if (!active || !user || !window.confirm("Submit this DEUR for acknowledgement? It will no longer be editable.")) return; const result = deurRepository.submit(active.id, user, user); setMessage(result.success ? "DEUR submitted for acknowledgement." : result.message); setVersion((value) => value + 1); }
   if (!rental) return <main className="p-6">Rental not found.</main>;
   if (rental.status === "Closed") return <main className="p-6"><Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link><p className="mt-4 rounded bg-slate-100 p-4">This Rental has been closed. Historical records are read-only.</p></main>;
   return <main className="mx-auto max-w-xl space-y-4 p-4 sm:p-6">

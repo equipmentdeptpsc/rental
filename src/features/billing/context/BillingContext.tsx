@@ -13,6 +13,8 @@ import {
   import {
     billingRepository,
   } from "../repository/BillingRepository";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface BillingContextType {
   
@@ -42,6 +44,10 @@ import {
     children: ReactNode;
   
   }) {
+    const auth = useOptionalAuth();
+    const authorize = (permission: "billing.create" | "billing.update") => {
+      if (auth && !auth.hasPermission(permission)) throw new AuthorizationError(permission);
+    };
   
     const [
       billings,
@@ -65,6 +71,7 @@ import {
     function addBilling(
       billing: BillingRecord
     ) {
+      authorize("billing.create");
   
       save([
         ...billings,
@@ -76,6 +83,7 @@ import {
     function updateBilling(
       billing: BillingRecord
     ) {
+      authorize("billing.update");
   
       save(
         billings.map(

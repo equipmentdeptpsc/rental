@@ -27,6 +27,8 @@ import {
   import {
     updateDeurTotals,
   } from "../calculator/durationCalculator";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface DeurContextType {
     session?: DeurSession;
@@ -58,6 +60,10 @@ import {
   }: {
     children: ReactNode;
   }) {
+    const auth = useOptionalAuth();
+    const authorize = (permission: "deur.create" | "deur.review") => {
+      if (auth && !auth.hasPermission(permission)) throw new AuthorizationError(permission);
+    };
     const [session, setSession] =
       useState<DeurSession>();
   
@@ -79,6 +85,7 @@ setSession(
     function start(
       activity: DeurActivityType
     ) {
+      authorize("deur.create");
       setSession((current) => {
         if (!current) {
           return current;
@@ -122,6 +129,7 @@ if (existing) {
     function updateRemarks(
       remarks: string
     ) {
+      authorize("deur.create");
       setSession((current) => {
         if (!current) {
           return current;
@@ -139,6 +147,7 @@ if (existing) {
     }
   
     function completeDay() {
+      authorize("deur.review");
       setSession((current) => {
         if (!current) {
           return current;

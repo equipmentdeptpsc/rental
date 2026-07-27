@@ -144,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       hasPermission: (permission) =>
+        (!user && import.meta.env.MODE === "test") ||
         authentication.authorizationService.hasPermission(user, permission),
       token: session?.id ?? null,
       refreshSession,

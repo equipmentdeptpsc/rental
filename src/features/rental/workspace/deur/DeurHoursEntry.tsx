@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { saveDeurHours } from "@/features/rental/deur/services/saveDeurHours";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import { useRentalWorkspaceAggregate } from "..";
+import { useAuth } from "@/features/auth/AuthContext";
 
 interface HoursDraft {
   date: string;
@@ -25,6 +26,7 @@ function sameDraft(left: HoursDraft, right: HoursDraft) {
 }
 
 export default function DeurHoursEntry() {
+  const { user } = useAuth();
   const aggregate = useRentalWorkspaceAggregate();
   const { showToast } = useToast();
   const deur = aggregate.activeDeur;
@@ -59,7 +61,7 @@ export default function DeurHoursEntry() {
     if (saving.current || lastSaved.current === key) return;
 
     saving.current = true;
-    const result = saveDeurHours(deurId, draft.operating, draft.idle, draft.date, complete);
+    const result = saveDeurHours(deurId, draft.operating, draft.idle, draft.date, complete, user);
     saving.current = false;
     if (!result.success || !result.record) {
       showToast(result.message ?? "Unable to save DEUR hours.", "error");

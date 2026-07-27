@@ -14,8 +14,8 @@ const systemToLegacyRole: Readonly<Record<SystemRole, Role>> = {
 
 const legacyToSystemRole: Readonly<Record<Role, SystemRole>> = {
   Admin: "system-administrator",
-  Manager: "management",
-  Operator: "rental-operations",
+  Manager: "rental-operations",
+  Operator: "management",
 };
 
 export function adaptDomainUser(user: DomainUser): AuthenticatedUser {
