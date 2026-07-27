@@ -1,6 +1,6 @@
 ﻿{
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "equipment-rental-system-personal",
+  "name": "equipment-rental-system",
   "compatibility_date": "2026-07-27",
   "assets": {
     "directory": "./dist",
