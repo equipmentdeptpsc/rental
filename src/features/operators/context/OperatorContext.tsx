@@ -95,7 +95,7 @@ import {
         updateOperator,
         deleteOperator,
       }),
-      [operators]
+      [auth, operators]
     );
   
     return (

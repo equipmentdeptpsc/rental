@@ -183,7 +183,7 @@ export function EquipmentProvider({
 
       updateStatus,
     }),
-    [equipment]
+    [auth, equipment]
   );
 
   return (
