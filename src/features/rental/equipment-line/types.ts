@@ -23,6 +23,7 @@ export interface NewRentalEquipmentLineInput {
 export type RentalEquipmentLineIssueCode =
   | "RENTAL_NOT_EDITABLE" | "DUPLICATE_EQUIPMENT" | "EQUIPMENT_UNAVAILABLE"
   | "EQUIPMENT_RENTAL_CONFLICT" | "ASSIGNMENT_INVALID" | "PROJECT_MISMATCH"
+  | "OPERATOR_WORK_CONFLICT"
   | "LINE_NOT_FOUND" | "LINE_SNAPSHOT_LOCKED" | "ZERO_EQUIPMENT_LINES";
 
 export interface RentalEquipmentLineIssue {

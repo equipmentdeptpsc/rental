@@ -1,6 +1,6 @@
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -14,6 +14,7 @@ import type { User } from "@/features/auth/domain/user";
 import RequireAuthentication from "@/features/auth/guards/RequireAuthentication";
 import RequirePermission from "@/features/auth/guards/RequirePermission";
 import type { LoginResult } from "@/features/auth/services/AuthenticationService";
+import Header from "@/app/Header";
 
 const administrator: User = {
   id: "admin",
@@ -196,5 +197,75 @@ describe("route guards", () => {
       ),
     );
     expect(denied.container.textContent).toContain("Access Denied");
+  });
+
+  it("keeps an authorized deep route during canonical session restoration", async () => {
+    const service = new FakeAuthenticationService();
+    service.state = { session, user: administrator };
+    const { container } = await render(
+      service,
+      createElement(
+        Routes,
+        null,
+        createElement(Route, {
+          path: "/rentals/:id/workspace",
+          element: createElement(
+            RequireAuthentication,
+            null,
+            createElement("div", null, "Restored rental workspace"),
+          ),
+        }),
+      ),
+      "/rentals/rental-1/workspace",
+    );
+    expect(container.textContent).toContain("Restored rental workspace");
+  });
+
+  it("uses replace logout navigation so Back cannot reveal protected content or a stale target", async () => {
+    const service = new FakeAuthenticationService();
+    service.state = { session, user: administrator };
+    function LoginWithBack() {
+      const navigate = useNavigate();
+      return createElement(
+        "div",
+        null,
+        createElement(Location),
+        createElement("button", { onClick: () => navigate(-1) }, "Back"),
+      );
+    }
+    const { container } = await render(
+      service,
+      createElement(
+        Routes,
+        null,
+        createElement(Route, { path: "/login", element: createElement(LoginWithBack) }),
+        createElement(Route, {
+          path: "/equipment",
+          element: createElement(
+            RequireAuthentication,
+            null,
+            createElement(Header, { onMenu: () => undefined }),
+            createElement("div", null, "Protected equipment"),
+          ),
+        }),
+      ),
+      "/equipment",
+    );
+    expect(container.textContent).toContain("Protected equipment");
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Sign Out")
+        ?.click();
+    });
+    expect(container.querySelector("[data-location]")?.textContent).toBe("/login");
+    expect(container.textContent).not.toContain("Protected equipment");
+
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Back")
+        ?.click();
+    });
+    expect(container.textContent).not.toContain("Protected equipment");
+    expect(container.querySelector("[data-location]")?.textContent).toBe("/login");
   });
 });

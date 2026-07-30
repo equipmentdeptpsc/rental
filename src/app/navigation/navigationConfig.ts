@@ -28,7 +28,7 @@ export interface NavigationGroup {
 }
 
 export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
-  { title: "GENERAL", items: [{ icon: "dashboard", label: "Dashboard", path: "/", permission: "dashboard.read" }] },
+  { title: "GENERAL", items: [{ icon: "dashboard", label: "Dashboard", path: "/dashboard", permission: "dashboard.read" }] },
   {
     title: "OPERATIONS",
     items: [
@@ -68,16 +68,38 @@ export function getVisibleNavigation(
   return groups;
 }
 
-const LANDING_ORDER = ["/", "/rentals", "/billing", "/equipment", "/reports"];
+const FALLBACK_LANDING_ORDER = ["/dashboard", "/rentals", "/billing", "/equipment", "/reports"];
 
 export function getAuthorizedLandingPage(
   user: User | null | undefined,
   authorization: AuthorizationService,
+  options: { hasActiveOperatorLink?: boolean } = {},
 ): string | null {
+  if (
+    user?.systemRoles.includes("system-administrator") &&
+    authorization.hasPermission(user, "dashboard.read")
+  ) return "/dashboard";
+  if (user?.systemRoles.includes("rental-operations")) {
+    if (
+      options.hasActiveOperatorLink &&
+      user.operatorId &&
+      authorization.hasPermission(user, "deur.read")
+    ) return "/operator";
+    if (authorization.hasPermission(user, "rental.read")) return "/rentals";
+  }
+  if (
+    user?.systemRoles.includes("finance") &&
+    authorization.hasPermission(user, "billing.read")
+  ) return "/billing";
+  if (
+    user?.systemRoles.includes("management") &&
+    authorization.hasPermission(user, "dashboard.read")
+  ) return "/dashboard";
+
   const items = getVisibleNavigation(user, authorization).flatMap(
     (group) => group.items,
   );
-  for (const path of LANDING_ORDER) {
+  for (const path of FALLBACK_LANDING_ORDER) {
     if (items.some((item) => item.path === path)) return path;
   }
   return items[0]?.path ?? null;

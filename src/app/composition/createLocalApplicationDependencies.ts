@@ -20,6 +20,15 @@ import { AuthorizationService } from "@/features/auth/services/AuthorizationServ
 import { LegacyAuthCompatibilityRepository } from "@/features/auth/repository/LegacyAuthCompatibilityRepository";
 import { LocalAuthenticationProvider } from "@/features/auth/providers/local/LocalAuthenticationProvider";
 import { UserManagementService } from "@/features/users/services/UserManagementService";
+import { LocalReadRepository } from "@/core/remote";
+import { customerRepository } from "@/features/customer/repository";
+import { projectRepository } from "@/features/project/repository";
+import { operatorRepository } from "@/features/operators/repository";
+import { PersistenceMode } from "./ApplicationDependencies";
+import { LocalDeurCommandRepository } from "@/features/rental/deur/commands/LocalDeurCommandRepository";
+import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
+import { workDescriptionRepository } from "@/features/masters/work-description";
+import { createLocalOperationalCommands } from "@/features/rental/operations/commands/UnavailableOperationalCommandRepository";
 
 const localRepositories: RepositoryDependencies = { equipment: equipmentRepository, assignment: assignmentRepository, rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, prefix: prefixRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository,equipmentStatusRead:new LocalEquipmentStatusReadRepository() };
 export function createLocalApplicationDependencies(overrides: ApplicationDependencyOverrides = {}): ApplicationDependencies {
@@ -46,5 +55,19 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     legacyCompatibilityRepository: overrides.authentication?.legacyCompatibilityRepository ?? new LegacyAuthCompatibilityRepository(storage),
     userManagementService,
   };
-  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories: { ...localRepositories, ...overrides.repositories },authentication,configuration:{equipmentStatusSource:"local"}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
+  const repositories = { ...localRepositories, ...overrides.repositories };
+  const readRepositories = {
+    users: new LocalReadRepository(() => userRepository.getUsers()),
+    equipment: new LocalReadRepository(() => repositories.equipment.getAll()),
+    rentals: new LocalReadRepository(() => repositories.rental.getAll()),
+    assignments: new LocalReadRepository(() => repositories.assignment.getAll()),
+    operators: new LocalReadRepository(() => operatorRepository.getAll()),
+    customers: new LocalReadRepository(() => customerRepository.getAll()),
+    projects: new LocalReadRepository(() => projectRepository.getAll()),
+    billing: new LocalReadRepository(() => repositories.billingStatement.getAll()),
+    deurs: new LocalReadRepository(() => repositories.deur.getAll()),
+    rentalEquipmentLines: new LocalReadRepository(() => repositories.rentalEquipmentLine.getAll()),
+    workDescriptions: new LocalReadRepository(() => workDescriptionRepository.getAll()),
+  };
+  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
 }

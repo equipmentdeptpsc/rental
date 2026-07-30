@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
+import { getSystemRoleDefinition } from "@/features/auth/domain/rolePermissions";
 import OrganizationBrand from "@/shared/branding/OrganizationBrand";
 
 export default function Dashboard({ onMenu }: { onMenu(): void }) {
@@ -8,8 +9,8 @@ export default function Dashboard({ onMenu }: { onMenu(): void }) {
     const navigate = useNavigate();
 
     function signOut() {
+      navigate("/login", { replace: true });
       logout();
-      navigate("/login");
     }
 
     return (
@@ -21,7 +22,7 @@ export default function Dashboard({ onMenu }: { onMenu(): void }) {
           </div></div>
         {user ? (
           <div className="flex items-center gap-2 text-sm">
-            <span>{user.name} ({user.role})</span>
+            <span>{user.name} ({getSystemRoleDefinition(user.systemRoles[0])?.displayName ?? user.role})</span>
             <button className="rounded border px-3 py-2" onClick={signOut}>Sign Out</button>
           </div>
         ) : (

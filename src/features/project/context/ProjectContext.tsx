@@ -86,7 +86,7 @@ import {
         updateProject,
         deleteProject,
       }),
-      [projects]
+      [auth, projects]
     );
   
     return (

@@ -19,7 +19,7 @@ function contract(method: BillingMethod = "Per Hour"): RentalContractRecord {
 function deur(): DeurRecord {
   return {
     id: "deur-1", rentalId: "rental-1", equipmentId: "equipment-1", operatorId: "operator-1", workDate: "2026-01-02", logs: [],
-    totalOperatingMinutes: 120, totalIdleMinutes: 60, totalMaintenanceMinutes: 0, totalMealBreakMinutes: 0,
+    totalOperatingMinutes: 120, totalIdleMinutes: 60, totalStandbyMinutes: 60, totalMaintenanceMinutes: 0, totalMealBreakMinutes: 0,
     totalMobilizationMinutes: 0, totalDemobilizationMinutes: 0, status: "Acknowledged", legacy: false,
     createdAt: "2026-01-02", updatedAt: "2026-01-02",
   };

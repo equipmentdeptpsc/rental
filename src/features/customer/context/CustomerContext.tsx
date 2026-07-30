@@ -91,7 +91,7 @@ import {
         updateCustomer,
         deleteCustomer,
       }),
-      [customers]
+      [auth, customers]
     );
   
     return (

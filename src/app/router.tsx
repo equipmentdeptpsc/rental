@@ -39,6 +39,8 @@ import OperatorDeurPage from "@/pages/OperatorDeur";
 import OperatorLandingPage from "@/pages/OperatorLanding";
 import RentalApprovalPage from "@/pages/RentalApproval";
 import CustomerDeurReviewPage from "@/pages/CustomerDeurReview";
+import ManagerDeurReviewPage from "@/pages/ManagerDeurReview";
+import ReviewCompletedPage from "@/pages/ReviewCompleted";
 import MaintenancePage from "@/pages/Maintenance";
 import NewMaintenance from "@/pages/Maintenance/New";
 import MaintenanceDetails from "@/pages/Maintenance/Details";
@@ -64,18 +66,27 @@ export const PUBLIC_ROUTE_PATTERNS = Object.freeze([
   "/login",
   "/rental-approval/:token",
   "/customer-deur-review/:deurId",
+  "/review/deur/completed",
+  "/review/manager/completed",
+  "/review/deur/:credential",
+  "/review/manager/:credential",
 ]);
 
 export const router = createBrowserRouter([
   { path: "/login", element: <AnonymousRoute><Login /></AnonymousRoute> },
   { path: "/rental-approval/:token", element: <RentalApprovalPage /> },
   { path: "/customer-deur-review/:deurId", element: <CustomerDeurReviewPage /> },
+  { path: "/review/deur/completed", element: <ReviewCompletedPage audience="customer" /> },
+  { path: "/review/manager/completed", element: <ReviewCompletedPage audience="manager" /> },
+  { path: "/review/deur/:credential", element: <CustomerDeurReviewPage /> },
+  { path: "/review/manager/:credential", element: <ManagerDeurReviewPage /> },
   {
     path: "/",
     element: <RequireAuthentication><AppLayout /></RequireAuthentication>,
     errorElement: <NotFound />,
     children: [
       { index: true, element: permitted("dashboard.read", <Dashboard />) },
+      { path: "dashboard", element: permitted("dashboard.read", <Dashboard />) },
       { path: "access-denied", element: <AccessDenied /> },
       { path: "equipment", element: permitted("equipment.read", <Equipment />) },
       { path: "equipment/new", element: permitted("equipment.create", <NewEquipment />) },

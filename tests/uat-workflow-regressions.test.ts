@@ -101,6 +101,6 @@ describe("UAT workflow regressions", () => {
     })).toBeUndefined();
     expect(getDeurCreationError({
       rentalId: "rental-1", rentalStatus: "Draft", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1",
-    })).toBe("Release the rental before creating a DEUR.");
+    })).toBe("Rental must be Active before creating or starting a DEUR. Current status: Draft.");
   });
 });

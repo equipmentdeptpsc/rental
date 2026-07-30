@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export function useBillingWizard() {
   const aggregate =
@@ -19,6 +20,7 @@ export function useBillingWizard() {
   const { showToast } = useToast();
   const { billingStatement, deur } = useApplicationDependenciesCompatibility().repositories;
   const {equipment}=useEquipment();const{operators}=useOperator();
+  const { user } = useAuth();
 
   const today =
     new Date()
@@ -67,7 +69,7 @@ export function useBillingWizard() {
       return;
     }
 
-    const result = createRentalLineAwareBillingStatement({ aggregate, from, to, equipment, operators }, { statements: billingStatement, deurs: deur });
+    const result = createRentalLineAwareBillingStatement({ aggregate, from, to, equipment, operators, authenticatedUser: user }, { statements: billingStatement, deurs: deur });
 
     if (!result.success) {
       showToast(result.message, "error");

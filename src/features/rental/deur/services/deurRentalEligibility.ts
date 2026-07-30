@@ -4,6 +4,7 @@ import type { Operator } from "@/features/operators/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { RentalRecord } from "@/features/rental/types";
 import { materializeRentalEquipmentLineCompatibility, rentalEquipmentLineRepository } from "../../equipment-line";
+import { getDeurStartEligibility } from "./DeurValidationService";
 
 export interface EligibleDeurRental {
   rentalId: string; rentalEquipmentLineId: string; rentalNumber: string; equipmentId: string; equipmentLabel: string;
@@ -15,7 +16,8 @@ export function getDeurRentalEligibility(rentals: RentalRecord[], equipment: Equ
   const eligible: EligibleDeurRental[] = []; const excluded: IneligibleDeurRental[] = [];
   const allLines = materializeRentalEquipmentLineCompatibility(rentals, rentalEquipmentLineRepository.getAll()).lines;
   rentals.forEach((rental) => {
-    if (!["Released", "Active"].includes(rental.status)) { excluded.push({ rentalId: rental.id, reason: "Rental must be released or active." }); return; }
+    const lifecycle = getDeurStartEligibility(rental);
+    if (!lifecycle.eligible) { excluded.push({ rentalId: rental.id, reason: lifecycle.message }); return; }
     const lines = allLines.filter((line) => line.rentalId === rental.id);
     if (!lines.length) { excluded.push({ rentalId: rental.id, reason: "Rental has no Equipment Line." }); return; }
     const project = projects.find((item) => item.id === rental.projectId);

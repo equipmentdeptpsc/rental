@@ -198,7 +198,7 @@ if (existing) {
         completeDay,
         clear,
       }),
-      [session]
+      [auth, session]
     );
   
     return (

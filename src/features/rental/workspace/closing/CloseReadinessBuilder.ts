@@ -21,11 +21,14 @@ import type {
       );
     }
   
-    const hasPendingOperations =
-      aggregate.activeDeur?.status !==
-        undefined &&
-      aggregate.activeDeur.status !==
-        "Billed";
+    const unreturnedLines = aggregate.rentalEquipmentLines.filter((line) =>
+      !["Returned", "Closed", "Cancelled"].includes(line.status),
+    );
+    if (unreturnedLines.length) reasons.push(`${unreturnedLines.length} equipment line(s) are not returned or finalized.`);
+
+    const hasPendingOperations = aggregate.deurs.some((deur) =>
+      ["Draft", "In Progress", "Submitted", "Pending Acknowledgement"].includes(deur.status),
+    );
   
     if (hasPendingOperations) {
       reasons.push(

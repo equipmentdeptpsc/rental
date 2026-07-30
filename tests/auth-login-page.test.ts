@@ -43,8 +43,13 @@ async function renderLogin(returnTo = "") {
             Routes,
             null,
             createElement(Route, { path: "/login", element: createElement(Login) }),
-            createElement(Route, { path: "/", element: createElement("div", null, "Dashboard landing") }),
+            createElement(Route, { path: "/dashboard", element: createElement("div", null, "Dashboard landing") }),
+            createElement(Route, { path: "/billing", element: createElement("div", null, "Billing landing") }),
+            createElement(Route, { path: "/rentals", element: createElement("div", null, "Rentals landing") }),
+            createElement(Route, { path: "/operator", element: createElement("div", null, "Operator landing") }),
             createElement(Route, { path: "/equipment", element: createElement("div", null, "Equipment return") }),
+            createElement(Route, { path: "/assignments/new", element: createElement("div", null, "Assignment create") }),
+            createElement(Route, { path: "/rentals/:id/workspace", element: createElement("div", null, "Rental workspace") }),
           ),
         ),
       ),
@@ -63,7 +68,7 @@ function enter(input: HTMLInputElement, value: string) {
 }
 
 describe("credential Login page", () => {
-  it("submits username/password and follows a safe internal return-to", async () => {
+  it("sends System Administrator to the canonical dashboard and ignores internal return-to", async () => {
     const { container } = await renderLogin("?returnTo=%2Fequipment");
     const [username, password] = [...container.querySelectorAll("input")];
     await act(async () => {
@@ -75,7 +80,49 @@ describe("credential Login page", () => {
         new Event("submit", { bubbles: true, cancelable: true }),
       );
     });
-    expect(container.textContent).toContain("Equipment return");
+    expect(container.textContent).toContain("Dashboard landing");
+  });
+
+  it.each([
+    "?returnTo=%2Frentals%2Frental-1%2Fworkspace",
+    "?returnTo=%2Fassignments%2Fnew",
+    "?returnTo=%2Fequipment%2Fedit%2Fequipment-1",
+  ])("does not restore protected internal target %s after credential login", async (returnTo) => {
+    const { container } = await renderLogin(returnTo);
+    const [username, password] = [...container.querySelectorAll("input")];
+    await act(async () => {
+      enter(username, "administrator");
+      enter(password, DEFAULT_LOCAL_SEED_USERS[0].localPassword);
+      container.querySelector("form")?.dispatchEvent(
+        new Event("submit", { bubbles: true, cancelable: true }),
+      );
+    });
+    expect(container.textContent).toContain("Dashboard landing");
+    expect(container.textContent).not.toContain("Rental workspace");
+    expect(container.textContent).not.toContain("Assignment create");
+  });
+
+  it("sends Finance to Billing and unlinked Rental Operations to Rentals", async () => {
+    const finance = await renderLogin();
+    let [username, password] = [...finance.container.querySelectorAll("input")];
+    await act(async () => {
+      enter(username, "finance");
+      enter(password, DEFAULT_LOCAL_SEED_USERS[2].localPassword);
+      finance.container.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(finance.container.textContent).toContain("Billing landing");
+
+    await act(async () => mounted?.root.unmount());
+    mounted?.container.remove();
+    mounted = undefined;
+    const operations = await renderLogin();
+    [username, password] = [...operations.container.querySelectorAll("input")];
+    await act(async () => {
+      enter(username, "rental.operations");
+      enter(password, DEFAULT_LOCAL_SEED_USERS[1].localPassword);
+      operations.container.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(operations.container.textContent).toContain("Rentals landing");
   });
 
   it("shows invalid-credential and inactive-user messages", async () => {

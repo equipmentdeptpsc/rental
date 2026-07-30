@@ -1,167 +1,179 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { useRental } from "@/features/rental/context/RentalContext";
-import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
-import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
-import { formatCustomerReviewActivityRange, formatCustomerReviewDateTime } from "@/features/rental/customer-review/customerReviewDateTime";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import {
+  CUSTOMER_CORRECTION_REASON_MAX_LENGTH,
+  CUSTOMER_CORRECTION_REASON_MIN_LENGTH,
+  type PublicCustomerReviewRepository,
+  type PublicDeurReviewSnapshot,
+} from "@/features/rental/customer-review/publicReviewContracts";
+import { createSupabasePublicCustomerReviewRepository } from "@/integrations/supabase/SupabasePublicCustomerReviewRepository";
+import { formatCustomerReviewDateTime } from "@/features/rental/customer-review/customerReviewDateTime";
 
-export default function CustomerDeurReviewPage() {
-  const { deurId = "" } = useParams();
-  const request = developmentCustomerReviewOutbox.getByToken(deurId);
-  const [version, setVersion] = useState(0);
+function configuredRepository(): PublicCustomerReviewRepository | undefined {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) return undefined;
+  return createSupabasePublicCustomerReviewRepository({ url, publishableKey });
+}
+
+export default function CustomerDeurReviewPage({
+  repository = configuredRepository(),
+}: {
+  repository?: PublicCustomerReviewRepository;
+}) {
+  const { credential = "", deurId = "" } = useParams();
+  const reviewCredential = credential || deurId;
+  const [snapshot, setSnapshot] = useState<PublicDeurReviewSnapshot>();
+  const [state, setState] = useState<"loading" | "available" | "completed" | "unavailable">("loading");
   const [reason, setReason] = useState("");
-  const [remarks, setRemarks] = useState("");
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
   const [message, setMessage] = useState("");
-  const { rentals } = useRental();
+  const actionIdentity = useMemo(
+    () => ({ commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() }),
+    [],
+  );
 
-  void version;
-
-  if (!request) {
-    return <main className="p-6">Customer review record was not found.</main>;
-  }
-
-  const deur = deurRepository.getById(request.deurId);
-  const rental = rentals.find((item) => item.id === deur?.rentalId);
-  if (!deur || !rental) {
-    return <main className="p-6">Customer review record was not found.</main>;
-  }
-
-  const actor = {
-    name: request.representativeName,
-    email: request.representativeEmail,
-  };
-
-  const decide = (decision: "acknowledge" | "reject") => {
-    if (request.status !== "Pending") {
-      setMessage("This review request is expired or already consumed.");
+  useEffect(() => {
+    let active = true;
+    if (!repository || !reviewCredential) {
+      setState("unavailable");
       return;
     }
+    void repository.getSnapshot(reviewCredential).then((result) => {
+      if (!active) return;
+      if (!result.success) {
+        setState("unavailable");
+        return;
+      }
+      if (result.disposition === "ALREADY_COMPLETED") {
+        setState("unavailable");
+        return;
+      }
+      setSnapshot(result.value);
+      setState("available");
+    });
+    return () => { active = false; };
+  }, [repository, reviewCredential]);
 
-    const result =
-      decision === "acknowledge"
-        ? deurRepository.acknowledge(deur.id, actor, remarks, undefined, true)
-        : deurRepository.reject(deur.id, actor, reason, undefined, true);
-
-    if (result.success) {
-      developmentCustomerReviewOutbox.decide(
-        request.token,
-        decision === "acknowledge" ? "Acknowledged" : "CorrectionRequested",
-      );
-    }
-
-    setMessage(
-      result.success
-        ? decision === "acknowledge"
-          ? "DEUR acknowledged. It is now eligible for Billing."
-          : "Correction requested. Billing remains blocked."
-        : result.message,
-    );
-    if (result.success) setVersion((value) => value + 1);
+  const complete = (text: string) => {
+    setMessage(text);
+    setState("completed");
+    window.history.replaceState(null, "", "/review/deur/completed");
   };
 
-  const snapshot = request.snapshot;
-  return (
-    <main className="mx-auto max-w-3xl space-y-5 p-6">
-      <header>
-        <Link className="text-sm text-blue-700" to={`/rentals/${rental.id}/workspace`}>
-          ← Rental Workspace
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold">Customer DEUR Review</h1>
-        <p className="rounded bg-amber-50 p-2 text-xs text-amber-900">
-          UAT local review access. This is not a production-secure customer link.
-        </p>
-      </header>
+  const acknowledge = async () => {
+    if (!repository || pendingRef.current || !window.confirm("Acknowledge this submitted DEUR?")) return;
+    pendingRef.current = true;
+    setPending(true);
+    const result = await repository.acknowledge(reviewCredential, actionIdentity);
+    pendingRef.current = false;
+    setPending(false);
+    if (result.success || result.code === "ALREADY_COMPLETED") {
+      complete("Thank you. The DEUR acknowledgement has been recorded.");
+    } else {
+      setMessage("This review link is unavailable or could not be processed.");
+    }
+  };
 
+  const requestCorrection = async () => {
+    const normalizedReason = reason.trim();
+    if (!repository || pendingRef.current || normalizedReason.length < CUSTOMER_CORRECTION_REASON_MIN_LENGTH) {
+      setMessage(`Please provide at least ${CUSTOMER_CORRECTION_REASON_MIN_LENGTH} characters describing the correction.`);
+      return;
+    }
+    pendingRef.current = true;
+    setPending(true);
+    const result = await repository.requestCorrection(reviewCredential, {
+      ...actionIdentity,
+      reason: normalizedReason,
+    });
+    pendingRef.current = false;
+    setPending(false);
+    if (result.success || result.code === "ALREADY_COMPLETED") {
+      complete("Your correction request has been recorded for Rental Operations.");
+    } else {
+      setMessage("This review link is unavailable or could not be processed.");
+    }
+  };
+
+  if (state === "loading") return <Shell><p role="status">Loading secure DEUR review…</p></Shell>;
+  if (state === "unavailable") {
+    return <Shell><h1 className="text-2xl font-bold">Review unavailable</h1><p>This link is invalid, expired, superseded, or no longer available.</p></Shell>;
+  }
+  if (state === "completed" || !snapshot) {
+    return <Shell><h1 className="text-2xl font-bold">Review complete</h1><p role="status">{message}</p></Shell>;
+  }
+
+  return (
+    <Shell>
+      <header>
+        <p className="text-sm font-medium text-blue-700">Secure customer review</p>
+        <h1 className="text-2xl font-bold">Daily Equipment Utilization Report</h1>
+        <p className="text-sm text-slate-600">Review the submitted record below. This page does not permit editing.</p>
+      </header>
       <section className="rounded-xl border bg-white p-5">
         <dl className="grid gap-3 sm:grid-cols-2">
-          <Item label="DEUR" value={request.deurNumber} />
-          <Item label="Revision" value={`R${request.revisionNumber}`} />
-          <Item label="Rental" value={request.rentalNumber} />
-          <Item label="Customer" value={request.customerName} />
+          <Item label="Rental" value={snapshot.rentalReference} />
+          <Item label="Revision" value={snapshot.submittedRevision} />
+          <Item label="Customer" value={snapshot.customerName} />
           <Item label="Project" value={snapshot.project} />
           <Item label="Equipment" value={snapshot.equipment} />
           <Item label="Operator" value={snapshot.operator} />
-          <Item label="Work Date" value={snapshot.workDate} />
+          <Item label="Work date" value={snapshot.workDate} />
           <Item label="Shift" value={snapshot.shift ?? "Not provided"} />
-          <Item label="Work Description" value={snapshot.workDescription ?? "Not provided"} />
-          <Item
-            label="Submitted"
-            value={formatCustomerReviewDateTime(snapshot.submittedAt)}
-          />
-          <Item label="Request Status" value={request.status} />
+          <Item label="Shift start" value={formatCustomerReviewDateTime(snapshot.shiftStart)} />
+          <Item label="Shift end" value={formatCustomerReviewDateTime(snapshot.shiftEnd)} />
+          <Item label="Opening meter" value={snapshot.openingMeter?.toString() ?? "Not applicable"} />
+          <Item label="Closing meter" value={snapshot.closingMeter?.toString() ?? "Not applicable"} />
         </dl>
-        <div className="mt-4 rounded bg-slate-50 p-3 text-sm">
-          Operation: {snapshot.operationMinutes} min · Idle: {snapshot.idleMinutes} min · Standby:{" "}
-          {snapshot.standbyMinutes ?? 0} min · Breakdown: {snapshot.breakdownMinutes} min
-        </div>
-        <div className="mt-4">
-          <h2 className="font-semibold">Detailed Timeline</h2>
-          {snapshot.timeline?.length ? (
-            <ol className="mt-2 space-y-2">
-              {snapshot.timeline.map((entry, index) => (
-                <li className="rounded border p-3 text-sm" key={`${entry.start}-${index}`}>
-                  <b>{entry.activityType ?? entry.label}</b>
-                  <div>{formatCustomerReviewActivityRange(entry.start, entry.end)}</div>
-                  <div>{entry.durationMinutes ?? 0} min{entry.remarks ? ` - ${entry.remarks}` : ""}</div>
-                </li>
-              ))}
-            </ol>
-          ) : <p className="mt-2 text-sm text-slate-600">Detailed activity timestamps were not recorded for this legacy DEUR.</p>}
+        <div className="mt-4 grid gap-2 rounded bg-slate-50 p-3 text-sm sm:grid-cols-4">
+          <span>Operation: {snapshot.operationMinutes} min</span>
+          <span>Idle: {snapshot.idleMinutes} min</span>
+          <span>Standby: {snapshot.standbyMinutes} min</span>
+          <span>Breakdown: {snapshot.breakdownMinutes} min</span>
         </div>
       </section>
-
-      {deur.status === "Submitted" && request.status === "Pending" ? (
-        <section className="space-y-3 rounded-xl border bg-white p-5">
-          <label className="block text-sm">
-            Acknowledgement remarks (optional)
-            <textarea
-              className="mt-1 block w-full rounded border p-2"
-              value={remarks}
-              onChange={(event) => setRemarks(event.target.value)}
-            />
+      <section className="space-y-4 rounded-xl border bg-white p-5">
+        <button
+          className="rounded bg-emerald-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+          disabled={pending}
+          onClick={() => void acknowledge()}
+        >
+          {pending ? "Processing…" : "Acknowledge"}
+        </button>
+        <div className="border-t pt-4">
+          <label className="block text-sm font-medium" htmlFor="correction-reason">
+            Describe the correction needed
           </label>
+          <textarea
+            id="correction-reason"
+            className="mt-1 block min-h-28 w-full rounded border p-2"
+            maxLength={CUSTOMER_CORRECTION_REASON_MAX_LENGTH}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            {reason.length}/{CUSTOMER_CORRECTION_REASON_MAX_LENGTH} characters
+          </p>
           <button
-            className="rounded bg-emerald-700 px-4 py-2 font-medium text-white"
-            onClick={() => decide("acknowledge")}
+            className="mt-3 rounded border border-amber-700 px-4 py-2 font-medium text-amber-800 disabled:opacity-50"
+            disabled={pending}
+            onClick={() => void requestCorrection()}
           >
-            Acknowledge
+            {pending ? "Processing…" : "Request Correction"}
           </button>
-          <label className="block text-sm">
-            Rejection / correction reason
-            <textarea
-              className="mt-1 block w-full rounded border p-2"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </label>
-          <button
-            className="rounded border border-red-600 px-4 py-2 font-medium text-red-700"
-            onClick={() => decide("reject")}
-          >
-            Reject / Request Correction
-          </button>
-        </section>
-      ) : (
-        <p className="rounded bg-slate-100 p-4">
-          This request is not awaiting a Customer decision. Request status: {request.status}; DEUR
-          status: {deur.status}.
-        </p>
-      )}
-
-      {message && (
-        <p role="status" className="rounded bg-blue-50 p-3 text-blue-900">
-          {message}
-        </p>
-      )}
-    </main>
+        </div>
+      </section>
+      {message && <p role="status" className="rounded bg-blue-50 p-3 text-blue-900">{message}</p>}
+    </Shell>
   );
 }
 
+function Shell({ children }: { children: React.ReactNode }) {
+  return <main className="mx-auto min-h-screen max-w-3xl space-y-5 bg-slate-50 p-6 text-slate-900">{children}</main>;
+}
+
 function Item({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase text-slate-500">{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
+  return <div><dt className="text-xs uppercase text-slate-500">{label}</dt><dd>{value}</dd></div>;
 }

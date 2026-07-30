@@ -30,30 +30,18 @@ describe("Daily Operations DEUR creation lifecycle guard", () => {
     vi.resetModules();
   });
 
-  it.each(["Released", "Active"] as const)("allows Create DEUR for %s rentals", async (rentalStatus) => {
+  it("allows Create DEUR only for Active rentals", async () => {
     const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
-    expect(getDeurCreationError(request(rentalStatus))).toBeUndefined();
+    expect(getDeurCreationError(request("Active"))).toBeUndefined();
   });
 
-  it.each(["Draft", "Assigned", "Reserved"] as const)("blocks %s rentals until release", async (rentalStatus) => {
+  it.each(["Draft", "Assigned", "Reserved", "Released", "Returned", "Closed", "Cancelled"] as const)(
+    "blocks %s rentals until activation",
+    async (rentalStatus) => {
     const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
-    expect(getDeurCreationError(request(rentalStatus))).toBe("Release the rental before creating a DEUR.");
-  });
-
-  it("does not tell a Returned rental to release again", async () => {
-    const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
-    const error = getDeurCreationError(request("Returned"));
-
-    expect(error).toBe("Returned rentals cannot create new DEUR records.");
-    expect(error).not.toContain("Release the rental");
-  });
-
-  it.each([
-    ["Closed", "Closed rentals cannot create new DEUR records."],
-    ["Cancelled", "Cancelled rentals cannot create new DEUR records."],
-  ] as const)("blocks final %s rentals with final-state guidance", async (rentalStatus, message) => {
-    const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
-    expect(getDeurCreationError(request(rentalStatus))).toBe(message);
+    expect(getDeurCreationError(request(rentalStatus))).toBe(
+      `Rental must be Active before creating or starting a DEUR. Current status: ${rentalStatus}.`,
+    );
   });
 
   it("keeps an existing DEUR available without mutating its data or the rental request", async () => {
@@ -61,7 +49,7 @@ describe("Daily Operations DEUR creation lifecycle guard", () => {
       import("@/features/rental/deur/services/CreateDeurService"),
       import("@/features/rental/deur/repository/deurRepository"),
     ]);
-    const sourceRequest = request("Released");
+    const sourceRequest = request("Active");
     const sourceRequestBeforeCheck = structuredClone(sourceRequest);
     const created = createDeur(sourceRequest);
     expect(created.success).toBe(true);

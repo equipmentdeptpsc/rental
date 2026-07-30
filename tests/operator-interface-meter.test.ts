@@ -81,6 +81,22 @@ describe("operator interface meter readings", () => {
     expect(result).toMatchObject({ success: false, code: "DEUR_CLOSING_METER_REQUIRED" });
   });
 
+  it("does not keep an old equipment-derived meter requirement when current terms require none", () => {
+    const result = applyDigitalDeurOperatorAction({
+      deur: deur({
+        meterReadingType: "HOUR_METER",
+        openingMeter: 100,
+        events: [{ id: "shift", activityType: "shift", action: "start", timestamp: "2026-07-28T01:00:00Z", sequence: 1, source: "user" }],
+        status: "In Progress",
+      }),
+      action: "END_SHIFT",
+      actionTimestamp: "2026-07-28T09:00:00Z",
+      actor: { id: "user-1", name: "Operator User" },
+      meterRequirement: "none",
+    });
+    expect(result).toMatchObject({ success: true });
+  });
+
   it("rejects a mismatched linked Operator before persistence", () => {
     const user: User = {
       id: "user-1", username: "operator.user", displayName: "Operator User",

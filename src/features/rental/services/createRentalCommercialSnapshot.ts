@@ -16,6 +16,7 @@ export function createRentalCommercialSnapshot(source:Source,capturedAt:string):
  if(issues.length)return{success:false,issues};
  const snapshot:RentalCommercialSnapshot={billingMethod:billingMethod!,unitRate:source.unitRate,operatorIncluded:source.operatorIncluded,currency,capturedAt:new Date(capturedAt).toISOString()};
  optional.forEach(field=>{if(source[field]!==undefined)(snapshot as unknown as Record<string,unknown>)[field]=source[field]});
+ if(["none","odometer","hourMeter","both"].includes(String(source.meterEvidenceRequirement)))snapshot.meterEvidenceRequirement=source.meterEvidenceRequirement;
  return{success:true,snapshot:structuredClone(snapshot)};
 }
 

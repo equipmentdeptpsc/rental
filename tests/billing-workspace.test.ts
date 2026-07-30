@@ -60,4 +60,16 @@ describe("rental workspace refresh events", () => {
     expect(matching).toHaveBeenCalledTimes(1);
     unsubscribeOther();
   });
+
+  it("targets a Rental Equipment Line without refreshing unrelated line subscribers", () => {
+    const lineA = vi.fn();
+    const lineB = vi.fn();
+    const stopA = subscribeRentalWorkspaceChange("rental-1", lineA, "line-a");
+    const stopB = subscribeRentalWorkspaceChange("rental-1", lineB, "line-b");
+    notifyRentalWorkspaceChange("rental-1", { rentalLineId: "line-a", deurId: "deur-a", equipmentId: "equipment-a", operatorId: "operator-a" });
+    expect(lineA).toHaveBeenCalledWith(expect.objectContaining({ rentalId: "rental-1", rentalLineId: "line-a", deurId: "deur-a" }));
+    expect(lineB).not.toHaveBeenCalled();
+    stopA();
+    stopB();
+  });
 });

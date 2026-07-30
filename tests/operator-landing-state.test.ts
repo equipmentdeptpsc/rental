@@ -16,11 +16,11 @@ const assignment: AssignmentRecord = {
 const rental: RentalRecord = {
   id: "rental-1", rentalNumber: "R-1", equipmentId: "equipment-1",
   customer: "Customer", project: "Project", rentedBy: "User", dateOut: "2026-07-28",
-  statusId: "released", status: "Released",
+  statusId: "active", status: "Active",
 };
 const line: RentalEquipmentLine = {
   id: "line-1", rentalId: rental.id, equipmentId: assignment.equipmentId,
-  assignmentId: assignment.id, operatorId: assignment.operatorId, status: "Released",
+  assignmentId: assignment.id, operatorId: assignment.operatorId, status: "Active",
   createdAt: "", updatedAt: "",
 };
 const deur = (status: DeurRecord["status"]): DeurRecord => ({
@@ -70,6 +70,13 @@ describe("operator landing state", () => {
       status: "READY",
       items: [{ action: "START_SHIFT", assignment: { id: "assignment-1" }, rental: { id: "rental-1" } }],
     });
+  });
+
+  it("does not offer shift start until the Rental is Active", () => {
+    expect(resolve({
+      rentals: [{ ...rental, statusId: "released", status: "Released" }],
+      lines: [{ ...line, status: "Released" }],
+    })).toEqual({ status: "NO_ACTIVE_ASSIGNMENT", items: [] });
   });
 
   it("offers continue for one active DEUR", () => {

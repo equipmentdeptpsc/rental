@@ -2,15 +2,19 @@ import type { DeurRecord } from "../types";
 import { applyDeurAction } from "../services/deurEventStateMachine";
 import type { DeurOperatorAction } from "./types";
 import { deriveDeurEventState } from "../services/deriveDeurEventState";
+import type { DeurMeterRequirementKind } from "../services/getDeurMeterRequirement";
 
-const mapping: Record<Exclude<DeurOperatorAction, "END_SHIFT"|"END_ACTIVITY">, "operation" | "idle" | "mealBreak" | "breakdown"> = { START_OPERATION: "operation", RESUME_OPERATION: "operation", START_IDLE: "idle", START_MEAL_BREAK: "mealBreak", START_BREAKDOWN: "breakdown" };
-export function applyDigitalDeurOperatorAction({ deur, action, actionTimestamp, actor, idFactory }: { deur: DeurRecord; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string }; idFactory?: () => string }) {
+const mapping: Record<Exclude<DeurOperatorAction, "END_SHIFT"|"END_ACTIVITY">, "operation" | "idle" | "standby" | "mealBreak" | "breakdown"> = { START_OPERATION: "operation", RESUME_OPERATION: "operation", START_IDLE: "idle", START_STANDBY: "standby", START_MEAL_BREAK: "mealBreak", START_BREAKDOWN: "breakdown" };
+export function applyDigitalDeurOperatorAction({ deur, action, actionTimestamp, actor, idFactory, meterRequirement }: { deur: DeurRecord; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string }; idFactory?: () => string; meterRequirement?: DeurMeterRequirementKind }) {
   const input = structuredClone(deur), timestamp = Date.parse(actionTimestamp);
   if (!Number.isFinite(timestamp)) return { success: false as const, code: "DEUR_ACTION_TIMESTAMP_INVALID", message: "Action timestamp is invalid." };
   if (input.creationSource !== "OPERATOR_DIGITAL" || !["Draft", "In Progress"].includes(input.status)) return { success: false as const, code: "DEUR_NOT_EDITABLE", message: "Digital DEUR is not editable." };
   if (input.billingLocked || input.billId || input.billingStatementId || input.status === "Billed") return { success: false as const, code: "DEUR_CONSUMED", message: "Billed or locked DEUR records cannot be changed." };
   if (input.revision?.supersededByRevisionId) return { success: false as const, code: "DEUR_SUPERSEDED", message: "Superseded DEUR records cannot be changed." };
-  if (action === "END_SHIFT" && input.meterReadingType && input.closingMeter === undefined) {
+  const meterRequired = meterRequirement === undefined
+    ? Boolean(input.meterReadingType)
+    : meterRequirement !== "none";
+  if (action === "END_SHIFT" && meterRequired && input.closingMeter === undefined) {
     return { success: false as const, code: "DEUR_CLOSING_METER_REQUIRED", message: "Ending meter reading is required before ending the shift." };
   }
   const latestTimestamp = Math.max(...(input.events ?? []).map((event) => Date.parse(event.timestamp)).filter(Number.isFinite), -Infinity);
@@ -33,6 +37,6 @@ export function applyDigitalDeurOperatorAction({ deur, action, actionTimestamp, 
     equipmentId: record.equipmentId,
     assignmentId: record.assignmentId,
   } : event);
-  if (totals) { record.totalOperatingMinutes = totals.operationMinutes; record.totalIdleMinutes = totals.idleMinutes; record.totalMealBreakMinutes = totals.mealBreakMinutes; record.totalMaintenanceMinutes = totals.breakdownMinutes; }
+  if (totals) { record.totalOperatingMinutes = totals.operationMinutes; record.totalIdleMinutes = totals.idleMinutes; record.totalStandbyMinutes = totals.standbyMinutes ?? 0; record.totalMealBreakMinutes = totals.mealBreakMinutes; record.totalMaintenanceMinutes = totals.breakdownMinutes; }
   return { success: true as const, record, action, actionTimestamp, createdEvents: structuredClone(record.events?.slice(createdStart) ?? []) };
 }

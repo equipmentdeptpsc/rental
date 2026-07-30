@@ -4,6 +4,7 @@ const crud = ["CRUD", "PAGING", "MIGRATION", "OPTIMISTIC_CONCURRENCY", "TRANSACT
 export const repositoryCatalog: readonly RepositoryDescriptor[] = [
   { name: "Equipment", storageKey: "equipment-records", schemaVersion: 1, capabilities: [...crud, "SOFT_DELETE"] },
   { name: "EquipmentHistory", storageKey: "equipment-history-records", schemaVersion: 1, capabilities: ["PAGING", "MIGRATION"] },
+  { name: "EquipmentAudit", storageKey: "equipment-audit-logs", schemaVersion: 1, capabilities: ["PAGING", "MIGRATION"] },
   { name: "Assignment", storageKey: "assignments", schemaVersion: 1, capabilities: [...crud] },
   { name: "Rental", storageKey: "equipment-rental-records", schemaVersion: 1, capabilities: [...crud] },
   { name: "RentalAudit", storageKey: "equipment-rental-audit-events", schemaVersion: 1, capabilities: ["PAGING", "MIGRATION"] },

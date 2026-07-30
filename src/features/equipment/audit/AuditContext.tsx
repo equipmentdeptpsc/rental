@@ -10,6 +10,10 @@ import type { ReactNode } from "react";
 import type { EquipmentRecord } from "../types";
 
 import { useAuth } from "@/features/auth/AuthContext";
+import {
+  equipmentAuditRepository,
+  type EquipmentAuditRepository,
+} from "./repository";
 
 export type AuditAction =
   | "CREATE"
@@ -41,9 +45,6 @@ interface AuditContextType {
   ) => void;
 }
 
-const STORAGE_KEY =
-  "equipment-audit-logs";
-
 const AuditContext =
   createContext<AuditContextType | undefined>(
     undefined
@@ -51,40 +52,24 @@ const AuditContext =
 
 export function AuditProvider({
   children,
+  repository = equipmentAuditRepository,
 }: {
   children: ReactNode;
+  repository?: EquipmentAuditRepository;
 }) {
   const { user } = useAuth();
 
-  const [logs, setLogs] = useState<
-    AuditLog[]
-  >([]);
-
-  useEffect(() => {
-    const stored =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
-
-    if (!stored) {
-      return;
-    }
-
+  const [logs, setLogs] = useState<AuditLog[]>(() => {
     try {
-      setLogs(
-        JSON.parse(stored)
-      );
+      return repository.getAll();
     } catch {
-      setLogs([]);
+      return [];
     }
-  }, []);
+  });
 
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(logs)
-    );
-  }, [logs]);
+    repository.replace(logs);
+  }, [logs, repository]);
 
   function logAction(
     log: Omit<

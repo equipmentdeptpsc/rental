@@ -106,7 +106,7 @@ import {
           updateBilling,
   
         }),
-        [billings]
+        [auth, billings]
       );
   
     return (

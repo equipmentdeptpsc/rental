@@ -6,11 +6,11 @@ const equipment: any[] = [{ id: "eq", assetNo: "EQP-1", equipmentName: "Excavato
 const operators: any[] = [{ id: "op", name: "Operator" }];
 const projects: any[] = [{ id: "pr", projectCode: "PRJ-1", projectName: "Project" }];
 describe("DEUR rental eligibility", () => {
-  it("includes only released and active rentals with readable relationships", () => {
+  it("includes only active rentals with readable relationships", () => {
     const result = getDeurRentalEligibility([rental("Released"), rental("Active"), rental("Draft"), rental("Returned")], equipment, operators, projects, []);
-    expect(result.eligible.map((item) => item.rentalId)).toEqual(["Released", "Active"]);
+    expect(result.eligible.map((item) => item.rentalId)).toEqual(["Active"]);
     expect(result.eligible[0].label).toContain("EQP-1 - Excavator");
-    expect(result.excluded).toHaveLength(2);
+    expect(result.excluded).toHaveLength(3);
   });
   it("returns explicit relationship exclusions", () => {
     expect(getDeurRentalEligibility([rental("Active")], [], operators, projects, []).excluded[0].reason).toBe("Equipment is missing.");

@@ -82,7 +82,7 @@ import {
         updateMaintenance,
         deleteMaintenance,
       }),
-      [maintenance]
+      [auth, maintenance]
     );
   
     return (

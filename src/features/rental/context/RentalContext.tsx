@@ -45,6 +45,8 @@ import { developmentApprovalEmailOutbox } from "../approval-email/developmentApp
 import { resolveActiveManagerApprover } from "@/features/settings/manager-approver/managerApproverService";
 import { developmentCustomerReviewOutbox } from "../customer-review/developmentCustomerReviewOutbox";
 import { maskEmail, updateRentalCustomerContact, type RentalCustomerContactInput } from "../services/updateRentalCustomerContact";
+import { returnRentalEquipmentLine as returnEquipmentLine } from "../services/returnRentalEquipmentLine";
+import { notifyRentalWorkspaceChange } from "../workspace/workspaceRefresh";
 
 interface RentalTransitionResult {
   success: boolean;
@@ -75,6 +77,7 @@ interface RentalContextType {
   deleteRental(id: string): RentalTransitionResult;
 
   returnRental(id: string): RentalTransitionResult;
+  returnRentalEquipmentLine(rentalId: string, lineId: string): RentalTransitionResult;
 
   releaseRental(
     id: string,
@@ -110,7 +113,7 @@ export function RentalProvider({
 }: {
   children: ReactNode;
 }) {
-  const { rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository } = useApplicationDependenciesCompatibility().repositories;
+  const { rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository } = useApplicationDependenciesCompatibility().repositories;
   const [bootstrap] = useState(() => {
     const initialRentals = rentalRepository.getAll();
     const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(initialRentals);
@@ -176,6 +179,11 @@ export function RentalProvider({
     return ids;
   }
 
+  function blockingOperatorIds(excludeRentalId?: string) {
+    const blockingRentalIds = new Set(rentalRepository.getAll().filter((rental) => rental.id !== excludeRentalId && isEquipmentBlockingRental(rental)).map((rental) => rental.id));
+    return new Set(rentalEquipmentLineRepository.getAll().filter((line) => blockingRentalIds.has(line.rentalId) && ["Released", "Active"].includes(line.status)).map((line) => line.operatorId));
+  }
+
   function addRental(item: RentalRecord, equipmentLines?: NewRentalEquipmentLineInput[]) {
     if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const dateError = validateNewRentalDates(item.dateOut, item.expectedReturn);
@@ -216,7 +224,7 @@ export function RentalProvider({
     if (!equipmentLines && blockingEquipmentIds().has(item.equipmentId)) return { success: false, message: "Equipment already has a non-final rental." };
     const lineIssues = validateRentalEquipmentLineInputs({
       rental: { id: item.id, projectId: item.projectId, status: "Draft" }, requested: requestedLines, existingLines: [],
-      assignments, equipment: equipmentRecords, blockingEquipmentIds: blockingEquipmentIds(), requireAtLeastOne: true,
+      assignments, equipment: equipmentRecords, blockingEquipmentIds: blockingEquipmentIds(), blockingOperatorIds: blockingOperatorIds(), requireAtLeastOne: true,
     });
     if (lineIssues.length) return { success: false, message: lineIssues.map((issue) => issue.message).join(" ") };
 
@@ -430,7 +438,7 @@ export function RentalProvider({
       const lineIssues = validateRentalEquipmentLineInputs({
         rental: current,
         requested: lines.map((line) => ({ equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId })),
-        existingLines: [], assignments, equipment: equipmentRecords, blockingEquipmentIds: blockingEquipmentIds(current.id), requireAtLeastOne: true,
+        existingLines: [], assignments, equipment: equipmentRecords, blockingEquipmentIds: blockingEquipmentIds(current.id), blockingOperatorIds: blockingOperatorIds(current.id), requireAtLeastOne: true,
       });
       if (lineIssues.length) return { success: false, message: lineIssues.map((issue) => issue.message).join(" ") };
       const contractCompatibility = rentalContractRepository.ensureLineAssociations(lineCompatibility.lines);
@@ -719,6 +727,22 @@ export function RentalProvider({
     return { success: true };
   }
 
+  function returnRentalEquipmentLine(rentalId: string, lineId: string): RentalTransitionResult {
+    if (!hasPermission("rental.return")) return { success: false, message: "You do not have permission to return Rental equipment." };
+    const rental = rentalRepository.getById(rentalId);
+    const line = rentalEquipmentLineRepository.getById(lineId);
+    const machine = line ? getEquipment(line.equipmentId) : undefined;
+    if (!rental || !line || line.rentalId !== rentalId || !machine) return { success: false, message: "Rental Equipment Line was not found." };
+    const result = returnEquipmentLine({ line, equipment: machine, deurs: deurRepository.getByRentalId(rentalId), returnedAt: new Date().toISOString() });
+    if (!result.success) return { success: false, message: result.message };
+    rentalEquipmentLineRepository.update(result.line);
+    updateEquipment(result.equipment);
+    if (line.assignmentId) completeAssignment(line.assignmentId, result.line.updatedAt.split("T")[0]);
+    refreshRentalEquipmentLines();
+    notifyRentalWorkspaceChange(rentalId, { rentalLineId: line.id, equipmentId: line.equipmentId, operatorId: line.operatorId });
+    return { success: true, rental };
+  }
+
   const value = useMemo(
     () => ({
       rentals,
@@ -728,6 +752,7 @@ export function RentalProvider({
       transitionRental,
       deleteRental,
       returnRental,
+      returnRentalEquipmentLine,
       releaseRental,
       submitForApproval,
       approveRental,

@@ -6,7 +6,8 @@ import { buildMigrationExportManifest,canonicalizeMigrationValue,deterministicLe
 class MemoryAdapter implements PersistenceAdapter {
   constructor(readonly values=new Map<string,unknown>()){}
   read<T>(key:string){return key==="broken"?repositoryFailure("READ_FAILED","broken",{context:{key},recommendedAction:"repair"}):repositorySuccess((this.values.get(key)??null) as T|null);}
-  write<T>(){throw new Error("export must not write");} remove(){throw new Error("export must not remove");}
+  write<T>(_key:string,_value:T){return repositoryFailure("WRITE_FORBIDDEN","export must not write");}
+  remove(_key:string){return repositoryFailure("REMOVE_FORBIDDEN","export must not remove");}
 }
 
 describe("migration export",()=>{
@@ -20,7 +21,7 @@ describe("migration export",()=>{
   });
 
   it("produces deterministic repository counts/checksums without mutation",async()=>{
-    const source={schemaVersion:1,records:[{id:"equipment-1",createdAt:"2025-01-01T00:00:00Z"}]};const adapter=new MemoryAdapter(new Map([["equipment",source],["malformed",{oops:true}]]));
+    const source={schemaVersion:1,records:[{id:"equipment-1",createdAt:"2025-01-01T00:00:00Z"}]};const adapter=new MemoryAdapter(new Map<string,unknown>([["equipment",source],["malformed",{oops:true}]]));
     const catalog=[{name:"Equipment",storageKey:"equipment",schemaVersion:1,capabilities:["CRUD" as const]},{name:"Malformed",storageKey:"malformed",schemaVersion:1,capabilities:["CRUD" as const]},{name:"Broken",storageKey:"broken",schemaVersion:1,capabilities:["CRUD" as const]}];
     const input={adapter,catalog,applicationSchemaVersion:1,sourceApplicationVersion:"test",repositoryCatalogVersion:1,exportedAt:"2026-01-01T00:00:00Z"};
     const one=await buildMigrationExportManifest(input),two=await buildMigrationExportManifest(input);

@@ -1,6 +1,7 @@
 import type { RentalRecord } from "../../types";
 import { materializeRentalEquipmentLineCompatibility, rentalEquipmentLineRepository, type RentalEquipmentLine } from "../../equipment-line";
 import type { DeurRecord } from "../types";
+import { canStartDeur } from "./DeurValidationService";
 
 export type DeurLineResolutionIssueCode = "DEUR_LINE_NOT_FOUND" | "DEUR_LINE_AMBIGUOUS" | "DEUR_LINE_RENTAL_MISMATCH" | "DEUR_LINE_EQUIPMENT_MISMATCH" | "DEUR_LINE_ASSIGNMENT_MISMATCH" | "DEUR_LINE_OPERATOR_MISMATCH" | "DEUR_LINE_NOT_OPERATIONAL" | "DEUR_LINE_COMMERCIAL_SNAPSHOT_REQUIRED";
 export type DeurLineResolution = { success: true; line: RentalEquipmentLine; legacy: boolean } | { success: false; issue: { code: DeurLineResolutionIssueCode; message: string } };
@@ -33,7 +34,7 @@ export function resolveDeurRentalEquipmentLine(input: {
   if (input.equipmentId && line.equipmentId !== input.equipmentId) return { success: false, issue: { code: "DEUR_LINE_EQUIPMENT_MISMATCH", message: "DEUR equipment does not match the selected Rental Equipment Line." } };
   if (input.assignmentId !== undefined && line.assignmentId !== input.assignmentId) return { success: false, issue: { code: "DEUR_LINE_ASSIGNMENT_MISMATCH", message: "DEUR Assignment does not match the selected Rental Equipment Line." } };
   if (input.operatorId && line.operatorId !== input.operatorId) return { success: false, issue: { code: "DEUR_LINE_OPERATOR_MISMATCH", message: "DEUR Operator does not match the selected Rental Equipment Line." } };
-  if (!["Released", "Active"].includes(input.rental.status) || !["Released", "Active"].includes(line.status)) return { success: false, issue: { code: "DEUR_LINE_NOT_OPERATIONAL", message: "Rental Equipment Line must be Released or Active." } };
+  if (!canStartDeur(input.rental) || !["Released", "Active"].includes(line.status)) return { success: false, issue: { code: "DEUR_LINE_NOT_OPERATIONAL", message: "Rental must be Active and its Equipment Line must be operational." } };
   if (input.requireOperationalSnapshot !== false && line.commercialSnapshotRequired && !line.commercialSnapshot) return { success: false, issue: { code: "DEUR_LINE_COMMERCIAL_SNAPSHOT_REQUIRED", message: "Rental Equipment Line commercial terms snapshot is required before creating a DEUR." } };
   return { success: true, line: structuredClone(line), legacy: !input.rentalEquipmentLineId };
 }

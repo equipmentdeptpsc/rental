@@ -94,7 +94,7 @@ import {
         deleteLog,
         getLog,
       }),
-      [logs]
+      [auth, logs]
     );
   
     return (

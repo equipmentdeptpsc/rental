@@ -46,16 +46,20 @@ describe("safe return-to validation", () => {
 });
 
 describe("public route inventory", () => {
-  it("keeps only login and the two external token workflows public", () => {
+  it("keeps only login and the approved external token workflows public", () => {
     expect(PUBLIC_ROUTE_PATTERNS).toEqual([
       "/login",
       "/rental-approval/:token",
       "/customer-deur-review/:deurId",
+      "/review/deur/completed",
+      "/review/manager/completed",
+      "/review/deur/:credential",
+      "/review/manager/:credential",
     ]);
-    expect(router.routes.slice(0, 3).map((route) => route.path)).toEqual(
+    expect(router.routes.slice(0, PUBLIC_ROUTE_PATTERNS.length).map((route) => route.path)).toEqual(
       PUBLIC_ROUTE_PATTERNS,
     );
-    expect(router.routes[3].path).toBe("/");
+    expect(router.routes[PUBLIC_ROUTE_PATTERNS.length].path).toBe("/");
   });
 });
 
@@ -95,8 +99,20 @@ describe("permission-aware navigation", () => {
   });
 
   it("selects deterministic authorized landing pages", () => {
-    expect(getAuthorizedLandingPage(user("management"), authorization)).toBe("/");
-    expect(getAuthorizedLandingPage(user("finance"), authorization)).toBe("/");
+    expect(getAuthorizedLandingPage(user("system-administrator"), authorization)).toBe("/dashboard");
+    expect(getAuthorizedLandingPage(user("management"), authorization)).toBe("/dashboard");
+    expect(getAuthorizedLandingPage(user("finance"), authorization)).toBe("/billing");
+    expect(getAuthorizedLandingPage(user("rental-operations"), authorization)).toBe("/rentals");
+    expect(getAuthorizedLandingPage(
+      { ...user("rental-operations"), operatorId: "operator-1" },
+      authorization,
+      { hasActiveOperatorLink: true },
+    )).toBe("/operator");
+    expect(getAuthorizedLandingPage(
+      { ...user("rental-operations"), operatorId: "operator-1" },
+      authorization,
+      { hasActiveOperatorLink: false },
+    )).toBe("/rentals");
     expect(getAuthorizedLandingPage({ ...user("finance"), status: "inactive" }, authorization)).toBeNull();
   });
 });

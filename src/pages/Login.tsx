@@ -1,16 +1,18 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getAuthorizedLandingPage } from "@/app/navigation/navigationConfig";
 import { useAuth } from "@/features/auth/AuthContext";
-import { getSafeReturnTo } from "@/features/auth/routing/safeReturnTo";
+import { useOptionalOperator } from "@/features/operators/context/OperatorContext";
 
 export default function Login() {
   const { login, isSubmitting } = useAuth();
-  const { authentication } = useApplicationDependenciesCompatibility();
+  const { authentication, configuration } = useApplicationDependenciesCompatibility();
+  const remote = configuration.persistenceMode === "remote";
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const operatorContext = useOptionalOperator();
+  const navigated = useRef(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -24,12 +26,22 @@ export default function Login() {
       setMessage(result.message);
       return;
     }
-    const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
+    if (navigated.current) return;
+    navigated.current = true;
+    const hasActiveOperatorLink = Boolean(
+      result.user.operatorId &&
+      operatorContext?.operators.some(
+        (operator) =>
+          operator.id === result.user.operatorId &&
+          operator.status === "Active",
+      ),
+    );
     const landing = getAuthorizedLandingPage(
       result.user,
       authentication.authorizationService,
+      { hasActiveOperatorLink },
     );
-    navigate(returnTo ?? landing ?? "/access-denied", { replace: true });
+    navigate(landing ?? "/access-denied", { replace: true });
   }
 
   return (
@@ -40,7 +52,7 @@ export default function Login() {
       >
         <h1 className="text-2xl font-bold text-slate-800">Equipment System Login</h1>
         <label className="block text-sm font-medium text-slate-700">
-          Username
+          {remote ? "Email" : "Username"}
           <input
             autoComplete="username"
             className="mt-1 w-full rounded border px-3 py-2 text-sm"
@@ -71,7 +83,7 @@ export default function Login() {
           {isSubmitting ? "Signing in…" : "Login"}
         </button>
         <p className="text-center text-xs text-slate-400">
-          Local UAT authentication only
+          {remote ? "Supabase authentication" : "Local UAT authentication only"}
         </p>
       </form>
     </div>

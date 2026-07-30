@@ -119,3 +119,7 @@ import {
   
     return context;
   }
+
+  export function useOptionalOperator() {
+    return useContext(OperatorContext);
+  }

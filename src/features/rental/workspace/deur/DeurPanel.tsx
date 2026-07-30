@@ -36,6 +36,7 @@ import {
   import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
   import { useAuth } from "@/features/auth/AuthContext";
   import { rentalAuditRepository } from "@/features/rental/audit/rentalAuditRepository";
+  import RentalLineOperationsGrid from "./RentalLineOperationsGrid";
   
   export default function DeurPanel() {
     const aggregate = useRentalWorkspaceAggregate();
@@ -87,9 +88,20 @@ import {
         ),
       });
     }, [previewRecord, aggregate.contract, aggregate.deurs, evaluatedAt]);
+
+    if (aggregate.rentalEquipmentLines.length > 1) {
+      return <div className="space-y-6">
+        <RentalLineOperationsGrid aggregate={aggregate} equipment={equipment} operators={operators} evaluatedAt={evaluatedAt.toISOString()} />
+        <CreateDeurAction />
+        <ManualDeurAction />
+        <ManualOdometerDeurAction />
+        <p className="rounded border bg-slate-50 p-3 text-sm text-slate-600">Open a specific Equipment Line to continue its DEUR, customer-review, correction, and submission workflow. No combined Rental-level DEUR is selected.</p>
+      </div>;
+    }
   
     return (
       <div className="space-y-6">
+        <RentalLineOperationsGrid aggregate={aggregate} equipment={equipment} operators={operators} evaluatedAt={evaluatedAt.toISOString()} />
 
         <div className="rounded-xl border bg-blue-50 p-4 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">Operator Digital DEUR</p><p className="text-xs text-slate-600">Local real-time sync across this browser’s open tabs and windows.</p></div><Link className="rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white" to={`/rentals/${aggregate.rental.id}/operator-deur${previewRecord?.rentalEquipmentLineId?`?lineId=${encodeURIComponent(previewRecord.rentalEquipmentLineId)}`:""}`}>Open Operator View</Link></div>

@@ -1,0 +1,30 @@
+BEGIN;
+
+ALTER FUNCTION erp.begin_deur_command(jsonb,text) SET search_path=erp,auth;
+ALTER FUNCTION erp.begin_operational_command(jsonb,text,text,text,text,text) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_close_rental(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_complete_deur_shift(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_create_customer_review_request(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_create_deur_correction(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_record_meter_checkpoint(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_return_all_rental_lines(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_return_rental_line(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_start_deur_shift(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_submit_deur(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.command_transition_deur_activity(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.compatibility_tenant_report() SET search_path=erp;
+ALTER FUNCTION erp.current_app_user() SET search_path=erp,auth;
+ALTER FUNCTION erp.current_company_id() SET search_path=erp,auth;
+ALTER FUNCTION erp.decide_public_customer_review(jsonb,text) SET search_path=erp;
+ALTER FUNCTION erp.finish_deur_command(jsonb,text,text,text,jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.finish_operational_command(jsonb,text,text,text,text,text,text,jsonb,bigint) SET search_path=erp,auth;
+ALTER FUNCTION erp.get_public_customer_review(jsonb) SET search_path=erp;
+ALTER FUNCTION erp.get_rental_closure_readiness(jsonb) SET search_path=erp,auth;
+ALTER FUNCTION erp.next_deur_number() SET search_path=erp,auth;
+ALTER FUNCTION erp.public_acknowledge_customer_review(jsonb) SET search_path=erp;
+ALTER FUNCTION erp.public_reject_customer_review(jsonb) SET search_path=erp;
+ALTER FUNCTION erp.resolve_public_review(text) SET search_path=erp;
+ALTER FUNCTION erp.validate_deur_command_scope(jsonb,text) SET search_path=erp,auth;
+ALTER FUNCTION erp.validate_operational_scope(jsonb,text) SET search_path=erp,auth;
+
+COMMIT;

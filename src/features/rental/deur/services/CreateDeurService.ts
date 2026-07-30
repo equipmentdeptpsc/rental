@@ -12,6 +12,9 @@ import { calendarDateAt, isCalendarDate } from "../expectation/dateRules";
 import { resolveDeurRentalEquipmentLine } from "./resolveDeurRentalEquipmentLine";
 import type { User } from "@/features/auth/domain/user";
 import { assertMutationPermission } from "@/features/auth/services/assertMutationPermission";
+import { getDeurStartEligibility } from "./DeurValidationService";
+import { getDeurMeterRequirement } from "./getDeurMeterRequirement";
+import { isTestRuntime } from "@/core/runtime/isTestRuntime";
 
 export const MANUAL_DEUR_REASONS: readonly ManualDeurReason[] = ["POWER_NOT_AVAILABLE","SITE_COMPUTER_NOT_AVAILABLE","TECHNICAL_DIFFICULTY","DEVICE_MALFUNCTION","OPERATOR_DEVICE_NOT_ISSUED","APPLICATION_UNAVAILABLE","INTERNET_UNAVAILABLE","DELAYED_DIGITAL_DEPLOYMENT","PHYSICAL_DEUR_USED_AS_BACKUP","OTHER"];
 
@@ -39,6 +42,7 @@ export interface CreateDeurRequest {
   completionEvidence?: DeurCompletionEvidence;
   openingMeter?: number;
   meterReadingType?: "HOUR_METER" | "ODOMETER";
+  existingDeurs?: readonly DeurRecord[];
 }
 
 export interface CreateManualDeurRequest extends CreateDeurRequest {
@@ -54,21 +58,8 @@ export type CreateDeurResult =
   | { success: false; message: string };
 
 export function getDeurCreationError(request: CreateDeurRequest): string | undefined {
-  if (!['Released', 'Active'].includes(request.rentalStatus)) {
-    if (request.rentalStatus === "Returned") {
-      return "Returned rentals cannot create new DEUR records.";
-    }
-
-    if (request.rentalStatus === "Closed") {
-      return "Closed rentals cannot create new DEUR records.";
-    }
-
-    if (request.rentalStatus === "Cancelled") {
-      return "Cancelled rentals cannot create new DEUR records.";
-    }
-
-    return "Release the rental before creating a DEUR.";
-  }
+  const lifecycle = getDeurStartEligibility({ status: request.rentalStatus });
+  if (!lifecycle.eligible) return lifecycle.message;
 
   const required: Array<[string, string | undefined]> = [
     ["rental", request.rentalId],
@@ -90,7 +81,7 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
   if (policy?.frequency === "PER_SHIFT" && !request.shift) return "Select the DEUR shift required by this Rental policy.";
   if (policy?.frequency === "PER_SHIFT" && request.shift && !policy.expectedShiftCodes?.includes(request.shift === "Day" ? "DAY" : "NIGHT")) return "The selected DEUR shift is not configured on this Rental.";
   const resolvedLineId = lineResolution?.success ? lineResolution.line.id : request.rentalEquipmentLineId;
-  const hasActiveDeur = deurRepository.getByRentalId(request.rentalId).some(
+  const hasActiveDeur = (request.existingDeurs ?? deurRepository.getByRentalId(request.rentalId)).some(
     (record) => (record.rentalEquipmentLineId ? record.rentalEquipmentLineId === resolvedLineId : record.equipmentId === request.equipmentId) && record.workDate === workDate && record.status !== "Rejected" && (
       policy?.frequency !== "PER_SHIFT" || record.shift === request.shift
     )
@@ -103,13 +94,10 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
   return undefined;
 }
 
-export function createDeur(request: CreateDeurRequest): CreateDeurResult {
+export function prepareDeur(request: CreateDeurRequest): CreateDeurResult {
   assertMutationPermission(request.authenticatedUser, "deur.create");
   if (request.enforceOperatorOwnership && request.authenticatedUser?.operatorId !== request.operatorId) {
     return { success: false, message: "Your application user is not linked to this Operator assignment." };
-  }
-  if (request.meterReadingType && (!Number.isFinite(request.openingMeter) || request.openingMeter! < 0)) {
-    return { success: false, message: "A valid beginning meter reading is required." };
   }
   const error = getDeurCreationError(request);
   if (error) return { success: false, message: error };
@@ -117,6 +105,18 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
   const lineResolution=resolveDeurRentalEquipmentLine({rental:request.rental,rentalEquipmentLineId:request.rentalEquipmentLineId,equipmentId:request.equipmentId,assignmentId:request.assignmentId,operatorId:request.operatorId});if(!lineResolution.success)return{success:false,message:lineResolution.issue.message};
   const line=lineResolution.line;
   const commercial=line.commercialSnapshot?{success:true as const,snapshot:structuredClone(line.commercialSnapshot)}:createDeurCommercialSnapshot(request.rental);if(!commercial.success)return{success:false,message:commercial.message};
+  const meterRequirement = getDeurMeterRequirement({
+    billingMethod: commercial.snapshot?.billingMethod ?? request.billingMethod ?? request.rental.billingMethod,
+    commercialTerms: commercial.snapshot,
+  });
+  const requiredReadingType = meterRequirement.kind === "odometer"
+    ? "ODOMETER"
+    : meterRequirement.kind === "hourMeter"
+      ? "HOUR_METER"
+      : undefined;
+  if (requiredReadingType && (!Number.isFinite(request.openingMeter) || request.openingMeter! < 0)) {
+    return { success: false, message: "A valid beginning meter reading is required." };
+  }
 
   const metadata = createDeurOperationalMetadataSnapshot({
     rental: { ...request.rental, operationalMetadata: line.operationalMetadata ?? request.rental.operationalMetadata },
@@ -150,8 +150,8 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
     billingMethodSnapshot:typeof billingMethod==="string"?billingMethod:undefined,
     commercialSnapshot:commercial.snapshot,commercialSnapshotRequired:line.commercialSnapshotRequired,
     odometerTripEvidence,quantityEvidence,completionEvidence,
-    openingMeter: request.openingMeter,
-    meterReadingType: request.meterReadingType,
+    openingMeter: requiredReadingType ? request.openingMeter : undefined,
+    meterReadingType: requiredReadingType,
     operationalMetadata: metadata.snapshot,
     operationalRemarks: metadata.remarks,
     workDate,
@@ -170,13 +170,17 @@ export function createDeur(request: CreateDeurRequest): CreateDeurResult {
     updatedAt: timestamp,
   };
 
-  const persisted = deurRepository.create(record);
-  return { success: true, record: persisted };
+  return { success: true, record };
+}
+
+export function createDeur(request: CreateDeurRequest): CreateDeurResult {
+  const prepared = prepareDeur(request);
+  return prepared.success ? { success: true, record: deurRepository.create(prepared.record) } : prepared;
 }
 
 export function createManualDeur(request: CreateManualDeurRequest): CreateDeurResult {
   assertMutationPermission(request.authenticatedUser, "deur.create");
-  if(!request.authenticatedUser&&import.meta.env.MODE==="test"&&!canCreateManualDeur(request.actor))return{success:false,message:"Actor is not authorized to create a Manual DEUR."};
+  if(!request.authenticatedUser&&isTestRuntime()&&!canCreateManualDeur(request.actor))return{success:false,message:"Actor is not authorized to create a Manual DEUR."};
   if(!request.actor.name.trim())return{success:false,message:"Encoded-by name is required."};
   if(!MANUAL_DEUR_REASONS.includes(request.manualMetadata?.reason))return{success:false,message:"Manual reason is required."};
   const reasonDetails=request.manualMetadata.reasonDetails?.trim();

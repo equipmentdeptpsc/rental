@@ -5,3 +5,5 @@ export * from "./mapper";
 export * from "./logger";
 export * from "./configuration";
 export * from "./RemoteRepositoryBase";
+export * from "./ReadOnlyRepository";
+export * from "./LocalReadRepository";

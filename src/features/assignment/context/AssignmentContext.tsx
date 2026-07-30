@@ -219,7 +219,7 @@ export function AssignmentProvider({
       isEquipmentAssigned,
       isOperatorAssigned,
     }),
-    [assignments]
+    [assignments, auth]
   );
 
   return (

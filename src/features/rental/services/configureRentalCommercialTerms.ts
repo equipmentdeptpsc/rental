@@ -20,6 +20,7 @@ export interface RentalCommercialTermsInput {
   contractAmount?: number;
   taxRate?: number;
   withholdingTax?: number;
+  meterEvidenceRequirement?: "none" | "odometer" | "hourMeter" | "both";
   transactionRelationship: TransactionRelationship;
   vatApplicability: VatApplicability;
   remarks?: string;
@@ -86,6 +87,7 @@ export function configureRentalCommercialTerms(input: {
     operatorIncluded: commercialTerms.operatorIncluded, operatorRate: commercialTerms.operatorRate,
     contractAmount: commercialTerms.contractAmount, taxRate: commercialTerms.taxRate,
     withholdingTax: commercialTerms.withholdingTax, transactionRelationship: commercialTerms.transactionRelationship,
+    meterEvidenceRequirement: commercialTerms.meterEvidenceRequirement,
     vatApplicability: commercialTerms.vatApplicability, remarks: commercialTerms.remarks?.trim() || undefined,
     startDate: rental.dateOut, expectedEndDate: rental.expectedReturn ?? rental.dateOut, status: "Active",
     createdAt: existingContract?.createdAt ?? now, updatedAt: now,

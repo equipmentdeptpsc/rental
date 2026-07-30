@@ -12,12 +12,13 @@ import { rentalEquipmentLineRepository } from "@/features/rental/equipment-line/
 import { buildBillingStatementEmail } from "@/features/rental/billing-email/buildBillingStatementEmail";
 import { billingStatementPdfText, generateBillingStatementPdf } from "@/features/rental/billing-email/generateBillingStatementPdf";
 import type { DeurRecord } from "@/features/rental/deur/types";
+import type { CanonicalDeurEvent } from "@/features/rental/deur/types";
 import type { InvoiceDocument } from "@/features/rental/workspace/invoice/InvoiceDocumentBuilder";
 
-const events = [
+const events: CanonicalDeurEvent[] = [
   { id:"1", activityType:"operation", action:"start", timestamp:"2026-07-27T23:50:00Z", sequence:1, source:"user" },
   { id:"2", activityType:"operation", action:"end", timestamp:"2026-07-28T00:10:00Z", sequence:2, source:"user" },
-] as const;
+];
 
 const deur = (revisionNumber=1): DeurRecord => ({
   id:`deur-${revisionNumber}`, deurNumber:"DEUR-000001", rentalId:"rental-1", rentalEquipmentLineId:"line-1",

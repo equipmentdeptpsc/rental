@@ -1,0 +1,24 @@
+import type { DeurCommandFailureCode } from "./contracts";
+
+export const DEUR_COMMAND_MESSAGES: Readonly<Record<DeurCommandFailureCode, string>> = {
+  UNAUTHENTICATED: "Your session has expired. Sign in again.",
+  UNAUTHORIZED: "You do not have permission to perform this operation.",
+  FORBIDDEN: "You do not have permission to perform this operation.",
+  OWNERSHIP_MISMATCH: "This equipment line is no longer assigned to your Operator account.",
+  USER_INACTIVE: "This user account is inactive.",
+  OPERATOR_INACTIVE: "The linked Operator is inactive.",
+  ASSIGNMENT_INACTIVE: "The Assignment is no longer active.",
+  RENTAL_INACTIVE: "This Rental is no longer active.",
+  RENTAL_LINE_INACTIVE: "This equipment is no longer active under this Rental.",
+  EQUIPMENT_MISMATCH: "The Equipment no longer matches this Rental Line.",
+  OPERATOR_MISMATCH: "The Operator no longer matches this Rental Line.",
+  ASSIGNMENT_MISMATCH: "The Assignment no longer matches this Rental Line.",
+  DUPLICATE_ACTIVE_DEUR: "This shift has already been started.",
+  INVALID_TRANSITION: "This activity transition is no longer valid.",
+  IDEMPOTENCY_MISMATCH: "This command identifier was already used for different data.",
+  CONFLICT: "The shift was updated from another session. Refreshing the latest record.",
+  NOT_FOUND: "The requested shift could not be found.",
+  VALIDATION_REJECTED: "The shift information is incomplete or invalid.",
+  TRANSPORT_FAILURE: "The command could not reach the server. No confirmation was received.",
+  PERSISTENCE_FAILURE: "The server could not persist this command.",
+};

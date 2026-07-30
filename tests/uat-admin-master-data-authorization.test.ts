@@ -12,6 +12,12 @@ import type { User } from "@/features/auth/domain/user";
 import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
 import type { LoginResult } from "@/features/auth/services/AuthenticationService";
 import {
+  CustomerProvider,
+  useCustomer,
+} from "@/features/customer/context/CustomerContext";
+import { customerRepository } from "@/features/customer/repository";
+import type { CustomerRecord } from "@/features/customer/types";
+import {
   EquipmentProvider,
   useEquipment,
 } from "@/features/equipment/context/EquipmentContext";
@@ -41,6 +47,17 @@ const management: User = {
   systemRoles: ["management"],
 };
 
+const customer: CustomerRecord = {
+  id: "uat-customer",
+  customerCode: "CUS-0001",
+  companyName: "UAT Customer",
+  contactPerson: "Test Contact",
+  contactNumber: "09171234567",
+  email: "uat@example.com",
+  address: "UAT Address",
+  active: true,
+};
+
 const equipment: EquipmentRecord = {
   id: "uat-equipment",
   prefixId: "",
@@ -66,27 +83,36 @@ const operator: Operator = {
 };
 
 class FakeAuthenticationService {
-  constructor(private readonly loginUser: User) {}
+  constructor(
+    private readonly loginUser: User,
+    private readonly restoreSession: boolean,
+  ) {}
 
   initialize() {
-    return { session: null, user: null };
+    return this.restoreSession
+      ? { session: this.session(), user: this.loginUser }
+      : { session: null, user: null };
   }
 
   login(): LoginResult {
-    const session: AuthSession = {
+    return { success: true, session: this.session(), user: this.loginUser };
+  }
+
+  logout() {}
+
+  private session(): AuthSession {
+    return {
       id: `session-${this.loginUser.id}`,
       userId: this.loginUser.id,
       providerId: "local",
       createdAt: "",
     };
-    return { success: true, session, user: this.loginUser };
   }
-
-  logout() {}
 }
 
 interface Harness {
   auth: ReturnType<typeof useAuth>;
+  customer: ReturnType<typeof useCustomer>;
   equipment: ReturnType<typeof useEquipment>;
   operator: ReturnType<typeof useOperator>;
 }
@@ -103,7 +129,10 @@ afterEach(async () => {
   localStorage.clear();
 });
 
-async function renderAuthenticated(user: User) {
+async function renderAuthenticated(
+  user: User,
+  authentication: "login" | "restore" = "login",
+) {
   const equipmentCreate = vi.fn();
   const equipmentRepository = {
     getAll: () => [],
@@ -119,16 +148,18 @@ async function renderAuthenticated(user: User) {
     repositories: { equipment: equipmentRepository },
     authentication: {
       authenticationService:
-        new FakeAuthenticationService(user) as unknown as ReturnType<
+        new FakeAuthenticationService(user, authentication === "restore") as unknown as ReturnType<
           typeof createLocalApplicationDependencies
         >["authentication"]["authenticationService"],
     },
   });
+  const customerCreate = vi.spyOn(customerRepository, "create").mockImplementation(() => {});
   const operatorCreate = vi.spyOn(operatorRepository, "create").mockImplementation(() => {});
   const harness = {} as Harness;
 
   function Probe() {
     harness.auth = useAuth();
+    harness.customer = useCustomer();
     harness.equipment = useEquipment();
     harness.operator = useOperator();
     return null;
@@ -146,20 +177,49 @@ async function renderAuthenticated(user: User) {
         AuthProvider,
         null,
         createElement(
-          EquipmentProvider,
+          CustomerProvider,
           null,
-          createElement(OperatorProvider, null, createElement(Probe)),
+          createElement(
+            EquipmentProvider,
+            null,
+            createElement(OperatorProvider, null, createElement(Probe)),
+          ),
         ),
       ),
     ));
   });
-  await act(async () => {
-    await harness.auth.login({ username: user.username, password: "local" });
-  });
-  return { harness, equipmentCreate, operatorCreate };
+  if (authentication === "login") {
+    await act(async () => {
+      await harness.auth.login({ username: user.username, password: "local" });
+    });
+  }
+  return { harness, customerCreate, equipmentCreate, operatorCreate };
 }
 
 describe("UAT administrator master-data authorization", () => {
+  it.each(["login", "restore"] as const)(
+    "refreshes Customer authorization after administrator %s",
+    async (authentication) => {
+      const { harness, customerCreate } = await renderAuthenticated(
+        administrator,
+        authentication,
+      );
+
+      expect(harness.auth.user?.systemRoles).toEqual(["system-administrator"]);
+      expect(harness.auth.hasPermission("customer.manage")).toBe(true);
+      expect(() => harness.customer.addCustomer(customer)).not.toThrow();
+      expect(customerCreate).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps unauthorized Customer creation denied without persistence", async () => {
+    const { harness, customerCreate } = await renderAuthenticated(management);
+
+    expect(harness.auth.hasPermission("customer.manage")).toBe(false);
+    expect(() => harness.customer.addCustomer(customer)).toThrow(AuthorizationError);
+    expect(customerCreate).not.toHaveBeenCalled();
+  });
+
   it("lets the restored system-administrator create Equipment", async () => {
     const { harness, equipmentCreate } = await renderAuthenticated(administrator);
 

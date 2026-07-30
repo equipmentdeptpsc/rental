@@ -4,7 +4,7 @@ import { storage } from "@/core/storage";
 
 const request = {
   rentalId: "rental-1",
-  rentalStatus: "Released" as const,
+  rentalStatus: "Active" as const,
   equipmentId: "equipment-1",
   operatorId: "operator-1",
   assignmentId: "assignment-1",
@@ -12,7 +12,7 @@ const request = {
   customerId: "customer-1",
   rental: {
     id: "rental-1", equipmentId: "equipment-1", customer: "Customer", project: "Project", rentedBy: "Admin",
-    dateOut: "2026-02-27", statusId: "released", status: "Released" as const,
+    dateOut: "2026-02-27", statusId: "active", status: "Active" as const,
     operationalMetadata: {
       costCode: { id: "cost-1", code: "5031HEAVYEQPT", name: "Heavy Equipment" },
       activityCode: { id: "activity-1", code: "LDC", name: "LAUCHANCO DEVELOPMENT CORPORATION" },
@@ -89,11 +89,11 @@ describe("DEUR creation", () => {
     });
     expect(createDeur({ ...request, rentalStatus: "Cancelled" })).toEqual({
       success: false,
-      message: "Cancelled rentals cannot create new DEUR records.",
+      message: "Rental must be Active before creating or starting a DEUR. Current status: Cancelled.",
     });
     expect(createDeur({ ...request, rentalStatus: "Closed" })).toEqual({
       success: false,
-      message: "Closed rentals cannot create new DEUR records.",
+      message: "Rental must be Active before creating or starting a DEUR. Current status: Closed.",
     });
 
     expect(createDeur(request).success).toBe(true);

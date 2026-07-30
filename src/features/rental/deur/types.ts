@@ -119,6 +119,9 @@ export interface DeurRecord {
 
   totalIdleMinutes: number;
 
+  /** Canonical standby evidence. Absent only on records persisted before Phase C4C. */
+  totalStandbyMinutes?: number;
+
   totalMaintenanceMinutes: number;
 
   totalMealBreakMinutes: number;
@@ -192,7 +195,7 @@ export interface ManualDeurMetadata {
   remarks?: string;
 }
 
-export type DeurActivityTypeCanonical = "shift" | "operation" | "idle" | "mealBreak" | "breakdown";
+export type DeurActivityTypeCanonical = "shift" | "operation" | "idle" | "standby" | "mealBreak" | "breakdown";
 export type DeurEventAction = "start" | "end";
 
 export interface CanonicalDeurEvent {
@@ -218,6 +221,7 @@ export interface DeurTotals {
   shiftMinutes: number;
   operationMinutes: number;
   idleMinutes: number;
+  standbyMinutes?: number;
   mealBreakMinutes: number;
   breakdownMinutes: number;
 }

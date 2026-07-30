@@ -68,6 +68,8 @@ export interface RentalContractRecord {
   // NEW
   withholdingTax?: number;
 
+  meterEvidenceRequirement?: "none" | "odometer" | "hourMeter" | "both";
+
   transactionRelationship?: import("../types").TransactionRelationship;
 
   vatApplicability?: import("../types").VatApplicability;

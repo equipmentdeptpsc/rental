@@ -1,0 +1,38 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { User } from "@/features/auth/domain/user";
+import type { EquipmentRecord } from "@/features/equipment/types";
+import type { RentalRecord } from "@/features/rental/types";
+import type { AssignmentRecord } from "@/features/assignment/types";
+import type { Operator } from "@/features/operators/types";
+import type { CustomerRecord } from "@/features/customer/types";
+import type { ProjectRecord } from "@/features/project/types";
+import type { BillingStatement } from "@/features/rental/billingstatement/types";
+import type { DeurRecord } from "@/features/rental/deur/types";
+import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
+import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
+import type { RemoteCore } from "@/core/remote";
+import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
+import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepository";
+
+export function createSupabaseReadRepositories(client: SupabaseClient, core: RemoteCore) {
+  return {
+    users: new SupabaseReadRepository<User>(client, { repositoryName: "User", table: "users", columns: "id,username,display_name,status,operator_id,created_at,updated_at,user_roles(app_roles(code))", searchColumns: ["username", "display_name"], mapRow: mapUser }, core),
+    equipment: new SupabaseReadRepository<EquipmentRecord>(client, { repositoryName: "Equipment", table: "equipment", searchColumns: ["asset_no", "equipment_name", "serial_number"] }, core),
+    rentals: new SupabaseReadRepository<RentalRecord>(client, { repositoryName: "Rental", table: "rentals", searchColumns: ["rental_number", "customer_snapshot", "project_snapshot"] }, core),
+    assignments: new SupabaseReadRepository<AssignmentRecord>(client, { repositoryName: "Assignment", table: "assignments", searchColumns: ["remarks"] }, core),
+    operators: new SupabaseReadRepository<Operator>(client, { repositoryName: "Operator", table: "operators", searchColumns: ["name", "email", "license_number"] }, core),
+    customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"] }, core),
+    projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"] }, core),
+    billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "customer_snapshot", "project_snapshot"] }, core),
+    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", searchColumns: ["deur_number", "operational_remarks"] }, core),
+    rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines" }, core),
+    workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
+  };
+}
+function mapUser(row: Record<string, unknown>): RepositoryResult<User> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
+  if (typeof base.value.username !== "string" || typeof base.value.displayName !== "string") return repositoryFailure("REMOTE_ROW_MALFORMED", "Remote User requires username and display name.", { context: { repository: "User" }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Repair the remote User profile." });
+  const roleRows = Array.isArray(row.user_roles) ? row.user_roles : [];
+  const systemRoles = roleRows.flatMap((entry) => { const role = entry && typeof entry === "object" ? (entry as Record<string, unknown>).app_roles : undefined; const code = role && typeof role === "object" ? (role as Record<string, unknown>).code : undefined; return typeof code === "string" ? [code] : []; });
+  return repositorySuccess({ ...base.value, systemRoles } as unknown as User);
+}

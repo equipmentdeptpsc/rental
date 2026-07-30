@@ -18,7 +18,7 @@ export type RentalBillingTermsNormalization =
   | { valid: false; code: "INVALID_NUMERIC_INPUT" | "INVALID_VAT_APPLICABILITY" | "INVALID_TRANSACTION_RELATIONSHIP"; message: string };
 
 const supportedAutomatedMethods = new Set<RentalBillingMethod>(["Per Hour", "Per Day", "Per Week"]);
-const optionalNumericFields: Array<keyof Omit<RentalBillingTerms, "unitRate" | "vatApplicability">> = ["minimumBillableHours", "overtimeRate", "standbyRate", "mobilizationFee", "demobilizationFee", "fuelCharge", "operatorRate", "withholdingTax"];
+const optionalNumericFields = ["minimumBillableHours", "overtimeRate", "standbyRate", "mobilizationFee", "demobilizationFee", "fuelCharge", "operatorRate", "withholdingTax"] as const satisfies readonly (keyof RentalBillingTerms)[];
 
 function normalizeNumber(value: unknown, field: string): number | undefined | RentalBillingTermsNormalization {
   if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) return undefined;

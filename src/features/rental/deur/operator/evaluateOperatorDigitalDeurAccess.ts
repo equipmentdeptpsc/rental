@@ -8,6 +8,7 @@ import { deriveDeurEventState } from "../services/deriveDeurEventState";
 import { calendarDateAt } from "../expectation/dateRules";
 import type { RentalEquipmentLine } from "../../equipment-line";
 import { resolveDeurRentalEquipmentLine } from "../services/resolveDeurRentalEquipmentLine";
+import { getDeurStartEligibility } from "../services/DeurValidationService";
 
 const issue = (code: string, message: string): OperatorDigitalDeurAccessIssue => ({ code, message });
 export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string; name?: string; role?: string }; authenticatedOperatorId?: string; operator?: Operator; assignment?: AssignmentRecord; rental?: RentalRecord; rentalEquipmentLine?: RentalEquipmentLine; deurs: DeurRecord[]; evaluationTimestamp: string; shift?: DeurRecord["shift"] }): OperatorDigitalDeurAccessResult {
@@ -15,7 +16,8 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
   const base = { allowed: false, allowedActions: [] as DeurOperatorAction[], issues: [] as OperatorDigitalDeurAccessIssue[] };
   if (!operator) return { ...base, issues: [issue("OPERATOR_NOT_FOUND", "Operator was not found.")] };
   if (!rental) return { ...base, issues: [issue("RENTAL_NOT_FOUND", "Rental was not found.")] };
-  if (!["Released", "Active"].includes(rental.status)) return { ...base, issues: [issue("RENTAL_NOT_OPERATIONAL", "Rental must be Released or Active.")] };
+  const lifecycle = getDeurStartEligibility(rental);
+  if (!lifecycle.eligible) return { ...base, issues: [issue("RENTAL_NOT_OPERATIONAL", lifecycle.message)] };
   const lineResolution = input.rentalEquipmentLine
     ? { success: true as const, line: input.rentalEquipmentLine }
     : resolveDeurRentalEquipmentLine({ rental, equipmentId: rental.equipmentId, assignmentId: rental.assignmentId, operatorId: rental.operatorId });

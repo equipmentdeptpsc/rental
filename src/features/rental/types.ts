@@ -56,6 +56,7 @@ export interface RentalBillingTerms {
   operatorRate?: number;
   vatApplicability?: VatApplicability;
   withholdingTax?: number;
+  meterEvidenceRequirement?: "none" | "odometer" | "hourMeter" | "both";
 }
 
 export interface RentalCommercialSnapshot {
@@ -72,6 +73,7 @@ export interface RentalCommercialSnapshot {
   taxRate?: number;
   withholdingTax?: number;
   contractAmount?: number;
+  meterEvidenceRequirement?: "none" | "odometer" | "hourMeter" | "both";
   currency: string;
   capturedAt: string;
 }

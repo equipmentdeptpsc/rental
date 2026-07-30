@@ -11,6 +11,7 @@ import type { BillingPreviewLine } from "@/features/rental/workspace/billing/typ
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
 import { resolveBillingConsumedPresentation, type BillingConsumedNotice } from "@/features/rental/workspace/billing/resolveBillingConsumedPresentation";
+import type { User } from "@/features/auth/domain/user";
 
 export interface RentalLineBillingIssue { code: string; message: string; deurId?: string; rentalEquipmentLineId?: string; equipmentId?: string }
 export interface RentalLineBillingPreview { lines: BillingPreviewLine[]; issues: RentalLineBillingIssue[]; notices: BillingConsumedNotice[]; subtotal: number; vat: number; withholdingTax: number; grandTotal: number }
@@ -47,12 +48,50 @@ export function buildRentalLineAwareBillingPreview(input: { aggregate: RentalAgg
 
 type StatementPort = Pick<typeof billingStatementRepository, "getByRentalId" | "create" | "delete">;
 type DeurPort = Pick<typeof deurRepository, "getById" | "update">;
-export function createRentalLineAwareBillingStatement(input: { aggregate: RentalAggregate; from: string; to: string; identity?: { id: string; statementNo: string }; equipment?: EquipmentRecord[]; operators?: Operator[] }, dependencies: { statements?: StatementPort; deurs?: DeurPort } = {}): { success: true; statement: BillingStatement; deurs: DeurRecord[] } | { success: false; code: string; message: string; issues?: RentalLineBillingIssue[] } {
-  const preview = buildRentalLineAwareBillingPreview(input); if (preview.issues.length) return { success: false, code: "BILLING_ELIGIBILITY_FAILED", message: "Every DEUR in the billing period must be eligible before creating the Rental statement.", issues: preview.issues }; if (!preview.lines.length) return { success: false, code: "NO_BILLABLE_DEURS", message: "No eligible DEURs exist for the billing period." };
+export interface RentalLineBillingFailure {
+  success: false;
+  code: string;
+  message: string;
+  issues?: RentalLineBillingIssue[];
+  diagnostic?: {
+    stage: "authorization" | "statement-construction" | "statement-persistence" | "deur-consumption" | "compensation";
+    cause: string;
+    statementId?: string;
+    rentalId: string;
+    deurIds: string[];
+  };
+}
+
+function safeCause(error: unknown): string {
+  return error instanceof Error && error.message.trim()
+    ? error.message
+    : "Unknown billing workflow failure.";
+}
+
+export function createRentalLineAwareBillingStatement(input: { aggregate: RentalAggregate; from: string; to: string; identity?: { id: string; statementNo: string }; equipment?: EquipmentRecord[]; operators?: Operator[]; authenticatedUser?: User | null }, dependencies: { statements?: StatementPort; deurs?: DeurPort } = {}): { success: true; statement: BillingStatement; deurs: DeurRecord[] } | RentalLineBillingFailure {
+  const preview = buildRentalLineAwareBillingPreview(input);
+  if (!preview.lines.length) return { success: false, code: "NO_BILLABLE_DEURS", message: "No eligible DEURs exist for the billing period.", issues: preview.issues };
   const statements = dependencies.statements ?? billingStatementRepository; const deurs = dependencies.deurs ?? deurRepository;
+  const identity = input.identity ?? { id: crypto.randomUUID(), statementNo: `BS-${Date.now()}` };
   let creation: ReturnType<typeof createBillingStatementForRental>;
-  try { creation = createBillingStatementForRental(input.aggregate, input.from, input.to, preview.lines, statements, { vat: preview.vat, withholdingTax: preview.withholdingTax, grandTotal: preview.grandTotal }, input.identity); }
-  catch { return { success: false, code: "STATEMENT_CREATION_FAILED", message: "Billing statement persistence failed before any DEUR was consumed." }; }
+  try { creation = createBillingStatementForRental(input.aggregate, input.from, input.to, preview.lines, statements, { vat: preview.vat, withholdingTax: preview.withholdingTax, grandTotal: preview.grandTotal }, identity, input.authenticatedUser); }
+  catch (error) {
+    const authorization = error instanceof Error && error.name === "AuthorizationError";
+    return {
+      success: false,
+      code: authorization ? "AUTHORIZATION_FAILED" : "STATEMENT_CREATION_FAILED",
+      message: authorization
+        ? "You do not have permission to create billing statements."
+        : "Billing statement persistence failed before any DEUR was consumed.",
+      diagnostic: {
+        stage: authorization ? "authorization" : "statement-persistence",
+        cause: safeCause(error),
+        statementId: identity.id,
+        rentalId: input.aggregate.rental.id,
+        deurIds: preview.lines.map((line) => line.deurId),
+      },
+    };
+  }
   if (!creation.success) return { success: false, code: "STATEMENT_CREATION_FAILED", message: creation.message };
   const originals: DeurRecord[] = []; const persisted: DeurRecord[] = [];
   try {
@@ -62,6 +101,17 @@ export function createRentalLineAwareBillingStatement(input: { aggregate: Rental
     let compensated = true;
     for (const original of originals) { try { if (!deurs.update(original)) compensated = false; } catch { compensated = false; } }
     try { if (!statements.delete(creation.statement.id)) compensated = false; } catch { compensated = false; }
-    return { success: false, code: compensated ? "BATCH_CONSUMPTION_FAILED" : "COMPENSATION_FAILED", message: compensated ? (error instanceof Error ? error.message : "Billing consumption failed and was compensated.") : "Billing consumption failed and local-storage compensation was incomplete; manual reconciliation is required." };
+    return {
+      success: false,
+      code: compensated ? "BATCH_CONSUMPTION_FAILED" : "COMPENSATION_FAILED",
+      message: compensated ? safeCause(error) : "Billing consumption failed and local-storage compensation was incomplete; manual reconciliation is required.",
+      diagnostic: {
+        stage: compensated ? "deur-consumption" : "compensation",
+        cause: safeCause(error),
+        statementId: creation.statement.id,
+        rentalId: input.aggregate.rental.id,
+        deurIds: preview.lines.map((line) => line.deurId),
+      },
+    };
   }
 }

@@ -3,6 +3,7 @@ import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
 import type { RentalRecord } from "@/features/rental/types";
 import type { DeurRecord } from "../types";
 import { calendarDateAt } from "../expectation/dateRules";
+import { canStartDeur } from "../services/DeurValidationService";
 
 export type OperatorLandingAction =
   | "START_SHIFT"
@@ -56,7 +57,7 @@ export function resolveOperatorLandingState(input: {
       const rental = input.rentals.find(
         (candidate) =>
           candidate.id === line.rentalId &&
-          ["Released", "Active"].includes(candidate.status),
+          canStartDeur(candidate),
       );
       if (!rental) return [];
 

@@ -13,7 +13,7 @@ import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptio
 export default function ReturnRental() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { rentals } = useRental();
+  const { rentals, rentalEquipmentLines, returnRentalEquipmentLine } = useRental();
   const { equipment } = useEquipment();
   const { returnEquipment } = useReturnRental();
   const { showToast } = useToast();
@@ -23,6 +23,13 @@ export default function ReturnRental() {
   const machine = equipment.find(
     (item) => item.id === rental?.equipmentId
   );
+  const lines = rentalEquipmentLines.filter((line) => line.rentalId === rental?.id);
+
+  function handleLineReturn(lineId: string) {
+    if (!rental) return;
+    const result = returnRentalEquipmentLine(rental.id, lineId);
+    showToast(result.success ? "Equipment Line returned successfully." : result.message ?? "Unable to return Equipment Line.", result.success ? "success" : "error");
+  }
 
   function handleReturn() {
     if (!rental) return;
@@ -53,6 +60,17 @@ export default function ReturnRental() {
         </p>
       </div>
 
+      {lines.length > 1 && <section className="space-y-3 rounded-xl border bg-white p-6">
+        <h2 className="text-lg font-semibold">Return Equipment Line</h2>
+        {lines.map((line) => {
+          const item = equipment.find((record) => record.id === line.equipmentId);
+          return <div className="flex items-center justify-between gap-3 border-t pt-3" key={line.id}>
+            <div><p className="font-medium">{getRentalEquipmentLabel(item)}</p><p className="text-xs text-slate-500">{line.id} · {line.status}</p></div>
+            <Button disabled={!["Released", "Active"].includes(line.status)} onClick={() => handleLineReturn(line.id)}>Return Equipment Line</Button>
+          </div>;
+        })}
+      </section>}
+
       <div className="space-y-3 rounded-xl border bg-white p-6">
         <Detail
           label="Equipment"
@@ -66,7 +84,7 @@ export default function ReturnRental() {
 
       <div className="flex gap-3">
         <Button onClick={() => setConfirming(true)}>
-          Return Equipment
+          Return All Equipment
         </Button>
 
         <Button variant="secondary" onClick={() => navigate("/rentals")}>
@@ -76,9 +94,9 @@ export default function ReturnRental() {
 
       <ConfirmModal
         open={confirming}
-        title="Confirm equipment return"
-        message="This will mark the rental as returned and restore the equipment to Available."
-        confirmText="Return Equipment"
+        title="Confirm return of all equipment"
+        message="This explicit return-all action will mark the Rental returned and return every included Equipment Line."
+        confirmText="Return All Equipment"
         onConfirm={handleReturn}
         onCancel={() => setConfirming(false)}
       />

@@ -28,6 +28,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isInitializing: boolean;
   isSubmitting: boolean;
+  isLoggingOut: boolean;
   authenticate: (request: AuthenticationRequest) => Promise<LoginResult>;
   login: {
     (credentials: LoginCredentials): Promise<LoginResult>;
@@ -50,12 +51,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const refreshSession = useCallback(async () => {
     setIsInitializing(true);
     await Promise.resolve();
+    if (authentication.remoteAuthenticationProvider) {
+      const restored = await authentication.remoteAuthenticationProvider.restoreSession();
+      if (restored.success && restored.value) {
+        authentication.legacyCompatibilityRepository.clear();
+        setUser(adaptDomainUser(restored.value.user));
+        setSession(restored.value.session);
+      } else {
+        setUser(null);
+        setSession(null);
+      }
+      setIsInitializing(false);
+      return;
+    }
     const restored = authentication.authenticationService.initialize();
     if (restored.user && restored.session) {
+      authentication.legacyCompatibilityRepository.clear();
       setUser(adaptDomainUser(restored.user));
       setSession(restored.session);
     } else {
@@ -81,10 +97,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
       setIsSubmitting(true);
+      setIsLoggingOut(false);
       try {
         await Promise.resolve();
+        if (authentication.remoteAuthenticationProvider) {
+          const payload = request.payload as Partial<LoginCredentials>;
+          if (typeof payload.username !== "string" || typeof payload.password !== "string") {
+            return { success: false, reason: "INVALID_CREDENTIALS", message: "Enter a valid email and password." };
+          }
+          const remote = await authentication.remoteAuthenticationProvider.login({ username: payload.username, password: payload.password });
+          if (!remote.success) return { success: false, reason: remote.error.code === "REMOTE_USER_UNAVAILABLE" ? "INACTIVE_USER" : "INVALID_CREDENTIALS", message: remote.error.message };
+          authentication.legacyCompatibilityRepository.clear();
+          setUser(adaptDomainUser(remote.value.user));
+          setSession(remote.value.session);
+          return { success: true, session: remote.value.session, user: remote.value.user };
+        }
         const result = authentication.authenticationService.login(request);
         if (result.success) {
+          authentication.legacyCompatibilityRepository.clear();
           setUser(adaptDomainUser(result.user));
           setSession(result.session);
         }
@@ -119,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
       return authenticate({
-        providerId: LOCAL_AUTH_PROVIDER_ID,
+        providerId: authentication.remoteAuthenticationProvider?.id ?? LOCAL_AUTH_PROVIDER_ID,
         payload: credentialsOrName,
       });
     },
@@ -127,7 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    authentication.authenticationService.logout();
+    setIsLoggingOut(true);
+    if (authentication.remoteAuthenticationProvider) void authentication.remoteAuthenticationProvider.logout();
+    else authentication.authenticationService.logout();
     authentication.legacyCompatibilityRepository.clear();
     setUser(null);
     setSession(null);
@@ -140,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: user !== null,
       isInitializing,
       isSubmitting,
+      isLoggingOut,
       authenticate,
       login,
       logout,
@@ -149,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: session?.id ?? null,
       refreshSession,
     }),
-    [authenticate, authentication, isInitializing, isSubmitting, login, logout, refreshSession, session, user],
+    [authenticate, authentication, isInitializing, isLoggingOut, isSubmitting, login, logout, refreshSession, session, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

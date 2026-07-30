@@ -424,7 +424,9 @@ describe("RentalProvider synchronization", () => {
     expect(refreshed.harness.rental.getContract("rental-1")?.unitRate).toBe(100);
 
     const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
-    expect(getDeurCreationError({ rentalId: released.id, rentalStatus: released.status, rental: released, equipmentId: released.equipmentId, operatorId: released.operatorId ?? "", assignmentId: released.assignmentId, projectId: released.projectId, customerId: released.customerId })).toBeUndefined();
+    expect(getDeurCreationError({ rentalId: released.id, rentalStatus: released.status, rental: released, equipmentId: released.equipmentId, operatorId: released.operatorId ?? "", assignmentId: released.assignmentId, projectId: released.projectId, customerId: released.customerId })).toBe(
+      "Rental must be Active before creating or starting a DEUR. Current status: Released.",
+    );
     await act(async () => refreshed.root.unmount()); refreshed.container.remove();
   });
 
