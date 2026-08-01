@@ -11,8 +11,11 @@ import { SupabaseDeurCommandRepository } from "@/integrations/supabase/SupabaseD
 import type { DeurCommandRepository, DeurLifecycleCommandResult } from "@/features/rental/deur/commands/contracts";
 import { createDisabledRemoteOperationalCommands,createUnavailableOperationalCommands } from "@/features/rental/operations/commands/UnavailableOperationalCommandRepository";
 import { createSupabaseOperationalCommands } from "@/integrations/supabase/SupabaseOperationalCommandRepository";
+import { SupabaseOperationalEventRepository } from "@/integrations/supabase/SupabaseOperationalEventRepository";
+import { SupabaseOperationalRealtimeSource } from "@/integrations/supabase/SupabaseOperationalRealtimeSource";
+import { BrowserReplayCoordinator,IndexedDbOfflineOperationalCommandQueue,InMemoryOfflineOperationalCommandQueue,OperationalEventStream,OperatorSynchronizationService,PollingOperationalEventTransport,RealtimeOperationalEventTransport,WorkspaceSynchronization } from "@/features/rental/realtime";
 
-export interface ApplicationRuntimeConfiguration { persistenceMode?:string;equipmentStatusSource?:string;supabaseUrl?:string;supabasePublishableKey?:string;remoteOperationalWritesEnabled?:boolean }
+export interface ApplicationRuntimeConfiguration { persistenceMode?:string;equipmentStatusSource?:string;supabaseUrl?:string;supabasePublishableKey?:string;remoteOperationalWritesEnabled?:boolean;operationalReadTransport?:string }
 export function normalizePersistenceMode(value: string | undefined): PersistenceMode { return value === PersistenceMode.Remote ? PersistenceMode.Remote : PersistenceMode.Local; }
 class MissingRemoteConfigurationRepository implements ReadOnlyEquipmentStatusRepository{
   readonly capabilities=createRemoteCapabilities("ReadOnly","SupportsPaging","SupportsOrdering");
@@ -23,7 +26,7 @@ class MissingRemoteCommandConfiguration implements DeurCommandRepository {
   private failure():Promise<DeurLifecycleCommandResult>{return Promise.resolve({success:false,code:"TRANSPORT_FAILURE",message:"Remote persistence configuration is missing.",retryable:false,refreshRequired:false});}
   startShift(){return this.failure();}startOrChangeActivity(){return this.failure();}stopCurrentActivity(){return this.failure();}completeShift(){return this.failure();}submitDeur(){return this.failure();}
 }
-export function readApplicationRuntimeConfiguration():ApplicationRuntimeConfiguration{const mode=normalizePersistenceMode(import.meta.env.VITE_PERSISTENCE_MODE);const value=readRemoteConfiguration({VITE_SUPABASE_URL:import.meta.env.VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY},mode===PersistenceMode.Remote?"supabase":import.meta.env.VITE_EQUIPMENT_STATUS_SOURCE);return{persistenceMode:mode,equipmentStatusSource:value.source,supabaseUrl:value.supabaseUrl,supabasePublishableKey:value.supabasePublishableKey,remoteOperationalWritesEnabled:import.meta.env.VITE_REMOTE_OPERATIONAL_WRITES_ENABLED==="true"};}
+export function readApplicationRuntimeConfiguration():ApplicationRuntimeConfiguration{const mode=normalizePersistenceMode(import.meta.env.VITE_PERSISTENCE_MODE);const value=readRemoteConfiguration({VITE_SUPABASE_URL:import.meta.env.VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY:import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY},mode===PersistenceMode.Remote?"supabase":import.meta.env.VITE_EQUIPMENT_STATUS_SOURCE);return{persistenceMode:mode,equipmentStatusSource:value.source,supabaseUrl:value.supabaseUrl,supabasePublishableKey:value.supabasePublishableKey,remoteOperationalWritesEnabled:import.meta.env.VITE_REMOTE_OPERATIONAL_WRITES_ENABLED==="true",operationalReadTransport:import.meta.env.VITE_OPERATIONAL_READ_TRANSPORT};}
 export function createApplicationDependencies(configuration:ApplicationRuntimeConfiguration=readApplicationRuntimeConfiguration(),overrides:ApplicationDependencyOverrides={}):ApplicationDependencies{
   const source:EquipmentStatusSource=configuration.persistenceMode==="remote"||configuration.equipmentStatusSource==="supabase"?"supabase":"local";
   if(source==="local")return createLocalApplicationDependencies(overrides);
@@ -32,9 +35,16 @@ export function createApplicationDependencies(configuration:ApplicationRuntimeCo
   const client=validated.success?getSupabaseBrowserClient(validated.value):undefined;
   const equipmentStatusRead=client?new SupabaseEquipmentStatusReadRepository(client,remoteCore):new MissingRemoteConfigurationRepository();
   const dependencies=createLocalApplicationDependencies({...overrides,repositories:{...overrides.repositories,equipmentStatusRead}});
-  if(!client)return{...dependencies,commandRepositories:{deurCommands:new MissingRemoteCommandConfiguration(),...createUnavailableOperationalCommands()},changeNotifications:{subscribeDeur:()=>()=>{}},configuration:{equipmentStatusSource:"supabase",persistenceMode:PersistenceMode.Remote,remoteOperationalWritesEnabled:false}};
+  if(!client)return{...dependencies,commandRepositories:{deurCommands:new MissingRemoteCommandConfiguration(),...createUnavailableOperationalCommands()},changeNotifications:{subscribeDeur:()=>()=>{}},synchronization:{...dependencies.synchronization,tenantId:undefined,publishEnabled:false},configuration:{equipmentStatusSource:"supabase",persistenceMode:PersistenceMode.Remote,remoteOperationalWritesEnabled:false}};
   const readRepositories=createSupabaseReadRepositories(client,remoteCore);
   const remoteAuthenticationProvider=new SupabaseAuthenticationProvider(client,readRepositories.users);
   const operationalCommands=configuration.remoteOperationalWritesEnabled?createSupabaseOperationalCommands(client):createDisabledRemoteOperationalCommands();
-  return{...dependencies,readRepositories,commandRepositories:{deurCommands:new SupabaseDeurCommandRepository(client,readRepositories.deurs),...operationalCommands},changeNotifications:{subscribeDeur:()=>()=>{}},authentication:{...dependencies.authentication,remoteAuthenticationProvider},configuration:{equipmentStatusSource:"supabase",persistenceMode:PersistenceMode.Remote,remoteOperationalWritesEnabled:configuration.remoteOperationalWritesEnabled===true}};
+  const eventRepository=new SupabaseOperationalEventRepository(client);
+  const useRealtime=configuration.operationalReadTransport==="realtime-with-polling-recovery";
+  const eventTransport=useRealtime
+    ? new RealtimeOperationalEventTransport(new SupabaseOperationalRealtimeSource(client),eventRepository)
+    : new PollingOperationalEventTransport(eventRepository);
+  const eventStream=new OperationalEventStream(eventTransport);
+  const synchronization={tenantId:"AUTHENTICATED_TENANT",publishEnabled:false,transportMode:(useRealtime?"realtime-with-polling-recovery":"polling") as "realtime-with-polling-recovery"|"polling",repository:eventRepository,transport:eventTransport,stream:eventStream,operator:new OperatorSynchronizationService(eventStream),workspace:new WorkspaceSynchronization(eventStream),offlineQueue:typeof indexedDB==="undefined"?new InMemoryOfflineOperationalCommandQueue():new IndexedDbOfflineOperationalCommandQueue(),replayCoordinator:new BrowserReplayCoordinator(typeof navigator!=="undefined"?navigator.locks:undefined)};
+  return{...dependencies,readRepositories,commandRepositories:{deurCommands:new SupabaseDeurCommandRepository(client,readRepositories.deurs),...operationalCommands},changeNotifications:{subscribeDeur:()=>()=>{}},synchronization,authentication:{...dependencies.authentication,remoteAuthenticationProvider},configuration:{equipmentStatusSource:"supabase",persistenceMode:PersistenceMode.Remote,remoteOperationalWritesEnabled:configuration.remoteOperationalWritesEnabled===true}};
 }

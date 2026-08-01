@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import { prepareDeur } from "@/features/rental/deur/services/CreateDeurService";
@@ -14,6 +14,15 @@ import { calendarDateAt } from "@/features/rental/deur/expectation/dateRules";
 import { getDeurMeterRequirement } from "@/features/rental/deur/services/getDeurMeterRequirement";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useOperatorDeurData } from "@/features/rental/deur/operator/useOperatorDeurData";
+import {
+  actionCommandType,
+  AuthorizedDeurOfflineCommandExecutor,
+  createDeurOperationalEvents,
+  DeurOfflineCommandGateway,
+  OfflineCommandReplayEngine,
+  projectOfflineDeurCommand,
+  type DeurOfflineCommandInput,
+} from "@/features/rental/realtime";
 
 const actionLabels: Record<DeurOperatorAction, string> = { START_OPERATION: "Start Operation", RESUME_OPERATION: "Resume Operation", START_IDLE: "Start Idle", START_STANDBY: "Start Standby", START_MEAL_BREAK: "Start Meal Break", START_BREAKDOWN: "Start Breakdown", END_ACTIVITY:"Stop Current Activity", END_SHIFT: "End Shift" };
 const formatElapsed = (seconds: number) => [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60].map((part) => String(part).padStart(2, "0")).join(":");
@@ -21,16 +30,36 @@ export const operatorActionSuccessMessage = (action: DeurOperatorAction) =>
   action === "END_ACTIVITY" ? "End Activity saved locally." : `${actionLabels[action]} saved locally.`;
 
 export default function OperatorDeurPage() {
-  const { rentalId = "" } = useParams(); const [searchParams,setSearchParams]=useSearchParams(); const { user } = useAuth(); const { commandRepositories,changeNotifications } = useApplicationDependenciesCompatibility(); const data=useOperatorDeurData(rentalId,user); const { rental,lines:rentalEquipmentLines,assignments,operators,equipment,projects,deurs,workDescriptions,refresh }=data;
+  const { rentalId = "" } = useParams(); const [searchParams,setSearchParams]=useSearchParams(); const { user } = useAuth(); const { commandRepositories,changeNotifications,synchronization,authentication } = useApplicationDependenciesCompatibility(); const data=useOperatorDeurData(rentalId,user); const { rental,lines:rentalEquipmentLines,assignments,operators,equipment,projects,deurs:persistedDeurs,workDescriptions,refresh }=data;
   const operatorLines = rentalEquipmentLines.filter((line) => line.rentalId === rentalId && ["Released", "Active"].includes(line.status));
   const requestedLineId=searchParams.get("lineId")??""; const [selectedLineId, setSelectedLineId] = useState(() => operatorLines.some(line=>line.id===requestedLineId)?requestedLineId:operatorLines.length === 1 ? operatorLines[0].id : ""); const selectedLine = operatorLines.find((line) => line.id === selectedLineId); const assignment = assignments.find((item) => item.id === selectedLine?.assignmentId), linkedIdentity=resolveAuthenticatedOperator(user??undefined,operators), operator = operators.find(item=>item.id===assignment?.operatorId), machine = equipment.find((item) => item.id === selectedLine?.equipmentId), project = projects.find((item) => item.id === rental?.projectId);
   const [, setVersion] = useState(0), [versions,setVersions]=useState<Record<string,number>>({}), [clock, setClock] = useState(() => new Date().toISOString()), [message, setMessage] = useState(""), [remarks, setRemarks] = useState("");
+  const [optimisticDeurs,setOptimisticDeurs]=useState<Array<{commandId:string;record:DeurRecord}>>([]);
+  const deurs=[...persistedDeurs.filter((record)=>!optimisticDeurs.some((item)=>item.record.id===record.id)),...optimisticDeurs.map((item)=>item.record)];
   const [openingReading, setOpeningReading] = useState("");
   const [closingReading, setClosingReading] = useState("");
   const [startLocation, setStartLocation] = useState("");
   const [endLocation, setEndLocation] = useState("");
   const [shift, setShift] = useState<DeurRecord["shift"]>(() => rental?.deurExpectationPolicy?.expectedShiftCodes?.[0] === "NIGHT" ? "Night" : "Day");
   const selectable = workDescriptions.filter((item) => item.active && !item.deleted), [workDescriptionId, setWorkDescriptionId] = useState(() => selectable[0]?.id ?? "");
+  useEffect(() => {
+    if (!synchronization.tenantId) return;
+    return synchronization.operator.subscribe(
+      { tenantId: synchronization.tenantId, rentalId },
+      (event) => {
+        const hasActiveEdits = Boolean(
+          remarks.trim() || openingReading.trim() || closingReading.trim()
+          || startLocation.trim() || endLocation.trim(),
+        );
+        if (hasActiveEdits) {
+          setMessage(`A synchronized update is available for equipment line ${event.rentalLineId}. Active edits were preserved.`);
+          return;
+        }
+        void refresh();
+        setMessage(`Equipment line ${event.rentalLineId} synchronized.`);
+      },
+    );
+  }, [synchronization, rentalId, refresh, remarks, openingReading, closingReading, startLocation, endLocation]);
   useEffect(() => changeNotifications.subscribeDeur((record) => { if (record.rentalId === rentalId) { void refresh(); setVersion((value) => value + 1); setMessage("Latest DEUR change received."); } }), [changeNotifications,refresh,rentalId]);
   useEffect(()=>{if(!selectedLineId&&operatorLines.length===1)setSelectedLineId(operatorLines[0].id);},[operatorLines,selectedLineId]);
   useEffect(()=>{setVersions(current=>Object.fromEntries(deurs.map(record=>[record.id,current[record.id]??Number((record as DeurRecord&{rowVersion?:number}).rowVersion??0)])));},[deurs]);
@@ -51,6 +80,82 @@ export default function OperatorDeurPage() {
   });
   const meterReadingType = meterRequirement.kind === "odometer" ? "ODOMETER" as const : meterRequirement.kind === "hourMeter" ? "HOUR_METER" as const : undefined;
   const evidenceMode = resolveDeurEvidenceMode(billingMethod);
+  const applyOfflineProjection = (command: DeurOfflineCommandInput) => {
+    const deurId = "deurId" in command.input ? command.input.deurId : command.input.draft.id;
+    const projected = projectOfflineDeurCommand(
+      command,
+      deurs.find((record) => record.id === deurId),
+      { id: user?.id, name: user?.name ?? "Operator", role: user?.role },
+    );
+    if (projected) setOptimisticDeurs((current) => [...current.filter((item) => item.record.id !== projected.id), { commandId: command.input.commandId, record: projected }]);
+  };
+  const commandGateway = useMemo(() => new DeurOfflineCommandGateway(
+    commandRepositories.deurCommands,
+    synchronization.offlineQueue,
+    synchronization.tenantId ?? "",
+  ), [commandRepositories.deurCommands, synchronization.offlineQueue, synchronization.tenantId]);
+  const replayEngine = useMemo(() => new OfflineCommandReplayEngine(
+    synchronization.offlineQueue,
+    new AuthorizedDeurOfflineCommandExecutor(commandRepositories.deurCommands, async (queued, result) => {
+      if (!synchronization.publishEnabled || !synchronization.tenantId) return;
+      const payload = queued.payload as Record<string, unknown>;
+      const action = queued.commandType === "DEUR_START_SHIFT" ? "START_OPERATION"
+        : queued.commandType === "DEUR_SUBMIT" ? "SUBMIT"
+        : queued.commandType === "DEUR_COMPLETE_SHIFT" ? "END_SHIFT"
+        : String(payload.action) as DeurOperatorAction;
+      for (const event of createDeurOperationalEvents({
+        tenantId: synchronization.tenantId,
+        deur: result.record,
+        action,
+        serverOccurredAt: result.serverOccurredAt,
+        aggregateVersion: result.version,
+      })) await synchronization.operator.publish(event);
+    }),
+    synchronization.replayCoordinator,
+    crypto.randomUUID(),
+  ), [commandRepositories.deurCommands, synchronization.offlineQueue, synchronization.operator, synchronization.publishEnabled, synchronization.replayCoordinator, synchronization.tenantId]);
+  const currentReplayIdentity = useCallback(async (queuedOperatorId: string, queuedAssignmentId?: string) => {
+    let currentUserId = user?.id;
+    let currentOperatorId = user?.operatorId;
+    let authenticated = Boolean(user);
+    if (authentication.remoteAuthenticationProvider) {
+      const refreshed = await authentication.remoteAuthenticationProvider.refreshSession();
+      currentUserId = refreshed.success ? refreshed.value?.user.id : undefined;
+      currentOperatorId = refreshed.success ? refreshed.value?.user.operatorId : undefined;
+      authenticated = Boolean(refreshed.success && refreshed.value);
+    } else {
+      const restored = authentication.authenticationService.initialize();
+      currentUserId = restored.user?.id;
+      currentOperatorId = restored.user?.operatorId;
+      authenticated = Boolean(restored.session && restored.user);
+    }
+    const assignmentValid = assignments.some((item) =>
+      item.id === queuedAssignmentId && item.operatorId === queuedOperatorId &&
+      item.status === "Active",
+    );
+    return { tenantId: synchronization.tenantId ?? "", userId: currentUserId ?? "", operatorId: currentOperatorId, authenticated, assignmentValid };
+  }, [assignments, authentication, synchronization.tenantId, user]);
+  useEffect(() => {
+    if (!synchronization.tenantId || !user?.operatorId) return;
+    const replay = () => void replayEngine.replayWithValidator(
+      { tenantId: synchronization.tenantId!, operatorId: user.operatorId! },
+      {
+        refreshAndValidate: async ({ queued }) => currentReplayIdentity(
+          queued.operatorId ?? "",
+          String((queued.payload as Record<string, unknown>).assignmentId ?? ""),
+        ),
+      },
+    ).then((report) => {
+      if (report?.succeeded) { setOptimisticDeurs([]); void refresh(); setMessage(`${report.succeeded} offline command${report.succeeded === 1 ? "" : "s"} synchronized.`); }
+      if (report?.terminal) setMessage(`${report.terminal} offline command${report.terminal === 1 ? "" : "s"} require attention.`);
+    }).then(async () => {
+      const failures = await synchronization.offlineQueue.listTerminal({ tenantId: synchronization.tenantId!, operatorId: user.operatorId! });
+      if (failures.length) setMessage(`${failures.length} offline command${failures.length === 1 ? "" : "s"} require operator attention.`);
+    });
+    window.addEventListener("online", replay);
+    if (navigator.onLine) replay();
+    return () => window.removeEventListener("online", replay);
+  }, [currentReplayIdentity, refresh, replayEngine, synchronization.offlineQueue, synchronization.tenantId, user?.operatorId]);
   async function startDigitalDeur() {
     if (!access.allowed || !rental || !selectedLine || !assignment || !operator) return setMessage(access.issues[0]?.message ?? "Select an eligible equipment line.");
     const selected = selectable.find((item) => item.id === workDescriptionId); if (!selected) return setMessage("Select a Work Description.");
@@ -59,8 +164,10 @@ export default function OperatorDeurPage() {
     if (evidenceMode.supported && evidenceMode.mode === "ODOMETER_TRIP" && !startLocation.trim()) return setMessage("Enter the beginning location.");
     const prepared = prepareDeur({ authenticatedUser: user, enforceOperatorOwnership: true, rentalId: rental.id, rentalEquipmentLineId: selectedLine.id, rentalStatus: rental.status, rental, assignmentId: selectedLine.assignmentId, equipmentId: selectedLine.equipmentId, operatorId: selectedLine.operatorId, projectId: rental.projectId, customerId: rental.customerId, selectedWorkDescription: selected, remarks, shift, openingMeter: beginning, meterReadingType, existingDeurs:deurs, odometerCheckpoints: evidenceMode.supported && evidenceMode.mode === "ODOMETER_TRIP" ? [{ id: crypto.randomUUID(), location: startLocation, odometerReading: beginning!, recordedAt: new Date().toISOString() }] : undefined, completionEvidence: evidenceMode.supported && evidenceMode.mode === "COMPLETION" ? { status: "IN_PROGRESS" } : undefined });
     if(!prepared.success)return setMessage(prepared.message);
-    const commandId=crypto.randomUUID();const result=await commandRepositories.deurCommands.startShift({commandId,idempotencyKey:commandId,rentalId:rental.id,rentalLineId:selectedLine.id,equipmentId:selectedLine.equipmentId,operatorId:selectedLine.operatorId,assignmentId:selectedLine.assignmentId??"",clientCreatedAt:new Date().toISOString(),draft:prepared.record});
-    setMessage(result.success ? "Digital DEUR started." : result.message); if (result.success){setVersions(current=>({...current,[result.record.id]:result.version}));await refresh();setVersion((value) => value + 1);}
+    const commandId=crypto.randomUUID(),input={commandId,idempotencyKey:commandId,rentalId:rental.id,rentalLineId:selectedLine.id,equipmentId:selectedLine.equipmentId,operatorId:selectedLine.operatorId,assignmentId:selectedLine.assignmentId??"",clientCreatedAt:new Date().toISOString(),draft:prepared.record};
+    const gatewayResult=await commandGateway.executeOrQueue({type:"DEUR_START_SHIFT",input},await currentReplayIdentity(input.operatorId,input.assignmentId));
+    if(gatewayResult.disposition==="QUEUED"){applyOfflineProjection({type:"DEUR_START_SHIFT",input});setMessage("Digital DEUR start saved offline and will synchronize after reconnection.");return;}
+    const result=gatewayResult.result;setMessage(result.success ? "Digital DEUR started." : result.message); if (result.success){if(synchronization.tenantId&&synchronization.publishEnabled)for(const event of createDeurOperationalEvents({tenantId:synchronization.tenantId,deur:result.record,action:"START_OPERATION",serverOccurredAt:result.serverOccurredAt,aggregateVersion:result.version}))await synchronization.operator.publish(event);setVersions(current=>({...current,[result.record.id]:result.version}));await refresh();setVersion((value) => value + 1);}
   }
   async function applyAction(action: DeurOperatorAction) {
     if (!active || !user) return; if (action === "END_SHIFT" && !window.confirm("End the current shift and close its active activity?")) return;
@@ -71,12 +178,15 @@ export default function OperatorDeurPage() {
       if (evidenceMode.supported && evidenceMode.mode === "ODOMETER_TRIP" && !endLocation.trim()) return setMessage("Enter the ending location.");
     }
     const commandId=crypto.randomUUID(),base={commandId,idempotencyKey:commandId,rentalId:active.rentalId,rentalLineId:active.rentalEquipmentLineId??"",equipmentId:active.equipmentId,operatorId:active.operatorId,assignmentId:active.assignmentId??"",deurId:active.id,expectedVersion:versions[active.id]??0,clientCreatedAt:actionTimestamp};
-    const result=action==="END_SHIFT"?await commandRepositories.deurCommands.completeShift({...base,closingMeter:meterReadingType?Number(closingReading):undefined,closingLocation:endLocation||undefined,meterRequirement:meterRequirement.kind}):action==="END_ACTIVITY"?await commandRepositories.deurCommands.stopCurrentActivity({...base,action}):await commandRepositories.deurCommands.startOrChangeActivity({...base,action});
+    const input=action==="END_SHIFT"?{...base,closingMeter:meterReadingType?Number(closingReading):undefined,closingLocation:endLocation||undefined,meterRequirement:meterRequirement.kind}:{...base,action};
+    const gatewayResult=await commandGateway.executeOrQueue({type:actionCommandType(action),input} as Parameters<DeurOfflineCommandGateway["executeOrQueue"]>[0],await currentReplayIdentity(base.operatorId,base.assignmentId));
+    if(gatewayResult.disposition==="QUEUED"){applyOfflineProjection({type:actionCommandType(action),input} as DeurOfflineCommandInput);setMessage(`${actionLabels[action]} saved offline and will synchronize after reconnection.`);return;}
+    const result=gatewayResult.result;
     setMessage(result.success ? operatorActionSuccessMessage(action).replace(" saved locally."," saved.") : result.message);
-    if (result.success){setClock(result.serverOccurredAt);setVersions(current=>({...current,[result.record.id]:result.version}));await refresh();}
+    if (result.success){if(synchronization.tenantId&&synchronization.publishEnabled)for(const event of createDeurOperationalEvents({tenantId:synchronization.tenantId,deur:result.record,action,serverOccurredAt:result.serverOccurredAt,aggregateVersion:result.version,previousActivity:projection?.valid?projection.value.activeEventType:undefined}))await synchronization.operator.publish(event);setClock(result.serverOccurredAt);setVersions(current=>({...current,[result.record.id]:result.version}));await refresh();}
     setVersion((value) => value + 1);
   }
-  async function submit() { if (!active || !user || !window.confirm("Submit this DEUR for acknowledgement? It will no longer be editable.")) return; const commandId=crypto.randomUUID();const result=await commandRepositories.deurCommands.submitDeur({commandId,idempotencyKey:commandId,rentalId:active.rentalId,rentalLineId:active.rentalEquipmentLineId??"",equipmentId:active.equipmentId,operatorId:active.operatorId,assignmentId:active.assignmentId??"",deurId:active.id,expectedVersion:versions[active.id]??0,clientCreatedAt:new Date().toISOString()}); setMessage(result.success ? "DEUR submitted." : result.message);if(result.success){setVersions(current=>({...current,[result.record.id]:result.version}));await refresh();} setVersion((value) => value + 1); }
+  async function submit() { if (!active || !user || !window.confirm("Submit this DEUR for acknowledgement? It will no longer be editable.")) return; const commandId=crypto.randomUUID(),input={commandId,idempotencyKey:commandId,rentalId:active.rentalId,rentalLineId:active.rentalEquipmentLineId??"",equipmentId:active.equipmentId,operatorId:active.operatorId,assignmentId:active.assignmentId??"",deurId:active.id,expectedVersion:versions[active.id]??0,clientCreatedAt:new Date().toISOString()};const gatewayResult=await commandGateway.executeOrQueue({type:"DEUR_SUBMIT",input},await currentReplayIdentity(input.operatorId,input.assignmentId));if(gatewayResult.disposition==="QUEUED"){applyOfflineProjection({type:"DEUR_SUBMIT",input});setMessage("DEUR submission saved offline and will synchronize after reconnection.");return;}const result=gatewayResult.result; setMessage(result.success ? "DEUR submitted." : result.message);if(result.success){if(synchronization.tenantId&&synchronization.publishEnabled)for(const event of createDeurOperationalEvents({tenantId:synchronization.tenantId,deur:result.record,action:"SUBMIT",serverOccurredAt:result.serverOccurredAt,aggregateVersion:result.version}))await synchronization.operator.publish(event);setVersions(current=>({...current,[result.record.id]:result.version}));await refresh();} setVersion((value) => value + 1); }
   if (!rental) return <main className="p-6">Rental not found.</main>;
   if (rental.status === "Closed") return <main className="p-6"><Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link><p className="mt-4 rounded bg-slate-100 p-4">This Rental has been closed. Historical records are read-only.</p></main>;
   return <main className="mx-auto max-w-xl space-y-4 p-4 sm:p-6">

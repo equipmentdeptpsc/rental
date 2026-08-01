@@ -33,6 +33,15 @@ import type { WorkDescriptionRecord } from "@/features/masters/work-description/
 import type { RemoteAuthenticationProvider } from "@/features/auth/providers/RemoteAuthenticationProvider";
 import type { DeurCommandRepository } from "@/features/rental/deur/commands/contracts";
 import type { OperationalCommandRepositories } from "@/features/rental/operations/commands/contracts";
+import type {
+  OperationalEventRepository,
+  OperationalEventStream,
+  OperationalEventTransport,
+  OperatorSynchronizationService,
+  OfflineOperationalCommandQueue,
+  ReplayCoordinator,
+  WorkspaceSynchronization,
+} from "@/features/rental/realtime";
 
 export interface RepositoryDependencies {
   equipment: IEquipmentRepository; assignment: typeof assignmentRepository; rental: IRentalRepository;
@@ -52,6 +61,18 @@ export interface ApplicationReadRepositories {
 }
 export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository }
 export interface ApplicationChangeNotifications { subscribeDeur(listener: (record: DeurRecord) => void): () => void }
+export interface OperationalSynchronizationDependencies {
+  readonly tenantId?: string;
+  readonly publishEnabled: boolean;
+  readonly transportMode: "local" | "polling" | "realtime-with-polling-recovery";
+  repository: OperationalEventRepository;
+  transport: OperationalEventTransport;
+  stream: OperationalEventStream;
+  operator: OperatorSynchronizationService;
+  workspace: WorkspaceSynchronization;
+  offlineQueue: OfflineOperationalCommandQueue;
+  replayCoordinator: ReplayCoordinator;
+}
 export interface AuthenticationDependencies {
   authRepository: AuthRepository;
   authenticationProviders: readonly AuthenticationProvider[];
@@ -62,5 +83,5 @@ export interface AuthenticationDependencies {
   userManagementService: UserManagementService;
   remoteAuthenticationProvider?: RemoteAuthenticationProvider;
 }
-export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; readRepositories: ApplicationReadRepositories; commandRepositories: ApplicationCommandRepositories; changeNotifications: ApplicationChangeNotifications; authentication: AuthenticationDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource;persistenceMode:PersistenceMode;remoteOperationalWritesEnabled:boolean}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
-export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies>; authentication?: Partial<AuthenticationDependencies> };
+export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; readRepositories: ApplicationReadRepositories; commandRepositories: ApplicationCommandRepositories; changeNotifications: ApplicationChangeNotifications; synchronization: OperationalSynchronizationDependencies; authentication: AuthenticationDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource;persistenceMode:PersistenceMode;remoteOperationalWritesEnabled:boolean}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
+export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies>; synchronization?: OperationalSynchronizationDependencies; authentication?: Partial<AuthenticationDependencies> };

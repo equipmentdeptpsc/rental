@@ -29,6 +29,16 @@ import { LocalDeurCommandRepository } from "@/features/rental/deur/commands/Loca
 import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
 import { workDescriptionRepository } from "@/features/masters/work-description";
 import { createLocalOperationalCommands } from "@/features/rental/operations/commands/UnavailableOperationalCommandRepository";
+import {
+  InMemoryOperationalEventRepository,
+  IndexedDbOfflineOperationalCommandQueue,
+  InMemoryOfflineOperationalCommandQueue,
+  BrowserReplayCoordinator,
+  OperationalEventStream,
+  OperatorSynchronizationService,
+  PollingOperationalEventTransport,
+  WorkspaceSynchronization,
+} from "@/features/rental/realtime";
 
 const localRepositories: RepositoryDependencies = { equipment: equipmentRepository, assignment: assignmentRepository, rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, prefix: prefixRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository,equipmentStatusRead:new LocalEquipmentStatusReadRepository() };
 export function createLocalApplicationDependencies(overrides: ApplicationDependencyOverrides = {}): ApplicationDependencies {
@@ -69,5 +79,24 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     rentalEquipmentLines: new LocalReadRepository(() => repositories.rentalEquipmentLine.getAll()),
     workDescriptions: new LocalReadRepository(() => workDescriptionRepository.getAll()),
   };
-  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
+  const synchronization = overrides.synchronization ?? (() => {
+    const repository = new InMemoryOperationalEventRepository();
+    const transport = new PollingOperationalEventTransport(repository);
+    const stream = new OperationalEventStream(transport);
+    return {
+      tenantId: "TENANT-LOCAL-001",
+      publishEnabled: true,
+      transportMode: "local" as const,
+      repository,
+      transport,
+      stream,
+      operator: new OperatorSynchronizationService(stream),
+      workspace: new WorkspaceSynchronization(stream),
+      offlineQueue: typeof indexedDB === "undefined"
+        ? new InMemoryOfflineOperationalCommandQueue()
+        : new IndexedDbOfflineOperationalCommandQueue(),
+      replayCoordinator: new BrowserReplayCoordinator(typeof navigator !== "undefined" ? navigator.locks : undefined),
+    };
+  })();
+  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},synchronization,authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
 }
