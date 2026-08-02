@@ -8,6 +8,7 @@ import {
 } from "@/features/rental/customer-review/publicReviewContracts";
 import { createSupabasePublicCustomerReviewRepository } from "@/integrations/supabase/SupabasePublicCustomerReviewRepository";
 import { formatCustomerReviewDateTime } from "@/features/rental/customer-review/customerReviewDateTime";
+import { developmentOutboxPublicCustomerReviewRepository } from "@/features/rental/customer-review/DevelopmentOutboxPublicCustomerReviewRepository";
 
 function configuredRepository(): PublicCustomerReviewRepository | undefined {
   const url = import.meta.env.VITE_SUPABASE_URL;
@@ -17,12 +18,16 @@ function configuredRepository(): PublicCustomerReviewRepository | undefined {
 }
 
 export default function CustomerDeurReviewPage({
-  repository = configuredRepository(),
+  repository,
 }: {
   repository?: PublicCustomerReviewRepository;
 }) {
   const { credential = "", deurId = "" } = useParams();
   const reviewCredential = credential || deurId;
+  const reviewRepository = useMemo(
+    () => repository ?? (credential ? configuredRepository() : developmentOutboxPublicCustomerReviewRepository),
+    [credential, repository],
+  );
   const [snapshot, setSnapshot] = useState<PublicDeurReviewSnapshot>();
   const [state, setState] = useState<"loading" | "available" | "completed" | "unavailable">("loading");
   const [reason, setReason] = useState("");
@@ -36,11 +41,11 @@ export default function CustomerDeurReviewPage({
 
   useEffect(() => {
     let active = true;
-    if (!repository || !reviewCredential) {
+    if (!reviewRepository || !reviewCredential) {
       setState("unavailable");
       return;
     }
-    void repository.getSnapshot(reviewCredential).then((result) => {
+    void reviewRepository.getSnapshot(reviewCredential).then((result) => {
       if (!active) return;
       if (!result.success) {
         setState("unavailable");
@@ -54,7 +59,7 @@ export default function CustomerDeurReviewPage({
       setState("available");
     });
     return () => { active = false; };
-  }, [repository, reviewCredential]);
+  }, [reviewRepository, reviewCredential]);
 
   const complete = (text: string) => {
     setMessage(text);
@@ -63,10 +68,10 @@ export default function CustomerDeurReviewPage({
   };
 
   const acknowledge = async () => {
-    if (!repository || pendingRef.current || !window.confirm("Acknowledge this submitted DEUR?")) return;
+    if (!reviewRepository || pendingRef.current || !window.confirm("Acknowledge this submitted DEUR?")) return;
     pendingRef.current = true;
     setPending(true);
-    const result = await repository.acknowledge(reviewCredential, actionIdentity);
+    const result = await reviewRepository.acknowledge(reviewCredential, actionIdentity);
     pendingRef.current = false;
     setPending(false);
     if (result.success || result.code === "ALREADY_COMPLETED") {
@@ -78,13 +83,13 @@ export default function CustomerDeurReviewPage({
 
   const requestCorrection = async () => {
     const normalizedReason = reason.trim();
-    if (!repository || pendingRef.current || normalizedReason.length < CUSTOMER_CORRECTION_REASON_MIN_LENGTH) {
+    if (!reviewRepository || pendingRef.current || normalizedReason.length < CUSTOMER_CORRECTION_REASON_MIN_LENGTH) {
       setMessage(`Please provide at least ${CUSTOMER_CORRECTION_REASON_MIN_LENGTH} characters describing the correction.`);
       return;
     }
     pendingRef.current = true;
     setPending(true);
-    const result = await repository.requestCorrection(reviewCredential, {
+    const result = await reviewRepository.requestCorrection(reviewCredential, {
       ...actionIdentity,
       reason: normalizedReason,
     });
