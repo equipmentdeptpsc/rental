@@ -7,7 +7,10 @@ import type {
 } from "./contracts";
 import { compareOperationalEvents, cursorForOperationalEvent, operationalSemanticKey, validateOperationalEvent } from "./ordering";
 
-export type RealtimeConnectionState = "CONNECTING" | "LIVE" | "POLLING_FALLBACK" | "RECONCILING" | "CLOSED";
+export type RealtimeConnectionState =
+  | "CONNECTING" | "LIVE" | "DEGRADED" | "AUTO_RECONNECTING"
+  | "RECREATING_CHANNEL" | "RECONCILING" | "RECOVERED"
+  | "POLLING_FALLBACK" | "CLOSED" | "FAILED";
 export interface RealtimeTransportDiagnostics {
   readonly state: RealtimeConnectionState;
   readonly lastSuccessfulEventAt?: string;
@@ -25,6 +28,7 @@ export interface OperationalRealtimeSource {
       connected(): void;
       disconnected(): void;
       error(error: unknown): void;
+      recovery?(state: "DEGRADED" | "AUTO_RECONNECTING" | "RECREATING_CHANNEL" | "RECOVERED" | "FAILED"): void;
     },
   ): () => void;
 }
@@ -119,6 +123,9 @@ export class RealtimeOperationalEventTransport implements OperationalEventTransp
       },
       disconnected: () => { this.diagnostics = { ...this.diagnostics, state: "POLLING_FALLBACK", fallbackMode: "POLLING" }; void reconcile(); },
       error: () => { this.diagnostics = { ...this.diagnostics, state: "POLLING_FALLBACK", fallbackMode: "POLLING" }; void reconcile(); },
+      recovery: (state) => {
+        this.diagnostics = { ...this.diagnostics, state, fallbackMode: state === "RECOVERED" ? "NONE" : "POLLING" };
+      },
     });
     void reconcile();
     const handle = this.timers.setInterval(() => {

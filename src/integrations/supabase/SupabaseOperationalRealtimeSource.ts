@@ -24,16 +24,20 @@ export class SupabaseOperationalRealtimeSource implements OperationalRealtimeSou
 
   subscribe(
     filter: OperationalEventFilter,
-    handlers: { event(event: OperationalEvent): void; connected(): void; disconnected(): void; error(error: unknown): void },
+    handlers: Parameters<OperationalRealtimeSource["subscribe"]>[1],
   ): () => void {
-    const channel: RealtimeChannel = this.client.channel(`deur-events:${filter.tenantId}:${filter.rentalId ?? "*"}`);
+    let channel: RealtimeChannel;
+    let active = true;
+    let subscribedOnce = false;
+    let replacing = false;
+    let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
     const concreteTenant = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(filter.tenantId);
     const subscription = {
       event: "INSERT" as const, schema: "erp", table: "deur_events",
       ...(concreteTenant ? { filter: `company_id=eq.${filter.tenantId}` } : {}),
     };
-    channel.on("postgres_changes", subscription, async (message) => {
-      const row = message.new as DeurEventRow;
+    const onMessage = async (message: { new: Record<string, unknown> }) => {
+      const row = message.new as unknown as DeurEventRow;
       if (concreteTenant && row.company_id !== filter.tenantId) return;
       const type = canonicalType(row);
       if (!type) return;
@@ -50,11 +54,69 @@ export class SupabaseOperationalRealtimeSource implements OperationalRealtimeSou
         operatorId: deur.operator_id, type, occurredAt: row.occurred_at,
         sequence: row.sequence, aggregateVersion: Number(deur.row_version ?? 0), payload: {},
       });
-    }).subscribe((status, error) => {
-      if (status === "SUBSCRIBED") handlers.connected();
-      else if (status === "CLOSED") handlers.disconnected();
-      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") handlers.error(error ?? new Error(status));
-    });
-    return () => { void this.client.removeChannel(channel); };
+    };
+
+    const waitForDisconnect = async () => {
+      const deadline = Date.now() + 1_000;
+      while (this.client.realtime.isDisconnecting()) {
+        if (Date.now() >= deadline) throw new Error("REALTIME_DISCONNECT_TIMEOUT");
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    };
+
+    const scheduleRecovery = () => {
+      if (!active || recoveryTimer) return;
+      handlers.recovery?.("AUTO_RECONNECTING");
+      recoveryTimer = setTimeout(async () => {
+        recoveryTimer = undefined;
+        if (!active) return;
+        handlers.recovery?.("RECREATING_CHANNEL");
+        try {
+          const refreshed = await this.client.auth.refreshSession();
+          if (refreshed.error || !refreshed.data.session?.access_token) {
+            throw refreshed.error ?? new Error("REALTIME_SESSION_MISSING");
+          }
+          await this.client.realtime.setAuth(refreshed.data.session.access_token);
+          replacing = true;
+          await this.client.removeChannel(channel);
+          await waitForDisconnect();
+          replacing = false;
+          if (active) createChannel();
+        } catch (error) {
+          replacing = false;
+          handlers.recovery?.("FAILED");
+          handlers.error(error);
+        }
+      }, 2_000);
+    };
+
+    const createChannel = () => {
+      channel = this.client.channel(`deur-events:${filter.tenantId}:${filter.rentalId ?? "*"}`)
+        .on("postgres_changes", subscription, onMessage)
+        .subscribe((status, error) => {
+          if (!active || replacing) return;
+          if (status === "SUBSCRIBED") {
+            if (recoveryTimer) clearTimeout(recoveryTimer);
+            recoveryTimer = undefined;
+            if (subscribedOnce) handlers.recovery?.("RECOVERED");
+            subscribedOnce = true;
+            handlers.connected();
+          } else if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            handlers.recovery?.("DEGRADED");
+            if (status === "CLOSED") handlers.disconnected();
+            else handlers.error(error ?? new Error(status));
+            scheduleRecovery();
+          }
+        });
+    };
+
+    createChannel();
+    return () => {
+      active = false;
+      if (recoveryTimer) clearTimeout(recoveryTimer);
+      recoveryTimer = undefined;
+      replacing = true;
+      void this.client.removeChannel(channel);
+    };
   }
 }

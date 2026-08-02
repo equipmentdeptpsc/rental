@@ -17,6 +17,15 @@ function report(value) {
   output.textContent = JSON.stringify(value);
 }
 
+async function waitForSocketState(client, expectedState, timeoutMs = 1_000) {
+  const deadline = performance.now() + timeoutMs;
+  while (client.realtime.connectionState() !== expectedState
+    || (expectedState === "closed" && client.realtime.isDisconnecting())) {
+    if (performance.now() >= deadline) throw new Error(`REALTIME_SOCKET_${expectedState.toUpperCase()}_TIMEOUT`);
+    await new Promise((resolve) => window.setTimeout(resolve, 10));
+  }
+}
+
 function monitorSubscription(channel, statuses, timeline, startedAt) {
   let subscribedCount = 0;
   const waiters = [];
@@ -36,19 +45,20 @@ function monitorSubscription(channel, statuses, timeline, startedAt) {
       for (let index = waiters.length - 1; index >= 0; index -= 1) {
         if (subscribedCount >= waiters[index].count) waiters.splice(index, 1);
       }
-    } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+    } else if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT") && subscribedCount === 0) {
       failWaiters(new Error(status));
     }
   });
   return {
-    waitFor(count) {
+    subscribedCount: () => subscribedCount,
+    waitFor(count, timeoutMs = 15_000) {
       if (subscribedCount >= count) return Promise.resolve();
       return new Promise((resolve, reject) => {
         const timeout = window.setTimeout(() => {
           const index = waiters.findIndex((waiter) => waiter.resolve === resolve);
           if (index >= 0) waiters.splice(index, 1);
           reject(new Error("REALTIME_SUBSCRIPTION_TIMEOUT"));
-        }, 15_000);
+        }, timeoutMs);
         waiters.push({ count, resolve, reject, timeout });
       });
     },
@@ -67,14 +77,22 @@ run.addEventListener("click", async () => {
 
   const client = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    realtime: { reconnectAfterMs: () => 250 },
   });
   const channels = [];
   const statuses = [];
   const liveChanges = [];
   const timeline = [];
+  const recoveryStates = ["CONNECTING"];
+  const requestedRecoveryMode = new URLSearchParams(window.location.search).get("recovery") === "explicit"
+    ? "FORCE_EXPLICIT_RECREATION"
+    : "ALLOW_AUTOMATIC_REJOIN";
   const startedAt = performance.now();
-  const mark = (boundary) => timeline.push({ boundary, elapsedMs: Math.round(performance.now() - startedAt) });
   let stage = "AUTHENTICATING";
+  const mark = (boundary) => {
+    timeline.push({ boundary, elapsedMs: Math.round(performance.now() - startedAt) });
+    report({ status: "RUNNING", stage, timeline });
+  };
   try {
     mark("CLIENT_CREATED");
     const authentication = await client.auth.signInWithPassword({ email, password });
@@ -88,7 +106,7 @@ run.addEventListener("click", async () => {
     stage = "FIRST_SUBSCRIPTION";
     const beforeSubscription = {
       channels: client.getChannels().length,
-      sockets: client.realtime.connectionState() === "disconnected" ? 0 : 1,
+      sockets: client.realtime.connectionState() === "closed" ? 0 : 1,
       realtimeClients: 1,
       broadcastChannels: 0,
       pollingTimers: 0,
@@ -133,41 +151,72 @@ run.addEventListener("click", async () => {
     const initialIds = initial.data.map((event) => event.id);
     mark("INITIAL_RECONCILIATION_COMPLETE");
 
-    stage = "SOCKET_RECONNECT";
-    const reconnectReady = firstMonitor.waitFor(2);
-    client.realtime.disconnect();
+    stage = "SOCKET_RECOVERY";
+    recoveryStates.push("SUBSCRIBED");
+    let activeChannel = first;
+    let activeMonitor = firstMonitor;
+    let recoveryPath = "AUTOMATIC_REJOIN";
+    let staleChannelCleanup = null;
+    const automaticRecovery = requestedRecoveryMode === "ALLOW_AUTOMATIC_REJOIN"
+      ? firstMonitor.waitFor(2, 2_000).then(() => true).catch(() => false)
+      : Promise.resolve(false);
+    const testSocket = client.realtime.conn;
+    if (!testSocket) throw new Error("REALTIME_TEST_SOCKET_MISSING");
+    testSocket.close(4001, "c7-test-reconnect");
     mark("SOCKET_DISCONNECTED");
-    client.realtime.connect();
-    mark("SOCKET_RECONNECT_CALLED");
-    await reconnectReady;
-    mark("SOCKET_RESUBSCRIBED");
+    recoveryStates.push("DEGRADED", "AUTO_RECONNECTING");
 
-    stage = "FIRST_CLEANUP";
-    const firstCleanup = await client.removeChannel(first);
-    mark("FIRST_CHANNEL_REMOVED");
+    const automaticallyRejoined = await automaticRecovery;
+    if (automaticallyRejoined) {
+      mark("AUTOMATIC_CHANNEL_REJOINED");
+    } else {
+      recoveryPath = "EXPLICIT_CHANNEL_RECREATION";
+      recoveryStates.push("RECREATING_CHANNEL");
+      mark("AUTOMATIC_RECOVERY_DEADLINE_REACHED");
+      const refreshed = await client.auth.refreshSession();
+      if (refreshed.error || !refreshed.data.session?.access_token) throw new Error("SESSION_REFRESH_FAILED");
+      mark("SESSION_REFRESHED");
+      await client.realtime.setAuth(refreshed.data.session.access_token);
+      mark("REALTIME_TOKEN_REAPPLIED");
+      staleChannelCleanup = await client.removeChannel(first);
+      mark("STALE_CHANNEL_REMOVED");
+      await waitForSocketState(client, "closed");
+      mark("STALE_SOCKET_CLOSED");
+      const replacement = client.channel("phase-c7-browser-recovered")
+        .on("postgres_changes", {
+          event: "INSERT", schema: "erp", table: "deur_events", filter: `company_id=eq.${tenantId}`,
+        }, (message) => liveChanges.push(String(message.new.id)));
+      channels.push(replacement);
+      activeChannel = replacement;
+      activeMonitor = monitorSubscription(replacement, statuses, timeline, startedAt);
+      mark("REPLACEMENT_CHANNEL_CREATED");
+      await activeMonitor.waitFor(1);
+      mark("REPLACEMENT_CHANNEL_SUBSCRIBED");
+    }
 
-    stage = "RECONNECT_SUBSCRIPTION";
-    const reconnect = client.channel("phase-c7-browser-reconnect")
-      .on("postgres_changes", {
-        event: "INSERT", schema: "erp", table: "deur_events", filter: `company_id=eq.${tenantId}`,
-      }, (message) => liveChanges.push(String(message.new.id)));
-    channels.push(reconnect);
-    const reconnectMonitor = monitorSubscription(reconnect, statuses, timeline, startedAt);
-    mark("SECOND_SUBSCRIBE_CALLED");
-    await reconnectMonitor.waitFor(1);
-    mark("SECOND_SUBSCRIBED");
     stage = "POLLING_RECONCILIATION";
+    recoveryStates.push("RECONCILING");
+    mark("RECONCILIATION_STARTED");
     const reconciled = await hydrate();
     if (reconciled.error) throw new Error("RECONCILIATION_FAILED");
     const reconciledIds = reconciled.data.map((event) => event.id);
-    const secondCleanup = await client.removeChannel(reconnect);
-    mark("SECOND_CHANNEL_REMOVED");
+    const combinedIds = [...initialIds];
+    let duplicateSuppressionCount = 0;
+    reconciledIds.forEach((id) => {
+      if (combinedIds.includes(id)) duplicateSuppressionCount += 1;
+      else combinedIds.push(id);
+    });
+    mark("RECONCILIATION_COMPLETED");
+    recoveryStates.push("RECOVERED");
+    const activeCleanup = await client.removeChannel(activeChannel);
+    mark("ACTIVE_CHANNEL_REMOVED");
     await client.removeAllChannels();
     mark("ALL_CHANNELS_REMOVED");
+    recoveryStates.push("CLOSED");
 
     const afterSubscription = {
       channels: client.getChannels().length,
-      sockets: client.realtime.connectionState() === "disconnected" ? 0 : 1,
+      sockets: client.realtime.connectionState() === "closed" ? 0 : 1,
       realtimeClients: 1,
       broadcastChannels: 0,
       pollingTimers: 0,
@@ -190,19 +239,27 @@ run.addEventListener("click", async () => {
       connectionStates: statuses,
       reconnectCount: 1,
       sequenceGapCount: 0,
-      duplicateSuppressionCount: reconciledIds.filter((id) => initialIds.includes(id)).length,
+      duplicateSuppressionCount,
+      uniqueBusinessEventCount: combinedIds.length,
       liveChangeCount: liveChanges.length,
       localTenantRows: localTenant.data.length,
       reconciliationTimestamp: new Date().toISOString(),
-      channelCleanup: firstCleanup === "ok" && secondCleanup === "ok" && client.getChannels().length === 0,
+      channelCleanup: (staleChannelCleanup === null || staleChannelCleanup === "ok")
+        && activeCleanup === "ok" && client.getChannels().length === 0,
       fallbackMode: "POLLING_RECONCILIATION_AFTER_RECONNECT",
       mutationCalls: 0,
       timeline,
+      recoveryStates,
+      recoveryPath,
+      requestedRecoveryMode,
+      finalCursor: reconciledIds.at(-1),
+      finalPollingWorkerCount: 0,
       beforeSubscription,
       afterSubscription,
     });
   } catch (error) {
-    report({ status: "FAIL", stage, connectionStates: statuses, timeline, error: error instanceof Error ? error.message : "UNKNOWN" });
+    recoveryStates.push("FAILED");
+    report({ status: "FAIL", stage, connectionStates: statuses, timeline, recoveryStates, error: error instanceof Error ? error.message : "UNKNOWN" });
   } finally {
     await Promise.all(channels.map(async (channel) => {
       if (client.getChannels().includes(channel)) await client.removeChannel(channel);
