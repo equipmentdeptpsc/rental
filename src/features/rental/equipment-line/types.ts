@@ -1,4 +1,4 @@
-import type { RentalCommercialSnapshot, RentalLifecycleStatus, RentalOperationalMetadataSnapshot } from "../types";
+import type { RentalCommercialSnapshot, RentalLifecycleStatus, RentalLineDeurExpectationSnapshot, RentalOperationalMetadataSnapshot } from "../types";
 
 export interface RentalEquipmentLine {
   id: string;
@@ -8,6 +8,10 @@ export interface RentalEquipmentLine {
   operatorId: string;
   status: RentalLifecycleStatus;
   operationalMetadata?: RentalOperationalMetadataSnapshot;
+  /** Editable source selection before release; the frozen snapshot is authoritative afterward. */
+  deurWorkDescriptionId?: string;
+  deurOperationalRemarks?: string;
+  deurExpectationSnapshot?: RentalLineDeurExpectationSnapshot;
   commercialSnapshotRequired?: boolean;
   commercialSnapshot?: RentalCommercialSnapshot;
   createdAt: string;

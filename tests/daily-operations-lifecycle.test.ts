@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { storage } from "@/core/storage";
 import type { CreateDeurRequest } from "@/features/rental/deur/services/CreateDeurService";
+import { frozenDeurLine } from "./helpers/deurReleaseFixture";
 
 const request = (rentalStatus: CreateDeurRequest["rentalStatus"]): CreateDeurRequest => ({
   rentalId: "rental-1",
@@ -27,6 +28,7 @@ const request = (rentalStatus: CreateDeurRequest["rentalStatus"]): CreateDeurReq
 describe("Daily Operations DEUR creation lifecycle guard", () => {
   beforeEach(() => {
     storage.clear();
+    const source = request("Active"); storage.set("equipment-rental-equipment-lines", { schemaVersion: 1, records: [frozenDeurLine({ rental: source.rental!, equipmentId: source.equipmentId, operatorId: source.operatorId, assignmentId: source.assignmentId, work: source.selectedWorkDescription })] });
     vi.resetModules();
   });
 

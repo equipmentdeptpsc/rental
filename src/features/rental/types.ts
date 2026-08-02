@@ -89,6 +89,28 @@ export interface RentalOperationalMetadataSnapshot {
   activityCode?: OperationalCodeSnapshot;
 }
 
+export interface RentalLineDeurExpectationSnapshot {
+  rentalEquipmentLineId: string;
+  rentalId: string;
+  equipmentId: string;
+  assignmentId: string;
+  operatorId: string;
+  projectId: string;
+  customerId?: string;
+  policy: RentalDeurExpectationPolicy;
+  shiftWindows: RentalDeurShiftWindowSnapshot[];
+  workDescription: { id?: string; code?: string; name: string; requiresRemarks: boolean };
+  operationalRemarks?: string;
+  workDateRule: "RENTAL_DATE_OUT";
+  workDate: string;
+  meterRequirement: "none" | "odometer" | "hourMeter" | "both";
+  fuelEvidenceRequired: boolean;
+  billingMethod: RentalBillingMethod;
+  operationalMetadata: RentalOperationalMetadataSnapshot;
+  sourceFingerprint: string;
+  capturedAt: string;
+}
+
 export type DeurExpectationFrequency = "PER_WORKDAY" | "PER_SHIFT" | "ON_DEMAND";
 export type DeurExpectationShiftCode = "DAY" | "NIGHT";
 export type DeurExpectationSource = "EXPLICIT_POLICY" | "LEGACY_RENTAL_FALLBACK";

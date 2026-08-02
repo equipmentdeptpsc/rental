@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { storage } from "@/core/storage";
+import { frozenDeurLine } from "./helpers/deurReleaseFixture";
 
 const request = {
   rentalId: "rental-1",
@@ -27,6 +28,7 @@ const request = {
 describe("DEUR creation", () => {
   beforeEach(() => {
     storage.clear();
+    storage.set("equipment-rental-equipment-lines", { schemaVersion: 1, records: [frozenDeurLine({ rental: request.rental as never, equipmentId: request.equipmentId, operatorId: request.operatorId, assignmentId: request.assignmentId, work: request.selectedWorkDescription })] });
     vi.resetModules();
   });
 
@@ -131,7 +133,7 @@ describe("DEUR creation", () => {
       operationalMetadata: {
         costCode: { name: "Heavy Equipment" },
         activityCode: { name: "LAUCHANCO DEVELOPMENT CORPORATION" },
-        workDescription: { name: "OTHER OPERATION", requiresRemarks: true },
+        workDescription: { name: "MATERIAL HAULING", requiresRemarks: false },
       },
     });
   });

@@ -47,6 +47,10 @@ import { developmentCustomerReviewOutbox } from "../customer-review/developmentC
 import { maskEmail, updateRentalCustomerContact, type RentalCustomerContactInput } from "../services/updateRentalCustomerContact";
 import { returnRentalEquipmentLine as returnEquipmentLine } from "../services/returnRentalEquipmentLine";
 import { notifyRentalWorkspaceChange } from "../workspace/workspaceRefresh";
+import { workDescriptionRepository } from "@/features/masters/work-description/repository";
+import { evaluateRentalReleaseReadiness, regenerateRentalLineDeurExpectation, type RentalReleaseReadinessResult } from "../services/evaluateRentalReleaseReadiness";
+
+const releaseFieldMessage = (field: string) => field === "deurPolicy" ? "DEUR expectation policy" : field === "operationalMetadata" ? "operational metadata snapshot" : field === "snapshotFreshness" ? "stale DEUR release snapshot" : field === "snapshot" ? "persisted DEUR release snapshot" : field === "billingTerms" ? "commercial terms" : field;
 
 interface RentalTransitionResult {
   success: boolean;
@@ -103,6 +107,8 @@ interface RentalContextType {
   rentalEquipmentLineMigrationIssues: RentalEquipmentLineMigrationIssue[];
   addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput): { success: boolean; message?: string; issues?: RentalEquipmentLineIssue[] };
   removeRentalEquipmentLine(rentalId: string, lineId: string): { success: boolean; message?: string; issues?: RentalEquipmentLineIssue[] };
+  getReleaseReadiness(rentalId: string): RentalReleaseReadinessResult;
+  configureLineDeurExpectation(rentalId: string, lineId: string, workDescriptionId: string, remarks?: string): RentalTransitionResult;
 }
 
 const RentalContext =
@@ -137,6 +143,7 @@ export function RentalProvider({
   const { assignments, getAssignment, completeAssignment } = useAssignment();
   const { operators } = useOperator();
   const { projects } = useProject();
+  const workDescriptions = workDescriptionRepository.getAll();
   const { logAction } = useAudit();
   const { log } = useEquipmentHistory();
 
@@ -156,6 +163,42 @@ export function RentalProvider({
     setRentalEquipmentLines([...lineCompatibility.lines]);
     setContracts([...contractCompatibility.contracts]);
     setRentalEquipmentLineMigrationIssues([...lineCompatibility.issues, ...contractCompatibility.issues]);
+  }
+
+  function releaseReadiness(rental: RentalRecord, timestamp = new Date().toISOString()) {
+    const compatible = rentalEquipmentLineRepository.ensureCompatibility(rentalRepository.getAll());
+    return evaluateRentalReleaseReadiness({
+      rental,
+      lines: compatible.lines,
+      assignments,
+      operators,
+      equipment: equipmentRecords,
+      projects,
+      contracts: rentalContractRepository.ensureLineAssociations(compatible.lines).contracts,
+      workDescriptions,
+      shiftWindows: deurShiftWindowRepository.getAll(),
+      timestamp,
+    });
+  }
+
+  function getReleaseReadiness(rentalId: string): RentalReleaseReadinessResult {
+    const rental = rentalRepository.getById(rentalId);
+    return rental ? releaseReadiness(rental) : { eligible: false, reasonCodes: ["RELEASE_NOT_READY", "NO_ACTIVE_LINES"], rentalId, incompleteEquipmentLines: [], lines: [] };
+  }
+
+  function configureLineDeurExpectation(rentalId: string, lineId: string, workDescriptionId: string, remarks?: string): RentalTransitionResult {
+    if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to configure Rental DEUR expectations." };
+    const rental = rentalRepository.getById(rentalId);
+    const line = rentalEquipmentLineRepository.getById(lineId);
+    if (!rental || !line || line.rentalId !== rentalId) return { success: false, message: "Rental equipment line was not found." };
+    if (!["Draft", "Assigned", "Reserved"].includes(rental.status) || rental.deurExpectationPolicyFrozenAt) return { success: false, message: "DEUR expectations are immutable after Rental release." };
+    const configured = { ...line, deurWorkDescriptionId: workDescriptionId.trim(), ...(remarks?.trim() ? { deurOperationalRemarks: remarks.trim() } : { deurOperationalRemarks: undefined }), deurExpectationSnapshot: undefined, updatedAt: new Date().toISOString() };
+    const compatible = rentalEquipmentLineRepository.getAll().map((item) => item.id === lineId ? configured : item);
+    const readiness = regenerateRentalLineDeurExpectation({ rental, lines: compatible, assignments, operators, equipment: equipmentRecords, projects, contracts: rentalContractRepository.ensureLineAssociations(compatible).contracts, workDescriptions, shiftWindows: deurShiftWindowRepository.getAll(), timestamp: configured.updatedAt }, lineId);
+    if (!readiness.snapshot || readiness.missingFields.length) return { success: false, message: `DEUR expectation is incomplete: ${[...readiness.missingFields, ...readiness.invalidValues].join(", ")}.` };
+    rentalEquipmentLineRepository.update({ ...configured, deurExpectationSnapshot: readiness.snapshot });
+    refreshRentalEquipmentLines();
+    return { success: true, rental };
   }
 
   function auditRental(previous: RentalRecord, resulting: RentalRecord, action: string, remarks?: string) {
@@ -379,6 +422,10 @@ export function RentalProvider({
     if (nextStatus === "Released" && getRentalApprovalStatus(current) !== "Approved") {
       return { success: false, message: "Manager approval is required before equipment can be released." };
     }
+    if (nextStatus === "Released") {
+      const readiness = releaseReadiness(current);
+      if (!readiness.eligible) return { success: false, message: `RELEASE_NOT_READY: ${readiness.incompleteEquipmentLines.map((line) => `${line.equipmentId ?? line.rentalEquipmentLineId}: ${[...line.missingFields.map(releaseFieldMessage), ...line.invalidValues].join(", ")}`).join("; ")}` };
+    }
 
     const error = getRentalTransitionError(current, nextStatus);
 
@@ -545,6 +592,8 @@ export function RentalProvider({
     if (!actorName || actorName !== user?.name) {
       return { success: false, message: "Select the signed-in Admin as Released By." };
     }
+    const readiness = releaseReadiness(current);
+    if (!readiness.eligible) return { success: false, message: `RELEASE_NOT_READY: ${readiness.incompleteEquipmentLines.map((line) => `${line.equipmentId ?? line.rentalEquipmentLineId}: ${[...line.missingFields.map(releaseFieldMessage), ...line.invalidValues].join(", ")}`).join("; ")}` };
 
     const result = transitionRental(id, "Released");
 
@@ -770,8 +819,10 @@ export function RentalProvider({
       rentalEquipmentLineMigrationIssues,
       addRentalEquipmentLine,
       removeRentalEquipmentLine,
+      getReleaseReadiness,
+      configureLineDeurExpectation,
     }),
-    [rentals, contracts, rentalEquipmentLines, rentalEquipmentLineMigrationIssues, getAssignment, user]
+    [rentals, contracts, rentalEquipmentLines, rentalEquipmentLineMigrationIssues, getAssignment, user, assignments, operators, equipmentRecords, projects, workDescriptions]
   );
 
   return (

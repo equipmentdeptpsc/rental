@@ -33,7 +33,8 @@ export function prepareRentalEquipmentLineRelease(input: {
     // Compatibility-only legacy lines remain outside the commercial snapshot
     // workflow until they are explicitly migrated. New lines are always marked
     // as requiring a snapshot when they are created.
-    if (line.commercialSnapshotRequired !== true) return structuredClone(line);
+    const snapshotRequired = line.commercialSnapshotRequired === true || input.rental.commercialSnapshotRequired === true;
+    if (!snapshotRequired) return structuredClone(line);
     if (contracts.length === 0) {
       issues.push({ code: "COMMERCIAL_TERMS_MISSING", rentalEquipmentLineId: line.id, equipmentId: line.equipmentId, message: `commercial terms are required for equipment '${line.equipmentId}'.` });
       return structuredClone(line);

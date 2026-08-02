@@ -14,6 +14,9 @@ import type { EquipmentRecord } from "@/features/equipment/types";
 import type { RentalLifecycleStatus, RentalRecord } from "@/features/rental/types";
 import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
 import type { RentalCommercialTermsInput } from "@/features/rental/services/configureRentalCommercialTerms";
+import { regenerateRentalLineDeurExpectation } from "@/features/rental/services/evaluateRentalReleaseReadiness";
+import { WORK_DESCRIPTION_SEEDS } from "@/features/masters/work-description/repository";
+import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
 
 const equipmentKey = "equipment-records";
 const assignmentKey = "assignments";
@@ -73,6 +76,9 @@ function rental(status: RentalLifecycleStatus, assignmentId?: string): RentalRec
     statusId: "reserved",
     status,
     approvalStatus: "Approved",
+    operationalMetadata: { costCode: { code: "C", name: "Cost" }, activityCode: { code: "A", name: "Activity" } },
+    deurExpectationPolicyRequired: true,
+    deurExpectationPolicy: { frequency: "PER_WORKDAY", effectiveFrom: "2026-07-17", timezone: "Asia/Manila", capturedAt: "2026-07-16T00:00:00Z" },
   };
 }
 
@@ -155,9 +161,17 @@ async function renderHarness(): Promise<{ harness: RentalHarness; root: Root; co
 }
 
 function prepareState(status: EquipmentRecord["status"], rentalStatus: RentalLifecycleStatus, assignment?: AssignmentRecord) {
-  storage.set(equipmentKey, [equipment(status)]);
-  storage.set(rentalKey, [rental(rentalStatus, assignment?.id)]);
+  const machine = equipment(status); const sourceRental = rental(rentalStatus, assignment?.id);
+  const operator = { id: "operator-1", name: "Test Operator", email: "", licenseNumber: "", certificationType: "None" as const, status: "Active" as const, joinedDate: "" };
+  const project = { id: "project-1", projectCode: "PRJ-000001", projectName: "Test Project", client: "", location: "", customerId: "customer-1", projectManager: "", startDate: "", targetCompletion: "", status: "Active" as const };
+  const initialLine: RentalEquipmentLine = { id: "rental-line:rental-1:equipment-1", rentalId: "rental-1", equipmentId: "equipment-1", assignmentId: assignment?.id, operatorId: "operator-1", status: rentalStatus, operationalMetadata: structuredClone(sourceRental.operationalMetadata), deurWorkDescriptionId: WORK_DESCRIPTION_SEEDS[0].id, createdAt: "2026-07-16T00:00:00.000Z", updatedAt: "2026-07-16T00:00:00.000Z" };
+  const candidate = regenerateRentalLineDeurExpectation({ rental: sourceRental, lines: [initialLine], assignments: assignment ? [assignment] : [], operators: [operator], equipment: [machine], projects: [project], contracts: [], workDescriptions: [...WORK_DESCRIPTION_SEEDS], shiftWindows: [], timestamp: "2026-07-16T00:00:00.000Z" }, initialLine.id);
+  const persistedLine = candidate.snapshot ? { ...initialLine, deurExpectationSnapshot: candidate.snapshot } : initialLine;
+  storage.set(equipmentKey, [machine]);
+  storage.set(rentalKey, [sourceRental]);
   storage.set(assignmentKey, assignment ? [assignment] : []);
+  storage.set(projectKey, [project]); storage.set(operatorKey, [operator]);
+  storage.set("equipment-rental-equipment-lines", { schemaVersion: 1, records: [persistedLine] });
   storage.set(authUserKey, { id: "user-1", name: "Test Admin", role: "Admin" });
   storage.set(authTokenKey, "token");
 }
@@ -350,11 +364,25 @@ describe("RentalProvider synchronization", () => {
     await act(async () => first.root.unmount()); first.container.remove();
 
     storage.clear(); vi.resetModules(); prepareState("Assigned", "Reserved", activeAssignment);
-    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), deurExpectationPolicyRequired: true }]);
+    storage.set(rentalKey, [{ ...rental("Reserved", activeAssignment.id), deurExpectationPolicyRequired: true, deurExpectationPolicy: undefined }]);
     const second = await renderHarness();
     await act(async () => expect(second.harness.rental.releaseRental("rental-1", "Test Admin")).toMatchObject({ success: false, message: expect.stringContaining("expectation policy") }));
     expect(second.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
     await act(async () => second.root.unmount()); second.container.remove();
+  });
+
+  it("rejects a direct release with a missing line snapshot without equipment or audit persistence", async () => {
+    prepareState("Assigned", "Reserved", activeAssignment);
+    const envelope = storage.get<{ schemaVersion: number; records: RentalEquipmentLine[] }>("equipment-rental-equipment-lines")!;
+    storage.set("equipment-rental-equipment-lines", { ...envelope, records: envelope.records.map((line) => ({ ...line, deurExpectationSnapshot: undefined })) });
+    const equipmentBefore = structuredClone(storage.get(equipmentKey));
+    const auditBefore = structuredClone(storage.get("equipment-rental-audit"));
+    const current = await renderHarness();
+    await act(async () => expect(current.harness.rental.transitionRental("rental-1", "Released")).toMatchObject({ success: false, message: expect.stringContaining("RELEASE_NOT_READY") }));
+    expect(storage.get(equipmentKey)).toEqual(equipmentBefore);
+    expect(storage.get("equipment-rental-audit")).toEqual(auditBefore);
+    expect(current.harness.rental.getRental("rental-1")?.status).toBe("Reserved");
+    await act(async () => current.root.unmount()); current.container.remove();
   });
 
   it("removes the final configurable line without compatibility recreating it and removes only its terms", async () => {

@@ -32,7 +32,8 @@ export default function CreateDeurAction() {
   const [shift,setShift]=useState<"Day"|"Night"|"">("");
   const billingMethod=line?.commercialSnapshot?.billingMethod ?? aggregate.rental.commercialSnapshot?.billingMethod ?? aggregate.rental.billingMethod ?? aggregate.contract?.billingMethod;
   const resolvedMode=resolveDeurEvidenceMode(billingMethod);
-  const selectedWorkDescription = options.find((item) => item.id === workDescriptionId);
+  const frozenWork = line?.deurExpectationSnapshot?.workDescription;
+  const selectedWorkDescription = frozenWork ? { id: frozenWork.id ?? "frozen", code: frozenWork.code ?? "", name: frozenWork.name, active: true, operatorSelectable: true, requiresRemarks: frozenWork.requiresRemarks } : options.find((item) => item.id === workDescriptionId);
   const request = {
     authenticatedUser: user,
     rentalId: aggregate.rental.id,
@@ -80,12 +81,12 @@ export default function CreateDeurAction() {
         {aggregate.rentalEquipmentLines.length > 1 && <label className="sm:col-span-2">Equipment Line<select className="mt-1 block w-full rounded border p-2" value={lineId} onChange={(event) => setLineId(event.target.value)}><option value="">Select Equipment Line</option>{aggregate.rentalEquipmentLines.filter((item) => item.status === "Active").map((item) => { const machine = equipmentRecords.find((record) => record.id === item.equipmentId); return <option key={item.id} value={item.id}>{machine ? `${machine.assetNo} - ${machine.equipmentName}` : item.equipmentId}</option>; })}</select></label>}
         <div><span className="text-slate-500">Activity Code</span><p>{aggregate.rental.operationalMetadata?.activityCode ? `${aggregate.rental.operationalMetadata.activityCode.code} — ${aggregate.rental.operationalMetadata.activityCode.name}` : "Activity Code not captured on Rental"}</p></div>
         <div><span className="text-slate-500">Cost Code</span><p>{aggregate.rental.operationalMetadata?.costCode ? `${aggregate.rental.operationalMetadata.costCode.code} — ${aggregate.rental.operationalMetadata.costCode.name}` : "Cost Code not captured on Rental"}</p></div>
-        <label className="sm:col-span-2">Work Description
+        {frozenWork ? <div className="sm:col-span-2"><span className="text-slate-500">Frozen Work Description</span><p>{frozenWork.name}</p></div> : <label className="sm:col-span-2">Work Description
           <select className="mt-1 block w-full rounded border p-2" value={workDescriptionId} onChange={(event) => setWorkDescriptionId(event.target.value)}>
             <option value="">Select Work Description</option>
             {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
           </select>
-        </label>
+        </label>}
         {aggregate.rental.deurExpectationPolicy?.frequency === "PER_SHIFT" && <label>Shift
           <select className="mt-1 block w-full rounded border p-2" value={shift} onChange={(event) => setShift(event.target.value as typeof shift)}>
             <option value="">Select Shift</option>

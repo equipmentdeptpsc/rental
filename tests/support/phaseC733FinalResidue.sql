@@ -1,0 +1,23 @@
+select json_build_object(
+  'companies',(select count(*) from erp.companies where id like 'TENANT-UAT-C7-RELEASE-%'),
+  'app_users',(select count(*) from erp.users where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'auth_users',(select count(*) from auth.users where email like 'c733-release-%@example.invalid'),
+  'operators',(select count(*) from erp.operators where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'projects',(select count(*) from erp.projects where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'customers',(select count(*) from erp.customers where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'equipment',(select count(*) from erp.equipment where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'assignments',(select count(*) from erp.assignments where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'rentals',(select count(*) from erp.rentals where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'lines',(select count(*) from erp.rental_equipment_lines where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'snapshots',(select count(*) from erp.commercial_snapshots where rental_id like 'RENT-UAT-C7-RELEASE-%'),
+  'deurs',(select count(*) from erp.deurs where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'events',(select count(*) from erp.deur_events where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'audit',(select count(*) from erp.audit_log where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'commands',(select count(*) from erp.operational_command_idempotency where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'billing',(select count(*) from erp.billing_statements where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'customer_reviews',(select count(*) from erp.customer_review_requests where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'manager_reviews',(select count(*) from erp.manager_review_requests where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'notifications',(select count(*) from erp.notification_outbox where company_id like 'TENANT-UAT-C7-RELEASE-%'),
+  'reference_rows',(select count(*) from erp.equipment_statuses where id like 'REF-UAT-C7-RELEASE-%'),
+  'tenant_local_count',(select count(*) from erp.companies where id='TENANT-LOCAL-001')
+) as residue;

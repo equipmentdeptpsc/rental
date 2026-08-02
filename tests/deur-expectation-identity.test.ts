@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { storage } from "@/core/storage";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { RentalRecord } from "@/features/rental/types";
+import { frozenDeurLine } from "./helpers/deurReleaseFixture";
 
 const KEY = "equipment-rental-deur";
 const rental = (frequency: "PER_WORKDAY" | "PER_SHIFT"): RentalRecord => ({ id: "r", equipmentId: "e", operatorId: "o", customer: "C", project: "P", rentedBy: "", dateOut: "2026-07-20", statusId: "", status: "Active", deurExpectationPolicy: { frequency, effectiveFrom: "2026-07-20", expectedShiftCodes: frequency === "PER_SHIFT" ? ["DAY", "NIGHT"] : undefined, capturedAt: "2026-07-20T00:00:00Z" } });
 const record = (overrides: Partial<DeurRecord> = {}): DeurRecord => ({ id: "d", rentalId: "r", equipmentId: "e", operatorId: "o", workDate: "2026-07-20", shift: "Day", status: "Submitted", legacy: false, events: [], logs: [], totalOperatingMinutes: 0, totalIdleMinutes: 0, totalMaintenanceMinutes: 0, totalMealBreakMinutes: 0, totalMobilizationMinutes: 0, totalDemobilizationMinutes: 0, createdAt: "2026-07-20T00:00:00Z", updatedAt: "2026-07-20T00:00:00Z", ...overrides });
 
 describe("DEUR expectation identity", () => {
-  beforeEach(() => { storage.remove(KEY); storage.remove("equipment-rental-deur-sync-queue"); vi.resetModules(); });
+  beforeEach(() => { storage.remove(KEY); storage.remove("equipment-rental-deur-sync-queue"); const source=rental("PER_SHIFT"); storage.set("equipment-rental-equipment-lines",{schemaVersion:1,records:[frozenDeurLine({rental:source,equipmentId:"e",operatorId:"o"})]}); vi.resetModules(); });
   it("blocks unrelated PER_WORKDAY duplicates but allows configured distinct PER_SHIFT identities", async () => {
     storage.set(KEY, [record()]);
     const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");

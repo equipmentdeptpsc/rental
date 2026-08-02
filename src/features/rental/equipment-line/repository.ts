@@ -83,6 +83,11 @@ class RentalEquipmentLineRepository {
     if (!existing) return;
     const normalized = normalizeLine(line);
     normalized.commercialSnapshot = clone(existing.commercialSnapshot ?? normalized.commercialSnapshot);
+    if (["Released", "Active", "Returned", "Closed"].includes(existing.status)) {
+      normalized.deurExpectationSnapshot = clone(existing.deurExpectationSnapshot);
+      normalized.deurWorkDescriptionId = existing.deurWorkDescriptionId;
+      normalized.deurOperationalRemarks = existing.deurOperationalRemarks;
+    }
     save(records.map((item) => item.id === line.id ? normalized : item));
   }
 

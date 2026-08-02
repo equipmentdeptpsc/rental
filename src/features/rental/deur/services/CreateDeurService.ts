@@ -73,6 +73,7 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
   }
   const lineResolution = request.rental ? resolveDeurRentalEquipmentLine({ rental: request.rental, rentalEquipmentLineId: request.rentalEquipmentLineId, equipmentId: request.equipmentId, assignmentId: request.assignmentId, operatorId: request.operatorId }) : undefined;
   if (lineResolution && !lineResolution.success) return lineResolution.issue.message;
+  if (lineResolution?.success && !lineResolution.line.deurExpectationSnapshot) return "The Rental Equipment Line does not have a frozen DEUR release snapshot.";
 
   const policy = request.rental?.deurExpectationPolicy;
   const now = new Date().toISOString();
@@ -104,6 +105,8 @@ export function prepareDeur(request: CreateDeurRequest): CreateDeurResult {
   if (!request.rental) return { success: false, message: "Rental operational metadata is required to create a DEUR." };
   const lineResolution=resolveDeurRentalEquipmentLine({rental:request.rental,rentalEquipmentLineId:request.rentalEquipmentLineId,equipmentId:request.equipmentId,assignmentId:request.assignmentId,operatorId:request.operatorId});if(!lineResolution.success)return{success:false,message:lineResolution.issue.message};
   const line=lineResolution.line;
+  const releaseSnapshot=line.deurExpectationSnapshot;
+  if(!releaseSnapshot)return{success:false,message:"The Rental Equipment Line does not have a frozen DEUR release snapshot."};
   const commercial=line.commercialSnapshot?{success:true as const,snapshot:structuredClone(line.commercialSnapshot)}:createDeurCommercialSnapshot(request.rental);if(!commercial.success)return{success:false,message:commercial.message};
   const meterRequirement = getDeurMeterRequirement({
     billingMethod: commercial.snapshot?.billingMethod ?? request.billingMethod ?? request.rental.billingMethod,
@@ -119,9 +122,9 @@ export function prepareDeur(request: CreateDeurRequest): CreateDeurResult {
   }
 
   const metadata = createDeurOperationalMetadataSnapshot({
-    rental: { ...request.rental, operationalMetadata: line.operationalMetadata ?? request.rental.operationalMetadata },
-    selectedWorkDescription: request.selectedWorkDescription,
-    remarks: request.remarks,
+    rental: { ...request.rental, operationalMetadata: releaseSnapshot.operationalMetadata },
+    selectedWorkDescription: { id: releaseSnapshot.workDescription.id ?? "frozen", code: releaseSnapshot.workDescription.code ?? "", name: releaseSnapshot.workDescription.name, active: true, operatorSelectable: true, requiresRemarks: releaseSnapshot.workDescription.requiresRemarks },
+    remarks: releaseSnapshot.operationalRemarks ?? request.remarks,
   });
   if (!metadata.complete) return { success: false, message: metadata.issues[0].message };
 

@@ -3,13 +3,14 @@ import { storage } from "@/core/storage";
 import { canCreateManualDeur } from "@/features/rental/deur/services/manualDeurAuthorization";
 import { buildManualDeurTimeline } from "@/features/rental/deur/services/buildManualDeurTimeline";
 import { MANUAL_DEUR_REASONS, createManualDeur } from "@/features/rental/deur/services/CreateDeurService";
+import { frozenDeurLine } from "./helpers/deurReleaseFixture";
 
 const rental: any = { id:"r",equipmentId:"e",customer:"C",project:"P",rentedBy:"A",dateOut:"2026-07-20",statusId:"active",status:"Active",billingMethod:"Per Hour",operationalMetadata:{costCode:{code:"5031HEAVYEQPT",name:"Heavy Equipment"},activityCode:{code:"LDC",name:"LAUCHANCO DEVELOPMENT CORPORATION"}} };
 const work:any={id:"w",code:"MATERIAL_HAULING",name:"MATERIAL HAULING",active:true,operatorSelectable:true,requiresRemarks:false};
 const base:any={rentalId:"r",rentalStatus:"Active",equipmentId:"e",operatorId:"o",rental,selectedWorkDescription:work,source:"RENTAL_COMPANY_MANUAL",workDate:"2026-07-20",actor:{id:"admin-1",name:"Maria Santos",role:"Admin"},timeline:[{activityType:"operation",start:"2026-07-20T08:00:00.000Z",end:"2026-07-20T10:00:00.000Z"},{activityType:"idle",start:"2026-07-20T10:00:00.000Z",end:"2026-07-20T11:00:00.000Z"},{activityType:"mealBreak",start:"2026-07-20T11:00:00.000Z",end:"2026-07-20T12:00:00.000Z"},{activityType:"breakdown",start:"2026-07-20T12:00:00.000Z",end:"2026-07-20T14:00:00.000Z"}],manualMetadata:{reason:"SITE_COMPUTER_NOT_AVAILABLE",physicalDeurReference:" PAPER-001 ",sourceDocumentDate:"2026-07-20",operatorConfirmed:true,operatorConfirmedByName:"Juan",remarks:" encoded from paper "}};
 
 describe("Manual DEUR foundation",()=>{
-  beforeEach(()=>{storage.clear();vi.resetModules()});
+  beforeEach(()=>{storage.clear();storage.set("equipment-rental-equipment-lines",{schemaVersion:1,records:[frozenDeurLine({rental,equipmentId:"e",operatorId:"o",work})]});vi.resetModules()});
   it("authorizes only the temporary Equipment Department Admin role",()=>{expect(canCreateManualDeur({role:"Admin"})).toBe(true);expect(canCreateManualDeur({role:"Operator"})).toBe(false);expect(canCreateManualDeur({role:"unknown"})).toBe(false);expect(canCreateManualDeur({})).toBe(false)});
   it("supports the controlled manual reasons",()=>expect(MANUAL_DEUR_REASONS).toHaveLength(10));
   it("copies the same detached immutable commercial snapshot into a Manual DEUR",()=>{const snapshot={billingMethod:"Per Hour",unitRate:100,minimumBillableHours:0,standbyRate:0,overtimeRate:0,mobilizationFee:0,demobilizationFee:0,fuelCharge:0,operatorIncluded:true,operatorRate:0,taxRate:12,withholdingTax:2,currency:"PHP",capturedAt:"2026-07-20T07:00:00.000Z"} as const;const input:any=structuredClone({...base,rental:{...rental,commercialSnapshot:snapshot,commercialSnapshotRequired:true}});const result=createManualDeur(input);expect(result.success).toBe(true);if(!result.success)return;input.rental.commercialSnapshot.unitRate=999;expect(result.record).toMatchObject({commercialSnapshotRequired:true,commercialSnapshot:{unitRate:100,capturedAt:"2026-07-20T07:00:00.000Z"}})});

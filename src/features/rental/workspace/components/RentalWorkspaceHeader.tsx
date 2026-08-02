@@ -7,6 +7,7 @@ import RentalDeurComplianceSummary from "@/features/rental/deur/compliance/Renta
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import RentalDeurExpectationPolicyCard from "@/features/rental/deur/compliance/RentalDeurExpectationPolicyCard";
 import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
+import DeurReleaseReadinessPanel from "@/features/rental/components/DeurReleaseReadinessPanel";
 import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { resolveRentalLinePresentation } from "@/features/rental/deur/presentation/resolveDeurPresentation";
@@ -94,6 +95,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       <RentalDeurComplianceSummary result={compliance} policy={aggregate.rental.deurExpectationPolicy} />
       {aggregate.rentalEquipmentLines.length > 1 && <div className="mt-4 space-y-2"><h3 className="text-sm font-semibold">Equipment Line DEUR Compliance</h3>{lineCompliance.map((item) => {const line=aggregate.rentalEquipmentLines.find(candidate=>candidate.id===item.rentalEquipmentLineId);const label=line?resolveRentalLinePresentation(line,aggregate.rentalEquipmentLines,equipment).label:"Equipment record unavailable";return <p key={item.rentalEquipmentLineId} className={`rounded border p-2 text-sm ${item.result.status === "COMPLIANT" ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>{label}: {item.result.reason}</p>})}</div>}
       {aggregate.rental.status!=="Closed"&&<RentalDeurExpectationPolicyCard rental={aggregate.rental} />}
+      {["Draft","Assigned","Reserved"].includes(aggregate.rental.status)&&<DeurReleaseReadinessPanel rentalId={aggregate.rental.id} />}
       {aggregate.rental.status!=="Closed"&&<div className="mt-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} hideClose={activeTab==="closing"} /></div>}
       {aggregate.rental.status!=="Closed"&&hasPermission("rental.manage")&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
       <ApprovalInvalidationNotice rental={aggregate.rental} />
