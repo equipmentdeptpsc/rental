@@ -10,20 +10,20 @@ export function resolveAuthenticatedOperator(
     if (user?.role === "Operator" && user.id) return resolveOperatorUserLink(user.id, [...operators]);
     return {
       status: "NOT_LINKED" as const,
-      message: "This application user is not linked to an Operator record.",
+      message: "Your user account is not linked to an Operator record. Ask an administrator to update your user account.",
     };
   }
   const operator = operators.find((record) => record.id === user.operatorId);
   if (!operator) {
     return {
       status: "MAPPED_OPERATOR_MISSING" as const,
-      message: "The linked Operator record no longer exists.",
+      message: "The Operator linked to your user account is unavailable. Ask an administrator to correct your user account.",
     };
   }
   if (operator.status !== "Active") {
     return {
       status: "LINKED_OPERATOR_INACTIVE" as const,
-      message: "The linked Operator is not active.",
+      message: "The Operator linked to your user account is unavailable. Ask an administrator to correct your user account.",
     };
   }
   return { status: "RESOLVED" as const, operator };

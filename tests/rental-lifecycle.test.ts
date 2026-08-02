@@ -706,7 +706,7 @@ describe("RentalProvider synchronization", () => {
     storage.set(operatorKey, []);
     const current = await renderHarness();
     const linesBefore = structuredClone(storage.get("equipment-rental-equipment-lines"));
-    await act(async () => expect(current.harness.rental.transitionRental("rental-1", "Reserved")).toEqual({ success: false, message: "The assigned operator record is missing. Return to the rental workspace and correct the assignment before continuing." }));
+    await act(async () => expect(current.harness.rental.transitionRental("rental-1", "Reserved")).toEqual({ success: false, message: "The assigned operator record is missing. Return to the rental workspace and correct the assignment." }));
     expect(current.harness.rental.getRental("rental-1")?.status).toBe("Assigned");
     expect(storage.get("equipment-rental-equipment-lines")).toEqual(linesBefore);
     await act(async () => current.root.unmount()); current.container.remove();

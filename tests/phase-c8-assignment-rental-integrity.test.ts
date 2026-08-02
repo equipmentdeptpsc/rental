@@ -25,7 +25,7 @@ describe("Phase C8 assignment-to-rental integrity",()=>{
   });
 
   it("blocks a missing canonical operator and assignment identity mismatches",()=>{
-    expect(validateRentalLineIdentityIntegrity({rental,lines,assignments,operators:operators.slice(1),equipment,projects})).toContainEqual(expect.objectContaining({rentalEquipmentLineId:"line-a",code:"OPERATOR_MISSING",message:"The assigned operator record is missing. Return to the rental workspace and correct the assignment before continuing."}));
+    expect(validateRentalLineIdentityIntegrity({rental,lines,assignments,operators:operators.slice(1),equipment,projects})).toContainEqual(expect.objectContaining({rentalEquipmentLineId:"line-a",code:"OPERATOR_MISSING",message:"The assigned operator record is missing. Return to the rental workspace and correct the assignment."}));
     expect(validateRentalLineIdentityIntegrity({rental,lines,assignments:[{...assignments[0],operatorId:"operator-b"},assignments[1]],operators,equipment,projects})).toContainEqual(expect.objectContaining({rentalEquipmentLineId:"line-a",code:"ASSIGNMENT_MISMATCH"}));
   });
 

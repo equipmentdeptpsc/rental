@@ -55,6 +55,9 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
       if (!(userRepository instanceof LocalUserRepository)) throw new Error("Local user provisioning is unavailable.");
       return userRepository.createUser(user, initialPassword);
     } },
+    undefined,
+    undefined,
+    { getById: (id) => operatorRepository.getById(id) },
   );
   const authentication = {
     authRepository,

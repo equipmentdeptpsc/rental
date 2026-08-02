@@ -34,7 +34,7 @@ export function validateRentalLineIdentityIntegrity(input: {
       issues.push({ rentalEquipmentLineId: line.id, code: "ASSIGNMENT_MISMATCH", message: `Assignment '${assignment.id}' no longer matches the Rental equipment line.` });
     }
     const operator = input.operators.find((item) => item.id === line.operatorId && item.status === "Active");
-    if (!operator) issues.push({ rentalEquipmentLineId: line.id, code: "OPERATOR_MISSING", message: "The assigned operator record is missing. Return to the rental workspace and correct the assignment before continuing." });
+    if (!operator) issues.push({ rentalEquipmentLineId: line.id, code: "OPERATOR_MISSING", message: "The assigned operator record is missing. Return to the rental workspace and correct the assignment." });
     if (!project) issues.push({ rentalEquipmentLineId: line.id, code: "PROJECT_MISMATCH", message: "The Rental project is missing, inactive, or does not match the Assignment." });
   }
   return issues;

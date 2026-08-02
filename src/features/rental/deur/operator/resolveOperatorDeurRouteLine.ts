@@ -52,7 +52,7 @@ export function resolveOperatorDeurRouteLine(input: {
   const assignment = input.assignments.find((item) => item.id === line.assignmentId);
   if (!assignment) return { status: "ASSIGNMENT_NOT_FOUND", message: "The Rental equipment line's Assignment record no longer exists." };
   const operator = input.operators.find((item) => item.id === line.operatorId);
-  if (!operator) return { status: "OPERATOR_NOT_FOUND", message: "The assigned operator record is missing. Return to the rental workspace and correct the assignment before continuing." };
+  if (!operator) return { status: "OPERATOR_NOT_FOUND", message: "The assigned operator record is missing. Return to the rental workspace and correct the assignment." };
   const equipment = input.equipment.find((item) => item.id === line.equipmentId);
   if (!equipment) return { status: "EQUIPMENT_NOT_FOUND", message: "The Rental equipment line's Equipment record no longer exists." };
   const project = input.projects.find((item) => item.id === input.rental?.projectId);

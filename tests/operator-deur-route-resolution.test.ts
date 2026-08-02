@@ -46,7 +46,7 @@ describe("Operator DEUR route line resolution",()=>{
     expect(machines[0]).toMatchObject({equipmentName:machines[1].equipmentName,assetNo:machines[1].assetNo});expect(a).toMatchObject({status:"RESOLVED",line:{id:"line-a",equipmentId:"equipment-a"}});expect(b).toMatchObject({status:"RESOLVED",line:{id:"line-b",equipmentId:"equipment-b"}});
   });
   it("returns an actionable missing-operator error and rejects relationship or snapshot mismatches",()=>{
-    expect(resolveOperatorDeurRouteLine({...input,lineId:"line-a",operators:[operators[1]]})).toEqual({status:"OPERATOR_NOT_FOUND",message:"The assigned operator record is missing. Return to the rental workspace and correct the assignment before continuing."});
+    expect(resolveOperatorDeurRouteLine({...input,lineId:"line-a",operators:[operators[1]]})).toEqual({status:"OPERATOR_NOT_FOUND",message:"The assigned operator record is missing. Return to the rental workspace and correct the assignment."});
     expect(resolveOperatorDeurRouteLine({...input,lineId:"line-a",assignments:[{...assignments[0],operatorId:"operator-b"},assignments[1]]})).toMatchObject({status:"IDENTITY_MISMATCH"});
     expect(resolveOperatorDeurRouteLine({...input,lineId:"line-a",lines:[{...lines[0],deurExpectationSnapshot:{...lines[0].deurExpectationSnapshot!,operatorId:"operator-b"}},lines[1]]})).toMatchObject({status:"IDENTITY_MISMATCH",message:expect.stringContaining("frozen DEUR expectation snapshot")});
   });

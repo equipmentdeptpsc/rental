@@ -2,9 +2,14 @@ import type { User } from "@/features/auth/domain/user";
 import type { SystemRole } from "@/features/auth/domain/systemRole";
 import type { UserRepository } from "@/features/auth/repository/UserRepository";
 import { assertPermission } from "@/features/auth/services/assertPermission";
+import type { Operator } from "@/features/operators/types";
 
 export interface LocalUserProvisioner {
   create(user: User, initialPassword: string): User;
+}
+
+export interface OperatorLinkDirectory {
+  getById(id: string): Operator | undefined;
 }
 
 export interface CreateUserInput {
@@ -21,6 +26,7 @@ export class UserManagementService {
     private readonly localProvisioner: LocalUserProvisioner,
     private readonly createId: () => string = () => crypto.randomUUID(),
     private readonly now: () => string = () => new Date().toISOString(),
+    private readonly operators?: OperatorLinkDirectory,
   ) {}
 
   list(actor: User): readonly User[] {
@@ -39,7 +45,7 @@ export class UserManagementService {
     this.authorize(actor);
     if (!input.initialPassword) throw new Error("An initial local password is required.");
     const timestamp = this.now();
-    return this.localProvisioner.create({
+    const candidate: User = {
       id: this.createId(),
       username: input.username.trim(),
       displayName: input.displayName.trim(),
@@ -48,7 +54,9 @@ export class UserManagementService {
       ...(input.operatorId ? { operatorId: input.operatorId } : {}),
       createdAt: timestamp,
       updatedAt: timestamp,
-    }, input.initialPassword);
+    };
+    this.validateOperatorLink(candidate);
+    return this.localProvisioner.create(candidate, input.initialPassword);
   }
 
   update(
@@ -76,11 +84,13 @@ export class UserManagementService {
     ) {
       throw new Error("The final active System Administrator role cannot be removed.");
     }
+    this.validateOperatorLink(next);
     return this.users.updateUser(next);
   }
 
   activate(actor: User, id: string): User {
     this.authorize(actor);
+    this.validateOperatorLink({ ...this.required(id), status: "active" });
     return this.users.activateUser(id);
   }
 
@@ -113,5 +123,17 @@ export class UserManagementService {
         user.status === "active" &&
         user.systemRoles.includes("system-administrator"),
     ).length;
+  }
+
+  private validateOperatorLink(candidate: User): void {
+    if (!candidate.operatorId) return;
+    if (!candidate.systemRoles.includes("rental-operations")) throw new Error("Only a Rental Operations user can be linked to an Operator record.");
+    if (this.operators) {
+      const operator = this.operators.getById(candidate.operatorId);
+      if (!operator || operator.status !== "Active") throw new Error("Select an active canonical Operator record.");
+    }
+    if (candidate.status === "active" && this.users.getUsers().some((user) => user.id !== candidate.id && user.status === "active" && user.operatorId === candidate.operatorId)) {
+      throw new Error("This Operator is already linked to another active application user.");
+    }
   }
 }
