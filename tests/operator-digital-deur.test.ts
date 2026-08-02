@@ -8,6 +8,7 @@ import { resolveActiveOperatorDeur } from "@/features/rental/deur/operator/resol
 import { applyDigitalDeurOperatorAction } from "@/features/rental/deur/operator/applyDigitalDeurOperatorAction";
 import { projectDigitalDeurRunningState } from "@/features/rental/deur/operator/projectDigitalDeurRunningState";
 import { storage } from "@/core/storage";
+import { frozenDeurLine } from "./helpers/deurReleaseFixture";
 
 const operator: Operator = { id: "operator-1", name: "Juan Operator", email: "j@site.test", licenseNumber: "L1", certificationType: "Heavy Machinery", status: "Active", joinedDate: "2026-01-01" };
 const assignment: AssignmentRecord = { id: "assignment-1", equipmentId: "equipment-1", operatorId: operator.id, projectId: "project-1", assignedDate: "2026-07-20", expectedReturn: "2026-07-30", remarks: "", status: "Active" };
@@ -19,6 +20,24 @@ describe("operator Digital DEUR access", () => {
   it("allows the assigned Operator only for Active Rentals", () => {
     expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: rental(), deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Day" })).toMatchObject({ allowed: true, rentalId: "rental-1", assignmentId: "assignment-1", operatorId: "operator-1" });
     expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: rental({ status: "Released" }), deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Day" })).toMatchObject({ allowed: false, issues: [{ code: "RENTAL_NOT_OPERATIONAL" }] });
+  });
+  it("uses the selected line's immutable release metadata for multi-equipment Rentals", () => {
+    const multiRental = rental({
+      equipmentId: "",
+      assignmentId: undefined,
+      operatorId: undefined,
+      operationalMetadata: undefined,
+    });
+    const lineA = frozenDeurLine({ rental: multiRental, id: "line-a", equipmentId: "equipment-1", assignmentId: assignment.id, operatorId: operator.id, unitRate: 100 });
+    const lineB = frozenDeurLine({ rental: multiRental, id: "line-b", equipmentId: "equipment-2", assignmentId: "assignment-2", operatorId: "operator-2", unitRate: 200 });
+    const operatorB = { ...operator, id: "operator-2", name: "Second Operator" };
+    const assignmentB = { ...assignment, id: "assignment-2", equipmentId: "equipment-2", operatorId: operatorB.id };
+    lineA.deurExpectationSnapshot!.operationalMetadata = { costCode: { code: "C-A", name: "Cost A" }, activityCode: { code: "A-A", name: "Activity A" } };
+    lineB.deurExpectationSnapshot!.operationalMetadata = { costCode: { code: "C-B", name: "Cost B" }, activityCode: { code: "A-B", name: "Activity B" } };
+
+    expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: multiRental, rentalEquipmentLine: lineA, deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Day" })).toMatchObject({ allowed: true, rentalEquipmentLineId: "line-a" });
+    expect(evaluateOperatorDigitalDeurAccess({ actor: { id: operatorB.id, name: operatorB.name, role: "Operator" }, operator: operatorB, assignment: assignmentB, rental: multiRental, rentalEquipmentLine: lineB, deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Day" })).toMatchObject({ allowed: true, rentalEquipmentLineId: "line-b" });
+    expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: multiRental, rentalEquipmentLine: { ...lineA, deurExpectationSnapshot: undefined }, deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Day" })).toMatchObject({ allowed: false, issues: [{ code: "OPERATIONAL_SNAPSHOT_REQUIRED" }] });
   });
   it.each([
     [{ actor: { ...actor, id: "other", name: "Other" } }, "DEUR_ACCESS_NOT_AUTHORIZED"], [{ operator: undefined }, "OPERATOR_NOT_FOUND"], [{ assignment: undefined }, "ASSIGNMENT_NOT_FOUND"],

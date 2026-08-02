@@ -31,7 +31,12 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
   if (!identityMatches) return { ...base, issues: [issue("DEUR_ACCESS_NOT_AUTHORIZED", "Your login is not linked to this Operator record.")] };
   if (line.operatorId !== operator.id) return { ...base, issues: [issue("RENTAL_OPERATOR_MISMATCH", "You are not assigned to this Rental Equipment Line.")] };
   if (line.assignmentId && (line.assignmentId !== assignment?.id || line.equipmentId !== assignment.equipmentId)) return { ...base, issues: [issue("RENTAL_ASSIGNMENT_MISMATCH", "Rental Equipment Line relationships do not match the Assignment.")] };
-  if (!rental.operationalMetadata?.costCode || !rental.operationalMetadata.activityCode) return { ...base, issues: [issue("OPERATIONAL_SNAPSHOT_REQUIRED", "Rental operational metadata snapshot is required.")] };
+  // Released multi-equipment Rentals intentionally keep operational metadata on
+  // each frozen line snapshot. The Rental header is only a legacy single-line
+  // compatibility source and must not override the selected line's identity.
+  const operationalMetadata = line.deurExpectationSnapshot?.operationalMetadata
+    ?? (input.rentalEquipmentLine ? undefined : rental.operationalMetadata);
+  if (!operationalMetadata?.costCode || !operationalMetadata.activityCode) return { ...base, issues: [issue("OPERATIONAL_SNAPSHOT_REQUIRED", "Rental operational metadata snapshot is required.")] };
   if (line.commercialSnapshotRequired && !line.commercialSnapshot) return { ...base, issues: [issue("COMMERCIAL_SNAPSHOT_REQUIRED", "Rental Equipment Line commercial snapshot is required.")] };
   if (rental.deurExpectationPolicyRequired && !rental.deurExpectationPolicy) return { ...base, issues: [issue("DEUR_EXPECTATION_POLICY_REQUIRED", "Rental expectation policy is required.")] };
   if (rental.deurExpectationPolicy?.frequency === "PER_SHIFT") {

@@ -137,4 +137,25 @@ describe("DEUR creation", () => {
       },
     });
   });
+
+  it("creates from the selected line release snapshot when a multi-line Rental has no header metadata", async () => {
+    const { createDeur } = await import("@/features/rental/deur/services/CreateDeurService");
+    const result = createDeur({
+      ...request,
+      rentalEquipmentLineId: "rental-line:rental-1:equipment-1",
+      rental: { ...request.rental, equipmentId: "", assignmentId: undefined, operatorId: undefined, operationalMetadata: undefined },
+    });
+
+    expect(result).toMatchObject({
+      success: true,
+      record: {
+        rentalEquipmentLineId: "rental-line:rental-1:equipment-1",
+        operationalMetadata: {
+          costCode: { code: "5031HEAVYEQPT" },
+          activityCode: { code: "LDC" },
+          workDescription: { name: "MATERIAL HAULING" },
+        },
+      },
+    });
+  });
 });

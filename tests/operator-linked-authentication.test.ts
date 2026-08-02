@@ -23,6 +23,7 @@ import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
 import type { RentalRecord } from "@/features/rental/types";
 import type { AssignmentRecord } from "@/features/assignment/types";
 import type { Operator } from "@/features/operators/types";
+import { frozenDeurLine } from "./helpers/deurReleaseFixture";
 
 const password = "OperatorPassword123!";
 const operator: Operator = {
@@ -71,16 +72,13 @@ const rental: RentalRecord = {
     activityCode: { code: "OPERATE", name: "Operate" },
   },
 };
-const line: RentalEquipmentLine = {
+const line: RentalEquipmentLine = frozenDeurLine({
+  rental,
   id: "line-1",
-  rentalId: rental.id,
   equipmentId: assignment.equipmentId,
   assignmentId: assignment.id,
   operatorId: operator.id,
-  status: "Active",
-  createdAt: "",
-  updatedAt: "",
-};
+});
 
 let mounted: { root: Root; container: HTMLDivElement } | undefined;
 
