@@ -68,6 +68,10 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     legacyCompatibilityRepository: overrides.authentication?.legacyCompatibilityRepository ?? new LegacyAuthCompatibilityRepository(storage),
     userManagementService,
   };
+  const currentAuthenticatedUser = () => {
+    const session = authRepository.getCurrentSession();
+    return session ? userRepository.getUserById(session.userId) ?? null : null;
+  };
   const repositories = { ...localRepositories, ...overrides.repositories };
   const readRepositories = {
     users: new LocalReadRepository(() => userRepository.getUsers()),
@@ -101,5 +105,5 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
       replayCoordinator: new BrowserReplayCoordinator(typeof navigator !== "undefined" ? navigator.locks : undefined),
     };
   })();
-  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},synchronization,authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
+  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(currentAuthenticatedUser),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},synchronization,authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
 }
