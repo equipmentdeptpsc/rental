@@ -14,6 +14,7 @@ import { calendarDateAt } from "@/features/rental/deur/expectation/dateRules";
 import { getDeurMeterRequirement } from "@/features/rental/deur/services/getDeurMeterRequirement";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useOperatorDeurData } from "@/features/rental/deur/operator/useOperatorDeurData";
+import { resolveOperatorDeurRouteLine, resolveOperatorDeurSelectedLineId } from "@/features/rental/deur/operator/resolveOperatorDeurRouteLine";
 import {
   actionCommandType,
   AuthorizedDeurOfflineCommandExecutor,
@@ -31,8 +32,11 @@ export const operatorActionSuccessMessage = (action: DeurOperatorAction) =>
 
 export default function OperatorDeurPage() {
   const { rentalId = "" } = useParams(); const [searchParams,setSearchParams]=useSearchParams(); const { user } = useAuth(); const { commandRepositories,changeNotifications,synchronization,authentication } = useApplicationDependenciesCompatibility(); const data=useOperatorDeurData(rentalId,user); const { rental,lines:rentalEquipmentLines,assignments,operators,equipment,projects,deurs:persistedDeurs,workDescriptions,refresh }=data;
-  const operatorLines = rentalEquipmentLines.filter((line) => line.rentalId === rentalId && ["Released", "Active"].includes(line.status));
-  const requestedLineId=searchParams.get("lineId")??""; const [selectedLineId, setSelectedLineId] = useState(() => operatorLines.some(line=>line.id===requestedLineId)?requestedLineId:operatorLines.length === 1 ? operatorLines[0].id : ""); const selectedLine = operatorLines.find((line) => line.id === selectedLineId); const assignment = assignments.find((item) => item.id === selectedLine?.assignmentId), linkedIdentity=resolveAuthenticatedOperator(user??undefined,operators), operator = operators.find(item=>item.id===assignment?.operatorId), machine = equipment.find((item) => item.id === selectedLine?.equipmentId), project = projects.find((item) => item.id === rental?.projectId);
+  const operatorLines = useMemo(()=>rentalEquipmentLines.filter((line) => line.rentalId === rentalId && ["Released", "Active"].includes(line.status)),[rentalEquipmentLines,rentalId]);
+  const requestedLineId=searchParams.get("lineId")??""; const [selectedLineId, setSelectedLineId] = useState("");
+  useEffect(()=>{if(data.loading)return;setSelectedLineId((current)=>resolveOperatorDeurSelectedLineId(requestedLineId,current,operatorLines));},[data.loading,requestedLineId,operatorLines]);
+  const routeResolution=useMemo(()=>resolveOperatorDeurRouteLine({rental,rentalId,lineId:selectedLineId,lines:operatorLines,assignments,operators,equipment,projects}),[rental,rentalId,selectedLineId,operatorLines,assignments,operators,equipment,projects]);
+  const selectedLine=routeResolution.status==="RESOLVED"?routeResolution.line:undefined,assignment=routeResolution.status==="RESOLVED"?routeResolution.assignment:undefined,operator=routeResolution.status==="RESOLVED"?routeResolution.operator:undefined,machine=routeResolution.status==="RESOLVED"?routeResolution.equipment:undefined,project=routeResolution.status==="RESOLVED"?routeResolution.project:projects.find((item)=>item.id===rental?.projectId),linkedIdentity=resolveAuthenticatedOperator(user??undefined,operators);
   const [, setVersion] = useState(0), [versions,setVersions]=useState<Record<string,number>>({}), [clock, setClock] = useState(() => new Date().toISOString()), [message, setMessage] = useState(""), [remarks, setRemarks] = useState("");
   const [optimisticDeurs,setOptimisticDeurs]=useState<Array<{commandId:string;record:DeurRecord}>>([]);
   const deurs=[...persistedDeurs.filter((record)=>!optimisticDeurs.some((item)=>item.record.id===record.id)),...optimisticDeurs.map((item)=>item.record)];
@@ -61,13 +65,14 @@ export default function OperatorDeurPage() {
     );
   }, [synchronization, rentalId, refresh, remarks, openingReading, closingReading, startLocation, endLocation]);
   useEffect(() => changeNotifications.subscribeDeur((record) => { if (record.rentalId === rentalId) { void refresh(); setVersion((value) => value + 1); setMessage("Latest DEUR change received."); } }), [changeNotifications,refresh,rentalId]);
-  useEffect(()=>{if(!selectedLineId&&operatorLines.length===1)setSelectedLineId(operatorLines[0].id);},[operatorLines,selectedLineId]);
   useEffect(()=>{setVersions(current=>Object.fromEntries(deurs.map(record=>[record.id,current[record.id]??Number((record as DeurRecord&{rowVersion?:number}).rowVersion??0)])));},[deurs]);
   const resolved = resolveActiveOperatorDeur({ rentalId, rentalEquipmentLineId: selectedLine?.id, equipmentId: selectedLine?.equipmentId, operatorId: operator?.id ?? "", deurs }); const active = resolved.status === "RESOLVED" ? resolved.record : undefined;
   const submitted = !active ? [...deurs].filter((record) => record.operatorId === operator?.id && (!selectedLine || record.rentalEquipmentLineId === selectedLine.id) && record.workDate === calendarDateAt(clock, rental?.deurExpectationPolicy?.timezone) && ["Submitted", "Pending Acknowledgement", "Acknowledged", "Rejected"].includes(record.status)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] : undefined;
   const projection = active ? projectDigitalDeurRunningState({ deur: active, evaluationTimestamp: clock }) : undefined;
   useEffect(() => { if (!projection?.valid || !projection.value.isRunning) return; const timer = window.setInterval(() => setClock(new Date().toISOString()), 1_000); return () => window.clearInterval(timer); }, [active?.id, active?.updatedAt, projection?.valid && projection.value.isRunning]);
-  const access = linkedIdentity.status === "RESOLVED"
+  const access = routeResolution.status !== "RESOLVED"
+    ? { allowed:false as const,allowedActions:[] as DeurOperatorAction[],issues:[{code:routeResolution.status,message:"message" in routeResolution?routeResolution.message:"Select an eligible equipment line."}]}
+    : linkedIdentity.status === "RESOLVED"
     ? evaluateOperatorDigitalDeurAccess({ actor: user ?? undefined, authenticatedOperatorId: linkedIdentity.operator.id, operator: linkedIdentity.operator, assignment, rental, rentalEquipmentLine: selectedLine, deurs, evaluationTimestamp: clock, shift })
     : { allowed: false as const, allowedActions: [] as DeurOperatorAction[], issues: [{ code: linkedIdentity.status, message: "message" in linkedIdentity ? linkedIdentity.message : "Operator access requires an Operator login." }] };
   const policyCodes=rental?.deurExpectationPolicy?.expectedShiftCodes??[]; const configuredWindows=(rental?.deurShiftWindowSnapshots?.length?rental.deurShiftWindowSnapshots:deurShiftWindowRepository.getAll()).filter(item=>!policyCodes.length||policyCodes.includes(item.code)); const windowSnapshot = configuredWindows.find((item) => item.code === (shift === "Night" ? "NIGHT" : "DAY"));

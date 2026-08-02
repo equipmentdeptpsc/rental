@@ -4,6 +4,7 @@ import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
 import type { RentalLineOperationState } from "./buildRentalLineOperations";
 import { RunningTimerEngine, type OperationalLineState } from "@/features/rental/realtime";
+import { buildOperatorDeurLineUrl } from "@/features/rental/deur/operator/resolveOperatorDeurRouteLine";
 
 function RentalLineOperationCardComponent({ rentalId, state, machine, operator }: {
   rentalId: string;
@@ -43,7 +44,7 @@ function RentalLineOperationCardComponent({ rentalId, state, machine, operator }
       <div><dt className="text-slate-500">Billing</dt><dd>{deur?.billingLocked || deur?.billingStatementId ? "Consumed" : billingEligible ? "Eligible" : "Not eligible"}</dd></div>
       <div className="col-span-2"><dt className="text-slate-500">Last updated</dt><dd>{live?.lastEvent?.occurredAt ? new Date(live.lastEvent.occurredAt).toLocaleString() : deur?.updatedAt ? new Date(deur.updatedAt).toLocaleString() : line.updatedAt}</dd></div>
     </dl>
-    <a className="mt-3 inline-block rounded bg-blue-700 px-3 py-2 text-sm font-medium text-white" href={`/rentals/${rentalId}/operator-deur?lineId=${encodeURIComponent(line.id)}`}>{deur && ["Draft", "In Progress"].includes(deur.status) ? "Continue Line" : "Open Line"}</a>
+    <a className="mt-3 inline-block rounded bg-blue-700 px-3 py-2 text-sm font-medium text-white" href={buildOperatorDeurLineUrl(rentalId,line.id)}>{deur && ["Draft", "In Progress"].includes(deur.status) ? "Continue Line" : "Open Line"}</a>
   </article>;
 }
 

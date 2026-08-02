@@ -30,14 +30,15 @@ export function useOperatorDeurData(rentalId: string, user?: User | null) {
     const failed = results.find((result) => !result.success);
     if (failed && !failed.success) { setState((current) => ({ ...current, loading: false, error: failed.error.message })); return; }
     const allLines = lines.success ? lines.value.items : [];
-    const operatorLines = allLines.filter((line) => line.rentalId === rentalId && (!user?.operatorId || line.operatorId === user.operatorId));
-    const lineIds = new Set(operatorLines.map((line) => line.id));
+    const rentalLines = allLines.filter((line) => line.rentalId === rentalId);
+    const lineIds = new Set(rentalLines.map((line) => line.id));
+    const operatorIds = new Set([...rentalLines.map((line) => line.operatorId), ...(user?.operatorId ? [user.operatorId] : [])]);
     setState({
       rental: rental.success ? rental.value ?? undefined : undefined,
-      lines: operatorLines,
-      assignments: assignments.success ? assignments.value.items.filter((item) => operatorLines.some((line) => line.assignmentId === item.id)) : [],
-      operators: operators.success ? operators.value.items.filter((item) => item.id === user?.operatorId) : [],
-      equipment: equipment.success ? equipment.value.items.filter((item) => operatorLines.some((line) => line.equipmentId === item.id)) : [],
+      lines: rentalLines,
+      assignments: assignments.success ? assignments.value.items.filter((item) => rentalLines.some((line) => line.assignmentId === item.id)) : [],
+      operators: operators.success ? operators.value.items.filter((item) => operatorIds.has(item.id)) : [],
+      equipment: equipment.success ? equipment.value.items.filter((item) => rentalLines.some((line) => line.equipmentId === item.id)) : [],
       projects: projects.success ? projects.value.items : [],
       deurs: deurs.success ? deurs.value.items.filter((item) => item.rentalId === rentalId && (!item.rentalEquipmentLineId || lineIds.has(item.rentalEquipmentLineId))) : [],
       workDescriptions: workDescriptions.success ? workDescriptions.value.items : [],
