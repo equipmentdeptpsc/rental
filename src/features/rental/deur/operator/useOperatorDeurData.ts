@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import type { User } from "@/features/auth/domain/user";
 import type { RentalRecord } from "@/features/rental/types";
@@ -19,7 +19,10 @@ const empty: OperatorDeurData = { lines: [], assignments: [], operators: [], equ
 export function useOperatorDeurData(rentalId: string, user?: User | null) {
   const { readRepositories } = useApplicationDependenciesCompatibility();
   const [state, setState] = useState<OperatorDeurData>(empty);
+  const mounted = useRef(true);
+  const requestSequence = useRef(0);
   const refresh = useCallback(async () => {
+    const request = ++requestSequence.current;
     setState((current) => ({ ...current, loading: true, error: undefined }));
     const [rental, lines, assignments, operators, equipment, projects, deurs, workDescriptions] = await Promise.all([
       readRepositories.rentals.getById(rentalId), readRepositories.rentalEquipmentLines.list(),
@@ -28,6 +31,7 @@ export function useOperatorDeurData(rentalId: string, user?: User | null) {
     ]);
     const results = [rental, lines, assignments, operators, equipment, projects, deurs, workDescriptions];
     const failed = results.find((result) => !result.success);
+    if (!mounted.current || request !== requestSequence.current) return;
     if (failed && !failed.success) { setState((current) => ({ ...current, loading: false, error: failed.error.message })); return; }
     const allLines = lines.success ? lines.value.items : [];
     const rentalLines = allLines.filter((line) => line.rentalId === rentalId);
@@ -45,6 +49,10 @@ export function useOperatorDeurData(rentalId: string, user?: User | null) {
       loading: false,
     });
   }, [readRepositories, rentalId, user?.operatorId]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    mounted.current = true;
+    void refresh();
+    return () => { mounted.current = false; requestSequence.current += 1; };
+  }, [refresh]);
   return { ...state, refresh };
 }

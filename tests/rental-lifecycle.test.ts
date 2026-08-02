@@ -502,7 +502,7 @@ describe("RentalProvider synchronization", () => {
     await act(async () => {
       expect(harness.rental.addRental(request).success).toBe(true);
     });
-    expect(harness.rental.getRental("rental-1")?.status).toBe("Reserved");
+    expect(harness.rental.getRental("rental-1")?.status).toBe("Draft");
     expect("status" in request).toBe(false);
 
     await act(async () => root.unmount());
@@ -523,7 +523,7 @@ describe("RentalProvider synchronization", () => {
     second.container.remove();
   });
 
-  it("creates a long-term rental without an expected return and records actual creation and reservation timestamps", async () => {
+  it("creates a long-term rental as a non-legacy Draft without silently reserving it", async () => {
     prepareCreateState("Assigned", activeAssignment);
     const { harness, root, container } = await renderHarness();
     const { status: _status, statusId: _statusId, expectedReturn: _expectedReturn, ...request } = rental("Draft", activeAssignment.id);
@@ -534,10 +534,10 @@ describe("RentalProvider synchronization", () => {
 
     expect(harness.rental.getRental("rental-1")).toMatchObject({
       expectedReturn: undefined,
-      status: "Reserved",
+      status: "Draft",
     });
     expect(harness.rental.getRental("rental-1")?.createdAt).toBeTruthy();
-    expect(harness.rental.getRental("rental-1")?.reservedAt).toBeTruthy();
+    expect(harness.rental.getRental("rental-1")?.reservedAt).toBeUndefined();
     await act(async () => root.unmount());
     container.remove();
   });
@@ -669,5 +669,68 @@ describe("RentalProvider synchronization", () => {
     });
     await act(async () => root.unmount());
     container.remove();
+  });
+
+  it("persists two assignment-backed lines with canonical identities across provider refresh", async () => {
+    const secondAssignment: AssignmentRecord = { ...activeAssignment, id: "assignment-2", equipmentId: "equipment-2", operatorId: "operator-2" };
+    prepareCreateState("Assigned", activeAssignment);
+    storage.set(equipmentKey, [equipment("Assigned"), { ...equipment("Assigned"), id: "equipment-2", assetNo: "EQ-002", operatorId: "operator-2" }]);
+    storage.set(assignmentKey, [activeAssignment, secondAssignment]);
+    storage.set(operatorKey, [
+      { id: "operator-1", name: "Operator One", email: "one@example.test", licenseNumber: "L1", certificationType: "Heavy Machinery", status: "Active", joinedDate: "2026-01-01" },
+      { id: "operator-2", name: "Operator Two", email: "two@example.test", licenseNumber: "L2", certificationType: "Heavy Machinery", status: "Active", joinedDate: "2026-01-01" },
+    ]);
+    const first = await renderHarness();
+    const { status: _status, statusId: _statusId, equipmentId: _equipmentId, operatorId: _operatorId, assignmentId: _assignmentId, ...request } = rental("Draft");
+    await act(async () => expect(first.harness.rental.addRental(
+      { ...request, equipmentId: "", operatorId: undefined, assignmentId: undefined },
+      [activeAssignment, secondAssignment].map((item) => ({ equipmentId: item.equipmentId, assignmentId: item.id, operatorId: item.operatorId })),
+    )).toMatchObject({ success: true }));
+    expect(first.harness.rental.getRental("rental-1")?.status).toBe("Draft");
+    expect(first.harness.rental.rentalEquipmentLines).toHaveLength(2);
+    expect(first.harness.rental.rentalEquipmentLines.map((line) => ({ equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId, operational: Boolean(line.operationalMetadata) }))).toEqual([
+      { equipmentId: "equipment-1", assignmentId: "assignment-1", operatorId: "operator-1", operational: true },
+      { equipmentId: "equipment-2", assignmentId: "assignment-2", operatorId: "operator-2", operational: true },
+    ]);
+    const persistedIds = first.harness.rental.rentalEquipmentLines.map((line) => line.id);
+    await act(async () => first.root.unmount()); first.container.remove();
+    vi.resetModules();
+    const refreshed = await renderHarness();
+    expect(refreshed.harness.rental.rentalEquipmentLines.map((line) => line.id)).toEqual(persistedIds);
+    expect(refreshed.harness.rental.rentalEquipmentLines.map((line) => line.operatorId)).toEqual(["operator-1", "operator-2"]);
+    await act(async () => refreshed.root.unmount()); refreshed.container.remove();
+  });
+
+  it("blocks reservation before persistence when a line's canonical operator is missing", async () => {
+    prepareState("Assigned", "Assigned", activeAssignment);
+    storage.set(operatorKey, []);
+    const current = await renderHarness();
+    const linesBefore = structuredClone(storage.get("equipment-rental-equipment-lines"));
+    await act(async () => expect(current.harness.rental.transitionRental("rental-1", "Reserved")).toEqual({ success: false, message: "The assigned operator record is missing. Return to the rental workspace and correct the assignment before continuing." }));
+    expect(current.harness.rental.getRental("rental-1")?.status).toBe("Assigned");
+    expect(storage.get("equipment-rental-equipment-lines")).toEqual(linesBefore);
+    await act(async () => current.root.unmount()); current.container.remove();
+  });
+
+  it("captures commercial and DEUR expectation snapshots before a newly created Rental becomes Reserved", async () => {
+    const configuredAssignment = { ...activeAssignment, activityCodeId: "activity-ldc" };
+    prepareCreateState("Assigned", configuredAssignment);
+    storage.set(equipmentKey, [{ ...equipment("Assigned"), costCodeId: "cost-heavy" }]);
+    storage.set("equipment-rental-cost-codes", [{ id:"cost-heavy",code:"5031HEAVYEQPT",description:"Heavy Equipment",defaultRate:0,unit:"Hour",active:true,deleted:false }]);
+    storage.set("equipment-rental-activity-codes", [{ id:"activity-ldc",activityCode:"LDC",description:"Development",active:true,deleted:false }]);
+    const current = await renderHarness();
+    const { status: _status, statusId: _statusId, ...request } = rental("Draft", configuredAssignment.id);
+    await act(async () => expect(current.harness.rental.addRental(request)).toMatchObject({ success:true }));
+    const line = current.harness.rental.rentalEquipmentLines[0];
+    await act(async () => expect(current.harness.rental.saveCommercialTermsForRentalEquipmentLine("rental-1",line.id,commercialTerms())).toMatchObject({ success:true }));
+    await act(async () => expect(current.harness.rental.configureLineDeurExpectation("rental-1",line.id,WORK_DESCRIPTION_SEEDS[0].id)).toMatchObject({ success:true }));
+    await act(async () => expect(current.harness.rental.transitionRental("rental-1","Assigned")).toMatchObject({ success:true }));
+    await act(async () => expect(current.harness.rental.transitionRental("rental-1","Reserved")).toMatchObject({ success:true,rental:{status:"Reserved"} }));
+    const persisted = current.harness.rental.rentalEquipmentLines[0];
+    expect(persisted.operationalMetadata).toMatchObject({costCode:{code:"5031HEAVYEQPT"},activityCode:{code:"LDC"}});
+    expect(persisted.commercialSnapshot).toMatchObject({billingMethod:"Per Hour",unitRate:100});
+    expect(persisted.deurExpectationSnapshot).toMatchObject({assignmentId:"assignment-1",operatorId:"operator-1",equipmentId:"equipment-1",projectId:"project-1",customerId:"customer-1",sourceFingerprint:expect.any(String)});
+    expect(persisted.deurExpectationSnapshot?.sourceFingerprint).not.toBe("");
+    await act(async () => current.root.unmount()); current.container.remove();
   });
 });

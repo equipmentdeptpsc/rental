@@ -11,12 +11,14 @@ interface Props {
   rental: RentalRecord;
   equipmentLabel: string;
   hasCommercialTerms: boolean;
+  showRentalSnapshots?: boolean;
 }
 
 export default function ContractSection({
   rental,
   equipmentLabel,
   hasCommercialTerms,
+  showRentalSnapshots = true,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -36,8 +38,8 @@ export default function ContractSection({
         <Link className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-medium text-white" to={`/rentals/${rental.id}/commercial-terms`}>{hasCommercialTerms ? "Edit Commercial Terms" : "Configure Commercial Terms"}</Link>
       </section>}
 
-      <RentalOperationalMetadataCard metadata={rental.operationalMetadata} />
-      <CommercialSnapshotCard snapshot={rental.commercialSnapshot} required={rental.commercialSnapshotRequired} scope="Rental" />
+      {showRentalSnapshots && <RentalOperationalMetadataCard metadata={rental.operationalMetadata} />}
+      {showRentalSnapshots && <CommercialSnapshotCard snapshot={rental.commercialSnapshot} required={rental.commercialSnapshotRequired} scope="Rental" />}
 
     </div>
   );

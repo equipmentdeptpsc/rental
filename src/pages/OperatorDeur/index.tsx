@@ -30,6 +30,12 @@ const formatElapsed = (seconds: number) => [Math.floor(seconds / 3600), Math.flo
 export const operatorActionSuccessMessage = (action: DeurOperatorAction) =>
   action === "END_ACTIVITY" ? "End Activity saved locally." : `${actionLabels[action]} saved locally.`;
 
+export function mergeOperatorDeurVersions(current: Record<string, number>, deurs: readonly DeurRecord[]): Record<string, number> {
+  const next = Object.fromEntries(deurs.map((record) => [record.id, current[record.id] ?? Number((record as DeurRecord & { rowVersion?: number }).rowVersion ?? 0)]));
+  const keys = Object.keys(next);
+  return keys.length === Object.keys(current).length && keys.every((key) => current[key] === next[key]) ? current : next;
+}
+
 export default function OperatorDeurPage() {
   const { rentalId = "" } = useParams(); const [searchParams,setSearchParams]=useSearchParams(); const { user } = useAuth(); const { commandRepositories,changeNotifications,synchronization,authentication } = useApplicationDependenciesCompatibility(); const data=useOperatorDeurData(rentalId,user); const { rental,lines:rentalEquipmentLines,assignments,operators,equipment,projects,deurs:persistedDeurs,workDescriptions,refresh }=data;
   const operatorLines = useMemo(()=>rentalEquipmentLines.filter((line) => line.rentalId === rentalId && ["Released", "Active"].includes(line.status)),[rentalEquipmentLines,rentalId]);
@@ -39,13 +45,13 @@ export default function OperatorDeurPage() {
   const selectedLine=routeResolution.status==="RESOLVED"?routeResolution.line:undefined,assignment=routeResolution.status==="RESOLVED"?routeResolution.assignment:undefined,operator=routeResolution.status==="RESOLVED"?routeResolution.operator:undefined,machine=routeResolution.status==="RESOLVED"?routeResolution.equipment:undefined,project=routeResolution.status==="RESOLVED"?routeResolution.project:projects.find((item)=>item.id===rental?.projectId),linkedIdentity=resolveAuthenticatedOperator(user??undefined,operators);
   const [, setVersion] = useState(0), [versions,setVersions]=useState<Record<string,number>>({}), [clock, setClock] = useState(() => new Date().toISOString()), [message, setMessage] = useState(""), [remarks, setRemarks] = useState("");
   const [optimisticDeurs,setOptimisticDeurs]=useState<Array<{commandId:string;record:DeurRecord}>>([]);
-  const deurs=[...persistedDeurs.filter((record)=>!optimisticDeurs.some((item)=>item.record.id===record.id)),...optimisticDeurs.map((item)=>item.record)];
+  const deurs=useMemo(()=>[...persistedDeurs.filter((record)=>!optimisticDeurs.some((item)=>item.record.id===record.id)),...optimisticDeurs.map((item)=>item.record)],[persistedDeurs,optimisticDeurs]);
   const [openingReading, setOpeningReading] = useState("");
   const [closingReading, setClosingReading] = useState("");
   const [startLocation, setStartLocation] = useState("");
   const [endLocation, setEndLocation] = useState("");
   const [shift, setShift] = useState<DeurRecord["shift"]>(() => rental?.deurExpectationPolicy?.expectedShiftCodes?.[0] === "NIGHT" ? "Night" : "Day");
-  const selectable = workDescriptions.filter((item) => item.active && !item.deleted), [workDescriptionId, setWorkDescriptionId] = useState(() => selectable[0]?.id ?? "");
+  const selectable = useMemo(()=>workDescriptions.filter((item) => item.active && !item.deleted),[workDescriptions]), [workDescriptionId, setWorkDescriptionId] = useState(() => selectable[0]?.id ?? "");
   useEffect(() => {
     if (!synchronization.tenantId) return;
     return synchronization.operator.subscribe(
@@ -65,13 +71,16 @@ export default function OperatorDeurPage() {
     );
   }, [synchronization, rentalId, refresh, remarks, openingReading, closingReading, startLocation, endLocation]);
   useEffect(() => changeNotifications.subscribeDeur((record) => { if (record.rentalId === rentalId) { void refresh(); setVersion((value) => value + 1); setMessage("Latest DEUR change received."); } }), [changeNotifications,refresh,rentalId]);
-  useEffect(()=>{setVersions(current=>Object.fromEntries(deurs.map(record=>[record.id,current[record.id]??Number((record as DeurRecord&{rowVersion?:number}).rowVersion??0)])));},[deurs]);
+  useEffect(()=>{setVersions(current=>mergeOperatorDeurVersions(current,deurs));},[deurs]);
   const resolved = resolveActiveOperatorDeur({ rentalId, rentalEquipmentLineId: selectedLine?.id, equipmentId: selectedLine?.equipmentId, operatorId: operator?.id ?? "", deurs }); const active = resolved.status === "RESOLVED" ? resolved.record : undefined;
   const submitted = !active ? [...deurs].filter((record) => record.operatorId === operator?.id && (!selectedLine || record.rentalEquipmentLineId === selectedLine.id) && record.workDate === calendarDateAt(clock, rental?.deurExpectationPolicy?.timezone) && ["Submitted", "Pending Acknowledgement", "Acknowledged", "Rejected"].includes(record.status)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] : undefined;
   const projection = active ? projectDigitalDeurRunningState({ deur: active, evaluationTimestamp: clock }) : undefined;
   useEffect(() => { if (!projection?.valid || !projection.value.isRunning) return; const timer = window.setInterval(() => setClock(new Date().toISOString()), 1_000); return () => window.clearInterval(timer); }, [active?.id, active?.updatedAt, projection?.valid && projection.value.isRunning]);
+  const ownershipMismatch = routeResolution.status === "RESOLVED" && Boolean(user?.operatorId) && user?.operatorId !== routeResolution.line.operatorId;
   const access = routeResolution.status !== "RESOLVED"
     ? { allowed:false as const,allowedActions:[] as DeurOperatorAction[],issues:[{code:routeResolution.status,message:"message" in routeResolution?routeResolution.message:"Select an eligible equipment line."}]}
+    : ownershipMismatch
+    ? { allowed:false as const,allowedActions:[] as DeurOperatorAction[],issues:[{code:"OWNERSHIP_MISMATCH",message:"OWNERSHIP_MISMATCH: This equipment line is assigned to another operator."}]}
     : linkedIdentity.status === "RESOLVED"
     ? evaluateOperatorDigitalDeurAccess({ actor: user ?? undefined, authenticatedOperatorId: linkedIdentity.operator.id, operator: linkedIdentity.operator, assignment, rental, rentalEquipmentLine: selectedLine, deurs, evaluationTimestamp: clock, shift })
     : { allowed: false as const, allowedActions: [] as DeurOperatorAction[], issues: [{ code: linkedIdentity.status, message: "message" in linkedIdentity ? linkedIdentity.message : "Operator access requires an Operator login." }] };
@@ -142,6 +151,7 @@ export default function OperatorDeurPage() {
   }, [assignments, authentication, synchronization.tenantId, user]);
   useEffect(() => {
     if (!synchronization.tenantId || !user?.operatorId) return;
+    let disposed = false;
     const replay = () => void replayEngine.replayWithValidator(
       { tenantId: synchronization.tenantId!, operatorId: user.operatorId! },
       {
@@ -151,15 +161,17 @@ export default function OperatorDeurPage() {
         ),
       },
     ).then((report) => {
+      if (disposed) return;
       if (report?.succeeded) { setOptimisticDeurs([]); void refresh(); setMessage(`${report.succeeded} offline command${report.succeeded === 1 ? "" : "s"} synchronized.`); }
       if (report?.terminal) setMessage(`${report.terminal} offline command${report.terminal === 1 ? "" : "s"} require attention.`);
     }).then(async () => {
+      if (disposed) return;
       const failures = await synchronization.offlineQueue.listTerminal({ tenantId: synchronization.tenantId!, operatorId: user.operatorId! });
-      if (failures.length) setMessage(`${failures.length} offline command${failures.length === 1 ? "" : "s"} require operator attention.`);
+      if (!disposed && failures.length) setMessage(`${failures.length} offline command${failures.length === 1 ? "" : "s"} require operator attention.`);
     });
     window.addEventListener("online", replay);
     if (navigator.onLine) replay();
-    return () => window.removeEventListener("online", replay);
+    return () => { disposed = true; window.removeEventListener("online", replay); };
   }, [currentReplayIdentity, refresh, replayEngine, synchronization.offlineQueue, synchronization.tenantId, user?.operatorId]);
   async function startDigitalDeur() {
     if (!access.allowed || !rental || !selectedLine || !assignment || !operator) return setMessage(access.issues[0]?.message ?? "Select an eligible equipment line.");

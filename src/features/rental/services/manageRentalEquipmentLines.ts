@@ -3,7 +3,7 @@ import type { EquipmentRecord } from "@/features/equipment/types";
 import type { RentalRecord } from "../types";
 import type { NewRentalEquipmentLineInput, RentalEquipmentLine, RentalEquipmentLineIssue } from "../equipment-line";
 
-const editableStatuses = new Set(["Draft", "Reserved"]);
+const editableStatuses = new Set(["Draft", "Assigned", "Reserved"]);
 
 export function validateRentalEquipmentLineInputs(input: {
   rental: Pick<RentalRecord, "id" | "projectId" | "status">;

@@ -20,7 +20,7 @@ export function deriveRentalQuickActions(rental: RentalRecord, input: RentalQuic
     ? { manage: input === "Admin", approve: input === "Manager", submit: input === "Admin", release: input === "Admin", return: input === "Admin" }
     : input;
   const approval = getRentalApprovalStatus(rental);
-  if (rental.status === "Draft") return { actions: permissions.manage ? [{ id: "reserve", label: "Reserve Rental" }] : [] };
+  if (rental.status === "Draft" || rental.status === "Assigned") return { actions: permissions.manage ? [{ id: "reserve", label: "Reserve Rental" }] : [] };
   if (rental.status === "Reserved") {
     if (approval === "Pending") return permissions.approve ? { actions: [{ id: "approve", label: "Approve Rental" }, { id: "reject", label: "Reject Rental" }], message: "Awaiting Manager Approval" } : { actions: [], message: "Awaiting Manager Approval" };
     if (approval === "Approved") return { actions: permissions.release ? [{ id: "release", label: "Release Equipment" }] : [], message: "Approved" };

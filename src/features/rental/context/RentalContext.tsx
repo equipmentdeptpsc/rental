@@ -49,6 +49,7 @@ import { returnRentalEquipmentLine as returnEquipmentLine } from "../services/re
 import { notifyRentalWorkspaceChange } from "../workspace/workspaceRefresh";
 import { workDescriptionRepository } from "@/features/masters/work-description/repository";
 import { evaluateRentalReleaseReadiness, regenerateRentalLineDeurExpectation, type RentalReleaseReadinessResult } from "../services/evaluateRentalReleaseReadiness";
+import { validateRentalLineIdentityIntegrity } from "../services/validateRentalLineIdentityIntegrity";
 
 const releaseFieldMessage = (field: string) => field === "deurPolicy" ? "DEUR expectation policy" : field === "operationalMetadata" ? "operational metadata snapshot" : field === "snapshotFreshness" ? "stale DEUR release snapshot" : field === "snapshot" ? "persisted DEUR release snapshot" : field === "billingTerms" ? "commercial terms" : field;
 
@@ -383,13 +384,7 @@ export function RentalProvider({
     refreshRentals();
     refreshRentalEquipmentLines();
 
-    const assigned = transitionRental(created.id, "Assigned");
-
-    if (!assigned.success) {
-      return assigned;
-    }
-
-    return transitionRental(created.id, "Reserved");
+    return { success: true };
   }
 
   function updateRental(item: RentalRecord) {
@@ -410,13 +405,30 @@ export function RentalProvider({
   ): RentalTransitionResult {
     const requiredPermission = nextStatus === "Released" ? "rental.release" : nextStatus === "Returned" ? "rental.return" : "rental.manage";
     if (!hasPermission(requiredPermission)) return { success: false, message: "You do not have permission to perform this Rental transition." };
-    const current = rentalRepository.getById(id);
+    let current = rentalRepository.getById(id);
 
     if (!current) {
       return {
         success: false,
         message: "Rental not found.",
       };
+    }
+
+    if (nextStatus === "Reserved") {
+      const lines = rentalEquipmentLineRepository.getByRentalId(current.id);
+      const identityIssues = validateRentalLineIdentityIntegrity({ rental: current, lines, assignments, operators, equipment: equipmentRecords, projects });
+      if (identityIssues.length) return { success: false, message: identityIssues.map((issue) => issue.message).join(" ") };
+      const prepared = prepareRentalEquipmentLineRelease({ rental: current, lines, contracts: rentalContractRepository.ensureLineAssociations(lines).contracts, timestamp: new Date().toISOString() });
+      if (!prepared.success) return { success: false, message: prepared.issues.map((issue) => issue.message).join(" "), issues: prepared.issues };
+      const captured = rentalEquipmentLineRepository.saveCommercialSnapshotsOnce(current.id, prepared.lines);
+      if (!captured.success) return { success: false, message: captured.message };
+      const soleSnapshot = captured.lines.length === 1 ? captured.lines[0].commercialSnapshot : undefined;
+      if (!current.commercialSnapshot && soleSnapshot) {
+        current = { ...current, commercialSnapshot: structuredClone(soleSnapshot) };
+        rentalRepository.update(current);
+      }
+      const readiness = releaseReadiness(current);
+      if (!readiness.eligible) return { success: false, message: `RESERVATION_NOT_READY: ${readiness.incompleteEquipmentLines.map((line) => `${line.equipmentId ?? line.rentalEquipmentLineId}: ${[...line.missingFields.map(releaseFieldMessage), ...line.invalidValues].join(", ")}`).join("; ")}` };
     }
 
     if (nextStatus === "Released" && getRentalApprovalStatus(current) !== "Approved") {

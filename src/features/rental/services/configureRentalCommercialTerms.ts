@@ -31,7 +31,7 @@ export type ConfigureRentalCommercialTermsResult =
   | { success: false; code: string; message: string };
 
 export function canEditRentalCommercialTerms(rental: Pick<RentalRecord, "status">): boolean {
-  return rental.status === "Draft" || rental.status === "Reserved";
+  return rental.status === "Draft" || rental.status === "Assigned" || rental.status === "Reserved";
 }
 
 export function configureRentalCommercialTerms(input: {
