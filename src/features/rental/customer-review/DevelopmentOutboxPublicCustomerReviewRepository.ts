@@ -1,5 +1,6 @@
 import type { PublicCustomerReviewRepository, PublicDeurReviewSnapshot, PublicReviewFailureCode, PublicReviewResult } from "./publicReviewContracts";
 import { developmentCustomerReviewOutbox, type CustomerReviewOutboxEntry } from "./developmentCustomerReviewOutbox";
+import { deurRepository } from "../deur/repository/deurRepository";
 
 function failure(entry: CustomerReviewOutboxEntry | undefined): PublicReviewFailureCode {
   if (!entry) return "INVALID_OR_UNAVAILABLE";
@@ -28,14 +29,18 @@ export class DevelopmentOutboxPublicCustomerReviewRepository implements PublicCu
     const entry = developmentCustomerReviewOutbox.getByToken(credential);
     return entry?.status === "Pending" ? { success: true, disposition: "AVAILABLE", value: snapshot(entry) } : { success: false, code: failure(entry) };
   }
-  async acknowledge(credential: string): Promise<PublicReviewResult<{ reviewStatus: "Acknowledged" }>> {
+  async acknowledge(credential: string, _command?: { commandId: string; idempotencyKey: string }): Promise<PublicReviewResult<{ reviewStatus: "Acknowledged" }>> {
     const entry = developmentCustomerReviewOutbox.getByToken(credential);
     if (!entry || entry.status !== "Pending") return { success: false, code: failure(entry) };
+    const outcome = deurRepository.acknowledge(entry.deurId, { name: entry.representativeName }, "", undefined, true);
+    if (!outcome.success) return { success: false, code: "VALIDATION_REJECTED" };
     return developmentCustomerReviewOutbox.decide(credential, "Acknowledged") ? { success: true, disposition: "ACCEPTED", value: { reviewStatus: "Acknowledged" } } : { success: false, code: "INVALID_OR_UNAVAILABLE" };
   }
-  async requestCorrection(credential: string): Promise<PublicReviewResult<{ reviewStatus: "CorrectionRequested" }>> {
+  async requestCorrection(credential: string, command: { reason: string }): Promise<PublicReviewResult<{ reviewStatus: "CorrectionRequested" }>> {
     const entry = developmentCustomerReviewOutbox.getByToken(credential);
     if (!entry || entry.status !== "Pending") return { success: false, code: failure(entry) };
+    const outcome = deurRepository.reject(entry.deurId, { name: entry.representativeName }, command.reason.trim(), undefined, true);
+    if (!outcome.success) return { success: false, code: "VALIDATION_REJECTED" };
     return developmentCustomerReviewOutbox.decide(credential, "CorrectionRequested") ? { success: true, disposition: "ACCEPTED", value: { reviewStatus: "CorrectionRequested" } } : { success: false, code: "INVALID_OR_UNAVAILABLE" };
   }
 }

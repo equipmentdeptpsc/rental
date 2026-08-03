@@ -29,16 +29,46 @@ export interface RentalDeurComplianceResult {
 export interface EvaluateRentalDeurComplianceInput { rental: RentalRecord; assignment?: AssignmentRecord; deurs: DeurRecord[]; evaluationTimestamp?: string; liveShiftWindows?: DeurShiftWindowDefinition[] }
 
 export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalDeurComplianceInput & { lines: RentalEquipmentLine[] }) {
-  return input.lines.filter((line) => line.rentalId === input.rental.id).map((line) => ({
-    rentalEquipmentLineId: line.id,
-    equipmentId: line.equipmentId,
-    result: evaluateRentalDeurCompliance({
+  return input.lines.filter((line) => line.rentalId === input.rental.id).map((line) => {
+    const result = evaluateRentalDeurCompliance({
       ...input,
       rental: { ...input.rental, equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId },
       assignment: undefined,
       deurs: input.deurs.filter((record) => record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId),
-    }),
-  }));
+    });
+    return {
+      rentalEquipmentLineId: line.id,
+      equipmentId: line.equipmentId,
+      result: { ...result, expectations: result.expectations.map((expectation) => ({ ...expectation, expectationId: `${line.id}:${expectation.expectationId}` })) },
+    };
+  });
+}
+
+export function aggregateRentalEquipmentLineDeurCompliance(
+  rentalId: string,
+  lineResults: ReturnType<typeof evaluateRentalEquipmentLineDeurCompliance>,
+): RentalDeurComplianceResult {
+  if (lineResults.length === 0) return { rentalId, required: false, status: "COMPLIANT", reason: "The rental has no equipment-line DEUR expectations.", source: "LEGACY_RENTAL_FALLBACK", expectedCount: 0, compliantCount: 0, missingCount: 0, incompleteCount: 0, pendingCorrectionCount: 0, expectations: [], counts: { total: 0, effective: 0, incomplete: 0, pendingCorrections: 0, superseded: 0 }, issues: [] };
+  const results = lineResults.map((item) => item.result);
+  const status = results.some((item) => item.status === "PENDING_CORRECTION") ? "PENDING_CORRECTION"
+    : results.some((item) => item.status === "MISSING_DEUR") ? "MISSING_DEUR"
+    : results.some((item) => item.status === "DEUR_INCOMPLETE") ? "DEUR_INCOMPLETE"
+    : "COMPLIANT";
+  const sum = (read: (result: RentalDeurComplianceResult) => number) => results.reduce((total, result) => total + read(result), 0);
+  return {
+    rentalId, required: results.some((item) => item.required), status,
+    reason: status === "COMPLIANT" ? "All equipment-line DEUR expectations are satisfied." : status === "PENDING_CORRECTION" ? "One or more equipment lines have a pending correction." : status === "MISSING_DEUR" ? "One or more equipment lines are missing a required DEUR." : "One or more equipment lines have an incomplete customer review.",
+    source: results[0].source,
+    expectedCount: sum((item) => item.expectedCount), compliantCount: sum((item) => item.compliantCount),
+    missingCount: sum((item) => item.missingCount), incompleteCount: sum((item) => item.incompleteCount),
+    pendingCorrectionCount: sum((item) => item.pendingCorrectionCount), expectations: results.flatMap((item) => item.expectations),
+    counts: {
+      total: sum((item) => item.counts.total), effective: sum((item) => item.compliantCount),
+      incomplete: sum((item) => item.counts.incomplete), pendingCorrections: sum((item) => item.counts.pendingCorrections),
+      superseded: sum((item) => item.counts.superseded),
+    },
+    issues: results.flatMap((item) => item.issues),
+  };
 }
 
 const requiringStatuses = new Set<RentalRecord["status"]>(["Released", "Active", "Returned", "Closed"]);
