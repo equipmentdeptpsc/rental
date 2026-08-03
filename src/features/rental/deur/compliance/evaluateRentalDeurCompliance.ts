@@ -26,7 +26,7 @@ export interface RentalDeurComplianceResult {
   counts: { total: number; effective: number; incomplete: number; pendingCorrections: number; superseded: number };
   issues: RentalDeurComplianceIssue[];
 }
-export interface EvaluateRentalDeurComplianceInput { rental: RentalRecord; assignment?: AssignmentRecord; deurs: DeurRecord[]; evaluationTimestamp?: string; liveShiftWindows?: DeurShiftWindowDefinition[] }
+export interface EvaluateRentalDeurComplianceInput { rental: RentalRecord; assignment?: AssignmentRecord; rentalEquipmentLineId?: string; deurs: DeurRecord[]; evaluationTimestamp?: string; liveShiftWindows?: DeurShiftWindowDefinition[] }
 
 export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalDeurComplianceInput & { lines: RentalEquipmentLine[] }) {
   return input.lines.filter((line) => line.rentalId === input.rental.id).map((line) => {
@@ -34,12 +34,13 @@ export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalD
       ...input,
       rental: { ...input.rental, equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId },
       assignment: undefined,
+      rentalEquipmentLineId: line.id,
       deurs: input.deurs.filter((record) => record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId),
     });
     return {
       rentalEquipmentLineId: line.id,
       equipmentId: line.equipmentId,
-      result: { ...result, expectations: result.expectations.map((expectation) => ({ ...expectation, expectationId: `${line.id}:${expectation.expectationId}` })) },
+      result,
     };
   });
 }
@@ -84,7 +85,7 @@ function groupRevisionChains(records: DeurRecord[]) {
 }
 
 /** Read-only operational compliance. It deliberately does not inspect billing calculations or infer dates. */
-export function evaluateRentalDeurCompliance({ rental, assignment, deurs, evaluationTimestamp, liveShiftWindows }: EvaluateRentalDeurComplianceInput): RentalDeurComplianceResult {
+export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipmentLineId, deurs, evaluationTimestamp, liveShiftWindows }: EvaluateRentalDeurComplianceInput): RentalDeurComplianceResult {
   const records = structuredClone(deurs.filter((record) => record.rentalId === rental.id));
   const required = requiringStatuses.has(rental.status);
   let effective = 0, pendingCorrections = 0, superseded = 0;
@@ -108,7 +109,8 @@ export function evaluateRentalDeurCompliance({ rental, assignment, deurs, evalua
 
   if (rental.deurExpectationPolicy || rental.deurExpectationPolicyRequired) {
     const generated = generateRentalDeurExpectations({ rental, evaluationTimestamp: evaluationTimestamp ?? "", liveShiftWindows });
-    const matched = matchDeursToExpectations({ expectations: generated.expectations, deurs: records });
+    const scopedExpectations = rentalEquipmentLineId ? generated.expectations.map((expectation) => ({ ...expectation, expectationId: `${rentalEquipmentLineId}:${expectation.expectationId}`, rentalEquipmentLineId, equipmentId: rental.equipmentId, operatorId: rental.operatorId })) : generated.expectations;
+    const matched = matchDeursToExpectations({ expectations: scopedExpectations, deurs: records });
     const explicitIssues = [...generated.issues, ...matched.issues];
     const expectedCount = matched.results.length;
     const compliantCount = matched.results.filter((item) => item.status === "COMPLIANT").length;

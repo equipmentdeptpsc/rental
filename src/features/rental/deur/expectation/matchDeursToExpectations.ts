@@ -6,7 +6,10 @@ import type { DeurExpectation, DeurExpectationPeriodStatus } from "./generateRen
 export type DeurExpectationMatchStatus = "NOT_YET_DUE" | "CURRENT" | "COMPLIANT" | "MISSING" | "INCOMPLETE" | "PENDING_CORRECTION";
 export interface RentalDeurExpectationResult extends Omit<DeurExpectation, "status"> { expectationStatus: DeurExpectationPeriodStatus; status: DeurExpectationMatchStatus; matchingEffectiveDeurId?: string; matchingDeurNumber?: string; matchingRevisionNumber?: number; reason: string; issueCode?: string }
 const shiftCode = (record: DeurRecord) => record.shift === "Day" ? "DAY" : record.shift === "Night" ? "NIGHT" : undefined;
-const identityMatches = (expectation: DeurExpectation, record: DeurRecord) => record.rentalId === expectation.rentalId && record.workDate === expectation.workDate && (!expectation.shiftCode || shiftCode(record) === expectation.shiftCode);
+const identityMatches = (expectation: DeurExpectation, record: DeurRecord) => record.rentalId === expectation.rentalId
+  && (!expectation.rentalEquipmentLineId || record.rentalEquipmentLineId === expectation.rentalEquipmentLineId)
+  && record.workDate === expectation.workDate
+  && (!expectation.shiftCode || shiftCode(record) === expectation.shiftCode);
 
 export function matchDeursToExpectations({ expectations, deurs }: { expectations: DeurExpectation[]; deurs: DeurRecord[] }) {
   const canonical = structuredClone(deurs).filter((record) => record.legacy !== true && isCalendarDate(record.workDate));

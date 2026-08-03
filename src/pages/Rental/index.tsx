@@ -18,18 +18,19 @@ import { buildRentalDeurComplianceReport } from "@/features/rental/deur/complian
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
 import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
+import { resolveRentalTransactionPresentation } from "@/features/rental/services/resolveRentalTransactionPresentation";
 
 export default function RentalPage() {
-  const { rentals } = useRental();
+  const { rentals, rentalEquipmentLines } = useRental();
 
-  const { getEquipment } =
+  const { getEquipment, equipment: equipmentRecords } =
     useEquipment();
   const { assignments } = useAssignment();
   const { operators } = useOperator();
   const { projects } = useProject();
   const [, setDeurVersion] = useState(0);
   useEffect(() => subscribeDeurChanges(() => setDeurVersion((value) => value + 1)), []);
-  const { monitored: monitoredRentals, rows: attentionRows } = buildRentalDeurComplianceReport({ rentals, assignments, deurs: deurRepository.getAll(), evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
+  const { monitored: monitoredRentals, rows: attentionRows } = buildRentalDeurComplianceReport({ rentals, assignments, rentalEquipmentLines, deurs: deurRepository.getAll(), evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
 
   return (
     <div className="space-y-6 p-8">
@@ -123,10 +124,7 @@ export default function RentalPage() {
 
               rentals.map((rental) => {
 
-                const equipment =
-                  getEquipment(
-                    rental.equipmentId
-                  );
+                const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
                 const rentalDeurs=deurRepository.getByRentalId(rental.id),effectiveDeur=rentalDeurs.at(-1),workflow=resolveRentalWorkflowStatus({rental,effectiveDeur,commercialTermsAvailable:Boolean(effectiveDeur?.commercialSnapshot),billableEvidence:Boolean(effectiveDeur?.totals?.operationMinutes||effectiveDeur?.totalOperatingMinutes)});
 
                 return (
@@ -138,7 +136,7 @@ export default function RentalPage() {
 
                     <td className="px-4 py-3">
 
-                      {getRentalEquipmentLabel(equipment)}
+                      <p>{presentation.equipmentLabel}</p><p className="text-xs text-slate-500">{presentation.operatorLabel}</p>
 
                     </td>
 
@@ -218,8 +216,9 @@ export default function RentalPage() {
         <ResponsiveTable><table className="min-w-full text-sm">
           <thead className="bg-slate-50"><tr>{["Rental No.", "Work Date", "Shift", "Equipment", "Operator", "Project", "Billing Method", "Expectation Policy", "Status", "Existing DEUR", "Reason"].map((heading) => <th key={heading} className="px-3 py-2 text-left">{heading}</th>)}</tr></thead>
           <tbody>{attentionRows.length === 0 ? <tr><td colSpan={11} className="p-6 text-center text-slate-500">No rentals currently require DEUR attention.</td></tr> : attentionRows.map(({ rental, assignment, result, expectation }) => {
-            const equipment = getEquipment(rental.equipmentId);
-            const operator = operators.find((item) => item.id === (rental.operatorId ?? assignment?.operatorId));
+            const line = expectation?.rentalEquipmentLineId ? rentalEquipmentLines.find((item) => item.id === expectation.rentalEquipmentLineId) : undefined;
+            const equipment = getEquipment(line?.equipmentId ?? rental.equipmentId);
+            const operator = operators.find((item) => item.id === (line?.operatorId ?? rental.operatorId ?? assignment?.operatorId));
             const project = projects.find((item) => item.id === rental.projectId);
             const policy = rental.deurExpectationPolicy;
             const policyLabel = policy?.frequency === "PER_WORKDAY" ? "Per Workday" : policy?.frequency === "PER_SHIFT" ? `Per Shift — ${policy.expectedShiftCodes?.join(", ")}` : policy?.frequency === "ON_DEMAND" ? "On Demand" : "Legacy Rental Fallback";
