@@ -54,6 +54,9 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     { create: (user, initialPassword) => {
       if (!(userRepository instanceof LocalUserRepository)) throw new Error("Local user provisioning is unavailable.");
       return userRepository.createUser(user, initialPassword);
+    }, replacePassword: (userId, newPassword) => {
+      if (!(userRepository instanceof LocalUserRepository)) throw new Error("Password reset is unavailable because this user is not managed by the Local Authentication Provider.");
+      return userRepository.replaceLocalPassword(userId, newPassword);
     } },
     undefined,
     undefined,

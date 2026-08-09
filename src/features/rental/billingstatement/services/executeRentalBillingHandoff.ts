@@ -34,7 +34,8 @@ type DeurPort = Pick<typeof deurRepository, "getById" | "update"> & { getByRenta
 export type BillingHandoffCheckpoint = "before-statement" | "after-consumption" | "before-audit";
 export interface BillingHandoffDependencies {
   statements?: StatementPort; deurs?: DeurPort;
-  closeRental(rentalId: string): { success: boolean; message?: string };
+  /** @deprecated Billing creation never closes the Rental. Closure is a separate guarded command. */
+  closeRental?(rentalId: string): { success: boolean; message?: string };
   audit?(event: { type: string; rentalId: string; deurId: string; statementId?: string }): void;
   checkpoint?(point: BillingHandoffCheckpoint): void;
 }
@@ -102,9 +103,6 @@ export function executeRentalBillingHandoff(input: { aggregate: RentalAggregate;
     if (!latest) return { status: "ineligible", issues: [issue("DEUR_NOT_FOUND", "The selected DEUR no longer exists.")] };
     const existing = matchingStatement(latest, statements);
     if (existing) {
-      if (input.aggregate.rental.status === "Returned") {
-        const close = dependencies.closeRental(input.review.rentalId); if (!close.success) return { status: "failed", issues: [issue("RENTAL_CLOSE_FAILED", close.message ?? "Rental could not be closed.")] };
-      }
       dependencies.audit?.({ type: "duplicate-resolved", rentalId: input.review.rentalId, deurId: latest.id, statementId: existing.id });
       return { status: "already-created", statementId: existing.id, statementNumber: existing.statementNo };
     }
@@ -119,8 +117,6 @@ export function executeRentalBillingHandoff(input: { aggregate: RentalAggregate;
     ) {
       const repaired = deurs.update({ ...latest, billingLocked: true, billingStatementId: partial.id, updatedAt: new Date().toISOString() });
       if (!repaired) return { status: "failed", issues: [issue("PARTIAL_REPAIR_FAILED", "The existing billing statement could not be linked to its DEUR.")] };
-      const close = dependencies.closeRental(input.review.rentalId);
-      if (!close.success) return { status: "failed", issues: [issue("RENTAL_CLOSE_FAILED", close.message ?? "Rental could not be closed.")] };
       dependencies.audit?.({ type: "partial-recovered", rentalId: input.review.rentalId, deurId: latest.id, statementId: partial.id });
       return { status: "already-created", statementId: partial.id, statementNumber: partial.statementNo };
     }
@@ -144,8 +140,6 @@ export function executeRentalBillingHandoff(input: { aggregate: RentalAggregate;
     }, workflowDependencies);
     if (!consumed.success) return { status: "failed", issues: [issue(consumed.code, consumed.message)] };
     dependencies.checkpoint?.("after-consumption");
-    const close = dependencies.closeRental(input.review.rentalId);
-    if (!close.success) return { status: "failed", issues: [issue("RENTAL_CLOSE_FAILED", close.message ?? "Rental could not be closed.")] };
     dependencies.checkpoint?.("before-audit");
     dependencies.audit?.({ type: consumed.idempotent ? "duplicate-resolved" : "handoff-completed", rentalId: input.review.rentalId, deurId: latest.id, statementId: consumed.statement.id });
     return consumed.idempotent

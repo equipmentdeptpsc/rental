@@ -6,6 +6,8 @@ export interface BillingChargeResult {
 
   idleHours: number;
 
+  standbyHours?: number;
+
   mobilizationHours: number;
 
   demobilizationHours: number;
@@ -13,6 +15,8 @@ export interface BillingChargeResult {
   operatingCharge: number;
 
   idleCharge: number;
+
+  standbyCharge?: number;
 
   mobilizationCharge: number;
 

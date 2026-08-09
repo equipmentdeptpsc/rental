@@ -13,7 +13,7 @@ export default function BillingHandoffReviewDialog({ open, review, currency, loa
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Billing handoff review">
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-        <h2 className="text-xl font-bold">Review Billing and Close Rental</h2>
+        <h2 className="text-xl font-bold">Review Billing Statement</h2>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <div><span className="text-slate-500">Rental</span><div className="font-semibold">{review.rentalReference}</div></div>
           <div><span className="text-slate-500">Selected DEUR</span><div className="font-semibold">{review.deurReference}</div></div>
@@ -37,12 +37,12 @@ export default function BillingHandoffReviewDialog({ open, review, currency, loa
         <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-amber-700">
           <li>A billing statement will be created.</li>
           <li>The selected DEUR will be marked consumed and cannot be billed again.</li>
-          <li>The rental will close only after billing succeeds.</li>
+          <li>The rental remains Returned until invoicing and collection are complete and Close Rental is explicitly approved.</li>
         </ul>
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           <button type="button" disabled={loading} onClick={onCancel} className="rounded border px-4 py-2 text-sm disabled:opacity-50">Cancel</button>
           <button type="button" disabled={loading} onClick={onConfirm} className="rounded bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-            {loading ? "Creating statement..." : "Create Billing Statement and Close Rental"}
+            {loading ? "Creating statement..." : "Create Billing Statement"}
           </button>
         </div>
       </div>

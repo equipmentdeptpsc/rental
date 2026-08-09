@@ -51,9 +51,9 @@ describe("BillingCalculationTerms", () => {
   it("preserves Contract-driven calculation results for hourly charges, fees, taxes, and withholding", () => {
     const source = contract();
     const expected = {
-      operatingHours: 3, idleHours: 1, mobilizationHours: 0, demobilizationHours: 0,
-      operatingCharge: 300, idleCharge: 20, mobilizationCharge: 30, demobilizationCharge: 40,
-      operatorCharge: 60, fuelCharge: 50, subtotal: 500, vat: 60, withholdingTax: 10, grandTotal: 550,
+      operatingHours: 3, idleHours: 1, standbyHours: 1, mobilizationHours: 0, demobilizationHours: 0,
+      operatingCharge: 300, idleCharge: 20, standbyCharge: 20, mobilizationCharge: 30, demobilizationCharge: 40,
+      operatorCharge: 60, fuelCharge: 50, subtotal: 520, vat: 62.4, withholdingTax: 10.4, grandTotal: 572,
     };
 
     expect(BillingRateEngine.calculate(deur(), mapRentalContractToBillingCalculationTerms(source))).toEqual(expected);

@@ -12,7 +12,7 @@ import { formatOperationalHours, formatPhpCurrency } from "@/features/rental/pre
     line,
   }: Props) {
     const optionalCharges = [
-      ["Idle", line.idleCharge], ["Mobilization", line.mobilizationCharge],
+      ["Idle", line.idleCharge], ["Standby", line.standbyCharge], ["Mobilization", line.mobilizationCharge],
       ["Demobilization", line.demobilizationCharge], ["Operator", line.operatorCharge], ["Fuel", line.fuelCharge],
     ].filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] > 0);
     return (

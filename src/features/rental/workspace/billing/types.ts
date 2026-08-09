@@ -62,6 +62,9 @@ export interface BillingPreviewLine {
   amount: number;
   operatingCharge?: number;
   idleCharge?: number;
+  idleHours?: number;
+  standbyCharge?: number;
+  standbyHours?: number;
   mobilizationCharge?: number;
   demobilizationCharge?: number;
   operatorCharge?: number;

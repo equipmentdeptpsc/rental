@@ -34,6 +34,9 @@ export interface CalculatedDeurBillingStatementLine {
   amount: number;
   operatingCharge: number;
   idleCharge: number;
+  idleHours: number;
+  standbyCharge: number;
+  standbyHours: number;
   mobilizationCharge: number;
   demobilizationCharge: number;
   operatorCharge: number;
@@ -152,6 +155,9 @@ export function calculateDeurBillingStatementLine(
       amount: charges.subtotal,
       operatingCharge: charges.operatingCharge,
       idleCharge: charges.idleCharge,
+      idleHours: charges.idleHours,
+      standbyCharge: charges.standbyCharge ?? 0,
+      standbyHours: charges.standbyHours ?? 0,
       mobilizationCharge: charges.mobilizationCharge,
       demobilizationCharge: charges.demobilizationCharge,
       operatorCharge: charges.operatorCharge,

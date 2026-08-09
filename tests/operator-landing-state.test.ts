@@ -91,6 +91,13 @@ describe("operator landing state", () => {
     });
   });
 
+  it("keeps an acknowledged DEUR visible while the canonical Assignment remains Active", () => {
+    expect(resolve({ deurs: [deur("Acknowledged")] })).toMatchObject({
+      status: "READY",
+      items: [{ action: "REVIEW_SUBMITTED_DEUR", assignment: { status: "Active" }, deur: { status: "Acknowledged" } }],
+    });
+  });
+
   it("does not let a prior-day submitted DEUR block a new shift", () => {
     expect(resolve({ deurs: [{ ...deur("Submitted"), workDate: "2026-07-27" }] }))
       .toMatchObject({ items: [{ action: "START_SHIFT", deur: undefined }] });

@@ -215,6 +215,9 @@ export interface CanonicalDeurEvent {
   assignmentId?: string;
   createdOffline?: boolean;
   localCreatedAt?: string;
+  remarks?: string;
+  workDescription?: string;
+  meterReading?: number;
 }
 
 export interface DeurTotals {

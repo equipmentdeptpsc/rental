@@ -20,7 +20,7 @@ export class LocalDeurCommandRepository implements DeurCommandRepository {
     const replay = this.results.get(input.idempotencyKey); if (replay?.success) return { ...replay, disposition: "REPLAYED" };
     const conflict = this.conflict(input.deurId, input.expectedVersion); if (conflict) return conflict;
     const user = this.currentUser(), result = deurRepository.submit(input.deurId, { id: user?.id, name: user?.displayName ?? "Local User" }, user);
-    if (!result.success) return rejected("INVALID_TRANSITION", result.message);
+    if (!result.success) return rejected("INVALID_TRANSITION", result.message, result.issues);
     const version = input.expectedVersion + 1; this.versions.set(input.deurId, version);
     const acceptedResult = accepted(result.record, version); this.results.set(input.idempotencyKey, acceptedResult); return acceptedResult;
   }
@@ -40,4 +40,4 @@ export class LocalDeurCommandRepository implements DeurCommandRepository {
   }
 }
 function accepted(record: import("../types").DeurRecord, version: number): DeurLifecycleCommandResult { return { success: true, disposition: "ACCEPTED", record, version, serverOccurredAt: new Date().toISOString(), refreshRequired: false }; }
-function rejected(code: "NOT_FOUND" | "CONFLICT" | "INVALID_TRANSITION", message: string): DeurLifecycleCommandResult { return { success: false, code, message, retryable: false, refreshRequired: code === "CONFLICT" }; }
+function rejected(code: "NOT_FOUND" | "CONFLICT" | "INVALID_TRANSITION", message: string, submissionIssues?: Extract<DeurLifecycleCommandResult,{success:false}>["submissionIssues"]): DeurLifecycleCommandResult { return { success: false, code, message, retryable: false, refreshRequired: code === "CONFLICT", ...(submissionIssues?.length?{submissionIssues}:{}) }; }

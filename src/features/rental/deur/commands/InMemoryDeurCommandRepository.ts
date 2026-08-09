@@ -49,7 +49,7 @@ export class InMemoryDeurCommandRepository implements DeurCommandRepository {
     return this.execute("SUBMIT_DEUR", input, () => {
       const current = this.current(input); if (!current.success) return current.result;
       const at = this.now(), submitted = applySubmission(current.value.record, { id: this.actor()!.userId, name: this.actor()!.userId }, at);
-      if (!submitted.success) return failure("INVALID_TRANSITION", input.deurId);
+      if (!submitted.success) return failure("INVALID_TRANSITION", input.deurId, submitted.message, submitted.issues);
       return this.persist(submitted.record, current.value.version + 1, at);
     });
   }
@@ -92,7 +92,7 @@ export class InMemoryDeurCommandRepository implements DeurCommandRepository {
   private now() { return this.fixture.now?.() ?? new Date().toISOString(); }
 }
 function success(record: DeurRecord, version: number, serverOccurredAt: string): DeurLifecycleCommandResult { return { success: true, disposition: "ACCEPTED", record: structuredClone(record), version, serverOccurredAt, refreshRequired: false }; }
-function failure(code: DeurCommandFailureCode, aggregateId?: string): DeurLifecycleCommandResult { return { success: false, code, aggregateId, message: DEUR_COMMAND_MESSAGES[code], retryable: code === "TRANSPORT_FAILURE", refreshRequired: code === "CONFLICT" }; }
+function failure(code: DeurCommandFailureCode, aggregateId?: string, message=DEUR_COMMAND_MESSAGES[code], submissionIssues?: Extract<DeurLifecycleCommandResult,{success:false}>["submissionIssues"]): DeurLifecycleCommandResult { return { success: false, code, aggregateId, message, retryable: code === "TRANSPORT_FAILURE", refreshRequired: code === "CONFLICT", ...(submissionIssues?.length?{submissionIssues}:{}) }; }
 function stableHash(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableHash).join(",")}]`;
   if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).filter(([, item]) => item !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${stableHash(item)}`).join(",")}}`;

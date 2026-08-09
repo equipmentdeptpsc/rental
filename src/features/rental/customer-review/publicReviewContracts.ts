@@ -17,6 +17,9 @@ export interface PublicReviewTimelineEntry {
   action: "start" | "end";
   occurredAt: string;
   sequence: number;
+  workDescription?: string;
+  remarks?: string;
+  meterReading?: number;
 }
 
 export interface PublicDeurReviewSnapshot {

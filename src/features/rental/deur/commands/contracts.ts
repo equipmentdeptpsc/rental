@@ -1,5 +1,6 @@
 import type { DeurRecord } from "../types";
 import type { DeurOperatorAction } from "../operator/types";
+import type { DeurSubmissionIssue } from "../services/validateDeurSubmission";
 
 export type DeurCommandFailureCode =
   | "UNAUTHENTICATED" | "UNAUTHORIZED" | "FORBIDDEN" | "OWNERSHIP_MISMATCH"
@@ -25,7 +26,7 @@ export interface SubmitDeurInput extends VersionedDeurCommandIdentity {}
 
 export type DeurLifecycleCommandResult =
   | { success: true; disposition: "ACCEPTED" | "REPLAYED"; record: DeurRecord; version: number; serverOccurredAt: string; refreshRequired: false }
-  | { success: false; code: DeurCommandFailureCode; message: string; retryable: boolean; refreshRequired: boolean; aggregateId?: string; expectedVersion?: number; currentVersion?: number };
+  | { success: false; code: DeurCommandFailureCode; message: string; retryable: boolean; refreshRequired: boolean; aggregateId?: string; expectedVersion?: number; currentVersion?: number; submissionIssues?: readonly DeurSubmissionIssue[] };
 
 export interface DeurCommandRepository {
   startShift(input: StartDeurShiftInput): Promise<DeurLifecycleCommandResult>;

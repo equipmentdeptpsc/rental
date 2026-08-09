@@ -9,7 +9,7 @@ describe("DEUR activation and meter applicability", () => {
     vi.restoreAllMocks();
   });
 
-  it.each(["Draft", "Assigned", "Reserved", "Released", "Returned", "Closed", "Cancelled"] as const)(
+  it.each(["Draft", "Assigned", "Reserved", "Released", "Closed", "Cancelled"] as const)(
     "denies DEUR start while the Rental is %s",
     (status) => {
       expect(getDeurStartEligibility({ status })).toEqual({
@@ -18,6 +18,12 @@ describe("DEUR activation and meter applicability", () => {
       });
     },
   );
+
+  it("keeps Returned DEUR creation locked with controlled-recovery guidance", () => {
+    const result = getDeurStartEligibility({ status: "Returned" });
+    expect(result).toMatchObject({ eligible: false });
+    if (!result.eligible) expect(result.message).toContain("Normal DEUR creation is locked");
+  });
 
   it("allows DEUR start after activation", () => {
     expect(getDeurStartEligibility({ status: "Active" })).toEqual({ eligible: true });

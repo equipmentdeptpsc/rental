@@ -72,7 +72,7 @@ describe("Phase C4C DEUR completeness", () => {
     expect(record.totalIdleMinutes).toBe(0);
     expect(BillingRateEngine.calculate(record, {
       billingMethod: "Per Hour", unitRate: 100, standbyRate: 20, operatorIncluded: true,
-    }).idleCharge).toBe(170);
+    }).standbyCharge).toBe(170);
   });
 
   it("rejects a duplicate transition to standby", () => {

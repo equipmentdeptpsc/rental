@@ -10,4 +10,5 @@ export interface CloseReadiness {
     hasUnbilledOperations: boolean;
   
     reasons: string[];
+    checks: Array<{ code: string; satisfied: boolean; message: string; rentalEquipmentLineId?: string }>;
   }

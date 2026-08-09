@@ -25,6 +25,7 @@ import { resolveRentalWorkspaceEquipmentLines } from "./resolveRentalWorkspaceEq
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { collectionRepository } from "@/features/rental/collections/repository";
 import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
+import { projectRentalCollectionStatus } from "@/features/rental/collections/collectionStatusProjection";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -98,6 +99,12 @@ export default function RentalWorkspaceProvider({
     const statements = billingStatementRepository.getByRentalId(rental.id);
     const latestStatement = statements.at(-1);
     const collectionTotals = statements.map((statement) => reconcileStatementCollections(statement, collectionRepository.getByStatementId(statement.id)));
+    const financialTotals = {
+      totalInvoiced: collectionTotals.reduce((sum,item)=>sum+item.invoiceTotal,0),
+      totalCollected: collectionTotals.reduce((sum,item)=>sum+item.totalCollected,0),
+      outstandingBalance: collectionTotals.reduce((sum,item)=>sum+item.outstandingBalance,0),
+    };
+    const collection = projectRentalCollectionStatus({ hasStatement: statements.length > 0, ...financialTotals });
     const invoicePreparationComplete = isInvoicePreparationComplete(
       latestStatement?.invoiceStatus
     );
@@ -117,9 +124,10 @@ export default function RentalWorkspaceProvider({
         invoiceStatus: latestStatement?.invoiceStatus,
         invoicePreparationComplete,
         subtotal: statements.reduce((sum, statement) => sum + statement.subtotal, 0),
-        invoiced: collectionTotals.reduce((sum,item)=>sum+item.invoiceTotal,0),
-        collected: collectionTotals.reduce((sum,item)=>sum+item.totalCollected,0),
-        outstanding: collectionTotals.reduce((sum,item)=>sum+item.outstandingBalance,0),
+        invoiced: collection.totalInvoiced,
+        collected: collection.totalCollected,
+        outstanding: collection.outstandingBalance,
+        collectionStatus: collection.status,
       },
     });
   }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository]);

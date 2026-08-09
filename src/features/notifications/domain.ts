@@ -30,6 +30,18 @@ export interface NotificationTemplateInput {
   expirationLabel?: string;
   reason?: string;
   reviewUrl?: string;
+  activityTimeline?: readonly {
+    sequence: number;
+    activityType: string;
+    start: string;
+    end: string;
+    durationSeconds: number;
+    workDescription?: string;
+    remarks?: string;
+    openingMeter?: number;
+    closingMeter?: number;
+  }[];
+  activityTotals?: { operationMinutes: number; idleMinutes: number; standbyMinutes: number; breakdownMinutes: number };
 }
 
 export interface NotificationIntent {

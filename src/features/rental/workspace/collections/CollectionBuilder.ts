@@ -7,6 +7,7 @@ export function buildCollectionSummary(statements: BillingStatement[], transacti
   const totals = active.map((statement) => reconcileStatementCollections(statement, transactions));
   const history = transactions.filter((item) => active.some((statement) => statement.id === item.statementId)).toSorted((a,b)=>b.recordedAt.localeCompare(a.recordedAt));
   return {
+    hasStatement: active.length > 0,
     invoiceTotal: totals.reduce((sum,item)=>sum+item.invoiceTotal,0),
     totalCollected: totals.reduce((sum,item)=>sum+item.totalCollected,0),
     outstanding: totals.reduce((sum,item)=>sum+item.outstandingBalance,0),

@@ -49,6 +49,8 @@ export function isUser(value: unknown): value is User {
     typeof value.id === "string" &&
     typeof value.username === "string" &&
     typeof value.displayName === "string" &&
+    (value.email === undefined || typeof value.email === "string") &&
+    (value.companyId === undefined || typeof value.companyId === "string") &&
     Array.isArray(value.systemRoles) &&
     value.systemRoles.every(isSystemRole) &&
     (value.status === "active" || value.status === "inactive") &&

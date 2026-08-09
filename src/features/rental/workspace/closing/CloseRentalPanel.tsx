@@ -89,13 +89,12 @@ export default function CloseRentalPanel() {
     setExecuting(true);
     await Promise.resolve();
     const result = executeRentalBillingHandoff({ aggregate, review, authenticatedUser: user }, {
-      closeRental: (rentalId) => transitionRental(rentalId, "Closed"),
       audit: (event) => billingHandoffAuditRepository.record(event),
     });
     setExecuting(false);
     if (result.status === "created" || result.status === "already-created") {
       setStatementNumber(result.statementNumber); setReview(undefined);
-      showToast(`Billing statement ${result.statementNumber} created and rental closed.`, "success");
+      showToast(`Billing statement ${result.statementNumber} created. Complete invoicing and collection before closing the rental.`, "success");
       return;
     }
     if (result.status === "review-stale") {
@@ -136,6 +135,8 @@ export default function CloseRentalPanel() {
         <div className="rounded-xl border bg-white p-6">
           {["Released","Active"].includes(aggregate.rental.status)&&<div className="mb-4 space-y-3"><h3 className="font-semibold">Return readiness</h3>{aggregate.rentalEquipmentLines.map((line,index)=><p className="rounded border p-3 text-sm" key={line.id}>Rental Line {index+1}: Equipment not returned · Assignment {line.assignmentId?"active or pending completion":"unavailable"}</p>)}<Button onClick={handleReturnEquipment}>Return Equipment and Complete Assignments</Button></div>}
 
+          {aggregate.rental.status === "Returned" && <section className="mb-4 rounded border p-4"><h3 className="font-semibold">Close Rental Readiness</h3><ul className="mt-3 space-y-2 text-sm">{readiness.checks.map((check)=><li key={`${check.code}-${check.rentalEquipmentLineId??"rental"}`} className={check.satisfied?"text-green-700":"text-amber-800"}>{check.satisfied?"✓":"✕"} {check.message}</li>)}</ul>{!readiness.canClose&&<p className="mt-3 text-sm font-medium">Rental cannot be closed. Complete the outstanding requirements above.</p>}</section>}
+
           {aggregate.rental.status === "Returned" && readiness.canClose ? (
             <Button
               onClick={handleCloseRental}
@@ -144,7 +145,7 @@ export default function CloseRentalPanel() {
             </Button>
           ) : aggregate.rental.status === "Returned" && !aggregate.billing.hasStatement ? (
             <Button onClick={openBillingHandoff}>
-              Review Billing and Close Rental
+              Review Billing Statement
             </Button>
           ) : (
             <p className="text-sm text-slate-500">

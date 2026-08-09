@@ -26,6 +26,8 @@ export interface RentalFormData {
   equipmentId: string;
   customerId: string;
   customer: string;
+  customerRepresentativeName?: string;
+  customerReviewEmail?: string;
   operatorId: string;
   projectId: string;
   dateOut: string;
@@ -179,6 +181,8 @@ export default function RentalForm({
       customerId: "",
   
       customer: "",
+      customerRepresentativeName: "",
+      customerReviewEmail: "",
       operatorId: initialOperatorId ?? "",
   
       projectId: initialProjectId ?? "",
@@ -280,7 +284,7 @@ export default function RentalForm({
             const customer = customers.find(
               (item) => item.id === e.target.value
             );
-            setForm((previous) => ({ ...previous, customerId: e.target.value, customer: customer?.companyName ?? "", projectId: projects.some((project) => project.id === previous.projectId && project.customerId === e.target.value) ? previous.projectId : "", assignmentIds: [] }));
+            setForm((previous) => ({ ...previous, customerId: e.target.value, customer: customer?.companyName ?? "", customerRepresentativeName: customer?.contactPerson ?? "", customerReviewEmail: customer?.email ?? "", projectId: projects.some((project) => project.id === previous.projectId && project.customerId === e.target.value) ? previous.projectId : "", assignmentIds: [] }));
           }}
       />
 
@@ -290,6 +294,20 @@ export default function RentalForm({
           disabled={!form.customerId}
           options={projectOptions}
           onChange={(e) => update("projectId", e.target.value)}
+      />
+
+      <Input
+        type="text"
+        label="Customer Representative"
+        value={form.customerRepresentativeName}
+        onChange={(e) => update("customerRepresentativeName", e.target.value)}
+      />
+
+      <Input
+        type="email"
+        label="Customer Review Email"
+        value={form.customerReviewEmail}
+        onChange={(e) => update("customerReviewEmail", e.target.value)}
       />
 
       <fieldset className="rounded-lg border p-4">

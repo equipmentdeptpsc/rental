@@ -9,6 +9,7 @@ import {
 import { createSupabasePublicCustomerReviewRepository } from "@/integrations/supabase/SupabasePublicCustomerReviewRepository";
 import { formatCustomerReviewDateTime } from "@/features/rental/customer-review/customerReviewDateTime";
 import { developmentOutboxPublicCustomerReviewRepository } from "@/features/rental/customer-review/DevelopmentOutboxPublicCustomerReviewRepository";
+import { buildPublicReviewIntervals } from "@/features/rental/customer-review/buildPublicReviewIntervals";
 
 function configuredRepository(): PublicCustomerReviewRepository | undefined {
   const url = import.meta.env.VITE_SUPABASE_URL;
@@ -109,6 +110,7 @@ export default function CustomerDeurReviewPage({
   if (state === "completed" || !snapshot) {
     return <Shell><h1 className="text-2xl font-bold">Review complete</h1><p role="status">{message}</p></Shell>;
   }
+  const intervals=buildPublicReviewIntervals(snapshot.timeline);
 
   return (
     <Shell>
@@ -139,6 +141,7 @@ export default function CustomerDeurReviewPage({
           <span>Breakdown: {snapshot.breakdownMinutes} min</span>
         </div>
       </section>
+      <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">Activity Timeline</h2>{intervals.length?<ol className="mt-3 space-y-3">{intervals.map(item=><li key={`${item.sequence}-${item.start}`}><b>{item.sequence}. {item.activity}</b><div className="text-sm">Start: {formatCustomerReviewDateTime(item.start)}<br/>End: {formatCustomerReviewDateTime(item.end)}<br/>Duration: {item.durationSeconds} seconds{item.workDescription&&<><br/>Work: {item.workDescription}</>}{item.remarks&&<><br/>Remarks: {item.remarks}</>}</div></li>)}</ol>:<p className="mt-2 text-sm text-slate-600">No completed activity intervals were recorded.</p>}</section>
       <section className="space-y-4 rounded-xl border bg-white p-5">
         <button
           className="rounded bg-emerald-700 px-4 py-2 font-medium text-white disabled:opacity-50"

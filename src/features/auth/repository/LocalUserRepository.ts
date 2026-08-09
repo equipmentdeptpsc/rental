@@ -57,6 +57,7 @@ export const DEFAULT_LOCAL_SEED_USERS = Object.freeze([
       id: "local-user-management",
       username: "management",
       displayName: "Management",
+      email: "equipmentdept.psc@gmail.com",
       systemRoles: ["management"],
       status: "active",
       createdAt: "2026-07-28T00:00:00.000Z",
@@ -145,6 +146,17 @@ export class LocalUserRepository implements UserRepository {
         user.status === "active",
     );
     return record ? cloneUser(record.user) : undefined;
+  }
+
+  replaceLocalPassword(id: string, newPassword: string): User {
+    const records = this.readRecords().records;
+    const index = records.findIndex(({ user }) => user.id === id);
+    if (index < 0) throw new Error("User not found.");
+    const updated = { ...cloneUser(records[index].user), updatedAt: new Date().toISOString() };
+    this.writeRecords(records.map((record, recordIndex) => recordIndex === index
+      ? { user: updated, localPassword: newPassword }
+      : record));
+    return cloneUser(updated);
   }
 
   private setStatus(id: string, status: User["status"]): User {

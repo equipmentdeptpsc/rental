@@ -317,7 +317,7 @@ class DeurRepository {
     return { success: true as const, record: structuredClone(replacement), superseded: structuredClone(superseded) };
   }
 
-  private review(id: string, operation: (record: DeurRecord) => { success: true; record: DeurRecord } | { success: false; message: string }, queueOperation: DeurQueueOperation) {
+  private review(id: string, operation: (record: DeurRecord) => { success: true; record: DeurRecord } | { success: false; message: string; issues?: readonly import("../services/validateDeurSubmission").DeurSubmissionIssue[] }, queueOperation: DeurQueueOperation) {
     const record = this.getById(id);
     if (!record) return { success: false as const, message: "DEUR not found." };
     const result = operation(record);

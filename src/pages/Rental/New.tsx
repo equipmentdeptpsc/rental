@@ -21,6 +21,7 @@ import {
   getRentalAssignmentPrefill,
 } from "@/features/rental/utils/rentalFormOptions";
 import { resolveAssignmentRentalLookup } from "@/features/rental/utils/assignmentRentalLookup";
+import { isValidBusinessEmail, normalizeBusinessEmail } from "@/shared/validation/email";
 
 export default function NewRental() {
   const navigate =
@@ -68,7 +69,7 @@ export default function NewRental() {
   ) {
     const selectedProject = projects.find((project) => project.id === data.projectId);
     const selectedCustomer=customers.find(customer=>customer.id===data.customerId);
-    if(!selectedCustomer||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(selectedCustomer.email)){showToast("A valid Customer representative email is required.","error");return}
+    if(!selectedCustomer||!data.customerRepresentativeName?.trim()||!data.customerReviewEmail||!isValidBusinessEmail(data.customerReviewEmail)){showToast("A valid rental-specific Customer representative and review email are required.","error");return}
     if (!selectedProject || selectedProject.customerId !== data.customerId) {
       showToast("The selected Project must belong to the selected Customer.", "error");
       return;
@@ -92,7 +93,7 @@ export default function NewRental() {
           soleLine?.equipmentId ?? "",
 
         customerId: data.customerId,
-        customerContactSnapshot:{representativeName:selectedCustomer.contactPerson,representativeEmail:selectedCustomer.email,contactNumber:selectedCustomer.contactNumber,capturedAt:new Date().toISOString()},
+        customerContactSnapshot:{representativeName:data.customerRepresentativeName.trim(),representativeEmail:normalizeBusinessEmail(data.customerReviewEmail),contactNumber:selectedCustomer.contactNumber,capturedAt:new Date().toISOString()},
 
         projectId: data.projectId,
 

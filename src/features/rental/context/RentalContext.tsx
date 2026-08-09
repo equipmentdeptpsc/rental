@@ -50,6 +50,12 @@ import { notifyRentalWorkspaceChange } from "../workspace/workspaceRefresh";
 import { workDescriptionRepository } from "@/features/masters/work-description/repository";
 import { evaluateRentalReleaseReadiness, regenerateRentalLineDeurExpectation, type RentalReleaseReadinessResult } from "../services/evaluateRentalReleaseReadiness";
 import { validateRentalLineIdentityIntegrity } from "../services/validateRentalLineIdentityIntegrity";
+import { buildCloseReadiness } from "../workspace/closing/CloseReadinessBuilder";
+import { buildRentalAggregate } from "../aggregate";
+import { collectionRepository } from "../collections/repository";
+import { reconcileStatementCollections } from "../collections/collectionService";
+import { isInvoicePreparationComplete } from "../billingstatement/services/BillingReadiness";
+import { resolveRentalStatusAfterLineReturn } from "../services/resolveRentalStatusAfterLineReturn";
 
 const releaseFieldMessage = (field: string) => field === "deurPolicy" ? "DEUR expectation policy" : field === "operationalMetadata" ? "operational metadata snapshot" : field === "snapshotFreshness" ? "stale DEUR release snapshot" : field === "snapshot" ? "persisted DEUR release snapshot" : field === "billingTerms" ? "commercial terms" : field;
 
@@ -120,7 +126,7 @@ export function RentalProvider({
 }: {
   children: ReactNode;
 }) {
-  const { rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository } = useApplicationDependenciesCompatibility().repositories;
+  const { rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository } = useApplicationDependenciesCompatibility().repositories;
   const [bootstrap] = useState(() => {
     const initialRentals = rentalRepository.getAll();
     const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(initialRentals);
@@ -439,6 +445,28 @@ export function RentalProvider({
       if (!readiness.eligible) return { success: false, message: `RELEASE_NOT_READY: ${readiness.incompleteEquipmentLines.map((line) => `${line.equipmentId ?? line.rentalEquipmentLineId}: ${[...line.missingFields.map(releaseFieldMessage), ...line.invalidValues].join(", ")}`).join("; ")}` };
     }
 
+    if (nextStatus === "Closed") {
+      const lines = rentalEquipmentLineRepository.getByRentalId(current.id);
+      const deurs = deurRepository.getByRentalId(current.id);
+      const statements = billingStatementRepository.getByRentalId(current.id);
+      const totals = statements.map((statement) => reconcileStatementCollections(statement, collectionRepository.getByStatementId(statement.id)));
+      const latestStatement = statements.at(-1);
+      const readiness = buildCloseReadiness(buildRentalAggregate({
+        rental: current,
+        rentalEquipmentLines: lines,
+        deurs,
+        billing: {
+          hasStatement: statements.length > 0,
+          invoiceStatus: latestStatement?.invoiceStatus,
+          invoicePreparationComplete: isInvoicePreparationComplete(latestStatement?.invoiceStatus),
+          invoiced: totals.reduce((sum, item) => sum + item.invoiceTotal, 0),
+          collected: totals.reduce((sum, item) => sum + item.totalCollected, 0),
+          outstanding: totals.reduce((sum, item) => sum + item.outstandingBalance, 0),
+        },
+      }));
+      if (!readiness.canClose) return { success: false, message: readiness.reasons.join(" ") };
+    }
+
     const error = getRentalTransitionError(current, nextStatus);
 
     if (error) {
@@ -587,7 +615,44 @@ export function RentalProvider({
   }
 
   function returnRental(id: string): RentalTransitionResult {
-    return transitionRental(id, "Returned");
+    if (!hasPermission("rental.return")) return { success: false, message: "You do not have permission to return Rental equipment." };
+    const rental = rentalRepository.getById(id);
+    if (!rental) return { success: false, message: "Rental not found." };
+    const lines = rentalEquipmentLineRepository.getByRentalId(id);
+    if (!lines.length) return { success: false, message: "No Rental Equipment Lines were found." };
+    const returnedAt = new Date().toISOString();
+    const deurs = deurRepository.getByRentalId(id);
+    const linesToReturn = lines.filter((line) => ["Released", "Active"].includes(line.status));
+    if (!linesToReturn.length) return { success: false, message: "All Rental Equipment Lines are already returned." };
+    const prepared = linesToReturn.map((line) => {
+      const equipment = getEquipment(line.equipmentId);
+      return equipment ? returnEquipmentLine({ rental, line, equipment, deurs, returnedAt, liveShiftWindows: deurShiftWindowRepository.getAll() }) : { success: false as const, code: "EQUIPMENT_NOT_FOUND", message: "Rental equipment was not found." };
+    });
+    const blocked = prepared.find((result) => !result.success);
+    if (blocked) return { success: false, message: blocked.message };
+
+    prepared.forEach((result, index) => {
+      if (!result.success) return;
+      rentalEquipmentLineRepository.update(result.line);
+      const before = getEquipment(result.line.equipmentId);
+      const after = blockingEquipmentIds(id).has(result.line.equipmentId)
+        ? { ...result.equipment, status: "Rented" as const }
+        : result.equipment;
+      updateEquipment(after);
+      if (before) {
+        logAction({ action: "UPDATE", equipmentId: before.id, before, after });
+        log(createHistoryEvent(before.id, "Rental Returned", "Rental equipment was returned.", "RENTAL_RETURN"));
+      }
+      const assignmentId = linesToReturn[index].assignmentId;
+      if (assignmentId && getAssignment(assignmentId)?.status === "Active") completeAssignment(assignmentId, returnedAt.split("T")[0]);
+    });
+    const updated = { ...rental, status: "Returned" as const, returnedAt, actualReturn: returnedAt.split("T")[0] };
+    rentalRepository.update(updated);
+    refreshRentalEquipmentLines();
+    refreshRentals();
+    auditRental(rental, updated, "RENTAL_RETURNED");
+    notifyRentalWorkspaceChange(id);
+    return { success: true, rental: updated };
   }
 
   function releaseRental(
@@ -794,14 +859,29 @@ export function RentalProvider({
     const line = rentalEquipmentLineRepository.getById(lineId);
     const machine = line ? getEquipment(line.equipmentId) : undefined;
     if (!rental || !line || line.rentalId !== rentalId || !machine) return { success: false, message: "Rental Equipment Line was not found." };
-    const result = returnEquipmentLine({ line, equipment: machine, deurs: deurRepository.getByRentalId(rentalId), returnedAt: new Date().toISOString() });
+    const result = returnEquipmentLine({ rental, line, equipment: machine, deurs: deurRepository.getByRentalId(rentalId), returnedAt: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
     if (!result.success) return { success: false, message: result.message };
     rentalEquipmentLineRepository.update(result.line);
-    updateEquipment(result.equipment);
+    const returnedEquipment = blockingEquipmentIds(rentalId).has(line.equipmentId)
+      ? { ...result.equipment, status: "Rented" as const }
+      : result.equipment;
+    updateEquipment(returnedEquipment);
+    logAction({ action: "UPDATE", equipmentId: machine.id, before: machine, after: returnedEquipment });
+    log(createHistoryEvent(machine.id, "Rental Returned", "Rental equipment line was returned.", "RENTAL_RETURN"));
     if (line.assignmentId) completeAssignment(line.assignmentId, result.line.updatedAt.split("T")[0]);
+    const remainingLines = rentalEquipmentLineRepository.getByRentalId(rentalId);
+    const allReturned = resolveRentalStatusAfterLineReturn(remainingLines) === "Returned";
+    const updatedRental = allReturned
+      ? { ...rental, status: "Returned" as const, returnedAt: result.line.updatedAt, actualReturn: result.line.updatedAt.split("T")[0] }
+      : rental;
+    if (allReturned) {
+      rentalRepository.update(updatedRental);
+      refreshRentals();
+      auditRental(rental, updatedRental, "RENTAL_RETURNED");
+    }
     refreshRentalEquipmentLines();
     notifyRentalWorkspaceChange(rentalId, { rentalLineId: line.id, equipmentId: line.equipmentId, operatorId: line.operatorId });
-    return { success: true, rental };
+    return { success: true, rental: updatedRental };
   }
 
   const value = useMemo(

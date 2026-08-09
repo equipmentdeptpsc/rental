@@ -1,12 +1,15 @@
 import { useCollectionSummary } from "./useCollectionSummary";
 import CollectionMetricCard from "./CollectionMetricCard";
 import { formatPhpCurrency } from "@/features/rental/presentation/formatBusinessValues";
+import { projectRentalCollectionStatus } from "@/features/rental/collections/collectionStatusProjection";
 
 export default function CollectionPanel() {
   const collection=useCollectionSummary();
+  const status=projectRentalCollectionStatus({hasStatement:collection.hasStatement,totalInvoiced:collection.invoiceTotal,totalCollected:collection.totalCollected,outstandingBalance:collection.outstanding});
   return <div className="space-y-5">
     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-      <CollectionMetricCard label="Invoice Total" value={formatPhpCurrency(collection.invoiceTotal)}/>
+      <CollectionMetricCard label="Collection Status" value={status.status}/>
+      <CollectionMetricCard label="Total Invoiced" value={formatPhpCurrency(collection.invoiceTotal)}/>
       <CollectionMetricCard label="Collected" value={formatPhpCurrency(collection.totalCollected)}/>
       <CollectionMetricCard label="Outstanding" value={formatPhpCurrency(collection.outstanding)}/>
       <CollectionMetricCard label="Collections" value={collection.collectionCount.toString()}/>

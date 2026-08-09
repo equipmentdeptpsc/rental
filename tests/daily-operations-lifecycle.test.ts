@@ -37,13 +37,18 @@ describe("Daily Operations DEUR creation lifecycle guard", () => {
     expect(getDeurCreationError(request("Active"))).toBeUndefined();
   });
 
-  it.each(["Draft", "Assigned", "Reserved", "Released", "Returned", "Closed", "Cancelled"] as const)(
+  it.each(["Draft", "Assigned", "Reserved", "Released", "Closed", "Cancelled"] as const)(
     "blocks %s rentals until activation",
     async (rentalStatus) => {
     const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
     expect(getDeurCreationError(request(rentalStatus))).toBe(
       `Rental must be Active before creating or starting a DEUR. Current status: ${rentalStatus}.`,
     );
+  });
+
+  it("blocks Returned rentals with controlled-recovery guidance", async () => {
+    const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
+    expect(getDeurCreationError(request("Returned"))).toContain("Normal DEUR creation is locked");
   });
 
   it("keeps an existing DEUR available without mutating its data or the rental request", async () => {

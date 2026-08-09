@@ -12,6 +12,7 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 
 import type { DeurRecord } from "../deur/types";
 import type { RentalEquipmentLine } from "../equipment-line";
+import type { RentalCollectionStatus } from "../collections/collectionStatusProjection";
 
 export interface BillingSummary {
 
@@ -37,6 +38,7 @@ export interface BillingSummary {
   collected: number;
 
   outstanding: number;
+  collectionStatus?: RentalCollectionStatus;
 }
 
 export interface RentalAggregate {

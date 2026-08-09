@@ -33,6 +33,8 @@ export interface ManagerDeurReviewSnapshot {
   reviewStatus: ManagerReviewStatus;
   availableActions: ManagerReviewAction[];
   expiresAt?: string;
+  timeline?: import("../customer-review/publicReviewContracts").PublicReviewTimelineEntry[];
+  customerDecision?: { action: string; occurredAt: string; reason?: string };
 }
 
 export type ManagerReviewResult<T> =

@@ -113,7 +113,7 @@ describe("rental billing handoff execution", () => {
     expect(state.statements).toHaveLength(1);
   });
 
-  it("revalidates, creates one linked statement, consumes only the selected DEUR, and closes afterward", () => {
+  it("revalidates, creates one linked statement, consumes only the selected DEUR, and leaves closure explicit", () => {
     const selected = deur(); const unrelated = deur("deur-2"); const sourceAggregate = aggregate({ deurs: [selected] });
     const prepared = prepareRentalBillingHandoff({ aggregate: sourceAggregate }); expect(prepared.status).toBe("ready"); if (prepared.status !== "ready") return;
     const state = harness(selected); state.deurs.set(unrelated.id, unrelated);
@@ -121,7 +121,7 @@ describe("rental billing handoff execution", () => {
     expect(result).toMatchObject({ status: "created", rentalId: "rental-1", deurId: "deur-1", charges: prepared.review.charges });
     expect(state.statements).toHaveLength(1); expect(state.statements[0]).toMatchObject({ rentalId: "rental-1", lines: [{ deurId: "deur-1" }], subtotal: 100, vat: 12, withholdingTax: 2, grandTotal: 110 });
     expect(state.deurs.get("deur-1")).toMatchObject({ billingLocked: true, billingStatementId: state.statements[0].id });
-    expect(state.deurs.get("deur-2")).toEqual(unrelated); expect(state.rentalStatus).toBe("Closed");
+    expect(state.deurs.get("deur-2")).toEqual(unrelated); expect(state.rentalStatus).toBe("Returned");
     expect(state.dependencies.audit).toHaveBeenCalledWith(expect.objectContaining({ type: "handoff-completed", statementId: state.statements[0].id }));
   });
 
@@ -138,14 +138,14 @@ describe("rental billing handoff execution", () => {
     }
   });
 
-  it("is exactly-once across repeated execution and repairs a close failure on retry", () => {
+  it("is exactly-once across repeated execution without invoking rental closure", () => {
     const sourceAggregate = aggregate({ deurs: [deur()] }); const prepared = prepareRentalBillingHandoff({ aggregate: sourceAggregate }); if (prepared.status !== "ready") throw new Error();
     const state = harness(); let closeAttempts = 0;
     state.dependencies.closeRental = () => (++closeAttempts === 1 ? { success: false, message: "close failed" } : { success: true });
-    expect(executeRentalBillingHandoff({ aggregate: sourceAggregate, review: prepared.review }, state.dependencies)).toMatchObject({ status: "failed" });
+    expect(executeRentalBillingHandoff({ aggregate: sourceAggregate, review: prepared.review }, state.dependencies)).toMatchObject({ status: "created" });
     expect(state.statements).toHaveLength(1);
     expect(executeRentalBillingHandoff({ aggregate: sourceAggregate, review: prepared.review }, state.dependencies)).toMatchObject({ status: "already-created" });
-    expect(state.statements).toHaveLength(1); expect(closeAttempts).toBe(2);
+    expect(state.statements).toHaveLength(1); expect(closeAttempts).toBe(0);
   });
 
   it("failure before persistence changes nothing and audit failure cannot duplicate billing", () => {

@@ -19,8 +19,13 @@ import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/r
 import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
 import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
 import { resolveRentalTransactionPresentation } from "@/features/rental/services/resolveRentalTransactionPresentation";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { collectionRepository } from "@/features/rental/collections/repository";
+import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
+import { projectRentalCollectionStatus } from "@/features/rental/collections/collectionStatusProjection";
 
 export default function RentalPage() {
+  const { billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
   const { rentals, rentalEquipmentLines } = useRental();
 
   const { getEquipment, equipment: equipmentRecords } =
@@ -97,6 +102,8 @@ export default function RentalPage() {
                 DEUR Compliance
               </th>
 
+              <th className="px-4 py-3 text-left">Collection Status</th>
+
               <th className="px-4 py-3 text-left">
                 Actions
               </th>
@@ -112,7 +119,7 @@ export default function RentalPage() {
               <tr>
 
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="py-10 text-center text-slate-500"
                 >
                   No rental transactions found.
@@ -126,6 +133,7 @@ export default function RentalPage() {
 
                 const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
                 const rentalDeurs=deurRepository.getByRentalId(rental.id),effectiveDeur=rentalDeurs.at(-1),workflow=resolveRentalWorkflowStatus({rental,effectiveDeur,commercialTermsAvailable:Boolean(effectiveDeur?.commercialSnapshot),billableEvidence:Boolean(effectiveDeur?.totals?.operationMinutes||effectiveDeur?.totalOperatingMinutes)});
+                const statements=billingStatementRepository.getByRentalId(rental.id),totals=statements.map((statement)=>reconcileStatementCollections(statement,collectionRepository.getByStatementId(statement.id))),collection=projectRentalCollectionStatus({hasStatement:statements.length>0,totalInvoiced:totals.reduce((sum,item)=>sum+item.invoiceTotal,0),totalCollected:totals.reduce((sum,item)=>sum+item.totalCollected,0),outstandingBalance:totals.reduce((sum,item)=>sum+item.outstandingBalance,0)});
 
                 return (
 
@@ -175,6 +183,8 @@ export default function RentalPage() {
                     <td className="px-4 py-3">
                       <RentalDeurComplianceIndicator result={monitoredRentals.find((item) => item.rental.id === rental.id)!.result} />
                     </td>
+
+                    <td className="px-4 py-3">{collection.status}</td>
 
                     <td className="px-4 py-3">
 

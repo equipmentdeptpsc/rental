@@ -6,6 +6,8 @@ export interface User {
   readonly id: string;
   readonly username: string;
   readonly displayName: string;
+  readonly email?: string;
+  readonly companyId?: string;
   readonly systemRoles: readonly SystemRole[];
   readonly status: UserStatus;
   readonly operatorId?: string;

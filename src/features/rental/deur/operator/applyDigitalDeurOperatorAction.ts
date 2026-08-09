@@ -28,6 +28,13 @@ export function applyDigitalDeurOperatorAction({ deur, action, actionTimestamp, 
   const applied = applyDeurAction(current, { activityType: action === "END_SHIFT" ? "shift" : action==="END_ACTIVITY"?state.openPrimaryActivity!:mapping[action], action: action === "END_SHIFT"||action==="END_ACTIVITY" ? "end" : "start", timestamp: actionTimestamp, idFactory });
   if (!applied.success) return { ...applied, code: "DEUR_ACTION_INVALID" };
   const record = structuredClone(applied.record), totals = record.totals;
+  if (action === "END_SHIFT" && record.evidenceMode === "COMPLETION") {
+    record.completionEvidence = {
+      ...record.completionEvidence,
+      status: "COMPLETED",
+      completedAt: actionTimestamp,
+    };
+  }
   record.events = record.events?.map((event, index) => index >= createdStart ? {
     ...event,
     actorId: actor.id,

@@ -15,6 +15,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { Link } from "react-router-dom";
 import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
 import type { WorkspaceTab } from "../types";
+import { detectClosedRentalIntegrityViolation } from "@/features/rental/services/detectClosedRentalIntegrityViolation";
 
 export default function RentalWorkspaceHeader({ activeTab }: { activeTab: WorkspaceTab }) {
   const aggregate =
@@ -30,6 +31,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
   const commercialTermsAvailable = aggregate.rentalEquipmentLines.length > 0 && aggregate.rentalEquipmentLines.every((line) => Boolean(line.commercialSnapshot));
   const billableEvidence = effectiveDeurs.length === aggregate.rentalEquipmentLines.length && effectiveDeurs.every((record) => Boolean(record.totals?.operationMinutes || record.totalOperatingMinutes));
   const workflow=resolveRentalWorkflowStatus({rental:aggregate.rental,effectiveDeurs,commercialTermsAvailable,billableEvidence});
+  const historicalIntegrityViolations = detectClosedRentalIntegrityViolation(aggregate, displayedCompliance.status);
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
@@ -99,6 +101,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       </div>
 
       <RentalDeurComplianceSummary result={displayedCompliance} policy={aggregate.rental.deurExpectationPolicy} />
+      {historicalIntegrityViolations.length > 0 && <div className="mt-4 rounded border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><b>Historical integrity violation</b><p>This Closed rental predates the current closure gate: {historicalIntegrityViolations.join(", ")}. It remains readable and was not automatically changed.</p></div>}
       {aggregate.rentalEquipmentLines.length > 1 && <div className="mt-4 space-y-2"><h3 className="text-sm font-semibold">Equipment Line DEUR Compliance</h3>{lineCompliance.map((item) => {const line=aggregate.rentalEquipmentLines.find(candidate=>candidate.id===item.rentalEquipmentLineId);const label=line?resolveRentalLinePresentation(line,aggregate.rentalEquipmentLines,equipment).label:"Equipment record unavailable";return <p key={item.rentalEquipmentLineId} className={`rounded border p-2 text-sm ${item.result.status === "COMPLIANT" ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>{label}: {item.result.reason}</p>})}</div>}
       {aggregate.rental.status!=="Closed"&&<RentalDeurExpectationPolicyCard rental={aggregate.rental} />}
       {["Draft","Assigned","Reserved"].includes(aggregate.rental.status)&&<DeurReleaseReadinessPanel rentalId={aggregate.rental.id} />}

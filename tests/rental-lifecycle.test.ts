@@ -176,6 +176,13 @@ function prepareState(status: EquipmentRecord["status"], rentalStatus: RentalLif
   storage.set(authTokenKey, "token");
 }
 
+function allowZeroDeurReturnForPreparedState() {
+  const rentals = storage.get<RentalRecord[]>(rentalKey) ?? [];
+  storage.set(rentalKey, rentals.map((item) => ({ ...item, deurExpectationPolicy: { ...item.deurExpectationPolicy!, frequency: "ON_DEMAND" as const } })));
+  const envelope = storage.get<{ schemaVersion: number; records: RentalEquipmentLine[] }>("equipment-rental-equipment-lines");
+  if (envelope) storage.set("equipment-rental-equipment-lines", { ...envelope, records: envelope.records.map((item) => item.deurExpectationSnapshot ? { ...item, deurExpectationSnapshot: { ...item.deurExpectationSnapshot, policy: { ...item.deurExpectationSnapshot.policy, frequency: "ON_DEMAND" as const } } } : item) });
+}
+
 function prepareCreateState(status: EquipmentRecord["status"], assignment?: AssignmentRecord) {
   storage.set(equipmentKey, [equipment(status)]);
   storage.set(rentalKey, []);
@@ -254,6 +261,7 @@ describe("RentalProvider synchronization", () => {
 
     await act(async () => {
       expect(harness.rental.transitionRental("rental-1", "Active").success).toBe(true);
+      allowZeroDeurReturnForPreparedState();
       expect(harness.rental.returnRental("rental-1").success).toBe(true);
     });
     expect(harness.rental.getRental("rental-1")?.status).toBe("Returned");
@@ -267,9 +275,9 @@ describe("RentalProvider synchronization", () => {
     expect(harness.history.getHistory("equipment-1").some((entry) => entry.type === "RENTAL_RETURN")).toBe(true);
 
     await act(async () => {
-      expect(harness.rental.transitionRental("rental-1", "Closed").success).toBe(true);
+      expect(harness.rental.transitionRental("rental-1", "Closed").success).toBe(false);
     });
-    expect(harness.rental.getRental("rental-1")?.status).toBe("Closed");
+    expect(harness.rental.getRental("rental-1")?.status).toBe("Returned");
     await act(async () => root.unmount());
     container.remove();
   });
@@ -633,6 +641,7 @@ describe("RentalProvider synchronization", () => {
   it("keeps equipment rented when returning a corrupted duplicate active rental", async () => {
     prepareState("Rented", "Active");
     storage.set(rentalKey, [rental("Active"), { ...rental("Active"), id: "rental-2", rentalNumber: "R-002" }]);
+    allowZeroDeurReturnForPreparedState();
     const { harness, root, container } = await renderHarness();
 
     await act(async () => {
@@ -643,6 +652,15 @@ describe("RentalProvider synchronization", () => {
     expect(harness.rental.getRental("rental-2")?.status).toBe("Active");
     await act(async () => root.unmount());
     container.remove();
+  });
+
+  it("rejects a required missing DEUR return without mutating rental, equipment, or assignment", async () => {
+    prepareState("Rented", "Active", activeAssignment);
+    const { harness, root, container } = await renderHarness();
+    const before = { rental: harness.rental.getRental("rental-1"), equipment: harness.equipment.getEquipment("equipment-1"), assignment: harness.assignment.getAssignment("assignment-1") };
+    await act(async () => expect(harness.rental.returnRental("rental-1")).toMatchObject({ success: false, message: expect.stringContaining("required Digital DEUR") }));
+    expect({ rental: harness.rental.getRental("rental-1"), equipment: harness.equipment.getEquipment("equipment-1"), assignment: harness.assignment.getAssignment("assignment-1") }).toEqual(before);
+    await act(async () => root.unmount()); container.remove();
   });
 
   it("captures both operational snapshots before persisting an Assignment rental", async () => {

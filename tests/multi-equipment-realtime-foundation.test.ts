@@ -41,7 +41,7 @@ describe("RENT-MULTI-001 foundation", () => {
 
   it("returns one line without changing the other lines", () => {
     const source = structuredClone(lines);
-    const result = returnRentalEquipmentLine({ line: source[0], equipment: { id: "excavator", assetNo: "EXC-001", equipmentName: "Excavator", prefixId: "", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "project", operatorId: "operator-a", status: "Rented" }, deurs: [], returnedAt: "2026-07-29T12:00:00Z" });
+    const result = returnRentalEquipmentLine({ rental: { id: "rental-multi-001", equipmentId: "", customer: "Customer", project: "Project", rentedBy: "", dateOut: "2026-07-29", statusId: "active", status: "Active" }, line: source[0], equipment: { id: "excavator", assetNo: "EXC-001", equipmentName: "Excavator", prefixId: "", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "project", operatorId: "operator-a", status: "Rented" }, deurs: [], returnedAt: "2026-07-29T12:00:00Z" });
     expect(result).toMatchObject({ success: true, line: { status: "Returned" }, equipment: { status: "Available" } });
     expect(source.slice(1).map((item) => item.status)).toEqual(["Active", "Active"]);
   });

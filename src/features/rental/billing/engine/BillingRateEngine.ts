@@ -16,7 +16,8 @@ export class BillingRateEngine {
     const isQuantityBilling = terms.billingMethod === "Per Kilometer" || terms.billingMethod === "Per Trip" || terms.billingMethod === "Per Cubic Meter";
     let operatingHours = isQuantityBilling ? 0 : deur.totalOperatingMinutes / 60;
 
-    const standbyHours = isQuantityBilling ? 0 : (deur.totalStandbyMinutes ?? 0) / 60;
+    const idleHours = isQuantityBilling ? 0 : deur.totalIdleMinutes / 60;
+    const standbyHours = isQuantityBilling ? 0 : (deur.totalStandbyMinutes ?? deur.totals?.standbyMinutes ?? 0) / 60;
 
     const mobilizationHours =
       deur.totalMobilizationMinutes / 60;
@@ -86,9 +87,8 @@ export class BillingRateEngine {
     //
     // Idle Charge
     //
-    const idleCharge =
-      (isQuantityBilling ? 0 : standbyHours) *
-      (terms.standbyRate ?? 0);
+    const idleCharge = idleHours * (terms.standbyRate ?? 0);
+    const standbyCharge = standbyHours * (terms.standbyRate ?? 0);
 
     //
     // Mobilization
@@ -122,6 +122,7 @@ export class BillingRateEngine {
     const subtotal =
       operatingCharge +
       idleCharge +
+      standbyCharge +
       mobilizationCharge +
       demobilizationCharge +
       operatorCharge +
@@ -167,7 +168,9 @@ export class BillingRateEngine {
 
       operatingHours,
 
-      idleHours: standbyHours,
+      idleHours,
+
+      standbyHours,
 
       mobilizationHours,
 
@@ -176,6 +179,8 @@ export class BillingRateEngine {
       operatingCharge,
 
       idleCharge,
+
+      standbyCharge,
 
       mobilizationCharge,
 

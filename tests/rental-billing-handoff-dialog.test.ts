@@ -17,7 +17,8 @@ describe("billing handoff review dialog", () => {
     const confirm = vi.fn(); const cancel = vi.fn(); const container = document.createElement("div"); const root = createRoot(container);
     await act(async () => root.render(createElement(BillingHandoffReviewDialog, { open: true, review, currency: "PHP", loading: false, onConfirm: confirm, onCancel: cancel })));
     expect(container.textContent).toContain("R-001"); expect(container.textContent).toContain("DEUR-001");
-    expect(container.textContent).toContain("Create Billing Statement and Close Rental");
+    expect(container.textContent).toContain("Create Billing Statement");
+    expect(container.textContent).toContain("rental remains Returned");
     expect(container.textContent).toContain("₱110.00"); expect(container.textContent).not.toContain("Fuel");
     expect(confirm).not.toHaveBeenCalled();
     await act(async () => [...container.querySelectorAll("button")].find((button) => button.textContent === "Cancel")?.click());
