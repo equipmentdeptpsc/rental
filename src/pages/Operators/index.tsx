@@ -4,12 +4,14 @@ import Button from "@/components/ui/Button";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useOperator } from "@/features/operators/context/OperatorContext";
+import { useState } from "react";
 
 export default function OperatorsPage() {
   const {
     operators,
     deleteOperator,
   } = useOperator();
+  const[query,setQuery]=useState("");const visible=operators.filter(operator=>`${operator.name} ${operator.licenseNumber} ${operator.email}`.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -38,6 +40,7 @@ export default function OperatorsPage() {
 
       </div>
 
+      <input aria-label="Search Operators" className="w-full rounded border bg-white p-3" placeholder="Search operator name, code, or linked user" value={query} onChange={event=>setQuery(event.target.value)}/>
       <ResponsiveTable><div className="rounded-lg border bg-white min-w-max">
 
         <table className="min-w-full">
@@ -68,7 +71,7 @@ export default function OperatorsPage() {
 
           <tbody>
 
-            {operators.map((operator) => (
+            {visible.map((operator) => (
 
               <tr
                 key={operator.id}

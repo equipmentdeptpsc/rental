@@ -18,7 +18,7 @@ export interface DeurCommandIdentity {
 }
 export interface VersionedDeurCommandIdentity extends DeurCommandIdentity { deurId: string; expectedVersion: number }
 export interface StartDeurShiftInput extends DeurCommandIdentity { draft: DeurRecord }
-export interface ActivityTransitionInput extends VersionedDeurCommandIdentity { action: DeurOperatorAction }
+export interface ActivityTransitionInput extends VersionedDeurCommandIdentity { action: DeurOperatorAction; idleReasonId?: string; idleReasonLabelSnapshot?: string; idleReasonRemarks?: string }
 export interface CompleteDeurShiftInput extends VersionedDeurCommandIdentity {
   closingMeter?: number; closingLocation?: string; meterRequirement?: "none" | "hourMeter" | "odometer" | "both";
 }

@@ -13,6 +13,8 @@ import { useDailyLog } from "@/features/daily-log";
 import EquipmentTimeline from "@/features/equipment/history/components/EquipmentTimeline";
 import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
 import { getEquipmentCostCodeDisplay } from "@/features/equipment/utils/equipmentCostCode";
+import { presentEquipmentStatus } from "@/features/equipment/utils/equipmentStatusPresentation";
+import { validateEquipmentAssignment } from "@/features/assignment/utils/assignmentValidation";
 
 export default function EquipmentDetails() {
   const { id } = useParams();
@@ -134,6 +136,7 @@ export default function EquipmentDetails() {
     equipment.costCodeId,
     costCodes,
   );
+  const assignmentEligibility = validateEquipmentAssignment(equipment);
 
   return (
     <div className="space-y-8 p-8">
@@ -260,13 +263,7 @@ export default function EquipmentDetails() {
 
         <div className="flex flex-wrap gap-2">
 
-          <Link
-            to={`/assignments/new?equipment=${equipment.id}`}
-          >
-            <Button>
-              Assign
-            </Button>
-          </Link>
+          {assignmentEligibility.valid ? <Link to={`/assignments/new?equipment=${equipment.id}`}><Button>Assign</Button></Link> : <span title={assignmentEligibility.message}><Button disabled>Assign</Button></span>}
 
           <Link
             to={`/rentals/new?equipment=${equipment.id}`}
@@ -305,7 +302,7 @@ export default function EquipmentDetails() {
           </div>
 
           <div className="mt-2 text-2xl font-bold">
-            {equipment.status}
+            {presentEquipmentStatus(equipment.status)}
           </div>
 
         </div>

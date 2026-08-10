@@ -10,6 +10,7 @@ interface Props {
   onDelete(id: string): void;
   onInvoiceStatus(id: string, status: BillingInvoiceStatus): void;
   onCollect(id: string, input: { mode: "partial" | "full"; amount?: number; paymentDate: string; referenceNumber: string; paymentMethod?: string; remarks?: string }): unknown;
+  selectedId?: string;
 }
 
 export default function BillingDraftTable({
@@ -17,6 +18,7 @@ export default function BillingDraftTable({
   onDelete,
   onInvoiceStatus,
   onCollect,
+  selectedId,
 }: Props) {
   const [collecting,setCollecting]=useState<{id:string;mode:"partial"|"full"}>();
   const [amount,setAmount]=useState("");const [paymentDate,setPaymentDate]=useState(new Date().toISOString().slice(0,10));const [referenceNumber,setReferenceNumber]=useState("");const [paymentMethod,setPaymentMethod]=useState("");const [remarks,setRemarks]=useState("");
@@ -43,7 +45,7 @@ export default function BillingDraftTable({
         </thead>
         <tbody>
           {drafts.map((draft) => (
-            <tr key={draft.id} className="border-t">
+            <tr key={draft.id} className={`border-t ${draft.id === selectedId ? "bg-blue-50 ring-1 ring-inset ring-blue-300" : ""}`} data-selected={draft.id === selectedId || undefined}>
               <td className="px-4 py-3">{draft.statementNo}</td>
               <td className="px-4 py-3">{draft.customer}</td>
               <td className="px-4 py-3">{draft.project}</td>

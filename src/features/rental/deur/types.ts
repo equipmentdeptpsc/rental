@@ -218,6 +218,9 @@ export interface CanonicalDeurEvent {
   remarks?: string;
   workDescription?: string;
   meterReading?: number;
+  idleReasonId?: string;
+  idleReasonLabelSnapshot?: string;
+  idleReasonRemarks?: string;
 }
 
 export interface DeurTotals {

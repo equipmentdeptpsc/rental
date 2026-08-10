@@ -32,7 +32,7 @@ import {
   useEquipmentHistory,
 } from "@/features/equipment/history";
 import { createRentalOperationalMetadataSnapshot } from "../services/createRentalOperationalMetadataSnapshot";
-import { canEditRentalCommercialTerms, configureRentalCommercialTerms, type RentalCommercialTermsInput } from "../services/configureRentalCommercialTerms";
+import { canEditRentalCommercialTerms, configureBulkRentalCommercialTerms, configureRentalCommercialTerms, type RentalCommercialTermsInput } from "../services/configureRentalCommercialTerms";
 import { prepareRentalEquipmentLineRelease, type RentalEquipmentLineReleaseIssue } from "../services/prepareRentalEquipmentLineRelease";
 import { freezeRentalDeurExpectationPolicy } from "../deur/expectation/freezeRentalDeurExpectationPolicy";
 import { type NewRentalEquipmentLineInput, type RentalEquipmentLine, type RentalEquipmentLineIssue, type RentalEquipmentLineMigrationIssue } from "../equipment-line";
@@ -110,6 +110,7 @@ interface RentalContextType {
   saveCommercialTerms(id: string, input: RentalCommercialTermsInput): RentalTransitionResult;
   getContractForRentalEquipmentLine(lineId: string): RentalContractRecord | undefined;
   saveCommercialTermsForRentalEquipmentLine(rentalId: string, lineId: string, input: RentalCommercialTermsInput): RentalTransitionResult;
+  saveCommercialTermsForSelectedLines(rentalId: string, lineIds: string[], input: RentalCommercialTermsInput): RentalTransitionResult;
   rentalEquipmentLines: RentalEquipmentLine[];
   rentalEquipmentLineMigrationIssues: RentalEquipmentLineMigrationIssue[];
   addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput): { success: boolean; message?: string; issues?: RentalEquipmentLineIssue[] };
@@ -808,6 +809,21 @@ export function RentalProvider({
     return { success: true, rental };
   }
 
+  function saveCommercialTermsForSelectedLines(rentalId: string, lineIds: string[], input: RentalCommercialTermsInput): RentalTransitionResult {
+    if (!hasPermission("rental.commercialTerms.manage")) return { success: false, message: "You do not have permission to edit Commercial Terms." };
+    const rental = rentalRepository.getById(rentalId);
+    if (!rental) return { success: false, message: "Rental not found." };
+    const selected = lineIds.map((id) => rentalEquipmentLineRepository.getById(id));
+    if (selected.some((line) => !line || line.rentalId !== rentalId)) return { success: false, message: "A selected Rental Equipment Line was not found." };
+    const configured = configureBulkRentalCommercialTerms({ rental, lines: selected as RentalEquipmentLine[], commercialTerms: input, existingContracts: rentalContractRepository.listByRentalId(rentalId), timestamp: new Date().toISOString() });
+    if (!configured.success) return { success: false, message: `${configured.lineId ?? "Selected line"}: ${configured.message}` };
+    const saved = rentalContractRepository.saveManyForRentalEquipmentLines(configured.contracts);
+    if (!saved.success) return { success: false, message: saved.issue.message };
+    refreshContracts();
+    invalidateApprovedRental(rentalId, "Commercial Terms changed.");
+    return { success: true, rental };
+  }
+
   function addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput) {
     if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const rental = rentalRepository.getById(rentalId);
@@ -907,6 +923,7 @@ export function RentalProvider({
       saveCommercialTerms,
       getContractForRentalEquipmentLine,
       saveCommercialTermsForRentalEquipmentLine,
+      saveCommercialTermsForSelectedLines,
       rentalEquipmentLines,
       rentalEquipmentLineMigrationIssues,
       addRentalEquipmentLine,

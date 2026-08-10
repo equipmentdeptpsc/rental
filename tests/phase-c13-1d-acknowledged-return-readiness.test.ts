@@ -41,7 +41,7 @@ describe("Phase C13.1D acknowledged DEUR return readiness", () => {
   it("keeps precise missing, draft, open-activity, and incomplete-shift blockers", () => {
     expect(evaluate([])).toMatchObject({ eligible: false, reasonCodes: ["DEUR_REQUIRED", "DEUR_NOT_STARTED"] });
     expect(evaluate([draft()])).toMatchObject({ eligible: false, reasonCodes: expect.arrayContaining(["DEUR_NOT_SUBMITTED"]) });
-    const open = applyDigitalDeurOperatorAction({ deur: draft(), action: "START_IDLE", actionTimestamp: "2026-08-10T08:00:00Z", actor: { name: "Operator 2" } });
+    const open = applyDigitalDeurOperatorAction({ deur: draft(), action: "START_IDLE", actionTimestamp: "2026-08-10T08:00:00Z", actor: { name: "Operator 2" }, idleReason: { id: "waiting", labelSnapshot: "Waiting for materials" } });
     if (!open.success) throw new Error(open.message);
     expect(evaluate([open.record])).toMatchObject({ eligible: false, reasonCodes: expect.arrayContaining(["ACTIVITY_STILL_RUNNING"]) });
     const activityEnded = applyDigitalDeurOperatorAction({ deur: open.record, action: "END_ACTIVITY", actionTimestamp: "2026-08-10T09:00:00Z", actor: { name: "Operator 2" } });

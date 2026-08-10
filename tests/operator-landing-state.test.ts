@@ -5,7 +5,7 @@ import type { RentalRecord } from "@/features/rental/types";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import { resolveOperatorLandingState } from "@/features/rental/deur/operator/resolveOperatorLandingState";
 import { getVisibleNavigation } from "@/app/navigation/navigationConfig";
-import { authorizationService } from "@/features/auth/services/AuthorizationService";
+import { AuthorizationService } from "@/features/auth/services/AuthorizationService";
 import type { User } from "@/features/auth/domain/user";
 
 const assignment: AssignmentRecord = {
@@ -49,6 +49,7 @@ const resolve = (overrides: {
 
 describe("operator landing state", () => {
   it("shows My Shift navigation only to an application user with an Operator link", () => {
+    const authorizationService = new AuthorizationService({ getById: (id) => ({ id, status: "Active" }) });
     const user: User = {
       id: "user-1", username: "operator", displayName: "Operator",
       systemRoles: ["rental-operations"], status: "active",

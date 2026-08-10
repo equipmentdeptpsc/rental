@@ -1,6 +1,7 @@
 import type { PublicCustomerReviewRepository, PublicDeurReviewSnapshot, PublicReviewFailureCode, PublicReviewResult } from "./publicReviewContracts";
 import { developmentCustomerReviewOutbox, type CustomerReviewOutboxEntry } from "./developmentCustomerReviewOutbox";
 import { deurRepository } from "../deur/repository/deurRepository";
+import { organizationBranding } from "@/shared/branding/organizationBranding";
 
 function failure(entry: CustomerReviewOutboxEntry | undefined): PublicReviewFailureCode {
   if (!entry) return "INVALID_OR_UNAVAILABLE";
@@ -11,13 +12,14 @@ function failure(entry: CustomerReviewOutboxEntry | undefined): PublicReviewFail
 
 function snapshot(entry: CustomerReviewOutboxEntry): PublicDeurReviewSnapshot {
   return {
+    companyName: organizationBranding.companyName,
     rentalReference: entry.rentalNumber, customerName: entry.customerName, project: entry.snapshot.project,
     equipment: entry.snapshot.equipment, operator: entry.snapshot.operator, workDate: entry.snapshot.workDate,
     shift: entry.snapshot.shift, operationMinutes: entry.snapshot.operationMinutes, idleMinutes: entry.snapshot.idleMinutes,
     standbyMinutes: entry.snapshot.standbyMinutes ?? 0, breakdownMinutes: entry.snapshot.breakdownMinutes,
     submittedRevision: `R${entry.revisionNumber}`, submittedAt: entry.snapshot.submittedAt,
     timeline: (entry.snapshot.timeline ?? []).flatMap((item, index) => [
-      { activity: item.activityType ?? item.label ?? "Activity", action: "start" as const, occurredAt: item.start, sequence: index * 2 + 1 },
+      { activity: item.activityType ?? item.label ?? "Activity", action: "start" as const, occurredAt: item.start, sequence: index * 2 + 1, workDescription: item.workDescription, remarks: item.remarks, idleReasonLabel: item.idleReasonLabel },
       ...(item.end ? [{ activity: item.activityType ?? item.label ?? "Activity", action: "end" as const, occurredAt: item.end, sequence: index * 2 + 2 }] : []),
     ]),
     reviewStatus: "Pending", availableActions: ["ACKNOWLEDGE", "REQUEST_CORRECTION"], expiresAt: entry.expiresAt,

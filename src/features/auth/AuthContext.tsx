@@ -16,6 +16,8 @@ import type { LoginResult } from "./services/AuthenticationService";
 import type { AuthenticationRequest } from "./providers/AuthenticationProvider";
 import { LOCAL_AUTH_PROVIDER_ID } from "./providers/local/LocalAuthenticationProvider";
 import type { Role } from "./role";
+import { AUTH_USERS_STORAGE_KEY } from "./repository/localStorageSchema";
+import { subscribeCanonicalUserChanges } from "./services/canonicalUserChangeNotifications";
 import {
   adaptDomainUser,
   adaptLegacyUser,
@@ -86,6 +88,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refreshSession();
   }, [refreshSession]);
+
+  useEffect(() => {
+    const refreshCurrentUser = (changedUserId?: string) => {
+      if (!user || (changedUserId && changedUserId !== user.id)) return;
+      void refreshSession();
+    };
+    const unsubscribe = subscribeCanonicalUserChanges(refreshCurrentUser);
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === AUTH_USERS_STORAGE_KEY) refreshCurrentUser();
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => { unsubscribe(); window.removeEventListener("storage", handleStorage); };
+  }, [refreshSession, user]);
 
   const authenticate = useCallback(
     async (request: AuthenticationRequest): Promise<LoginResult> => {

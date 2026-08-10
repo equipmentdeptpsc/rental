@@ -8,13 +8,15 @@ import { equipmentStatusRepository } from "./equipment-status/repository";
 import { equipmentTypeRepository } from "./equipment-type/repository";
 import { rentalStatusRepository } from "./rental-status/repository/RentalStatusRepository";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
+import { equipmentSubcategoryRepository } from "./equipment-subcategory/repository";
 
 /** Ensures a blank browser can execute UAT without creating transactional demo data. */
 export function initializeRequiredMasterData(): void {
   prefixRepository.getAll();
   equipmentTypeRepository.seedDefaults();
   equipmentBrandRepository.seedDefaults();
-  equipmentCategoryRepository.seedDefaults();
+  const categories = equipmentCategoryRepository.seedDefaults();
+  equipmentSubcategoryRepository.seedDefaults(categories);
   equipmentOwnershipRepository.seedDefaults();
   equipmentConditionRepository.seedDefaults();
   equipmentLocationRepository.seedDefaults();

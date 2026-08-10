@@ -106,7 +106,7 @@ describe("Phase C1 DEUR remote command foundation", () => {
     const started = await repository.startShift(startInput("deur-a", lineA)); expect(started.success).toBe(true); if (!started.success) return;
     actor = userB; const startedB = await repository.startShift(startInput("deur-b", lineB)); expect(startedB.success).toBe(true); if (!startedB.success) return;
     actor = userA;
-    const changed = await repository.startOrChangeActivity({ ...versioned(started.record, 1, "idle"), action: "START_IDLE" });
+    const changed = await repository.startOrChangeActivity({ ...versioned(started.record, 1, "idle"), action: "START_IDLE", idleReasonId: "waiting", idleReasonLabelSnapshot: "Waiting for materials" });
     expect(changed).toMatchObject({ success: true, version: 2 }); if (!changed.success) return;
     expect(repository.snapshot("deur-b")?.version).toBe(1);
     await expect(repository.startOrChangeActivity({ ...versioned(started.record, 1, "stale"), action: "START_BREAKDOWN" })).resolves.toMatchObject({ success: false, code: "CONFLICT", expectedVersion: 1, currentVersion: 2, refreshRequired: true });

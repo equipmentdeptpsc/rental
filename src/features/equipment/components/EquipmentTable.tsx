@@ -13,6 +13,7 @@ import {
 } from "@/features/equipment/history";
 
 import type { EquipmentRecord } from "../types";
+import { presentEquipmentStatus } from "../utils/equipmentStatusPresentation";
 
 interface Props {
   equipment: EquipmentRecord[];
@@ -129,7 +130,7 @@ export default function EquipmentTable({
               </td>
 
               <td className="p-3">
-                {item.status}
+                {presentEquipmentStatus(item.status)}
               </td>
 
               <td className="p-3">

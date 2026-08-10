@@ -33,7 +33,13 @@ export function validateEquipmentAssignment(
       return {
         valid: false,
         message:
-          "This equipment is already assigned.",
+          "This equipment is already booked by an active assignment.",
+      };
+
+    case "Rented":
+      return {
+        valid: false,
+        message: "This equipment is currently deployed on a Rental.",
       };
 
     case "Maintenance":

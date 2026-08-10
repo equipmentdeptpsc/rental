@@ -32,15 +32,15 @@ import {
   import { useEquipment } from "@/features/equipment/context/EquipmentContext";
   import { useOperator } from "@/features/operators/context/OperatorContext";
   import { resolveDeurPresentation } from "@/features/rental/deur/presentation/resolveDeurPresentation";
-  import { useCustomer } from "@/features/customer/context/CustomerContext";
   import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
+  import { createCustomerReviewRequestForSubmittedDeur } from "@/features/rental/customer-review/createCustomerReviewRequestForSubmittedDeur";
   import { useAuth } from "@/features/auth/AuthContext";
   import { rentalAuditRepository } from "@/features/rental/audit/rentalAuditRepository";
   import RentalLineOperationsGrid from "./RentalLineOperationsGrid";
   
   export default function DeurPanel() {
     const aggregate = useRentalWorkspaceAggregate();
-    const {equipment}=useEquipment(); const {operators}=useOperator(); const {customers}=useCustomer(); const {user}=useAuth(); const [reviewMessage,setReviewMessage]=useState("");
+    const {equipment}=useEquipment(); const {operators}=useOperator(); const {user}=useAuth(); const [reviewMessage,setReviewMessage]=useState("");
     const summary =
       useDailyOperations();
 
@@ -55,13 +55,10 @@ import {
       const revisionNumber=previewRecord.revision?.revisionNumber??1;
       const existing=developmentCustomerReviewOutbox.getAll().find(item=>item.deurId===previewRecord.id&&item.revisionNumber===revisionNumber&&item.status==="Pending");
       if(existing)return setReviewMessage(`An acknowledgement request is already pending for ${existing.deurNumber} R${existing.revisionNumber}.`);
-      const customer=customers.find(item=>item.id===aggregate.rental.customerId),contact=aggregate.rental.customerContactSnapshot??(customer?{representativeName:customer.contactPerson,representativeEmail:customer.email}:undefined);
-      if(!contact?.representativeName?.trim())return setReviewMessage("A Customer representative name is required.");
-      if(!contact.representativeEmail||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.representativeEmail))return setReviewMessage("A valid Customer representative email is required.");
       try{
-        const entry=developmentCustomerReviewOutbox.create({deurId:previewRecord.id,deurNumber:previewRecord.deurNumber??"Number unavailable",revisionNumber,rentalNumber:aggregate.rental.rentalNumber??"Number unavailable",customerName:customer?.companyName??aggregate.rental.customer,representativeName:contact.representativeName,representativeEmail:contact.representativeEmail,snapshot:{project:aggregate.project?.projectName??aggregate.rental.project,equipment:presentation.equipment,operator:presentation.operator,workDate:previewRecord.workDate,shift:previewRecord.shift,workDescription:previewRecord.operationalMetadata?.workDescription?.name,remarks:previewRecord.operationalRemarks,submittedAt:previewRecord.submittedAt,operationMinutes:previewRecord.totals?.operationMinutes??previewRecord.totalOperatingMinutes,idleMinutes:previewRecord.totals?.idleMinutes??previewRecord.totalIdleMinutes,breakdownMinutes:previewRecord.totals?.breakdownMinutes??previewRecord.totalMaintenanceMinutes,origin:previewRecord.creationSource??"Legacy"}});
+        const issued=createCustomerReviewRequestForSubmittedDeur(previewRecord);if(!issued.success)return setReviewMessage(issued.message);const entry=issued.entry;
         rentalAuditRepository.append({id:crypto.randomUUID(),rentalId:aggregate.rental.id,rentalNumber:aggregate.rental.rentalNumber,action:"CUSTOMER_REVIEW_REQUESTED",timestamp:new Date().toISOString(),actorId:user?.id,actorName:user?.name,actorRole:user?.role,previousApprovalStatus:aggregate.rental.approvalStatus??"LegacyNotRecorded",resultingApprovalStatus:aggregate.rental.approvalStatus??"LegacyNotRecorded",previousRentalStatus:aggregate.rental.status,resultingRentalStatus:aggregate.rental.status,remarks:`${previewRecord.deurNumber??"DEUR"} R${revisionNumber} sent to ${entry.representativeEmail}.`});
-        setReviewMessage(`Awaiting Customer Acknowledgement. Request sent to ${entry.representativeEmail}.`);
+        setReviewMessage(`Awaiting Customer Acknowledgement. Delivery Mode: Development Outbox Only. Request prepared for ${entry.representativeEmail}.`);
       }catch(error){setReviewMessage(error instanceof Error?error.message:"Unable to create Customer review request.")}
     };
     const running = previewRecord

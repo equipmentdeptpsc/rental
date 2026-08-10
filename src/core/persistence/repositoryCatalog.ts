@@ -28,6 +28,8 @@ export const repositoryCatalog: readonly RepositoryDescriptor[] = [
   { name: "ActivityCode", storageKey: "equipment-rental-activity-codes", schemaVersion: 1, capabilities: [...crud, "MIGRATION"] },
   { name: "CostCode", storageKey: "equipment-rental-cost-codes", schemaVersion: 1, capabilities: [...crud, "MIGRATION"] },
   { name: "WorkDescription", storageKey: "equipment-rental-work-descriptions", schemaVersion: 1, capabilities: [...crud, "MIGRATION"] },
+  { name: "IdleReason", storageKey: "equipment-rental-idle-reasons", schemaVersion: 1, capabilities: [...crud, "MIGRATION"] },
+  { name: "EquipmentSubcategory", storageKey: "equipment-rental-equipment-subcategories", schemaVersion: 1, capabilities: [...crud, "MIGRATION"] },
   { name: "EquipmentPrefix", storageKey: "equipment-prefixes", schemaVersion: 1, capabilities: [...crud] },
   ...["Type", "Model", "Brand", "Category", "Condition", "Location", "Ownership", "Status"].map((name) => ({ name: `Equipment${name}`, storageKey: `equipment-${name.toLowerCase()}${name === "Status" ? "-master" : name === "Type" ? "s" : name === "Model" ? "s" : name === "Brand" ? "-master" : name === "Category" ? "-master" : name === "Condition" ? "-master" : name === "Location" ? "-master" : "-master"}`, schemaVersion: 1, capabilities: [...crud] } as RepositoryDescriptor)),
   { name: "RentalStatus", storageKey: "rental-status-master", schemaVersion: 1, capabilities: [...crud] },

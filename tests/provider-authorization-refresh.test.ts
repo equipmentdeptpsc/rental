@@ -46,6 +46,7 @@ import {
 } from "@/features/rental/deur/context/DeurContext";
 import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
 import type { DeurRecord } from "@/features/rental/deur/types";
+import { operatorRepository } from "@/features/operators/repository";
 
 const administrator: User = {
   id: "admin",
@@ -63,6 +64,14 @@ const management: User = {
   username: "management",
   displayName: "Management",
   systemRoles: ["management"],
+};
+const operatorPersona: User = {
+  ...administrator,
+  id: "operator-persona-user",
+  username: "operator.persona",
+  displayName: "Operator Persona",
+  systemRoles: ["rental-operations"],
+  operatorId: "operator-persona-record",
 };
 
 const project: ProjectRecord = {
@@ -196,6 +205,7 @@ afterEach(async () => {
     mounted = undefined;
   }
   localStorage.clear();
+  operatorRepository.delete("operator-persona-record");
 });
 
 function providers(children: ReactNode) {
@@ -322,6 +332,17 @@ describe("authorization-capturing provider refresh", () => {
     expect(() => harness.billing.addBilling(billing)).toThrow(AuthorizationError);
     await act(async () => harness.deur.loadSession(deur));
     expect(() => harness.deur.start("Operation")).toThrow(AuthorizationError);
+    expectNoWrites(writes);
+  });
+
+  it("denies Operator Persona administrative provider mutations before persistence", async () => {
+    operatorRepository.create({ id: "operator-persona-record", name: "Operator Persona", email: "", licenseNumber: "", certificationType: "None", status: "Active", joinedDate: "2026-08-10" });
+    const { harness, writes } = await renderAuthenticated(operatorPersona, "login");
+    expect(() => harness.project.addProject(project)).toThrow(AuthorizationError);
+    expect(() => harness.assignment.addAssignment(assignment)).toThrow(AuthorizationError);
+    expect(() => harness.maintenance.addMaintenance(maintenance)).toThrow(AuthorizationError);
+    expect(() => harness.dailyLog.addLog(dailyLog)).toThrow(AuthorizationError);
+    expect(() => harness.billing.addBilling(billing)).toThrow(AuthorizationError);
     expectNoWrites(writes);
   });
 });

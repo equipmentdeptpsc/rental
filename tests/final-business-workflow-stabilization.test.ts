@@ -55,6 +55,18 @@ describe("final business workflow stabilization", () => {
     expect((first.success&&first.entry.snapshot.timeline?.[0].durationMinutes)).toBe(20);
   });
 
+  it("uses only the frozen Rental review recipient and never falls back to Customer master", () => {
+    vi.spyOn(customerRepository,"getById").mockReturnValue({id:"customer-1",companyName:"Customer",contactPerson:"Changed",email:"changed@test.dev"} as never);
+    vi.spyOn(rentalRepository,"getById").mockReturnValue({id:"rental-1",rentalNumber:"R-1",customerId:"customer-1",customer:"Customer",projectId:"project-1",project:"Project",status:"Active",dateOut:"2026-07-27",customerContactSnapshot:{representativeName:"Frozen Rep",representativeEmail:" Frozen.Rep@Test.Dev "}} as never);
+    const frozen=createCustomerReviewRequestForSubmittedDeur(deur());
+    expect(frozen.success&&frozen.entry.representativeEmail).toBe("frozen.rep@test.dev");
+    expect(frozen.success&&frozen.entry.representativeEmail).not.toBe("changed@test.dev");
+    vi.spyOn(rentalRepository,"getById").mockReturnValue({id:"rental-1",rentalNumber:"R-1",customerId:"customer-1",customer:"Customer",projectId:"project-1",project:"Project",status:"Active",dateOut:"2026-07-27"} as never);
+    expect(createCustomerReviewRequestForSubmittedDeur({...deur(),id:"missing"})).toMatchObject({success:false,message:expect.stringContaining("Rental-specific")});
+    vi.spyOn(rentalRepository,"getById").mockReturnValue({id:"rental-1",rentalNumber:"R-1",customerId:"customer-1",customer:"Customer",projectId:"project-1",project:"Project",status:"Active",dateOut:"2026-07-27",customerContactSnapshot:{representativeName:"Rep",representativeEmail:"rep@test.dev\r\nBcc:evil@test.dev"}} as never);
+    expect(createCustomerReviewRequestForSubmittedDeur({...deur(),id:"injection"})).toMatchObject({success:false,message:expect.stringContaining("valid Rental-specific")});
+  });
+
   it("uses statement grand total in email and produces a PDF statement snapshot", () => {
     const email=buildBillingStatementEmail({statementNumber:"BS-1",rentalNumber:"R-1",customer:"Customer",representativeName:"Rep",recipient:"rep@test.dev",project:"Project",billingFrom:"2026-07-01",billingTo:"2026-07-31",amountDue:310,currency:"PHP"});
     expect(email.body).toContain("Amount Due: PHP 310.00");

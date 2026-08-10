@@ -45,6 +45,26 @@ describe("Phase C5C notification architecture", () => {
     expect(email.subject).not.toMatch(/[\r\n]/);
   });
 
+  it("renders the customer secure-review URL as a non-mutating email-safe CTA with plain-text fallback", () => {
+    const reviewUrl = "https://uat.example.test/review/deur/opaque-credential";
+    const email = renderNotificationTemplate("CUSTOMER_REVIEW_REQUESTED", {
+      recipientName: "Customer",
+      companyName: "Equipment Rental UAT",
+      rentalReference: "R-100",
+      deurNumber: "DEUR-100",
+      revisionLabel: "R1",
+      expirationLabel: "August 17, 2026",
+      reviewUrl,
+    });
+    expect(email.html).toContain('role="presentation"');
+    expect(email.html).toContain("REVIEW &amp; ACKNOWLEDGE DEUR");
+    expect(email.html).toContain(`href="${reviewUrl}"`);
+    expect(email.text).toContain(`Secure review: ${reviewUrl}`);
+    expect(email.text).toContain("- Acknowledge");
+    expect(email.text).toContain("- Request Correction");
+    expect(email.html).not.toMatch(/method=|public_acknowledge|acknowledge_customer_review/i);
+  });
+
   it("claims once and records provider acceptance without exposing vendor types", async () => {
     const repository: NotificationDeliveryRepository = {
       create: vi.fn().mockResolvedValue("CREATED"),

@@ -21,6 +21,8 @@ import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes"
 import { getActiveCostCodeOptions } from "../utils/equipmentCostCode";
 import { useEquipment } from "../context/EquipmentContext";
 import { previewCategoryAssetNumber } from "../services/categoryAssetNumber";
+import { useEquipmentSubcategories } from "@/features/masters/equipment-subcategory/context";
+import { suggestSubcategoryAssetNumber } from "@/features/masters/equipment-subcategory/repository";
 
 interface Props {
   initialData?: EquipmentFormData;
@@ -48,6 +50,7 @@ export default function EquipmentForm({
 
   const { prefixes } = usePrefix();
   const { equipment } = useEquipment();
+  const { records: equipmentSubcategories } = useEquipmentSubcategories();
 
   const { records: equipmentBrands } =
   useEquipmentBrands();
@@ -134,6 +137,9 @@ export default function EquipmentForm({
       update("prefixId", "");
       return;
     }
+    const selectedSubcategory=equipmentSubcategories.find(item=>item.id===form.subcategoryId);
+    const subcategorySuggestion=suggestSubcategoryAssetNumber(selectedSubcategory?.assetPrefix,equipment);
+    if(subcategorySuggestion){update("assetNo",subcategorySuggestion);return;}
     const preview = previewCategoryAssetNumber(form.category as EquipmentCategory, prefixes, equipment);
     if (!preview.success) {
       update("assetNo", "");
@@ -144,6 +150,8 @@ export default function EquipmentForm({
     update("assetNo", preview.assetNo);
   }, [
     form.category,
+    form.subcategoryId,
+    equipmentSubcategories,
     prefixes,
     equipment,
     initialData?.assetNo,
@@ -167,7 +175,7 @@ export default function EquipmentForm({
           label="Asset Number"
           value={form.assetNo}
           placeholder="Select an equipment category to generate the asset number."
-          readOnly
+          onChange={(event)=>update("assetNo",event.target.value)}
         />
 
         <Input
@@ -403,8 +411,13 @@ export default function EquipmentForm({
       (selected?.category ??
         "") as EquipmentCategory
     );
+    if(form.subcategoryId&&!equipmentSubcategories.some(item=>item.id===form.subcategoryId&&item.categoryId===e.target.value)){
+      update("subcategoryId","");update("subcategoryName","");
+    }
   }}
 />
+
+<Select label="Equipment Sub-Category" value={form.subcategoryId??""} options={[{label:"-- Select Equipment Sub-Category --",value:""},...equipmentSubcategories.filter(item=>item.categoryId===form.categoryId&&item.active).map(item=>({value:item.id,label:item.name}))]} onChange={event=>{const selected=equipmentSubcategories.find(item=>item.id===event.target.value);update("subcategoryId",event.target.value);update("subcategoryName",selected?.name??"")}} />
 
 <Select
   label="Equipment Status"

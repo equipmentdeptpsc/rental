@@ -42,6 +42,7 @@ export class LocalEquipmentRepository
   create(
     equipment: EquipmentRecord
   ) {
+    if(this.data.some(item=>item.id!==equipment.id&&item.assetNo.trim().toLowerCase()===equipment.assetNo.trim().toLowerCase()))throw new Error("Asset Number already exists.");
     this.data.push(equipment);
     this.save();
   }
@@ -49,6 +50,7 @@ export class LocalEquipmentRepository
   update(
     equipment: EquipmentRecord
   ) {
+    if(this.data.some(item=>item.id!==equipment.id&&item.assetNo.trim().toLowerCase()===equipment.assetNo.trim().toLowerCase()))throw new Error("Asset Number already exists.");
     const index =
       this.data.findIndex(
         (x) =>

@@ -103,9 +103,10 @@ describe("permission-aware navigation", () => {
     expect(getAuthorizedLandingPage(user("management"), authorization)).toBe("/dashboard");
     expect(getAuthorizedLandingPage(user("finance"), authorization)).toBe("/billing");
     expect(getAuthorizedLandingPage(user("rental-operations"), authorization)).toBe("/rentals");
+    const operatorScoped = new AuthorizationService({ getById: (id) => ({ id, status: "Active" }) });
     expect(getAuthorizedLandingPage(
       { ...user("rental-operations"), operatorId: "operator-1" },
-      authorization,
+      operatorScoped,
       { hasActiveOperatorLink: true },
     )).toBe("/operator");
     expect(getAuthorizedLandingPage(
@@ -114,5 +115,15 @@ describe("permission-aware navigation", () => {
       { hasActiveOperatorLink: false },
     )).toBe("/rentals");
     expect(getAuthorizedLandingPage({ ...user("finance"), status: "inactive" }, authorization)).toBeNull();
+  });
+
+  it("limits a canonical Operator persona to My Shift and denies administrative landing", () => {
+    const scoped = new AuthorizationService({ getById: (id) => ({ id, status: "Active" }) });
+    const linked = { ...user("rental-operations"), operatorId: "operator-1" };
+    expect(getVisibleNavigation(linked, scoped).flatMap((group) => group.items.map((item) => item.label))).toEqual(["My Shift"]);
+    expect(getAuthorizedLandingPage(linked, scoped)).toBe("/operator");
+    expect(scoped.hasPermission(linked, "dashboard.read")).toBe(false);
+    expect(scoped.hasPermission(linked, "rental.read")).toBe(false);
+    expect(scoped.hasPermission(linked, "maintenance.read")).toBe(false);
   });
 });

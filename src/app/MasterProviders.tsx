@@ -14,6 +14,8 @@ import { EquipmentStatusProvider } from "@/features/masters/equipment-status/con
 import { EquipmentTypeProvider } from "@/features/masters/equipment-type/context/EquipmentTypeContext";
 
 import { RentalStatusProvider } from "@/features/masters/rental-status/context/RentalStatusContext";
+import { IdleReasonProvider } from "@/features/masters/idle-reason/context";
+import { EquipmentSubcategoryProvider } from "@/features/masters/equipment-subcategory/context";
 import { initializeRequiredMasterData } from "@/features/masters/initializeRequiredMasterData";
 
 
@@ -25,7 +27,7 @@ export default function MasterProviders({
   initializeRequiredMasterData();
 
   return (
-    <WorkDescriptionProvider>
+    <EquipmentSubcategoryProvider><IdleReasonProvider><WorkDescriptionProvider>
 
     <ActivityCodeProvider>
 
@@ -73,6 +75,6 @@ export default function MasterProviders({
 
     </ActivityCodeProvider>
 
-    </WorkDescriptionProvider>
+    </WorkDescriptionProvider></IdleReasonProvider></EquipmentSubcategoryProvider>
   );
 }

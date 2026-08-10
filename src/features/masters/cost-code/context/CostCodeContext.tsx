@@ -13,6 +13,8 @@ import {
   import {
     costCodeRepository,
   } from "../repository";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface CostCodeContextType {
   
@@ -44,6 +46,8 @@ import {
   }: {
     children: ReactNode;
   }) {
+    const auth = useOptionalAuth();
+    const authorize = () => { if (auth && !auth.hasPermission("masterData.manage")) throw new AuthorizationError("masterData.manage"); };
   
     const [
       version,
@@ -69,6 +73,7 @@ import {
     function create(
       record: CostCodeRecord
     ) {
+      authorize();
   
       costCodeRepository.create(
         record
@@ -81,6 +86,7 @@ import {
     function update(
       record: CostCodeRecord
     ) {
+      authorize();
   
       costCodeRepository.update(
         record
@@ -93,6 +99,7 @@ import {
     function softDelete(
       id: string
     ) {
+      authorize();
   
       costCodeRepository.softDelete(
         id

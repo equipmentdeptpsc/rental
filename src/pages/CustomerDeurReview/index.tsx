@@ -121,6 +121,7 @@ export default function CustomerDeurReviewPage({
       </header>
       <section className="rounded-xl border bg-white p-5">
         <dl className="grid gap-3 sm:grid-cols-2">
+          <Item label="Company" value={snapshot.companyName} />
           <Item label="Rental" value={snapshot.rentalReference} />
           <Item label="Revision" value={snapshot.submittedRevision} />
           <Item label="Customer" value={snapshot.customerName} />
@@ -141,14 +142,14 @@ export default function CustomerDeurReviewPage({
           <span>Breakdown: {snapshot.breakdownMinutes} min</span>
         </div>
       </section>
-      <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">Activity Timeline</h2>{intervals.length?<ol className="mt-3 space-y-3">{intervals.map(item=><li key={`${item.sequence}-${item.start}`}><b>{item.sequence}. {item.activity}</b><div className="text-sm">Start: {formatCustomerReviewDateTime(item.start)}<br/>End: {formatCustomerReviewDateTime(item.end)}<br/>Duration: {item.durationSeconds} seconds{item.workDescription&&<><br/>Work: {item.workDescription}</>}{item.remarks&&<><br/>Remarks: {item.remarks}</>}</div></li>)}</ol>:<p className="mt-2 text-sm text-slate-600">No completed activity intervals were recorded.</p>}</section>
+      <section className="rounded-xl border bg-white p-5"><h2 className="font-semibold">Activity Timeline</h2>{intervals.length?<ol className="mt-3 space-y-3">{intervals.map(item=><li key={`${item.sequence}-${item.start}`}><b>{item.sequence}. {item.activity}</b><div className="text-sm">{item.idleReasonLabel&&<>Reason: {item.idleReasonLabel}<br/></>}Start: {formatCustomerReviewDateTime(item.start)}<br/>End: {formatCustomerReviewDateTime(item.end)}<br/>Duration: {item.durationSeconds} seconds{item.workDescription&&<><br/>Work: {item.workDescription}</>}{item.remarks&&<><br/>Remarks: {item.remarks}</>}</div></li>)}</ol>:<p className="mt-2 text-sm text-slate-600">No completed activity intervals were recorded.</p>}</section>
       <section className="space-y-4 rounded-xl border bg-white p-5">
         <button
-          className="rounded bg-emerald-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="min-h-12 w-full rounded-lg bg-emerald-700 px-6 py-3 text-base font-bold text-white disabled:opacity-50 sm:w-auto"
           disabled={pending}
           onClick={() => void acknowledge()}
         >
-          {pending ? "Processing…" : "Acknowledge"}
+          {pending ? "Processing…" : "Acknowledge DEUR"}
         </button>
         <div className="border-t pt-4">
           <label className="block text-sm font-medium" htmlFor="correction-reason">
@@ -165,7 +166,7 @@ export default function CustomerDeurReviewPage({
             {reason.length}/{CUSTOMER_CORRECTION_REASON_MAX_LENGTH} characters
           </p>
           <button
-            className="mt-3 rounded border border-amber-700 px-4 py-2 font-medium text-amber-800 disabled:opacity-50"
+            className="mt-3 min-h-12 w-full rounded-lg border-2 border-amber-700 px-6 py-3 text-base font-bold text-amber-800 disabled:opacity-50 sm:w-auto"
             disabled={pending}
             onClick={() => void requestCorrection()}
           >

@@ -116,8 +116,6 @@ export default function NewRental() {
 
         rentalType: data.rentalType || undefined,
 
-        billingMethod: data.billingMethod || undefined,
-
         deurExpectationPolicyRequired: true,
 
         deurExpectationPolicy: {

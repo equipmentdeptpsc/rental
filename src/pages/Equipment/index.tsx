@@ -5,12 +5,15 @@ import Button from "@/components/ui/Button";
 import EquipmentTable from "@/features/equipment/components/EquipmentTable";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useState } from "react";
 
 export default function EquipmentPage() {
   const {
     equipment,
     deleteEquipment,
   } = useEquipment();
+  const [query,setQuery]=useState("");
+  const filtered=equipment.filter(item=>`${item.assetNo} ${item.equipmentName} ${item.category} ${item.subcategoryName??""}`.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <div className="space-y-6 p-8">
@@ -45,8 +48,9 @@ export default function EquipmentPage() {
 
       </div>
 
+      <input aria-label="Search Equipment" className="w-full rounded border bg-white p-3" placeholder="Search asset number, equipment name, category, or sub-category" value={query} onChange={event=>setQuery(event.target.value)}/>
       <EquipmentTable
-        equipment={equipment}
+        equipment={filtered}
         onDelete={deleteEquipment}
       />
 

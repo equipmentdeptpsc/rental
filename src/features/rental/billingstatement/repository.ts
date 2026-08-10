@@ -54,6 +54,10 @@ class BillingStatementRepository {
           .toLowerCase()
           .includes(value)
 
+        || (x.rentalNumber ?? x.rentalId).toLowerCase().includes(value)
+
+        || x.lines.some(line => `${line.equipmentId ?? ""} ${line.equipmentLabel ?? ""} ${line.deurReference ?? ""}`.toLowerCase().includes(value))
+
         ||
 
         x.customer

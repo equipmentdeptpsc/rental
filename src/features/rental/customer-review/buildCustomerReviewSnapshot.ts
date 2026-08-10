@@ -11,6 +11,7 @@ export interface CustomerReviewTimelineEntry {
   remarks?: string;
   openingMeter?: number;
   closingMeter?: number;
+  idleReasonLabel?: string;
 }
 
 const labels: Record<string, string> = {
@@ -38,9 +39,10 @@ export function buildCustomerReviewTimeline(events: CanonicalDeurEvent[]): Custo
       durationMinutes: Math.round(durationSeconds / 60),
       durationSeconds,
       workDescription: start.workDescription ?? event.workDescription,
-      remarks: start.remarks ?? event.remarks,
+      remarks: start.idleReasonRemarks ?? start.remarks ?? event.remarks,
       openingMeter: start.meterReading,
       closingMeter: event.meterReading,
+      idleReasonLabel: start.idleReasonLabelSnapshot,
     });
     open.delete(event.activityType);
   });

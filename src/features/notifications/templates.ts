@@ -1,6 +1,6 @@
 import type { NotificationTemplateInput, NotificationType, RenderedEmail } from "./domain";
 
-export const NOTIFICATION_TEMPLATE_VERSION = 1;
+export const NOTIFICATION_TEMPLATE_VERSION = 2;
 
 export function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
@@ -53,10 +53,17 @@ export function renderNotificationTemplate(type: NotificationType, input: Notifi
     `Standby: ${input.activityTotals.standbyMinutes} min`,
     `Breakdown: ${input.activityTotals.breakdownMinutes} min`,
   ] : [];
-  const text = [...lines, ...(timelineText.length ? ["Activity Timeline", ...timelineText] : []), ...totalsText].join("\n");
+  const isCustomerReview = type === "CUSTOMER_REVIEW_REQUESTED" || type === "CUSTOMER_CORRECTED_REVIEW_REQUESTED";
+  const customerInstructions = isCustomerReview && input.reviewUrl
+    ? ["Review the complete DEUR evidence, then choose:", "- Acknowledge", "- Request Correction"]
+    : [];
+  const text = [...lines, ...customerInstructions, ...(timelineText.length ? ["Activity Timeline", ...timelineText] : []), ...totalsText].join("\n");
   const htmlLines = lines.map((line) => {
     if (input.reviewUrl && line === `Secure review: ${input.reviewUrl}`) {
       const safe = escapeHtml(input.reviewUrl);
+      if (isCustomerReview) {
+        return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" style="padding:24px 0"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#047857" style="border-radius:8px"><a href="${safe}" style="display:inline-block;min-width:260px;padding:16px 24px;color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:700;line-height:20px;text-align:center;text-decoration:none">REVIEW &amp; ACKNOWLEDGE DEUR</a></td></tr></table></td></tr></table><p style="text-align:center;color:#475569;font-family:Arial,sans-serif;font-size:14px">The secure page lets you Acknowledge or Request Correction after reviewing the DEUR evidence.</p>`;
+      }
       return `<p><a href="${safe}">Open secure review</a></p>`;
     }
     return `<p>${escapeHtml(line)}</p>`;

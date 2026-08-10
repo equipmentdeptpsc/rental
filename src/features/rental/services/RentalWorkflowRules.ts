@@ -2,7 +2,7 @@ import type {
   RentalLifecycleStatus,
   RentalRecord,
 } from "../types";
-import { isRentalBillingMethod, isRentalType } from "../types";
+import { isRentalType } from "../types";
 import type { RentalBillingMethod, RentalBillingTerms, TransactionRelationship } from "../types";
 
 export type RentalBillingTermsIssueCode =
@@ -74,10 +74,6 @@ export function getRentalCommercialTermsError(
 ): string | undefined {
   if (!isRentalType(rental.rentalType)) {
     return "Select a rental type before creating a rental.";
-  }
-
-  if (!isRentalBillingMethod(rental.billingMethod)) {
-    return "Select a billing method before creating a rental.";
   }
 
   return undefined;

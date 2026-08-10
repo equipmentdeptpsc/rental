@@ -76,6 +76,9 @@ const current: EquipmentRecord = existing;
       current.capacity ?? "",
 
     category: current.category,
+    categoryId: current.categoryId,
+    subcategoryId: current.subcategoryId,
+    subcategoryName: current.subcategoryName,
 
     maintenanceType:
       current.maintenanceType,
@@ -141,6 +144,9 @@ const current: EquipmentRecord = existing;
 
       category:
         data.category as EquipmentRecord["category"],
+      categoryId: data.categoryId,
+      subcategoryId: data.subcategoryId,
+      subcategoryName: data.subcategoryName,
 
       maintenanceType:
         data.maintenanceType,

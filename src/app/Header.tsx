@@ -3,8 +3,9 @@ import { Menu } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getSystemRoleDefinition } from "@/features/auth/domain/rolePermissions";
 import OrganizationBrand from "@/shared/branding/OrganizationBrand";
+import type { ReactNode } from "react";
 
-export default function Dashboard({ onMenu }: { onMenu(): void }) {
+export default function Dashboard({ onMenu, search }: { onMenu(): void; search?: ReactNode }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
@@ -20,6 +21,7 @@ export default function Dashboard({ onMenu }: { onMenu(): void }) {
           <div className="min-w-0"><OrganizationBrand />
           <p className="mt-1 text-[10px] text-gray-500 sm:text-xs">Local UAT/demo authentication only</p>
           </div></div>
+        {search && <div className="min-w-[260px] flex-1">{search}</div>}
         {user ? (
           <div className="flex items-center gap-2 text-sm">
             <span>{user.name} ({getSystemRoleDefinition(user.systemRoles[0])?.displayName ?? user.role})</span>

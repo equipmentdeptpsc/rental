@@ -137,14 +137,14 @@ class DeurRepository {
     return { changed, records: structuredClone(migrated), issues };
   }
 
-  applyOperatorAction(input: { deurId: string; expectedUpdatedAt: string; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string }; authenticatedUser?: User | null; meterRequirement?: DeurMeterRequirementKind }) {
+  applyOperatorAction(input: { deurId: string; expectedUpdatedAt: string; action: DeurOperatorAction; actionTimestamp: string; actor: { id?: string; name: string; role?: string }; authenticatedUser?: User | null; meterRequirement?: DeurMeterRequirementKind; idleReason?: { id: string; labelSnapshot: string; remarks?: string } }) {
     assertMutationPermission(input.authenticatedUser, "deur.create");
     const current = this.getAll();
     const latest = current.find((record) => record.id === input.deurId);
     if (!latest) return { success: false as const, code: "DEUR_NOT_FOUND", message: "DEUR not found." };
     if (input.authenticatedUser && input.authenticatedUser.operatorId !== latest.operatorId) throw new AuthorizationError("deur.create");
     if (latest.updatedAt !== input.expectedUpdatedAt) return { success: false as const, code: "DEUR_STALE_VERSION", message: "This DEUR changed in another view. Latest data has been reloaded.", latest: structuredClone(latest) };
-    const result = applyDigitalDeurOperatorAction({ deur: latest, action: input.action, actionTimestamp: input.actionTimestamp, actor: input.actor, meterRequirement: input.meterRequirement });
+    const result = applyDigitalDeurOperatorAction({ deur: latest, action: input.action, actionTimestamp: input.actionTimestamp, actor: input.actor, meterRequirement: input.meterRequirement, idleReason: input.idleReason });
     if (!result.success) return result;
     const records = current.map((record) => record.id === latest.id ? result.record : record);
     const persisted = this.persistMutation(records, result.record, "update", result.record);

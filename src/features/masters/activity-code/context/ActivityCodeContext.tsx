@@ -14,6 +14,8 @@ import {
     activityCodeRepository,
     type ActivityCodeMutationResult,
   } from "../repository";
+  import { useOptionalAuth } from "@/features/auth/AuthContext";
+  import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
   
   interface ActivityCodeContextType {
   
@@ -60,6 +62,8 @@ import {
       ReactNode;
   
   }) {
+    const auth = useOptionalAuth();
+    const authorize = () => { if (auth && !auth.hasPermission("masterData.manage")) throw new AuthorizationError("masterData.manage"); };
   
     const [
   
@@ -107,6 +111,7 @@ import {
           create(
             record
           ) {
+            authorize();
   
             const result = activityCodeRepository.create(
               record
@@ -120,6 +125,7 @@ import {
           update(
             record
           ) {
+            authorize();
   
             const result = activityCodeRepository.update(
               record
@@ -133,6 +139,7 @@ import {
           softDelete(
             id
           ) {
+            authorize();
   
             activityCodeRepository.softDelete(
               id
@@ -145,6 +152,7 @@ import {
           restore(
             id
           ) {
+            authorize();
   
             activityCodeRepository.restore(
               id

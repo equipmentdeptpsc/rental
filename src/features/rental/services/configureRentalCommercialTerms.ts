@@ -30,6 +30,34 @@ export type ConfigureRentalCommercialTermsResult =
   | { success: true; contract: RentalContractRecord }
   | { success: false; code: string; message: string };
 
+export type ConfigureBulkRentalCommercialTermsResult =
+  | { success: true; contracts: RentalContractRecord[] }
+  | { success: false; code: string; message: string; lineId?: string };
+
+export function configureBulkRentalCommercialTerms(input: {
+  rental: RentalRecord;
+  lines: RentalEquipmentLine[];
+  commercialTerms: RentalCommercialTermsInput;
+  existingContracts: RentalContractRecord[];
+  timestamp: string;
+}): ConfigureBulkRentalCommercialTermsResult {
+  if (input.lines.length === 0) return { success: false, code: "NO_LINES_SELECTED", message: "Select at least one equipment line." };
+  const contracts: RentalContractRecord[] = [];
+  for (const line of input.lines) {
+    const configured = configureRentalCommercialTerms({
+      rental: input.rental,
+      line,
+      equipmentId: line.equipmentId,
+      commercialTerms: input.commercialTerms,
+      existingContract: input.existingContracts.find((contract) => contract.rentalEquipmentLineId === line.id),
+      timestamp: input.timestamp,
+    });
+    if (!configured.success) return { ...configured, lineId: line.id };
+    contracts.push(configured.contract);
+  }
+  return { success: true, contracts };
+}
+
 export function canEditRentalCommercialTerms(rental: Pick<RentalRecord, "status">): boolean {
   return rental.status === "Draft" || rental.status === "Assigned" || rental.status === "Reserved";
 }

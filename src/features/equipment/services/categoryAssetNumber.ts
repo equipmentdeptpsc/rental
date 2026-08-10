@@ -46,7 +46,11 @@ export function previewCategoryAssetNumber(category: EquipmentCategory | string 
 }
 
 export function createEquipmentWithCategoryAssetNumber(record: EquipmentRecord, prefixes: PrefixRecord[], equipment: EquipmentRecord[], options?: { preserveAssetNumber?: boolean }) {
-  if (options?.preserveAssetNumber && record.assetNo.trim()) return { success: true as const, record: structuredClone(record) };
+  if ((options?.preserveAssetNumber || record.assetNo.trim()) && record.assetNo.trim()) {
+    const assetNo=record.assetNo.trim();
+    if(equipment.some(item=>item.id!==record.id&&item.assetNo.trim().toLowerCase()===assetNo.toLowerCase()))return{success:false as const,code:"ASSET_NUMBER_CONFLICT",message:"Asset Number already exists."};
+    return { success: true as const, record: { ...structuredClone(record), assetNo } };
+  }
   const generated = previewCategoryAssetNumber(record.category, prefixes, equipment); if (!generated.success) return generated;
   return { success: true as const, record: { ...structuredClone(record), prefixId: generated.prefixId, assetNo: generated.assetNo } };
 }

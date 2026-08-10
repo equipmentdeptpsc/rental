@@ -61,6 +61,27 @@ export const rentalContractRepository = {
     return { success: true, contract: clone(normalized) };
   },
 
+  saveManyForRentalEquipmentLines(contracts: RentalContractRecord[]): { success: true; contracts: RentalContractRecord[] } | { success: false; issue: RentalEquipmentLineMigrationIssue } {
+    const records = read();
+    const requestedLineIds = contracts.map((contract) => contract.rentalEquipmentLineId?.trim() ?? "");
+    if (requestedLineIds.some((id) => !id) || new Set(requestedLineIds).size !== requestedLineIds.length) {
+      return { success: false, issue: { code: "AMBIGUOUS_LEGACY_CONTRACT_LINES", lineIds: requestedLineIds.filter(Boolean), message: "Bulk commercial terms require distinct Rental Equipment Line identities." } };
+    }
+    for (const contract of contracts) {
+      const lineId = contract.rentalEquipmentLineId!;
+      const matches = records.filter((item) => item.rentalEquipmentLineId === lineId);
+      if (matches.length > 1 || (matches.length === 1 && matches[0].id !== contract.id)) {
+        return { success: false, issue: { code: "AMBIGUOUS_LEGACY_CONTRACT_LINES", rentalId: contract.rentalId, lineIds: [lineId], message: "Multiple commercial terms records target this Rental Equipment Line." } };
+      }
+      if (records.some((item) => item.id === contract.id && item.rentalEquipmentLineId !== lineId)) {
+        return { success: false, issue: { code: "AMBIGUOUS_LEGACY_CONTRACT_LINES", rentalId: contract.rentalId, lineIds: [lineId], message: "Commercial terms identity is already used by another Rental Equipment Line." } };
+      }
+    }
+    const requestedIds = new Set(contracts.map((contract) => contract.id));
+    save([...records.filter((item) => !requestedIds.has(item.id)), ...contracts.map(normalizeContract)]);
+    return { success: true, contracts: clone(contracts.map(normalizeContract)) };
+  },
+
   create(contract: RentalContractRecord) { const records = read(); records.push(normalizeContract(contract)); save(records); },
   update(contract: RentalContractRecord) { const records = read(); const index = records.findIndex((item) => item.id === contract.id); if (index >= 0) { records[index] = normalizeContract(contract); save(records); } },
   delete(id: string) { save(read().filter((contract) => contract.id !== id)); },

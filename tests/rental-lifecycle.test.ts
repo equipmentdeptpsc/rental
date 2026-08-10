@@ -555,12 +555,20 @@ describe("RentalProvider synchronization", () => {
     const { harness, root, container } = await renderHarness();
     const { status: _status, statusId: _statusId, ...request } = rental("Draft");
     const before = structuredClone(request);
+    const equipmentBefore = structuredClone(storage.get(equipmentKey));
+    const assignmentsBefore = structuredClone(storage.get(assignmentKey));
+    const linesBefore = structuredClone(storage.get("equipment-rental-equipment-lines"));
 
     await act(async () => {
       expect(harness.rental.addRental({ ...request, customerId: "", customer: "" })).toMatchObject({
         success: false,
         message: "Select a customer before creating a rental.",
       });
+      expect(harness.rental.rentals).toHaveLength(0);
+      expect(storage.get(rentalKey) ?? []).toHaveLength(0);
+      expect(storage.get("equipment-rental-equipment-lines")).toEqual(linesBefore);
+      expect(storage.get(equipmentKey)).toEqual(equipmentBefore);
+      expect(storage.get(assignmentKey)).toEqual(assignmentsBefore);
       expect(harness.rental.addRental(request).success).toBe(true);
       expect(harness.rental.addRental({ ...request, id: "rental-2", rentalNumber: "R-002" })).toMatchObject({
         success: false,
@@ -699,12 +707,13 @@ describe("RentalProvider synchronization", () => {
       { id: "operator-2", name: "Operator Two", email: "two@example.test", licenseNumber: "L2", certificationType: "Heavy Machinery", status: "Active", joinedDate: "2026-01-01" },
     ]);
     const first = await renderHarness();
-    const { status: _status, statusId: _statusId, equipmentId: _equipmentId, operatorId: _operatorId, assignmentId: _assignmentId, ...request } = rental("Draft");
+    const { status: _status, statusId: _statusId, equipmentId: _equipmentId, operatorId: _operatorId, assignmentId: _assignmentId, billingMethod: _billingMethod, ...request } = rental("Draft");
     await act(async () => expect(first.harness.rental.addRental(
       { ...request, equipmentId: "", operatorId: undefined, assignmentId: undefined },
       [activeAssignment, secondAssignment].map((item) => ({ equipmentId: item.equipmentId, assignmentId: item.id, operatorId: item.operatorId })),
     )).toMatchObject({ success: true }));
     expect(first.harness.rental.getRental("rental-1")?.status).toBe("Draft");
+    expect(first.harness.rental.getRental("rental-1")?.billingMethod).toBeUndefined();
     expect(first.harness.rental.rentalEquipmentLines).toHaveLength(2);
     expect(first.harness.rental.rentalEquipmentLines.map((line) => ({ equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId, operational: Boolean(line.operationalMetadata) }))).toEqual([
       { equipmentId: "equipment-1", assignmentId: "assignment-1", operatorId: "operator-1", operational: true },
@@ -737,8 +746,9 @@ describe("RentalProvider synchronization", () => {
     storage.set("equipment-rental-cost-codes", [{ id:"cost-heavy",code:"5031HEAVYEQPT",description:"Heavy Equipment",defaultRate:0,unit:"Hour",active:true,deleted:false }]);
     storage.set("equipment-rental-activity-codes", [{ id:"activity-ldc",activityCode:"LDC",description:"Development",active:true,deleted:false }]);
     const current = await renderHarness();
-    const { status: _status, statusId: _statusId, ...request } = rental("Draft", configuredAssignment.id);
+    const { status: _status, statusId: _statusId, billingMethod: _billingMethod, ...request } = rental("Draft", configuredAssignment.id);
     await act(async () => expect(current.harness.rental.addRental(request)).toMatchObject({ success:true }));
+    expect(current.harness.rental.getRental("rental-1")?.billingMethod).toBeUndefined();
     const line = current.harness.rental.rentalEquipmentLines[0];
     await act(async () => expect(current.harness.rental.saveCommercialTermsForRentalEquipmentLine("rental-1",line.id,commercialTerms())).toMatchObject({ success:true }));
     await act(async () => expect(current.harness.rental.configureLineDeurExpectation("rental-1",line.id,WORK_DESCRIPTION_SEEDS[0].id)).toMatchObject({ success:true }));

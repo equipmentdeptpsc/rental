@@ -4,10 +4,12 @@ import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { useRental } from "@/features/rental/context/RentalContext";
+import { useState } from "react";
+import { billingWorkspaceHref } from "@/features/rental/workspace/routing";
 
 export default function Billing() {
   const { rentals } = useRental();
-  const statements = billingStatementRepository.getAll();
+  const[query,setQuery]=useState("");const statements = billingStatementRepository.search(query);
 
   return (
     <div className="space-y-6 p-4 sm:p-8">
@@ -20,6 +22,7 @@ export default function Billing() {
 
       <div className="rounded-xl border bg-white p-4 sm:p-6">
         <h2 className="text-xl font-semibold">Billing Statements</h2>
+        <input aria-label="Search Billing" className="mt-4 w-full rounded border p-3" placeholder="Search statement, rental, customer, project, or equipment reference" value={query} onChange={event=>setQuery(event.target.value)}/>
         {statements.length === 0 ? (
           <p className="mt-4 text-slate-500">
             No billing statements have been created. Open a rental workspace and select Billing to generate one.
@@ -46,7 +49,7 @@ export default function Billing() {
                     <td className="px-4 py-3 text-right">{statement.subtotal}</td>
                     <td className="px-4 py-3">{statement.invoiceStatus}</td>
                     <td className="px-4 py-3">
-                      <Link className="font-medium text-blue-600 hover:underline" to={`/rentals/${statement.rentalId}/workspace`}>
+                      <Link className="font-medium text-blue-600 hover:underline" to={billingWorkspaceHref(statement.rentalId, statement.id)}>
                         Open Billing Workspace
                       </Link>
                     </td>

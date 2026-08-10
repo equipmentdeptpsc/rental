@@ -57,7 +57,7 @@ export class InMemoryDeurCommandRepository implements DeurCommandRepository {
   private transition(type: string, input: ActivityTransitionInput) {
     return this.execute(type, input, () => {
       const current = this.current(input); if (!current.success) return current.result;
-      const at = this.now(), applied = applyDigitalDeurOperatorAction({ deur: current.value.record, action: input.action, actionTimestamp: at, actor: { id: this.actor()!.userId, name: this.actor()!.userId } });
+      const at = this.now(), applied = applyDigitalDeurOperatorAction({ deur: current.value.record, action: input.action, actionTimestamp: at, actor: { id: this.actor()!.userId, name: this.actor()!.userId }, idleReason: input.idleReasonId && input.idleReasonLabelSnapshot ? { id: input.idleReasonId, labelSnapshot: input.idleReasonLabelSnapshot, remarks: input.idleReasonRemarks } : undefined });
       return applied.success ? this.persist(applied.record, current.value.version + 1, at) : failure("INVALID_TRANSITION", input.deurId);
     });
   }

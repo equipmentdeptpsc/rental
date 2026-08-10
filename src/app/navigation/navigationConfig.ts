@@ -54,17 +54,15 @@ export function getVisibleNavigation(
   user: User | null | undefined,
   authorization: AuthorizationService,
 ): readonly NavigationGroup[] {
+  if (authorization.isOperatorPersona(user)) {
+    return [{ title: "OPERATIONS", items: [{ icon: "operators", label: "My Shift", path: "/operator", permission: "deur.read" }] }];
+  }
   const groups = APP_NAVIGATION_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) =>
       authorization.hasPermission(user, item.permission),
     ),
   })).filter((group) => group.items.length > 0);
-  if (user?.operatorId && authorization.hasPermission(user, "deur.read")) {
-    return groups.map((group) => group.title === "OPERATIONS"
-      ? { ...group, items: [...group.items, { icon: "operators" as const, label: "My Shift", path: "/operator", permission: "deur.read" as const }] }
-      : group);
-  }
   return groups;
 }
 
@@ -73,18 +71,14 @@ const FALLBACK_LANDING_ORDER = ["/dashboard", "/rentals", "/billing", "/equipmen
 export function getAuthorizedLandingPage(
   user: User | null | undefined,
   authorization: AuthorizationService,
-  options: { hasActiveOperatorLink?: boolean } = {},
+  _options: { hasActiveOperatorLink?: boolean } = {},
 ): string | null {
+  if (authorization.isOperatorPersona(user)) return "/operator";
   if (
     user?.systemRoles.includes("system-administrator") &&
     authorization.hasPermission(user, "dashboard.read")
   ) return "/dashboard";
   if (user?.systemRoles.includes("rental-operations")) {
-    if (
-      options.hasActiveOperatorLink &&
-      user.operatorId &&
-      authorization.hasPermission(user, "deur.read")
-    ) return "/operator";
     if (authorization.hasPermission(user, "rental.read")) return "/rentals";
   }
   if (

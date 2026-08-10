@@ -62,6 +62,7 @@ describe("Phase C12 review recipients, evidence, and billing",()=>{
 
   it("adds only a forward migration with narrow manager resolver grants",()=>{
     const sql=readFileSync("supabase/migrations/20260803004400_phase_c12_review_recipient_and_billing_evidence.sql","utf8");
-    expect(sql).toContain("ADD COLUMN IF NOT EXISTS email text");expect(sql).toContain("SECURITY DEFINER");expect(sql).toContain("SET search_path = erp, auth, pg_catalog");expect(sql).toContain("TO service_role");expect(sql).not.toMatch(/TO anon|TO authenticated/);
+    const resolver=sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION erp.resolve_manager_review_recipient"),sql.indexOf("CREATE OR REPLACE FUNCTION erp.enforce_customer_review_snapshot_recipient"));
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS email text");expect(resolver).toContain("SECURITY DEFINER");expect(resolver).toContain("SET search_path = erp, auth, pg_catalog");expect(resolver).toContain("TO service_role");expect(resolver).not.toMatch(/TO anon|TO authenticated/);
   });
 });

@@ -61,7 +61,7 @@ export default function NewEquipment() {
 
       prefixId: data.prefixId,
 
-      assetNo: "",
+      assetNo: data.assetNo,
 
       equipmentName: data.equipmentName,
 
@@ -86,6 +86,9 @@ export default function NewEquipment() {
 
       category:
         data.category as EquipmentRecord["category"],
+      categoryId: data.categoryId,
+      subcategoryId: data.subcategoryId,
+      subcategoryName: data.subcategoryName,
 
       maintenanceType:
         data.maintenanceType,

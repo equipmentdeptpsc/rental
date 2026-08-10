@@ -20,10 +20,13 @@ import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveR
 import { resolveRentalBillingBlockers } from "@/features/rental/billing/resolveRentalBillingBlockers";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
+import { useSearchParams } from "react-router-dom";
 
 export default function BillingPanel() {
 
   const aggregate = useRentalWorkspaceAggregate();
+  const [searchParams] = useSearchParams();
+  const selectedBillingStatementId = searchParams.get("billingStatementId") ?? undefined;
   const { equipment } = useEquipment();
 
   const wizard =
@@ -155,6 +158,7 @@ export default function BillingPanel() {
 
         <BillingDraftTable
   drafts={drafts.drafts}
+  selectedId={selectedBillingStatementId}
   onDelete={
     drafts.deleteDraft
   }

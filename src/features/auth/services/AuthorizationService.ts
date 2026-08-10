@@ -4,8 +4,12 @@ import {
 } from "../domain/permission";
 import { getSystemRoleDefinition } from "../domain/rolePermissions";
 import type { User } from "../domain/user";
+import { OperatorPersonaAccessPolicy, type OperatorPersonaDirectory } from "./OperatorPersonaAccessPolicy";
 
 export class AuthorizationService {
+  private readonly personaPolicy: OperatorPersonaAccessPolicy;
+  constructor(operators?: OperatorPersonaDirectory) { this.personaPolicy = new OperatorPersonaAccessPolicy(operators); }
+  isOperatorPersona(user: User | null | undefined): boolean { return this.personaPolicy.isOperatorPersona(user); }
   getEffectivePermissions(user: User | null | undefined): ReadonlySet<Permission> {
     if (!user || user.status !== "active") {
       return immutablePermissionSet([]);
@@ -16,7 +20,7 @@ export class AuthorizationService {
     for (const role of user.systemRoles) {
       const definition = getSystemRoleDefinition(role);
       definition?.permissions.forEach((permission) => {
-        effectivePermissions.add(permission);
+        if (this.personaPolicy.permits(user, permission)) effectivePermissions.add(permission);
       });
     }
 

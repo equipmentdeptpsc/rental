@@ -44,9 +44,10 @@ describe("rental commercial terms", () => {
     expect(normalizeRentalBillingMethod("Per Lot")).toBe("One Lot");
   });
 
-  it("requires valid terms for new rentals while allowing historical records to remain readable", () => {
+  it("requires a canonical rental type but defers billing method to line commercial terms", () => {
     expect(getRentalCommercialTermsError({ rentalType: "", billingMethod: "Per Hour" })).toContain("rental type");
-    expect(getRentalCommercialTermsError({ rentalType: "Bare Rental", billingMethod: "" })).toContain("billing method");
+    expect(getRentalCommercialTermsError({ rentalType: "Bare Rental", billingMethod: "" })).toBeUndefined();
+    expect(getRentalCommercialTermsError({ rentalType: "Operated Rental" })).toBeUndefined();
     expect(getRentalCommercialTermsError({ rentalType: "Operated Rental", billingMethod: "Per Hour" })).toBeUndefined();
     expect(isRentalType(undefined)).toBe(false);
     expect(isRentalBillingMethod(undefined)).toBe(false);

@@ -1,7 +1,9 @@
 import type { User } from "@/features/auth/domain/user";
 import type { SystemRole } from "@/features/auth/domain/systemRole";
 import type { UserRepository } from "@/features/auth/repository/UserRepository";
-import { assertPermission } from "@/features/auth/services/assertPermission";
+import { authorizationService as defaultAuthorizationService, type AuthorizationService } from "@/features/auth/services/AuthorizationService";
+import { AuthorizationError } from "@/features/auth/services/AuthorizationError";
+import { notifyCanonicalUserChanged } from "@/features/auth/services/canonicalUserChangeNotifications";
 import type { Operator } from "@/features/operators/types";
 import { isValidBusinessEmail, normalizeBusinessEmail } from "@/shared/validation/email";
 
@@ -35,6 +37,8 @@ export class UserManagementService {
     private readonly createId: () => string = () => crypto.randomUUID(),
     private readonly now: () => string = () => new Date().toISOString(),
     private readonly operators?: OperatorLinkDirectory,
+    private readonly authorization: AuthorizationService = defaultAuthorizationService,
+    private readonly notifyUserChanged: (userId: string) => void = notifyCanonicalUserChanged,
   ) {}
 
   list(actor: User): readonly User[] {
@@ -96,13 +100,17 @@ export class UserManagementService {
       throw new Error("The final active System Administrator role cannot be removed.");
     }
     this.validateOperatorLink(next);
-    return this.users.updateUser(next);
+    const updated = this.users.updateUser(next);
+    this.notifyUserChanged(updated.id);
+    return updated;
   }
 
   activate(actor: User, id: string): User {
     this.authorize(actor);
     this.validateOperatorLink({ ...this.required(id), status: "active" });
-    return this.users.activateUser(id);
+    const updated = this.users.activateUser(id);
+    this.notifyUserChanged(updated.id);
+    return updated;
   }
 
   deactivate(actor: User, id: string): User {
@@ -115,7 +123,9 @@ export class UserManagementService {
     ) {
       throw new Error("The system must retain at least one active System Administrator.");
     }
-    return this.users.deactivateUser(id);
+    const updated = this.users.deactivateUser(id);
+    this.notifyUserChanged(updated.id);
+    return updated;
   }
 
   resetLocalPassword(actor: User, id: string, input: ResetLocalPasswordInput): User {
@@ -132,7 +142,7 @@ export class UserManagementService {
   }
 
   private authorize(actor: User): void {
-    assertPermission(actor, "users.manage");
+    if (!this.authorization.hasPermission(actor, "users.manage")) throw new AuthorizationError("users.manage");
   }
 
   private required(id: string): User {

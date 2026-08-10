@@ -7,15 +7,19 @@ import { rentalRepository } from "@/features/rental/repository";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import { developmentCustomerReviewOutbox } from "./developmentCustomerReviewOutbox";
 import { reviewTimelineForDeur } from "./buildCustomerReviewSnapshot";
+import { isValidBusinessEmail, normalizeBusinessEmail } from "@/shared/validation/email";
 
 export function createCustomerReviewRequestForSubmittedDeur(deur: DeurRecord) {
   if (deur.status !== "Submitted") return { success: false as const, message: "Only a Submitted DEUR can create a Customer review request." };
   const rental = rentalRepository.getById(deur.rentalId);
   if (!rental) return { success: false as const, message: "Rental record is unavailable for Customer review." };
   const customer = rental.customerId ? customerRepository.getById(rental.customerId) : undefined;
-  const contact = rental.customerContactSnapshot ?? (customer ? { representativeName: customer.contactPerson, representativeEmail: customer.email } : undefined);
-  if (!contact?.representativeName?.trim() || !contact.representativeEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.representativeEmail)) {
-    return { success: false as const, message: "A valid Customer representative name and email are required." };
+  const contact = rental.customerContactSnapshot;
+  if (!contact?.representativeName?.trim()) {
+    return { success: false as const, message: "Rental-specific Customer Review representative is required before issuing acknowledgement." };
+  }
+  if (!contact.representativeEmail || !isValidBusinessEmail(contact.representativeEmail)) {
+    return { success: false as const, message: "A valid Rental-specific Customer Review Email is required before issuing acknowledgement." };
   }
   const line = deur.rentalEquipmentLineId ? rentalEquipmentLineRepository.getById(deur.rentalEquipmentLineId) : undefined;
   const equipment = equipmentRepository.getById(line?.equipmentId ?? deur.equipmentId);
@@ -31,8 +35,8 @@ export function createCustomerReviewRequestForSubmittedDeur(deur: DeurRecord) {
     revisionNumber,
     rentalNumber: rental.rentalNumber ?? "Rental number unavailable",
     customerName: customer?.companyName ?? rental.customer,
-    representativeName: contact.representativeName,
-    representativeEmail: contact.representativeEmail,
+    representativeName: contact.representativeName.trim(),
+    representativeEmail: normalizeBusinessEmail(contact.representativeEmail),
     snapshot: {
       project: project?.projectName ?? rental.project,
       equipment: equipment ? `${equipment.equipmentName} (${equipment.assetNo})` : "Equipment record unavailable",

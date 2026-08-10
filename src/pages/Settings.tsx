@@ -217,6 +217,18 @@ export default function Settings() {
       </div>
 
       <div className="rounded-xl border bg-white p-6">
+        <h2 className="text-2xl font-semibold">Equipment Sub-Category Master</h2>
+        <p className="mb-4 text-gray-500">Manage Category-specific equipment classifications and optional asset prefixes.</p>
+        <Link to="/settings/equipment-subcategories" className="inline-flex rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700">Manage Equipment Sub-Categories</Link>
+      </div>
+
+      <div className="rounded-xl border bg-white p-6">
+        <h2 className="text-2xl font-semibold">Idle Reason Master</h2>
+        <p className="mb-4 text-gray-500">Manage selectable operational idle reasons.</p>
+        <Link to="/settings/idle-reasons" className="inline-flex rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700">Manage Idle Reasons</Link>
+      </div>
+
+      <div className="rounded-xl border bg-white p-6">
         <h2 className="text-2xl font-semibold">Work Description Master</h2>
         <p className="mb-4 text-gray-500">
           Manage the compact list of principal work performed during a DEUR day or shift.

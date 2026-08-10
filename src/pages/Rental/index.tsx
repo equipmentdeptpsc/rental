@@ -23,6 +23,7 @@ import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { collectionRepository } from "@/features/rental/collections/repository";
 import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
 import { projectRentalCollectionStatus } from "@/features/rental/collections/collectionStatusProjection";
+import { projectActiveRentalEngagements } from "@/features/rental/services/projectActiveRentalEngagements";
 
 export default function RentalPage() {
   const { billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
@@ -36,6 +37,7 @@ export default function RentalPage() {
   const [, setDeurVersion] = useState(0);
   useEffect(() => subscribeDeurChanges(() => setDeurVersion((value) => value + 1)), []);
   const { monitored: monitoredRentals, rows: attentionRows } = buildRentalDeurComplianceReport({ rentals, assignments, rentalEquipmentLines, deurs: deurRepository.getAll(), evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
+  const engagements = projectActiveRentalEngagements({ rentals, lines: rentalEquipmentLines });
 
   return (
     <div className="space-y-6 p-8">
@@ -65,6 +67,8 @@ export default function RentalPage() {
         </Link>
 
       </div>
+
+      <section className="rounded-lg border bg-white p-5"><h2 className="text-lg font-semibold">Active Customer / Project Engagements</h2><p className="mb-4 text-sm text-slate-500">Read-only grouping; every Rental and equipment-line identity remains independent.</p><ResponsiveTable><table className="min-w-full text-sm"><thead className="bg-slate-50"><tr>{["Customer","Project","Active Equipment","Returned / Financially Open","DEUR Attention","Rental Transactions","Open Workspace"].map((label)=><th className="px-3 py-2 text-left" key={label}>{label}</th>)}</tr></thead><tbody>{engagements.length===0?<tr><td className="p-6 text-center text-slate-500" colSpan={7}>No active or financially-open engagements.</td></tr>:engagements.map((engagement)=>{const rentalIds=new Set(engagement.rentals.map((rental)=>rental.id));const attention=attentionRows.filter((row)=>rentalIds.has(row.rental.id)).length;return <tr className="border-t" key={engagement.key}><td className="px-3 py-2">{engagement.customer}</td><td className="px-3 py-2">{engagement.project}</td><td className="px-3 py-2">{engagement.activeEquipmentCount}</td><td className="px-3 py-2">{engagement.returnedFinanciallyOpenCount}</td><td className="px-3 py-2">{attention}</td><td className="px-3 py-2">{engagement.rentals.length}</td><td className="px-3 py-2"><div className="flex flex-wrap gap-2">{engagement.rentals.map((rental)=><Link className="text-blue-600 hover:underline" key={rental.id} to={`/rentals/${rental.id}/workspace`}>{rental.rentalNumber??rental.id}</Link>)}</div></td></tr>})}</tbody></table></ResponsiveTable></section>
 
       <ResponsiveTable><div className="rounded-lg border bg-white min-w-max">
 

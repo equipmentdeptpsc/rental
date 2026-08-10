@@ -13,7 +13,7 @@ import {
   getRentalProjectOptions,
 } from "@/features/rental/utils/rentalFormOptions";
 import { localCalendarDate, validateNewRentalDates } from "@/features/rental/utils/rentalDateValidation";
-import { rentalBillingMethods, rentalTypes, type DeurExpectationFrequency, type DeurExpectationShiftCode, type RentalBillingMethod, type RentalType } from "@/features/rental/types";
+import { rentalTypes, type DeurExpectationFrequency, type DeurExpectationShiftCode, type RentalBillingMethod, type RentalType } from "@/features/rental/types";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import type { AssignmentRecord } from "@/features/assignment/types";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
@@ -21,6 +21,7 @@ import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes"
 import { useActivityCodes } from "@/features/masters/activity-code";
 import { createRentalOperationalMetadataSnapshot } from "@/features/rental/services/createRentalOperationalMetadataSnapshot";
 import RentalOperationalMetadataCard from "./RentalOperationalMetadataCard";
+import { getAssignmentDisplayName } from "@/features/assignment/utils/assignmentDisplay";
 
 export interface RentalFormData {
   equipmentId: string;
@@ -33,7 +34,8 @@ export interface RentalFormData {
   dateOut: string;
   expectedReturn?: string;
   rentalType: RentalType | "";
-  billingMethod: RentalBillingMethod | "";
+  /** Legacy compatibility input only. Rental creation does not render or persist this header value. */
+  billingMethod?: RentalBillingMethod | "";
   deurExpectationFrequency: DeurExpectationFrequency;
   expectedShiftCodes: DeurExpectationShiftCode[];
   assignmentIds: string[];
@@ -57,6 +59,17 @@ interface Props {
   assignment?: AssignmentRecord;
   initialAssignmentIds?: string[];
 }
+
+export const EXPECTED_RETURN_GUIDANCE = "Leave blank for an open-ended rental. The rental remains active until the equipment is formally returned.";
+export const RENTAL_TYPE_GUIDANCE: Partial<Record<RentalType, string>> = {
+  "Operated Rental": "Equipment is provided with a rental-company operator. Digital DEUR and operator activity tracking are required.",
+  "Bare Rental": "Equipment is rented without a rental-company operator. The customer is responsible for operating the equipment.",
+};
+export const DEUR_FREQUENCY_GUIDANCE: Record<DeurExpectationFrequency, string> = {
+  PER_WORKDAY: "Create one DEUR for each equipment item for each work date. One DEUR may contain several activities and, where supported, multiple operator handovers.",
+  PER_SHIFT: "Create a separate DEUR for each required shift, such as Day Shift or Night Shift.",
+  ON_DEMAND: "Create a DEUR only when equipment activity must be recorded. Use this for irregular, call-out, or non-daily work.",
+};
 
 export default function RentalForm({
   onSubmit,
@@ -190,7 +203,6 @@ export default function RentalForm({
   
       expectedReturn: "",
       rentalType: "",
-      billingMethod: "",
       deurExpectationFrequency: "PER_WORKDAY",
       expectedShiftCodes: ["DAY"],
       assignmentIds: initialAssignmentIds,
@@ -321,19 +333,21 @@ export default function RentalForm({
             const eligible = Boolean(machine && !machine.deleted && machine.active !== false && ["Available", "Assigned"].includes(machine.status));
             return <label key={item.id} className={`flex items-center gap-3 rounded border p-3 text-sm ${eligible && !duplicateSelected ? "" : "opacity-50"}`}>
               <input type="checkbox" disabled={!eligible || duplicateSelected} checked={form.assignmentIds.includes(item.id)} onChange={(event) => update("assignmentIds", event.target.checked ? [...form.assignmentIds, item.id] : form.assignmentIds.filter((id) => id !== item.id))} />
-              <span><strong>{machine ? getRentalEquipmentLabel(machine) : item.equipmentId}</strong><br /><span className="text-xs text-slate-500">{operator?.name ?? item.operatorId} · Assignment {item.id}</span></span>
+              <span><strong>{getAssignmentDisplayName({ assignment: item, equipment: machine, operator, project: projects.find((record) => record.id === item.projectId) })}</strong><br /><span className="text-xs text-slate-500">Assignment ID: {item.id}</span></span>
             </label>;
           })}
         </div>
       </fieldset>
 
-      <Select
+      {form.assignmentIds.length <= 1 && <Select
         label="Operator"
         value={form.operatorId}
         disabled={lockOperator}
         options={operatorOptions}
         onChange={(e) => update("operatorId", e.target.value)}
-      />
+      />}
+
+      {form.assignmentIds.length > 1 && <p className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Each equipment line uses the operator from its selected Assignment. No rental-level operator is applied.</p>}
 
       <Select
         label="Rental Type"
@@ -341,13 +355,7 @@ export default function RentalForm({
         options={[{ value: "", label: "Select Rental Type" }, ...rentalTypes.map((value) => ({ value, label: value }))]}
         onChange={(e) => update("rentalType", e.target.value as RentalFormData["rentalType"])}
       />
-
-      <Select
-        label="Billing Method"
-        value={form.billingMethod}
-        options={[{ value: "", label: "Select Billing Method" }, ...rentalBillingMethods.map((value) => ({ value, label: value }))]}
-        onChange={(e) => update("billingMethod", e.target.value as RentalFormData["billingMethod"])}
-      />
+      <p className="text-xs text-slate-600">{RENTAL_TYPE_GUIDANCE[form.rentalType as RentalType] ?? "Select the operating arrangement for this rental."}</p>
 
       <Select
         label="DEUR Reporting Frequency"
@@ -355,6 +363,7 @@ export default function RentalForm({
         options={[{ value: "PER_WORKDAY", label: "Per Workday" }, { value: "PER_SHIFT", label: "Per Shift" }, { value: "ON_DEMAND", label: "On Demand" }]}
         onChange={(e) => update("deurExpectationFrequency", e.target.value as DeurExpectationFrequency)}
       />
+      <p className="text-xs text-slate-600">{DEUR_FREQUENCY_GUIDANCE[form.deurExpectationFrequency]}</p>
 
       {form.deurExpectationFrequency === "PER_SHIFT" && <fieldset className="rounded border p-3">
         <legend className="px-1 text-sm font-medium">Expected Shifts</legend>
@@ -404,7 +413,7 @@ export default function RentalForm({
 
       <Input
         type="date"
-        label="Expected Return"
+        label="Expected Return (Optional)"
         min={form.dateOut || localCalendarDate()}
         value={
           form.expectedReturn ?? ""
@@ -416,6 +425,7 @@ export default function RentalForm({
           )
         }
       />
+      <p className="text-xs text-slate-600">{EXPECTED_RETURN_GUIDANCE}</p>
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isSubmitting}>

@@ -8,8 +8,8 @@ import { rentalEquipmentLineRepository } from "@/features/rental/equipment-line"
 import { deurRepository } from "@/features/rental/deur/repository/deurRepository";
 import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { prefixRepository } from "@/features/settings/repository/prefixRepository";
-import { costCodeRepository } from "@/features/masters/cost-code";
-import { activityCodeRepository } from "@/features/masters/activity-code";
+import { costCodeRepository } from "@/features/masters/cost-code/repository";
+import { activityCodeRepository } from "@/features/masters/activity-code/repository";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 import type { ApplicationDependencies, ApplicationDependencyOverrides, RepositoryDependencies } from "./ApplicationDependencies";
 import { LocalEquipmentStatusReadRepository } from "@/features/masters/equipment-status/repository";
@@ -49,6 +49,7 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     new LocalAuthenticationProvider(authRepository, userRepository),
   ];
   const authenticationService = overrides.authentication?.authenticationService ?? new AuthenticationService(authenticationProviders, userRepository);
+  const authorizationService = overrides.authentication?.authorizationService ?? new AuthorizationService({ getById: (id) => operatorRepository.getById(id) });
   const userManagementService = overrides.authentication?.userManagementService ?? new UserManagementService(
     userRepository,
     { create: (user, initialPassword) => {
@@ -61,13 +62,14 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     undefined,
     undefined,
     { getById: (id) => operatorRepository.getById(id) },
+    authorizationService,
   );
   const authentication = {
     authRepository,
     authenticationProviders,
     userRepository,
     authenticationService,
-    authorizationService: overrides.authentication?.authorizationService ?? new AuthorizationService(),
+    authorizationService,
     legacyCompatibilityRepository: overrides.authentication?.legacyCompatibilityRepository ?? new LegacyAuthCompatibilityRepository(storage),
     userManagementService,
   };

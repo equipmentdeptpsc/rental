@@ -29,7 +29,10 @@ export function getAvailabilityMessage(
       return "";
 
     case "Assigned":
-      return "Equipment is already assigned.";
+      return "Equipment is already booked by an active assignment.";
+
+    case "Rented":
+      return "Equipment is currently deployed on a Rental.";
 
     case "Maintenance":
       return "Equipment is currently under maintenance.";

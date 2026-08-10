@@ -46,6 +46,8 @@ describe("system role permission mappings", () => {
     expect(permissions).toContain("rental.manage");
     expect(permissions).toContain("deur.correct");
     expect(permissions).toContain("billing.read");
+    expect(permissions).toContain("maintenance.read");
+    expect(permissions).toContain("maintenance.manage");
     expect(permissions).not.toContain("billing.update");
     expect(permissions).not.toContain("users.manage");
     expect(permissions).not.toContain("settings.manage");
@@ -79,6 +81,8 @@ describe("system role permission mappings", () => {
     expect(permissions).toContain("equipment.read");
     expect(permissions).toContain("billing.read");
     expect(permissions).toContain("reports.view");
+    expect(permissions).toContain("maintenance.read");
+    expect(permissions).not.toContain("maintenance.manage");
     expect(
       [...permissions].some((permission) =>
         mutationSuffixes.some((suffix) => permission.endsWith(suffix)),
@@ -88,6 +92,22 @@ describe("system role permission mappings", () => {
 });
 
 describe("AuthorizationService", () => {
+  it("restricts an active operator-linked persona without changing the role bundle", () => {
+    const scoped = new AuthorizationService({ getById: (id) => id === "operator-1" ? { id, status: "Active" } : undefined });
+    const operatorUser = { ...user(["rental-operations"]), operatorId: "operator-1" };
+
+    expect(scoped.isOperatorPersona(operatorUser)).toBe(true);
+    expect(scoped.hasPermission(operatorUser, "deur.read")).toBe(true);
+    expect(scoped.hasPermission(operatorUser, "deur.create")).toBe(true);
+    expect(scoped.hasPermission(operatorUser, "rental.read")).toBe(false);
+    expect(scoped.hasPermission(operatorUser, "maintenance.manage")).toBe(false);
+  });
+
+  it("does not classify missing or inactive Operator links as an Operator persona", () => {
+    const scoped = new AuthorizationService({ getById: (id) => id === "inactive" ? { id, status: "Suspended" } : undefined });
+    expect(scoped.isOperatorPersona({ ...user(["rental-operations"]), operatorId: "missing" })).toBe(false);
+    expect(scoped.isOperatorPersona({ ...user(["rental-operations"]), operatorId: "inactive" })).toBe(false);
+  });
   it("combines permissions from multiple roles", () => {
     const combined = authorization.getEffectivePermissions(
       user(["finance", "rental-operations"]),

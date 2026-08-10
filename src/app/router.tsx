@@ -56,7 +56,10 @@ import DevelopmentCustomerReviewPreview from "@/pages/DevelopmentCustomerReviewO
 import UsersPage from "@/features/users/pages/UsersPage";
 
 const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
+const CostCodePage = lazy(() => import("@/features/masters/cost-code/pages"));
 const WorkDescriptionPage = lazy(() => import("@/features/masters/work-description/pages"));
+const IdleReasonPage = lazy(() => import("@/features/masters/idle-reason/pages"));
+const EquipmentSubcategoryPage = lazy(() => import("@/features/masters/equipment-subcategory/pages"));
 
 function permitted(permission: Permission, element: ReactNode) {
   return <RequirePermission permission={permission}>{element}</RequirePermission>;
@@ -132,10 +135,13 @@ export const router = createBrowserRouter([
         path: "settings/activity-codes",
         element: permitted("masterData.manage", <Suspense fallback={<div className="p-8 text-slate-500">Loading Activity Codes…</div>}><ActivityCodePage /></Suspense>),
       },
+      { path: "settings/cost-codes", element: permitted("masterData.manage", <Suspense fallback={<div className="p-8">Loading Cost Codes…</div>}><CostCodePage /></Suspense>) },
       {
         path: "settings/work-descriptions",
         element: permitted("masterData.manage", <Suspense fallback={<div className="p-8 text-slate-500">Loading Work Descriptions…</div>}><WorkDescriptionPage /></Suspense>),
       },
+      { path: "settings/idle-reasons", element: permitted("masterData.manage", <Suspense fallback={<div className="p-8">Loading Idle Reasons…</div>}><IdleReasonPage /></Suspense>) },
+      { path: "settings/equipment-subcategories", element: permitted("masterData.manage", <Suspense fallback={<div className="p-8">Loading Equipment Sub-Categories…</div>}><EquipmentSubcategoryPage /></Suspense>) },
     ],
   },
 ]);

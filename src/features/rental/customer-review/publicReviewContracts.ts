@@ -20,9 +20,11 @@ export interface PublicReviewTimelineEntry {
   workDescription?: string;
   remarks?: string;
   meterReading?: number;
+  idleReasonLabel?: string;
 }
 
 export interface PublicDeurReviewSnapshot {
+  companyName: string;
   rentalReference: string;
   customerName: string;
   project: string;

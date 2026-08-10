@@ -53,6 +53,8 @@ export interface EquipmentRecord {
 
   category: EquipmentCategory;
   categoryId?: string;
+  subcategoryId?: string;
+  subcategoryName?: string;
 
   status: EquipmentStatus;
   statusId?: string;
@@ -106,6 +108,8 @@ export interface EquipmentFormData {
   brand?: string;
 
   categoryId?: string;
+  subcategoryId?: string;
+  subcategoryName?: string;
   category: EquipmentCategory | "";
 
   statusId?: string;

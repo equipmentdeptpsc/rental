@@ -19,6 +19,7 @@ const workItemMigration = fs.readFileSync(
 );
 
 const snapshot: PublicDeurReviewSnapshot = {
+  companyName: "UAT Equipment Company",
   rentalReference: "R-UAT-C5A-1",
   customerName: "UAT Customer",
   project: "UAT Project",
@@ -118,6 +119,30 @@ describe("provider-neutral public review adapter", () => {
       code: "TRANSPORT_FAILURE",
     });
   });
+
+  it.each([
+    ["wrong", "INVALID_OR_UNAVAILABLE"],
+    ["expired", "EXPIRED"],
+    ["superseded", "SUPERSEDED"],
+  ] as const)("keeps %s credentials unavailable", async (_scenario, code) => {
+    const repository = new SupabasePublicCustomerReviewRepository({
+      schema: vi.fn(() => ({ rpc: vi.fn().mockResolvedValue({ data: { success: false, code }, error: null }) })),
+    });
+    await expect(repository.getSnapshot("opaque")).resolves.toEqual({ success: false, code });
+  });
+
+  it("preserves the existing safe completed-credential disposition", async () => {
+    const repository = new SupabasePublicCustomerReviewRepository({
+      schema: vi.fn(() => ({ rpc: vi.fn().mockResolvedValue({
+        data: { success: true, disposition: "ALREADY_COMPLETED", value: { reviewStatus: "Acknowledged" } },
+        error: null,
+      }) })),
+    });
+    await expect(repository.getSnapshot("opaque")).resolves.toMatchObject({
+      success: true,
+      disposition: "ALREADY_COMPLETED",
+    });
+  });
 });
 
 describe("minimal external review page", () => {
@@ -152,9 +177,30 @@ describe("minimal external review page", () => {
     const container = await render(repository);
     expect(container.textContent).toContain("Acknowledge");
     expect(container.textContent).toContain("Request Correction");
+    expect(container.textContent).toContain("Company");
+    expect(container.textContent).toContain("UAT Equipment Company");
     expect(container.textContent).not.toContain("Reject");
     expect(container.querySelectorAll("input")).toHaveLength(0);
     expect(container.textContent).not.toMatch(/[0-9a-f]{8}-[0-9a-f-]{27,}/i);
+    expect(container.querySelector("button")?.className).toContain("min-h-12");
+  });
+
+  it("does not render decision actions until the secure lookup succeeds", async () => {
+    let resolve!: (value: { success: true; disposition: "AVAILABLE"; value: PublicDeurReviewSnapshot }) => void;
+    const repository: PublicCustomerReviewRepository = {
+      getSnapshot: vi.fn(() => new Promise<{
+        success: true;
+        disposition: "AVAILABLE";
+        value: PublicDeurReviewSnapshot;
+      }>((done) => { resolve = done; })),
+      acknowledge: vi.fn(),
+      requestCorrection: vi.fn(),
+    };
+    const container = await render(repository);
+    expect(container.querySelectorAll("button")).toHaveLength(0);
+    await act(async () => resolve({ success: true, disposition: "AVAILABLE", value: snapshot }));
+    expect(container.textContent).toContain("Acknowledge DEUR");
+    expect(container.textContent).toContain("Request Correction");
   });
 
   it("requires bounded correction evidence and disables duplicate submissions", async () => {

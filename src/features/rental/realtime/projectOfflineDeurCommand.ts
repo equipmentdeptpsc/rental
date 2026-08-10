@@ -31,6 +31,7 @@ export function projectOfflineDeurCommand(
     action: command.input.action,
     actionTimestamp: command.input.clientCreatedAt ?? new Date().toISOString(),
     actor,
+    idleReason: command.input.idleReasonId && command.input.idleReasonLabelSnapshot ? { id: command.input.idleReasonId, labelSnapshot: command.input.idleReasonLabelSnapshot, remarks: command.input.idleReasonRemarks } : undefined,
   });
   return result.success ? structuredClone(result.record) : undefined;
 }
