@@ -54,10 +54,17 @@ describe("Phase C5B secure manager review", () => {
   it("renders a read-only manager snapshot with all three actions", async () => {
     const repository: ManagerReviewRepository = {
       getSnapshot: vi.fn().mockResolvedValue({ success: true, disposition: "AVAILABLE", value: {
-        rentalReference: "R-1", project: "Safe project", equipment: "EQ-1 - Excavator",
+        companyName: "Tenant Company", customerName: "Customer",
+        rentalReference: "R-1", project: "Safe project", equipment: "Excavator", assetNumber: "EQ-1",
         operator: "Operator", workDate: "2026-07-30", submittedRevision: "D-1 R1",
+        shiftStart: "2026-07-30T00:00:00Z", shiftEnd: "2026-07-30T08:00:00Z",
         operationMinutes: 60, idleMinutes: 10, standbyMinutes: 5, breakdownMinutes: 0,
         correctionHistory: [], reviewHistory: [], billingEligible: false,
+        timeline: [
+          { activity: "operation", action: "start", occurredAt: "2026-07-30T01:00:00Z", sequence: 1 },
+          { activity: "operation", action: "end", occurredAt: "2026-07-30T02:00:00Z", sequence: 2 },
+        ],
+        customerDecision: { action: "ACKNOWLEDGE", occurredAt: "2026-07-30T08:05:00Z" },
         reviewStatus: "Pending", availableActions: ["APPROVE", "REJECT", "REQUEST_CORRECTION"],
       } }),
       approve: vi.fn(), reject: vi.fn(), requestCorrection: vi.fn(),
@@ -70,6 +77,7 @@ describe("Phase C5B secure manager review", () => {
         path: "/review/manager/:credential", element: createElement(ManagerDeurReviewPage, { repository }),
       })))));
     expect(container.textContent).toContain("Safe project");
+    expect(container.textContent).toContain("3600 seconds");
     expect([...container.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
       "Approve", "Reject", "Request Correction",
     ]);

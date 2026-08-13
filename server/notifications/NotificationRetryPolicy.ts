@@ -12,7 +12,8 @@ export function decideNotificationFailure(
   attempt: number,
   retryAfterSeconds?: number,
 ): RetryDecision {
-  if (category === "UnknownOutcome" || (category === "Timeout" && requiresReviewCredential)) {
+  if (["UnknownOutcome", "NetworkException", "ProviderParseError", "ProviderUnknownError"].includes(category)
+    || (category === "Timeout" && requiresReviewCredential)) {
     return { status: "UnknownOutcome", retryable: false };
   }
   if (requiresReviewCredential) return { status: "FailedCredentialLost", retryable: false };

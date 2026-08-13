@@ -9,6 +9,8 @@
     "server:start": "tsx server/index.ts",
     "test:server": "vitest run tests/deur-sync-http-server.test.ts tests/deur-sync-server-composition.test.ts tests/deur-sync-http-server-postgres.test.ts",
     "typecheck:server": "tsc --noEmit -p tsconfig.server.json",
+    "typecheck:worker": "tsc --noEmit -p tsconfig.worker.json",
+    "build:worker": "wrangler deploy --dry-run --outdir .worker-dist",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "verify": "npm test && npx tsc --noEmit -p tsconfig.test.json && npm run build",
@@ -44,6 +46,7 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.62.0",
     "vite": "^8.1.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.120.1"
   }
 }

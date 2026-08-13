@@ -5,13 +5,19 @@ import { renderNotificationTemplate } from "../../src/features/notifications/tem
 import { decideNotificationFailure } from "./NotificationRetryPolicy";
 
 export interface ClaimedNotification extends NotificationIntent { attempt: number }
+export type GroupedReviewDeliveryResolution =
+  | { status: "ACTIVE"; reviewPath: string }
+  | { status: "EXPIRED" | "SUPERSEDED" | "MISSING" };
 export interface TrustedNotificationWorkerRepository {
   claimBatch(workerId: string, limit: number): Promise<ClaimedNotification[]>;
   complete(input: {
     id: string; workerId: string; status: DeliveryStatus; providerName?: string;
     providerMessageId?: string; failureCategory?: string; retryAfterSeconds?: number;
   }): Promise<void>;
+  getGroupedReviewPath?(id: string): Promise<string | undefined>;
+  resolveGroupedReviewDelivery?(id: string): Promise<GroupedReviewDeliveryResolution>;
 }
+export interface SafeProviderOutcomeLogger { log(event: Record<string, unknown>): void }
 
 export class TrustedNotificationWorker {
   constructor(
@@ -19,18 +25,33 @@ export class TrustedNotificationWorker {
     private readonly provider: EmailDeliveryProvider,
     private readonly from: string,
     private readonly batchSize = 10,
+    private readonly publicBaseUrl = "https://review.invalid/",
+    private readonly logger?: SafeProviderOutcomeLogger,
   ) {}
 
   async runOnce(workerId = randomUUID()): Promise<{ claimed: number; providerCalls: number }> {
     const claimed = await this.repository.claimBatch(workerId, Math.max(1, Math.min(this.batchSize, 50)));
     let providerCalls = 0;
     for (const intent of claimed) {
+      let reviewUrl: string | undefined;
       if (intent.requiresReviewCredential) {
-        await this.repository.complete({ id: intent.id, workerId, status: "FailedCredentialLost", failureCategory: "Cancelled" });
-        continue;
+        const resolution = await this.repository.resolveGroupedReviewDelivery?.(intent.id);
+        if (resolution?.status === "EXPIRED" || resolution?.status === "SUPERSEDED") {
+          await this.repository.complete({ id: intent.id, workerId,
+            status: resolution.status === "SUPERSEDED" ? "Superseded" : "Cancelled",
+            failureCategory: resolution.status === "SUPERSEDED" ? "Superseded" : "Cancelled" });
+          continue;
+        }
+        const path = resolution?.status === "ACTIVE" ? resolution.reviewPath
+          : await this.repository.getGroupedReviewPath?.(intent.id);
+        if (!path) {
+          await this.repository.complete({ id: intent.id, workerId, status: "FailedCredentialLost", failureCategory: "Cancelled" });
+          continue;
+        }
+        reviewUrl = new URL(path, this.publicBaseUrl).toString();
       }
       let email;
-      try { email = renderNotificationTemplate(intent.type, intent.input); }
+      try { email = renderNotificationTemplate(intent.type, { ...intent.input, ...(reviewUrl ? { reviewUrl } : {}) }); }
       catch {
         await this.repository.complete({ id: intent.id, workerId, status: "DeadLetter", failureCategory: "TemplateFailure" });
         continue;
@@ -41,6 +62,8 @@ export class TrustedNotificationWorker {
         recipientName: intent.recipient.displayName, email, idempotencyKey: intent.idempotencyKey,
       });
       if (result.accepted) {
+        this.logger?.log({ provider: result.provider, outcomeCategory: "ProviderAccepted",
+          deliveryOutcome: "KNOWN_PROVIDER_RESPONSE", retryable: false, attempt: intent.attempt });
         await this.repository.complete({
           id: intent.id, workerId, status: "ProviderAccepted",
           providerName: result.provider, providerMessageId: result.providerMessageId,
@@ -49,6 +72,11 @@ export class TrustedNotificationWorker {
         const decision = decideNotificationFailure(
           result.category, false, intent.attempt, result.retryAfterSeconds,
         );
+        this.logger?.log({ provider: result.provider, outcomeCategory: result.category,
+          deliveryOutcome: result.diagnostic?.deliveryOutcome ?? "UNKNOWN_DELIVERY_OUTCOME",
+          retryable: decision.retryable, attempt: intent.attempt,
+          ...(result.diagnostic?.exceptionName ? { exceptionName: result.diagnostic.exceptionName } : {}),
+          ...(result.diagnostic?.httpStatus ? { httpStatus: result.diagnostic.httpStatus } : {}) });
         await this.repository.complete({
           id: intent.id, workerId, status: decision.status,
           failureCategory: result.category, retryAfterSeconds: decision.delaySeconds,

@@ -1,0 +1,5 @@
+BEGIN;SET search_path=erp,pg_catalog;
+DO $$DECLARE definition text;BEGIN SELECT pg_get_functiondef('erp.trusted_prepare_grouped_customer_review_delivery_as_scheduler(jsonb)'::regprocedure) INTO definition;
+ definition:=replace(definition,'principal_id uuid;','target_principal_id uuid;');definition:=replace(definition,'principal_id=(command->>''principalId'')::uuid;','target_principal_id=(command->>''principalId'')::uuid;');definition:=replace(definition,'WHERE s.id=principal_id AND','WHERE s.id=target_principal_id AND');
+ IF definition NOT LIKE '%target_principal_id%' OR definition LIKE '%WHERE s.id=principal_id AND%' THEN RAISE EXCEPTION '06800 principal variable correction did not match 06700' USING ERRCODE='55000';END IF;EXECUTE definition;END $$;
+ALTER FUNCTION erp.trusted_prepare_grouped_customer_review_delivery_as_scheduler(jsonb) OWNER TO postgres;REVOKE ALL ON FUNCTION erp.trusted_prepare_grouped_customer_review_delivery_as_scheduler(jsonb) FROM PUBLIC,anon,authenticated,service_role;GRANT EXECUTE ON FUNCTION erp.trusted_prepare_grouped_customer_review_delivery_as_scheduler(jsonb) TO service_role;COMMIT;

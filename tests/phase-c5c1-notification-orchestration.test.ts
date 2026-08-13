@@ -171,7 +171,8 @@ describe("Phase C5C.1 trusted notification orchestration", () => {
     await expect(malformed.send({
       from: "sender@example.invalid", to: "recipient@example.invalid", recipientName: "Recipient",
       email: { subject: "Subject", text: "Text", html: "<p>Text</p>" }, idempotencyKey: "key",
-    })).resolves.toMatchObject({ accepted: false, category: "PermanentProviderRejection" });
+    })).resolves.toMatchObject({ accepted: false, category: "ProviderParseError",
+      diagnostic: { deliveryOutcome: "UNKNOWN_DELIVERY_OUTCOME", retryable: false } });
 
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "accepted-id" }), { status: 200 }));
     const uat = new ResendEmailDeliveryProvider({

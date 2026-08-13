@@ -1,5 +1,5 @@
 export type NotificationType =
-  | "CUSTOMER_REVIEW_REQUESTED" | "CUSTOMER_CORRECTED_REVIEW_REQUESTED"
+  | "CUSTOMER_REVIEW_REQUESTED" | "CUSTOMER_CORRECTED_REVIEW_REQUESTED" | "CUSTOMER_GROUPED_REVIEW_REQUESTED"
   | "CUSTOMER_ACKNOWLEDGED" | "CUSTOMER_CORRECTION_CONFIRMED"
   | "MANAGER_REVIEW_REQUESTED" | "MANAGER_CORRECTED_REVIEW_REQUESTED"
   | "MANAGER_APPROVED" | "MANAGER_REJECTED" | "MANAGER_CORRECTION_CONFIRMED"
@@ -11,7 +11,9 @@ export type DeliveryStatus =
 export type DeliveryFailureCategory =
   | "TemporaryProviderFailure" | "RateLimited" | "Timeout" | "InvalidRecipient"
   | "AuthenticationFailure" | "TemplateFailure" | "PermanentProviderRejection"
-  | "Superseded" | "Cancelled" | "UnknownProviderFailure" | "UnknownOutcome";
+  | "Superseded" | "Cancelled" | "UnknownProviderFailure" | "UnknownOutcome"
+  | "FetchBindingError" | "InvalidRequestConstruction" | "NetworkException"
+  | "ProviderParseError" | "ProviderUnknownError";
 
 export interface NotificationRecipient {
   destination: string;
@@ -23,6 +25,13 @@ export interface NotificationTemplateInput {
   companyName: string;
   rentalReference: string;
   projectName?: string;
+  customerName?: string;
+  reviewDate?: string;
+  totalLineCount?: number;
+  actionableCount?: number;
+  inProgressCount?: number;
+  acknowledgedCount?: number;
+  correctionRequestedCount?: number;
   equipmentDescription?: string;
   workDate?: string;
   deurNumber?: string;

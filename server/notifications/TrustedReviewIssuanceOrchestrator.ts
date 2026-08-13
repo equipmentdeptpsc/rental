@@ -14,7 +14,7 @@ export interface TrustedReviewIssuanceResult {
 }
 
 export interface TrustedReviewIssuanceRepository extends TrustedNotificationWorkerRepository {
-  issue(kind: "customer" | "manager", command: Record<string, unknown>): Promise<TrustedReviewIssuanceResult>;
+  issue(kind: "customer" | "manager" | "grouped-customer", command: Record<string, unknown>): Promise<TrustedReviewIssuanceResult>;
   getIntent(id: string): Promise<NotificationIntent & { attempt: number }>;
   claim(id: string, workerId: string): Promise<boolean>;
 }
@@ -27,12 +27,14 @@ export class TrustedReviewIssuanceOrchestrator {
     private readonly publicBaseUrl: string,
   ) {}
 
-  async issue(kind: "customer" | "manager", command: Record<string, unknown>): Promise<TrustedReviewIssuanceResult> {
+  async issue(kind: "customer" | "manager" | "grouped-customer", command: Record<string, unknown>): Promise<TrustedReviewIssuanceResult> {
     const result = await this.repository.issue(kind, command);
     if (!result.success || result.disposition === "REPLAYED") return result;
-    const path = typeof result.reviewPath === "string" ? result.reviewPath : "";
     const intentId = typeof result.notificationIntentId === "string" ? result.notificationIntentId : "";
-    if (!path.startsWith(`/review/${kind === "customer" ? "deur" : "manager"}/`) || !intentId) {
+    const persistedPath = kind === "grouped-customer" && intentId ? await this.repository.getGroupedReviewPath?.(intentId) : undefined;
+    const path = persistedPath ?? (typeof result.reviewPath === "string" ? result.reviewPath : "");
+    const expectedPath = kind === "grouped-customer" ? "/review/customer/grouped/" : `/review/${kind === "customer" ? "deur" : "manager"}/`;
+    if (!path.startsWith(expectedPath) || !intentId) {
       throw new Error("Trusted issuance response omitted its one-time delivery handoff.");
     }
     const intent = await this.repository.getIntent(intentId);

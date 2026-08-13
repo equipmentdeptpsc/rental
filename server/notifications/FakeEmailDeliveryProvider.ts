@@ -34,7 +34,7 @@ export class FakeEmailDeliveryProvider implements EmailDeliveryProvider {
   }
 
   async send(request: EmailDeliveryRequest): Promise<EmailDeliveryResult> {
-    const containsReviewUrl = /\/review\/(?:deur|manager)\//.test(`${request.email.text}\n${request.email.html}`);
+    const containsReviewUrl = /\/review\/(?:deur|manager|customer\/grouped)\//.test(`${request.email.text}\n${request.email.html}`);
     const containsPlaceholderHost = /(?:example|review)\.invalid/i
       .test(`${request.email.text}\n${request.email.html}`);
     this.calls.push({
@@ -52,7 +52,7 @@ export class FakeEmailDeliveryProvider implements EmailDeliveryProvider {
       case "temporary-failure": return { accepted: false, provider: this.name, category: "TemporaryProviderFailure" };
       case "timeout-before-acceptance": return { accepted: false, provider: this.name, category: "Timeout" };
       case "timeout-after-acceptance": return { accepted: false, provider: this.name, category: "UnknownOutcome" };
-      case "malformed-response": return { accepted: false, provider: this.name, category: "UnknownProviderFailure" };
+      case "malformed-response": return { accepted: false, provider: this.name, category: "ProviderParseError" };
     }
   }
 }

@@ -26,7 +26,6 @@ describe.skipIf(!enabled)("Phase C4C live DEUR completeness", () => {
   function cleanup() {
     owner(`
       BEGIN;
-      SET LOCAL session_replication_role='replica';
       DELETE FROM erp.customer_review_requests WHERE company_id='${tenant}';
       DELETE FROM erp.deur_review_history WHERE company_id='${tenant}';
       DELETE FROM erp.deur_meter_checkpoints WHERE company_id='${tenant}';
@@ -49,6 +48,7 @@ describe.skipIf(!enabled)("Phase C4C live DEUR completeness", () => {
       DELETE FROM erp.role_permissions WHERE role_id='ROLE-UAT-C4C';
       DELETE FROM erp.app_roles WHERE id='ROLE-UAT-C4C';
       DELETE FROM erp.app_permissions WHERE id LIKE 'PERM-UAT-C4C-%';
+      DELETE FROM erp.number_sequences WHERE company_id='${tenant}';
       DELETE FROM erp.companies WHERE id='${tenant}';
       COMMIT;
     `);

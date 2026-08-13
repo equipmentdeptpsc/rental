@@ -14,12 +14,17 @@ export type ManagerReviewFailureCode =
   | "TRANSPORT_FAILURE";
 
 export interface ManagerDeurReviewSnapshot {
+  companyName: string;
+  customerName: string;
   rentalReference: string;
   project: string;
   equipment: string;
+  assetNumber: string;
   operator: string;
   workDate: string;
   shift?: string;
+  shiftStart: string;
+  shiftEnd: string;
   submittedRevision: string;
   operationMinutes: number;
   idleMinutes: number;
@@ -33,8 +38,8 @@ export interface ManagerDeurReviewSnapshot {
   reviewStatus: ManagerReviewStatus;
   availableActions: ManagerReviewAction[];
   expiresAt?: string;
-  timeline?: import("../customer-review/publicReviewContracts").PublicReviewTimelineEntry[];
-  customerDecision?: { action: string; occurredAt: string; reason?: string };
+  timeline: import("../customer-review/publicReviewContracts").PublicReviewTimelineEntry[];
+  customerDecision: { action: "ACKNOWLEDGE"; occurredAt: string; reason?: string };
 }
 
 export type ManagerReviewResult<T> =

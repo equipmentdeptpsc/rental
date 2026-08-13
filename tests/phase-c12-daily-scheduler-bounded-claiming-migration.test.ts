@@ -1,0 +1,8 @@
+import{readFileSync}from"node:fs";import{describe,expect,it}from"vitest";const sql=readFileSync("supabase/migrations/20260803007500_phase_c12_daily_scheduler_bounded_candidate_claiming.sql","utf8");
+describe("C12.2.7C bounded scheduler claiming",()=>{
+ it("enforces a service-only bounded claim",()=>{for(const x of["'batchLimit'","batch_limit NOT BETWEEN 1 AND 100","LIMIT batch_limit","auth.role()<>'service_role'","GRANT EXECUTE ON FUNCTION erp.command_run_daily_grouped_customer_reviews(jsonb)","TO service_role"])expect(sql).toContain(x);});
+ it("claims deterministically and interleaves tenants",()=>{for(const x of["row_number() OVER(PARTITION BY r.company_id","ORDER BY tenant_rank,business_date,local_send_time,company_id,rental_id","pg_advisory_xact_lock","FOR UPDATE OF g2 SKIP LOCKED","uq_daily_grouped_review_scheduler_group_business_date"])expect(sql).toContain(x);});
+ it("recovers crashes and completes groups individually",()=>{for(const x of["claim_expires_at","interval '10 minutes'","status='FAILED'","complete_daily_grouped_customer_review_group","outcome NOT IN('PREPARED','REPLAYED','FAILED')","hasMore"])expect(sql).toContain(x);});
+ it("preserves domain authority",()=>{for(const x of["grouped_review_scheduler_configurations","c.automation_enabled","AT TIME ZONE r.timezone","grouped_review.schedule","customer_review_batches","d.status='Submitted'","q.status='Pending'"])expect(sql).toContain(x);});
+ it("contains no cron, provider, or browser authority",()=>{expect(sql).not.toMatch(/pg_cron|cron\.schedule|resend|provider|VITE_|GRANT EXECUTE.*authenticated/i);expect(sql).toContain("SECURITY DEFINER SET search_path=erp,auth,pg_catalog");});
+});

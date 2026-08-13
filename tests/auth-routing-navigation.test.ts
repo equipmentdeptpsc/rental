@@ -54,6 +54,7 @@ describe("public route inventory", () => {
       "/review/deur/completed",
       "/review/manager/completed",
       "/review/deur/:credential",
+      "/review/customer/grouped/:credential",
       "/review/manager/:credential",
     ]);
     expect(router.routes.slice(0, PUBLIC_ROUTE_PATTERNS.length).map((route) => route.path)).toEqual(

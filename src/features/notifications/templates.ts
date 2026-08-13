@@ -11,6 +11,7 @@ function title(type: NotificationType) {
   const titles: Record<NotificationType, string> = {
     CUSTOMER_REVIEW_REQUESTED: "DEUR review requested",
     CUSTOMER_CORRECTED_REVIEW_REQUESTED: "Corrected DEUR review requested",
+    CUSTOMER_GROUPED_REVIEW_REQUESTED: "Grouped DEUR review requested",
     CUSTOMER_ACKNOWLEDGED: "DEUR acknowledgement confirmed",
     CUSTOMER_CORRECTION_CONFIRMED: "DEUR correction request confirmed",
     MANAGER_REVIEW_REQUESTED: "Manager DEUR review requested",
@@ -26,14 +27,22 @@ function title(type: NotificationType) {
 
 export function renderNotificationTemplate(type: NotificationType, input: NotificationTemplateInput): RenderedEmail {
   const subject = title(type).replaceAll(/[\r\n]/g, " ");
+  const isGroupedCustomerReview = type === "CUSTOMER_GROUPED_REVIEW_REQUESTED";
   const lines = [
     `Hello ${input.recipientName},`, title(type), `Company: ${input.companyName}`,
+    input.customerName ? `Customer: ${input.customerName}` : "",
     `Rental: ${input.rentalReference}`,
     input.projectName ? `Project: ${input.projectName}` : "",
+    input.reviewDate ? `Review Date: ${input.reviewDate}` : "",
     input.equipmentDescription ? `Equipment: ${input.equipmentDescription}` : "",
     input.deurNumber ? `DEUR: ${input.deurNumber}${input.revisionLabel ? ` ${input.revisionLabel}` : ""}` : "",
     input.reason ? `Reason: ${input.reason}` : "",
     input.expirationLabel ? `Expires: ${input.expirationLabel}` : "",
+    isGroupedCustomerReview ? `Total equipment lines: ${input.totalLineCount ?? 0}` : "",
+    isGroupedCustomerReview ? `Awaiting acknowledgement: ${input.actionableCount ?? 0}` : "",
+    isGroupedCustomerReview ? `In Progress: ${input.inProgressCount ?? 0}` : "",
+    isGroupedCustomerReview ? `Acknowledged: ${input.acknowledgedCount ?? 0}` : "",
+    isGroupedCustomerReview ? `Correction Requested: ${input.correctionRequestedCount ?? 0}` : "",
     input.reviewUrl ? `Secure review: ${input.reviewUrl}` : "",
   ].filter(Boolean);
   const timelineText = (input.activityTimeline ?? []).flatMap((entry) => [
@@ -54,15 +63,25 @@ export function renderNotificationTemplate(type: NotificationType, input: Notifi
     `Breakdown: ${input.activityTotals.breakdownMinutes} min`,
   ] : [];
   const isCustomerReview = type === "CUSTOMER_REVIEW_REQUESTED" || type === "CUSTOMER_CORRECTED_REVIEW_REQUESTED";
-  const customerInstructions = isCustomerReview && input.reviewUrl
+  const customerInstructions = isGroupedCustomerReview && input.reviewUrl
+    ? [
+      "Submitted DEURs can be acknowledged or sent back with a correction request.",
+      "In Progress DEURs are shown for visibility and cannot yet be acknowledged.",
+      "Review is completed line-by-line.",
+    ]
+    : isCustomerReview && input.reviewUrl
     ? ["Review the complete DEUR evidence, then choose:", "- Acknowledge", "- Request Correction"]
     : [];
   const text = [...lines, ...customerInstructions, ...(timelineText.length ? ["Activity Timeline", ...timelineText] : []), ...totalsText].join("\n");
   const htmlLines = lines.map((line) => {
     if (input.reviewUrl && line === `Secure review: ${input.reviewUrl}`) {
       const safe = escapeHtml(input.reviewUrl);
-      if (isCustomerReview) {
-        return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" style="padding:24px 0"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#047857" style="border-radius:8px"><a href="${safe}" style="display:inline-block;min-width:260px;padding:16px 24px;color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:700;line-height:20px;text-align:center;text-decoration:none">REVIEW &amp; ACKNOWLEDGE DEUR</a></td></tr></table></td></tr></table><p style="text-align:center;color:#475569;font-family:Arial,sans-serif;font-size:14px">The secure page lets you Acknowledge or Request Correction after reviewing the DEUR evidence.</p>`;
+      if (isCustomerReview || isGroupedCustomerReview) {
+        const label = isGroupedCustomerReview ? "REVIEW &amp; ACKNOWLEDGE DEURs" : "REVIEW &amp; ACKNOWLEDGE DEUR";
+        const help = isGroupedCustomerReview
+          ? "Review each submitted DEUR independently. In Progress lines are visible but read-only."
+          : "The secure page lets you Acknowledge or Request Correction after reviewing the DEUR evidence.";
+        return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" style="padding:24px 0"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#047857" style="border-radius:8px"><a href="${safe}" style="display:inline-block;min-width:260px;padding:16px 24px;color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:700;line-height:20px;text-align:center;text-decoration:none">${label}</a></td></tr></table></td></tr></table><p style="text-align:center;color:#475569;font-family:Arial,sans-serif;font-size:14px">${help}</p>`;
       }
       return `<p><a href="${safe}">Open secure review</a></p>`;
     }

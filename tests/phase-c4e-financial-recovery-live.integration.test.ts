@@ -31,7 +31,6 @@ describe.skipIf(!enabled)("Phase C4E financial recovery lifecycle", () => {
   function cleanup() {
     owner(`
       BEGIN;
-      SET LOCAL session_replication_role='replica';
       DELETE FROM erp.collections WHERE billing_statement_id IN (
         SELECT id FROM erp.billing_statements WHERE company_id='${tenant}'
       );
@@ -60,6 +59,7 @@ describe.skipIf(!enabled)("Phase C4E financial recovery lifecycle", () => {
       DELETE FROM erp.role_permissions WHERE role_id LIKE 'ROLE-UAT-C4E-%';
       DELETE FROM erp.app_roles WHERE id LIKE 'ROLE-UAT-C4E-%';
       DELETE FROM erp.app_permissions WHERE id LIKE 'PERM-UAT-C4E-%';
+      DELETE FROM erp.number_sequences WHERE company_id='${tenant}';
       DELETE FROM erp.companies WHERE id='${tenant}';
       COMMIT;
     `);

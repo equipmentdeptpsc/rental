@@ -39,6 +39,7 @@ import OperatorDeurPage from "@/pages/OperatorDeur";
 import OperatorLandingPage from "@/pages/OperatorLanding";
 import RentalApprovalPage from "@/pages/RentalApproval";
 import CustomerDeurReviewPage from "@/pages/CustomerDeurReview";
+import GroupedCustomerReviewPage from "@/pages/GroupedCustomerReview";
 import ManagerDeurReviewPage from "@/pages/ManagerDeurReview";
 import ReviewCompletedPage from "@/pages/ReviewCompleted";
 import MaintenancePage from "@/pages/Maintenance";
@@ -72,6 +73,7 @@ export const PUBLIC_ROUTE_PATTERNS = Object.freeze([
   "/review/deur/completed",
   "/review/manager/completed",
   "/review/deur/:credential",
+  "/review/customer/grouped/:credential",
   "/review/manager/:credential",
 ]);
 
@@ -82,6 +84,7 @@ export const router = createBrowserRouter([
   { path: "/review/deur/completed", element: <ReviewCompletedPage audience="customer" /> },
   { path: "/review/manager/completed", element: <ReviewCompletedPage audience="manager" /> },
   { path: "/review/deur/:credential", element: <CustomerDeurReviewPage /> },
+  { path: "/review/customer/grouped/:credential", element: <GroupedCustomerReviewPage /> },
   { path: "/review/manager/:credential", element: <ManagerDeurReviewPage /> },
   {
     path: "/",

@@ -1,9 +1,31 @@
 ﻿{
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "psc-ed",
+  "main": "./worker/index.ts",
   "compatibility_date": "2026-07-27",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
+    "binding": "ASSETS",
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "env": {
+    "uat": {
+      "name": "psc-ed-uat",
+      "workers_dev": true,
+      "vars": {
+        "SUPABASE_URL": "https://jtkctarqbwmqdcewthkn.supabase.co",
+        "REVIEW_PUBLIC_BASE_URL": "https://psc-ed-uat.equipmentdept-psc.workers.dev",
+        "RESEND_FROM_ADDRESS": "onboarding@resend.dev",
+        "SCHEDULER_JOB_CRON": "*/15 * * * *",
+        "NOTIFICATION_JOB_CRON": "*/2 * * * *",
+        "SCHEDULER_BATCH_LIMIT": "1",
+        "NOTIFICATION_WORKER_BATCH_LIMIT": "1"
+      },
+      "triggers": {
+        "crons": []
+      }
+    }
   }
 }

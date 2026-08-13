@@ -11,6 +11,7 @@ describe("Phase C5C.2A public review deployment routes", () => {
   it("publishes credential and credential-free completion routes before authenticated ERP routes", () => {
     for (const route of [
       "/review/deur/:credential", "/review/manager/:credential",
+      "/review/customer/grouped/:credential",
       "/review/deur/completed", "/review/manager/completed",
     ]) expect(router).toContain(`path: "${route}"`);
     expect(router.indexOf('path: "/review/deur/completed"')).toBeLessThan(router.indexOf('path: "/review/deur/:credential"'));

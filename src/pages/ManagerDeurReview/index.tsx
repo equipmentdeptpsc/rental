@@ -82,19 +82,23 @@ export default function ManagerDeurReviewPage({ repository = configuredRepositor
   if (state === "unavailable") return <Shell><h1 className="text-2xl font-bold">Review unavailable</h1><p>This link is invalid, expired, superseded, or no longer available.</p></Shell>;
   if (state === "completed" || !snapshot) return <Shell><h1 className="text-2xl font-bold">Review complete</h1><p role="status">{message}</p></Shell>;
 
-  const intervals=buildPublicReviewIntervals(snapshot.timeline??[]);
+  const intervals=buildPublicReviewIntervals(snapshot.timeline);
   return <Shell>
     <header><p className="text-sm font-medium text-blue-700">Secure manager review</p>
       <h1 className="text-2xl font-bold">Daily Equipment Utilization Report</h1>
       <p className="text-sm text-slate-600">This is an immutable read-only snapshot.</p></header>
     <section className="rounded-xl border bg-white p-5"><dl className="grid gap-3 sm:grid-cols-2">
+      <Item label="Company" value={snapshot.companyName} /><Item label="Customer" value={snapshot.customerName} />
       <Item label="Rental" value={snapshot.rentalReference} /><Item label="Revision" value={snapshot.submittedRevision} />
       <Item label="Project" value={snapshot.project} /><Item label="Equipment" value={snapshot.equipment} />
+      <Item label="Asset Number" value={snapshot.assetNumber} />
       <Item label="Operator" value={snapshot.operator} /><Item label="Work date" value={snapshot.workDate} />
       <Item label="Shift" value={snapshot.shift ?? "Not provided"} />
+      <Item label="Shift Start" value={formatCustomerReviewDateTime(snapshot.shiftStart)} />
+      <Item label="Shift End" value={formatCustomerReviewDateTime(snapshot.shiftEnd)} />
       <Item label="Opening meter" value={snapshot.openingMeter?.toString() ?? "Not applicable"} />
       <Item label="Closing meter" value={snapshot.closingMeter?.toString() ?? "Not applicable"} />
-    </dl><div className="mt-4 grid gap-2 rounded bg-slate-50 p-3 text-sm sm:grid-cols-4">
+    </dl><div className="mt-4 rounded bg-emerald-50 p-3 text-sm text-emerald-900"><b>Customer Review: Acknowledged</b><br/>Acknowledged at {formatCustomerReviewDateTime(snapshot.customerDecision.occurredAt)}</div><div className="mt-4 grid gap-2 rounded bg-slate-50 p-3 text-sm sm:grid-cols-4">
       <span>Operation: {snapshot.operationMinutes} min</span><span>Idle: {snapshot.idleMinutes} min</span>
       <span>Standby: {snapshot.standbyMinutes} min</span><span>Breakdown: {snapshot.breakdownMinutes} min</span>
     </div></section>

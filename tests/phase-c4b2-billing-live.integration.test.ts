@@ -29,7 +29,6 @@ describe.skipIf(!enabled)("Phase C4B.2 live billing-method parity", () => {
       tenantIds: [tenant],
       sql: `
         BEGIN;
-        SET LOCAL session_replication_role='replica';
         DELETE FROM erp.billing_statement_lines WHERE company_id='${tenant}';
         DELETE FROM erp.billing_statements WHERE company_id='${tenant}';
         DELETE FROM erp.customer_review_requests WHERE company_id='${tenant}';
@@ -53,6 +52,7 @@ describe.skipIf(!enabled)("Phase C4B.2 live billing-method parity", () => {
         DELETE FROM erp.role_permissions WHERE role_id='ROLE-UAT-C4B2-FINANCE';
         DELETE FROM erp.app_roles WHERE id='ROLE-UAT-C4B2-FINANCE';
         DELETE FROM erp.app_permissions WHERE id LIKE 'PERM-UAT-C4B2-%';
+        DELETE FROM erp.number_sequences WHERE company_id='${tenant}';
         DELETE FROM erp.companies WHERE id='${tenant}';
         COMMIT;
       `,

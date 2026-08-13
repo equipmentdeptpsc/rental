@@ -67,6 +67,11 @@ export function createSupabaseManagerReviewRepository(configuration: {
   publishableKey: string;
 }): ManagerReviewRepository {
   return new SupabaseManagerReviewRepository(createClient(configuration.url, configuration.publishableKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: "equipment-rental.manager-public-review.auth",
+    },
   }));
 }
