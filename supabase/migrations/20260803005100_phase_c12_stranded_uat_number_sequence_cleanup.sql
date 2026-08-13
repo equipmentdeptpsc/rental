@@ -33,12 +33,13 @@ BEGIN
    AND sequence.prefix = manifest.prefix
    AND sequence.current_value = manifest.current_value;
 
-  IF uat_sequence_count <> 4 OR manifest_count <> 4 THEN
+  IF uat_sequence_count NOT IN (0, 4)
+     OR (uat_sequence_count = 4 AND manifest_count <> 4) THEN
     RAISE EXCEPTION 'C12 sequence cleanup rejected: exact four-row manifest mismatch'
       USING ERRCODE = '55000';
   END IF;
 
-  IF EXISTS (
+  IF uat_sequence_count = 4 AND EXISTS (
     SELECT 1 FROM (VALUES
       ('TENANT-UAT-C4B2-BILLING'),
       ('TENANT-UAT-C4C-DEUR'),
@@ -74,21 +75,24 @@ BEGIN
       USING ERRCODE = '55000';
   END IF;
 
-  DELETE FROM erp.number_sequences sequence
-  USING (VALUES
-    ('TENANT-UAT-C4B2-BILLING','BILLING_STATEMENT',2026,'BS',30::bigint),
-    ('TENANT-UAT-C4C-DEUR','DEUR',2026,'DEUR',13::bigint),
-    ('TENANT-UAT-C4D-RACES','DEUR',2026,'DEUR',13::bigint),
-    ('TENANT-UAT-C4E-FINANCIAL','BILLING_STATEMENT',2026,'BS',14::bigint)
-  ) AS manifest(company_id,scope,sequence_year,prefix,current_value)
-  WHERE sequence.company_id = manifest.company_id
-    AND sequence.scope = manifest.scope
-    AND sequence.sequence_year = manifest.sequence_year
-    AND sequence.prefix = manifest.prefix
-    AND sequence.current_value = manifest.current_value;
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  deleted_count := 0;
+  IF uat_sequence_count = 4 THEN
+    DELETE FROM erp.number_sequences sequence
+    USING (VALUES
+      ('TENANT-UAT-C4B2-BILLING','BILLING_STATEMENT',2026,'BS',30::bigint),
+      ('TENANT-UAT-C4C-DEUR','DEUR',2026,'DEUR',13::bigint),
+      ('TENANT-UAT-C4D-RACES','DEUR',2026,'DEUR',13::bigint),
+      ('TENANT-UAT-C4E-FINANCIAL','BILLING_STATEMENT',2026,'BS',14::bigint)
+    ) AS manifest(company_id,scope,sequence_year,prefix,current_value)
+    WHERE sequence.company_id = manifest.company_id
+      AND sequence.scope = manifest.scope
+      AND sequence.sequence_year = manifest.sequence_year
+      AND sequence.prefix = manifest.prefix
+      AND sequence.current_value = manifest.current_value;
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  END IF;
 
-  IF deleted_count <> 4
+  IF deleted_count <> uat_sequence_count
      OR EXISTS (SELECT 1 FROM erp.number_sequences WHERE company_id LIKE 'TENANT-UAT-%') THEN
     RAISE EXCEPTION 'C12 sequence cleanup rejected: exact post-delete verification failed'
       USING ERRCODE = '55000';

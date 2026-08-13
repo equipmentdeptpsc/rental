@@ -12,24 +12,37 @@ const manifest = [
 ] as const;
 
 describe("C12 exact stranded UAT number-sequence cleanup", () => {
-  it("uses migration 05100 and requires the exact certified manifest", () => {
+  it("locks the explicitly governed clean-install-compatible release-history bytes", () => {
+    expect(createHash("sha256").update(sql).digest("hex"))
+      .toBe("c087c556291197b05a6553b00595be6034f0c39045d1fa9c61d5c10e972310b7");
+  });
+
+  it("uses migration 05100 and accepts only the exact certified four-row or clean zero-row state", () => {
     expect(migrationPath).toContain("20260803005100_");
     for (const row of manifest) for (const value of row) expect(sql).toContain(value);
-    expect(sql).toContain("uat_sequence_count <> 4 OR manifest_count <> 4");
+    expect(sql).toContain("uat_sequence_count NOT IN (0, 4)");
+    expect(sql).toContain("uat_sequence_count = 4 AND manifest_count <> 4");
     expect(sql).toContain("exact four-row manifest mismatch");
     expect(sql).toContain("sequence.current_value = manifest.current_value");
   });
 
-  it("fails closed for extra, missing, or advanced UAT sequence rows", () => {
+  it("fails closed for 1, 2, 3, 5+, or advanced UAT sequence rows", () => {
     expect(sql).toContain("WHERE company_id LIKE 'TENANT-UAT-%'");
-    expect(sql).toContain("uat_sequence_count <> 4");
-    expect(sql).toContain("manifest_count <> 4");
+    expect(sql).toContain("uat_sequence_count NOT IN (0, 4)");
+    expect(sql).toContain("uat_sequence_count = 4 AND manifest_count <> 4");
     expect(sql.match(/current_value/g)?.length).toBeGreaterThanOrEqual(4);
     expect(sql).toContain("OR EXISTS (SELECT 1 FROM erp.number_sequences WHERE company_id LIKE 'TENANT-UAT-%')");
-    expect(sql).toContain("deleted_count <> 4");
+    expect(sql).toContain("deleted_count <> uat_sequence_count");
+  });
+
+  it("performs zero deletion for clean installs and remains repeat-safe", () => {
+    expect(sql).toContain("deleted_count := 0");
+    expect(sql).toContain("IF uat_sequence_count = 4 THEN\n    DELETE FROM erp.number_sequences");
+    expect(sql).toContain("deleted_count <> uat_sequence_count");
   });
 
   it("requires parent and business evidence to remain absent", () => {
+    expect(sql).toContain("IF uat_sequence_count = 4 AND EXISTS");
     for (const table of [
       "companies", "users", "user_roles", "operators", "customers", "projects", "equipment",
       "assignments", "rentals", "rental_equipment_lines", "deurs", "customer_review_requests",
@@ -48,10 +61,18 @@ describe("C12 exact stranded UAT number-sequence cleanup", () => {
   });
 
   it("deletes by exact tuple only and uses no enforcement bypass", () => {
-    expect(sql).toContain("DELETE FROM erp.number_sequences sequence\n  USING (VALUES");
+    expect(sql).toContain("DELETE FROM erp.number_sequences sequence\n    USING (VALUES");
     expect(sql).not.toMatch(/DELETE FROM erp\.number_sequences[^;]*LIKE\s+'TENANT-UAT-%'/s);
     expect(sql).not.toMatch(/session_replication_role|DISABLE\s+(?:TRIGGER|ROW\s+LEVEL\s+SECURITY)|auth\.users/i);
     expect(sql).not.toMatch(/(?:DELETE|UPDATE|INSERT)\s+(?:FROM\s+|INTO\s+)?erp\.(?:app_roles|app_permissions|role_permissions)/i);
+    expect(sql.match(/DELETE FROM erp\.number_sequences/g)).toHaveLength(1);
+    expect(sql).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\b[^;]*(?:auth\.users|erp\.(?:companies|users|rentals|deurs|billing_statements))/is);
+  });
+
+  it("does not touch unrelated tenant sequence rows", () => {
+    expect(sql).toContain("sequence.company_id = manifest.company_id");
+    expect(sql).not.toMatch(/DELETE FROM erp\.number_sequences[^;]*company_id\s+NOT\s+LIKE/is);
+    expect(sql).not.toMatch(/TRUNCATE\s+(?:TABLE\s+)?erp\.number_sequences/i);
   });
 
   it("corrects all four historical harness cleanup paths", () => {
