@@ -139,9 +139,11 @@ WITH source AS (
 INSERT INTO erp.permission_compatibility_aliases(
   legacy_permission_code, target_permission_code, catalog_version, mode
 )
-SELECT "legacyCode", jsonb_array_elements_text("expandsTo"), '${version}', mode
+SELECT source."legacyCode", expanded.target_permission_code, '${version}', source.mode
 FROM source
-ORDER BY "legacyCode", target_permission_code;
+CROSS JOIN LATERAL jsonb_array_elements_text(source."expandsTo")
+  AS expanded(target_permission_code)
+ORDER BY source."legacyCode", expanded.target_permission_code;
 
 DELETE FROM erp.canonical_role_permission_catalog WHERE catalog_version = '${version}';
 WITH source AS (
