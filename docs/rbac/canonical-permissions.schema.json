@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./canonical-permissions.schema.json",
+  "title": "Canonical RBAC permissions catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalogType", "version", "riskClasses", "standardCatalog", "workflowPermissions", "deprecatedLegacyPermissions", "compatibilityAliases"],
+  "properties": {
+    "catalogType": { "const": "canonical-rbac-permissions" },
+    "version": { "type": "string", "pattern": "^[1-9][0-9]*\\.[0-9]+\\.[0-9]+$" },
+    "riskClasses": { "type": "array", "uniqueItems": true, "items": { "enum": ["READ", "WRITE", "DESTRUCTIVE", "APPROVAL", "TERMINAL", "EXPORT", "ADMINISTRATIVE"] } },
+    "standardCatalog": {
+      "type": "object", "additionalProperties": false, "required": ["expansion", "resources", "actions"],
+      "properties": {
+        "expansion": { "const": "cartesian-product:<resource>.<action>" },
+        "resources": { "type": "array", "minItems": 15, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z]*$" } },
+        "actions": {
+          "type": "array", "minItems": 7, "maxItems": 7,
+          "items": { "$ref": "#/$defs/action" }
+        }
+      }
+    },
+    "workflowPermissions": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/permission" } },
+    "deprecatedLegacyPermissions": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/deprecatedPermission" } },
+    "compatibilityAliases": { "type": "array", "items": { "$ref": "#/$defs/alias" } }
+  },
+  "$defs": {
+    "action": {
+      "type": "object", "additionalProperties": false, "required": ["action", "riskClass", "description"],
+      "properties": { "action": { "enum": ["read", "create", "update", "delete", "approve", "close", "export"] }, "riskClass": { "type": "string" }, "description": { "type": "string" } }
+    },
+    "permission": {
+      "type": "object", "additionalProperties": false, "required": ["code", "resource", "action", "riskClass", "description", "active"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[a-z][A-Za-z]*(?:\\.[a-z][A-Za-z]*)+$" },
+        "resource": { "type": "string" }, "action": { "type": "string" }, "riskClass": { "type": "string" },
+        "description": { "type": "string" }, "active": { "const": true }
+      }
+    },
+    "deprecatedPermission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "resource", "action", "riskClass", "description", "active", "deprecated", "replacementCodes"],
+      "properties": {
+        "code": { "type": "string" }, "resource": { "type": "string" }, "action": { "type": "string" },
+        "riskClass": { "type": "string" }, "description": { "type": "string" }, "active": { "const": true },
+        "deprecated": { "const": true },
+        "replacementCodes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } }
+      }
+    },
+    "alias": {
+      "type": "object", "additionalProperties": false, "required": ["legacyCode", "expandsTo", "mode"],
+      "properties": { "legacyCode": { "type": "string" }, "expandsTo": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } }, "mode": { "const": "migration-only" } }
+    }
+  }
+}

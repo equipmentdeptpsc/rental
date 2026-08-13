@@ -1,0 +1,96 @@
+{
+  "$schema": "./role-permission-matrix.schema.json",
+  "catalogType": "canonical-rbac-role-permission-matrix",
+  "version": "1.0.0",
+  "rolesVersion": "1.0.0",
+  "permissionsVersion": "1.0.0",
+  "denyByDefault": true,
+  "grants": {
+    "system-administrator": {
+      "allPermissions": true,
+      "standard": {},
+      "workflow": [],
+      "scopeRules": ["same-tenant", "cannot-approve-own-privilege-escalation", "secret-values-never-readable"]
+    },
+    "operations-manager": {
+      "standard": {
+        "equipment": ["read", "create", "update", "approve", "close", "export"],
+        "assignment": ["read", "create", "update", "delete", "approve", "close", "export"],
+        "rental": ["read", "create", "update", "close", "export"],
+        "deur": ["read", "create", "update", "approve", "close", "export"],
+        "billing": ["read", "approve", "export"], "collections": ["read", "export"],
+        "maintenance": ["read", "approve", "export"], "dailyLog": ["read", "approve", "export"],
+        "customer": ["read", "create", "update", "approve", "export"],
+        "project": ["read", "create", "update", "approve", "export"],
+        "operator": ["read", "create", "update", "approve", "export"],
+        "reports": ["read", "export"], "users": ["read"], "settings": ["read", "update"],
+        "masterData": ["read", "approve", "export"]
+      },
+      "workflow": ["dashboard.read", "dashboard.export", "equipment.restore", "equipment.status.update", "assignment.operator.replace", "assignment.equipment.replace", "assignment.complete", "assignment.reopen", "rental.release", "rental.return", "rental.activate", "rental.commercialTerms.read", "rental.commercialTerms.update", "rental.customerContact.update", "rental.approval.submit", "rental.approval.decide", "deur.submit", "deur.acknowledge", "deur.reject", "deur.reopen", "deur.correct", "deur.customerReview.issue", "deur.managerReview.issue", "maintenance.schedule", "maintenance.complete"],
+      "scopeRules": ["same-tenant", "approval-actor-separation-when-configured"]
+    },
+    "dispatcher": {
+      "standard": {
+        "equipment": ["read"], "assignment": ["read", "create", "update", "close", "export"],
+        "rental": ["read", "create", "update", "export"], "deur": ["read"],
+        "maintenance": ["read"], "dailyLog": ["read"], "customer": ["read", "create", "update", "export"],
+        "project": ["read", "create", "update", "export"], "operator": ["read", "update"],
+        "reports": ["read", "export"], "masterData": ["read"]
+      },
+      "workflow": ["dashboard.read", "assignment.operator.replace", "assignment.equipment.replace", "assignment.complete", "rental.commercialTerms.read", "rental.customerContact.update", "rental.approval.submit"],
+      "scopeRules": ["same-tenant", "operational-reports-only"]
+    },
+    "equipment-coordinator": {
+      "standard": {
+        "equipment": ["read", "create", "update", "delete", "close", "export"],
+        "assignment": ["read", "create", "update", "export"], "rental": ["read"], "deur": ["read"],
+        "maintenance": ["read", "create", "update", "export"], "dailyLog": ["read"],
+        "customer": ["read"], "project": ["read"], "operator": ["read"],
+        "reports": ["read", "export"], "masterData": ["read", "create", "update", "export"]
+      },
+      "workflow": ["dashboard.read", "equipment.restore", "equipment.status.update", "equipment.assignment.coordinate", "assignment.equipment.replace", "maintenance.schedule"],
+      "scopeRules": ["same-tenant", "fleet-and-maintenance-reports-only"]
+    },
+    "operator": {
+      "standard": {
+        "equipment": ["read"], "assignment": ["read"], "rental": ["read"],
+        "deur": ["read", "create", "update", "close"], "maintenance": ["read", "create"],
+        "dailyLog": ["read", "create", "update"], "project": ["read"], "operator": ["read"],
+        "reports": ["read"], "masterData": ["read"]
+      },
+      "workflow": ["dashboard.read", "deur.submit", "deur.activity.start", "deur.activity.stop", "deur.evidence.update"],
+      "scopeRules": ["same-tenant", "requires-active-canonical-operator-link", "assigned-operator-records-only", "no-unrelated-customer-financial-data"]
+    },
+    "billing-staff": {
+      "standard": {
+        "equipment": ["read"], "assignment": ["read"], "rental": ["read", "export"], "deur": ["read"],
+        "billing": ["read", "create", "update", "delete", "approve", "close", "export"],
+        "collections": ["read", "create", "update", "delete", "approve", "close", "export"],
+        "customer": ["read"], "project": ["read"], "reports": ["read", "export"], "masterData": ["read"]
+      },
+      "workflow": ["dashboard.read", "rental.commercialTerms.read", "billing.finalize", "billing.reopen", "billing.invoice.issue", "billing.invoice.void", "billing.invoice.export", "collections.reverse", "collections.reconcile"],
+      "scopeRules": ["same-tenant", "financial-reports-only"]
+    },
+    "maintenance-staff": {
+      "standard": {
+        "equipment": ["read", "update"], "assignment": ["read"], "rental": ["read"], "deur": ["read"],
+        "maintenance": ["read", "create", "update", "delete", "approve", "close", "export"],
+        "dailyLog": ["read", "create", "update", "export"], "operator": ["read"],
+        "reports": ["read", "export"], "settings": ["read", "update"], "masterData": ["read"]
+      },
+      "workflow": ["dashboard.read", "equipment.status.update", "equipment.maintenanceState.update", "maintenance.schedule", "maintenance.start", "maintenance.complete", "maintenance.cancel"],
+      "scopeRules": ["same-tenant", "maintenance-settings-and-reports-only"]
+    },
+    "read-only-auditor": {
+      "standard": {
+        "equipment": ["read", "export"], "assignment": ["read", "export"], "rental": ["read", "export"],
+        "deur": ["read", "export"], "billing": ["read", "export"], "collections": ["read", "export"],
+        "maintenance": ["read", "export"], "dailyLog": ["read", "export"], "customer": ["read", "export"],
+        "project": ["read", "export"], "operator": ["read", "export"], "reports": ["read", "export"],
+        "users": ["read", "export"], "settings": ["read", "export"], "masterData": ["read", "export"]
+      },
+      "workflow": ["dashboard.read", "dashboard.export", "roles.read"],
+      "scopeRules": ["same-tenant", "redacted-exports-only", "no-secrets-tokens-credentials-provider-bodies-or-encryption-material"]
+    }
+  }
+}

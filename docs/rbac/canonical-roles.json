@@ -1,0 +1,15 @@
+{
+  "$schema": "./canonical-roles.schema.json",
+  "catalogType": "canonical-rbac-roles",
+  "version": "1.0.0",
+  "roles": [
+    { "code": "system-administrator", "name": "System Administrator", "description": "Administers identities, authorization, system configuration, and controlled recovery.", "systemManaged": true, "active": true, "constraints": ["cannot-remove-final-active-administrator", "cannot-approve-own-privilege-escalation"] },
+    { "code": "operations-manager", "name": "Operations Manager", "description": "Oversees operations, approvals, releases, returns, closure, and exceptions.", "systemManaged": true, "active": true },
+    { "code": "dispatcher", "name": "Dispatcher", "description": "Plans customers, projects, rentals, assignments, and dispatch activity.", "systemManaged": true, "active": true },
+    { "code": "equipment-coordinator", "name": "Equipment Coordinator", "description": "Maintains fleet records, availability, assignment coordination, and equipment state.", "systemManaged": true, "active": true },
+    { "code": "operator", "name": "Operator", "description": "Performs assigned work and records DEUR and daily operational evidence.", "systemManaged": true, "active": true, "constraints": ["requires-active-canonical-operator-link", "one-active-user-per-operator", "assigned-records-only"] },
+    { "code": "billing-staff", "name": "Billing Staff", "description": "Manages billing statements, invoices, collections, and financial exports.", "systemManaged": true, "active": true },
+    { "code": "maintenance-staff", "name": "Maintenance Staff", "description": "Schedules and performs maintenance and updates related fleet condition.", "systemManaged": true, "active": true },
+    { "code": "read-only-auditor", "name": "Read-Only Auditor", "description": "Reads and exports approved tenant business evidence without mutation authority.", "systemManaged": true, "active": true, "constraints": ["no-secret-or-credential-access", "redacted-exports-only"] }
+  ]
+}

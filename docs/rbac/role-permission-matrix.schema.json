@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./role-permission-matrix.schema.json",
+  "title": "Canonical RBAC role-permission matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalogType", "version", "rolesVersion", "permissionsVersion", "denyByDefault", "grants"],
+  "properties": {
+    "catalogType": { "const": "canonical-rbac-role-permission-matrix" },
+    "version": { "type": "string" }, "rolesVersion": { "type": "string" }, "permissionsVersion": { "type": "string" },
+    "denyByDefault": { "const": true },
+    "grants": {
+      "type": "object", "minProperties": 8, "maxProperties": 8,
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["standard", "workflow"],
+        "properties": {
+          "allPermissions": { "type": "boolean" },
+          "standard": { "type": "object", "additionalProperties": { "type": "array", "uniqueItems": true, "items": { "enum": ["read", "create", "update", "delete", "approve", "close", "export"] } } },
+          "workflow": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+          "scopeRules": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
