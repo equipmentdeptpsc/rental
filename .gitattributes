@@ -1,0 +1,2 @@
+# Preserve deterministic database migration bytes across operating systems.
+supabase/migrations/*.sql text eol=lf
