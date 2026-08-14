@@ -1,0 +1,2 @@
+import type { ReactNode } from "react";
+export default function DataTable({children,empty,emptyMessage="No records found. Adjust your filters or create a new record.",className=""}:{children?:ReactNode;empty?:boolean;emptyMessage?:string;className?:string}){return <div className={`overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}{empty&&<p className="p-8 text-center text-sm text-slate-500">{emptyMessage}</p>}</div>}

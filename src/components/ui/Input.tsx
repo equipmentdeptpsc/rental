@@ -1,34 +1,3 @@
-import type { InputHTMLAttributes } from "react";
-
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-}
-
-export default function Input({
-  label,
-  error,
-  className = "",
-  ...props
-}: InputProps) {
-  return (
-    <div className="space-y-2">
-      {label && (
-        <label className="block text-sm font-medium text-slate-700">
-          {label}
-        </label>
-      )}
-
-      <input
-        className={`w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${className}`}
-        {...props}
-      />
-
-      {error && (
-        <p className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
+import { useId, type InputHTMLAttributes } from "react";
+interface InputProps extends InputHTMLAttributes<HTMLInputElement>{label?:string;error?:string;helperText?:string;requiredIndicator?:boolean}
+export default function Input({label,error,helperText,requiredIndicator=false,className="",id,...props}:InputProps){const generated=useId(),inputId=id??generated,errorId=`${inputId}-error`,helperId=`${inputId}-helper`;return <div className="space-y-1.5">{label&&<label htmlFor={inputId} className="block text-sm font-medium text-slate-700">{label}{(requiredIndicator||props.required)&&<span aria-hidden="true" className="text-red-600"> *</span>}</label>}<input id={inputId} aria-invalid={!!error} aria-describedby={error?errorId:helperText?helperId:props["aria-describedby"]} className={`min-h-11 w-full rounded-lg border bg-white px-3 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 ${error?"border-red-500 focus:ring-red-200":"border-slate-300 focus:border-blue-500 focus:ring-blue-200"} focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${className}`} {...props}/>{helperText&&!error&&<p id={helperId} className="text-sm text-slate-500">{helperText}</p>}{error&&<p id={errorId} role="alert" className="text-sm text-red-700">{error}</p>}</div>}

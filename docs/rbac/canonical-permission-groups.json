@@ -1,0 +1,18 @@
+{
+  "catalogType": "canonical-rbac-permission-groups",
+  "version": "2.0.0",
+  "groups": [
+    { "code": "rental", "label": "Rental", "resources": ["rental"] },
+    { "code": "assignment", "label": "Assignment", "resources": ["assignment"] },
+    { "code": "equipment", "label": "Equipment", "resources": ["equipment"] },
+    { "code": "customer", "label": "Customer", "resources": ["customer"] },
+    { "code": "operator", "label": "Operator", "resources": ["operator", "dailyLog", "deur"] },
+    { "code": "project", "label": "Project", "resources": ["project"] },
+    { "code": "maintenance", "label": "Maintenance", "resources": ["maintenance"] },
+    { "code": "billing", "label": "Billing", "resources": ["billing", "collections"] },
+    { "code": "reports", "label": "Reports", "resources": ["dashboard", "reports"] },
+    { "code": "administration", "label": "Administration", "resources": ["users", "roles", "permissions", "settings", "masterData", "diagnostics"] }
+  ],
+  "configurationSections": ["general", "numbering", "rental", "deur", "billing", "notifications", "scheduler", "security", "integrations"],
+  "invariants": ["permissions-assigned-to-roles-only", "users-receive-one-or-more-roles", "no-direct-user-permissions", "canonical-roles-protected", "custom-roles-supported", "all-configuration-changes-audited"]
+}

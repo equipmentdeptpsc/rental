@@ -8,4 +8,5 @@ export interface UserRepository {
   updateUser(user: User): User;
   activateUser(id: string): User;
   deactivateUser(id: string): User;
+  deleteUser?(id: string): void;
 }

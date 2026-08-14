@@ -1,0 +1,41 @@
+import rolesDocument from "../../../../docs/rbac/canonical-roles.json";
+import permissionsDocument from "../../../../docs/rbac/canonical-permissions.json";
+import matrixDocument from "../../../../docs/rbac/role-permission-matrix.json";
+import groupsDocument from "../../../../docs/rbac/canonical-permission-groups.json";
+import type { User } from "@/features/auth/domain/user";
+import type { UserRepository } from "@/features/auth/repository/UserRepository";
+import { ProtectedRoleError, RoleCatalogError, type AdminRole, type CanonicalPermissionRecord } from "../domain/contracts";
+import { LocalAdministrationRepository } from "../repository/LocalAdministrationRepository";
+
+const sorted=(x:Iterable<string>)=>Object.freeze([...new Set(x)].sort());
+const standard=permissionsDocument.standardCatalog.resources.flatMap(resource=>permissionsDocument.standardCatalog.actions.map(action=>({code:`${resource}.${action.action}`,resource,action:action.action,riskClass:action.riskClass,description:action.description,active:true,deprecated:false,replacementPermissions:[]})));
+const workflow=permissionsDocument.workflowPermissions.map(x=>({...x,deprecated:false,replacementPermissions:[]}));
+const deprecated=permissionsDocument.deprecatedLegacyPermissions.map(x=>({code:x.code,resource:x.resource,action:x.action,riskClass:x.riskClass,description:x.description,active:x.active,deprecated:true,replacementPermissions:x.replacementCodes}));
+const catalog=[...standard,...workflow,...deprecated] satisfies CanonicalPermissionRecord[];
+const activeCodes=new Set(catalog.filter(x=>x.active&&!x.deprecated).map(x=>x.code));
+
+export class CanonicalRoleAdministrationService {
+ constructor(private readonly repository=new LocalAdministrationRepository(),private readonly users?:Pick<UserRepository,"getUsers">,private readonly now:()=>string=()=>new Date().toISOString(),private readonly id:()=>string=()=>crypto.randomUUID()){}
+ get catalogVersion(){return rolesDocument.version}
+ listPermissions():readonly CanonicalPermissionRecord[]{return Object.freeze([...catalog].sort((a,b)=>a.code.localeCompare(b.code)))}
+ getPermissionGroups(){return groupsDocument.groups}
+ listRoles():readonly AdminRole[]{return Object.freeze([...rolesDocument.roles.map(role=>this.canonical(role.code)),...this.repository.getCustomRoles()].sort((a,b)=>a.code.localeCompare(b.code)))}
+ getRole(code:string):AdminRole|undefined{return this.listRoles().find(x=>x.code===code)}
+ getRoleDisplayName(code:string):string{return this.getRole(code)?.name??code}
+ getDefaultPermissions(code:string):readonly string[]{const role=rolesDocument.roles.find(x=>x.code===code);if(role)return this.canonicalPermissions(code);const custom=this.repository.getCustomRoles().find(x=>x.code===code);if(!custom)throw new RoleCatalogError("Role not found.");return custom.sourceRoleCode?this.getDefaultPermissions(custom.sourceRoleCode):sorted(custom.permissions)}
+ resolvePermissions(roleCodes:readonly string[]):readonly string[]{return sorted(roleCodes.flatMap(code=>this.getRole(code)?.permissions??[]))}
+ assignedUsers(code:string):readonly User[]{return Object.freeze([...(this.users?.getUsers()??[])].filter(x=>x.systemRoles.includes(code)).sort((a,b)=>a.id.localeCompare(b.id)))}
+ compare(a:string,b:string){const ap=this.resolvePermissions([a]),bp=this.resolvePermissions([b]),as=new Set(ap),bs=new Set(bp);return Object.freeze({roleA:a,roleB:b,shared:sorted(ap.filter(x=>bs.has(x))),onlyA:sorted(ap.filter(x=>!bs.has(x))),onlyB:sorted(bp.filter(x=>!as.has(x)))})}
+ cloneRole(actor:User,sourceCode:string,code:string,name:string):AdminRole{const source=this.required(sourceCode);this.assertCode(code);if(this.getRole(code))throw new RoleCatalogError("Role code already exists.");const role:Object=Object.freeze({code,name:name.trim(),description:`Custom role cloned from ${source.name}.`,systemManaged:false,active:true,catalogVersion:this.catalogVersion,sourceRoleCode:source.code,permissions:sorted(source.permissions)});this.repository.saveCustomRole(role as AdminRole);this.audit(actor,"ROLE_CLONED",code,{sourceRoleCode:source.code});this.audit(actor,"CUSTOM_ROLE_CREATED",code,{sourceRoleCode:source.code});return role as AdminRole}
+ updateRole(actor:User,code:string,changes:{name?:string;active?:boolean;permissions?:readonly string[]}):AdminRole{const role=this.required(code);if(role.systemManaged)throw new ProtectedRoleError("edited");const unknown=(changes.permissions??role.permissions).filter(x=>!activeCodes.has(x));if(unknown.length)throw new RoleCatalogError(`Unknown or inactive permissions: ${unknown.join(", ")}`);const next=Object.freeze({...role,...changes,name:changes.name?.trim()||role.name,permissions:sorted(changes.permissions??role.permissions)});this.repository.saveCustomRole(next);this.audit(actor,next.active?"CUSTOM_ROLE_UPDATED":"CUSTOM_ROLE_DEACTIVATED",code);return next}
+ renameRole(actor:User,code:string,name:string){const role=this.required(code);if(role.systemManaged)throw new ProtectedRoleError("renamed");return this.updateRole(actor,code,{name})}
+ deleteRole(_actor:User,code:string):never{const role=this.required(code);if(role.systemManaged)throw new ProtectedRoleError("deleted");throw new RoleCatalogError("Custom role deletion is disabled; deactivate it instead.")}
+ setRolePermissions(actor:User,code:string,permissions:readonly string[]):AdminRole{this.assertAdministrator(actor);const role=this.required(code),next=sorted(permissions),unknown=next.filter(x=>!activeCodes.has(x));if(unknown.length)throw new RoleCatalogError(`Unknown or inactive permissions: ${unknown.join(", ")}`);const before=new Set(role.permissions),after=new Set(next);if(role.systemManaged)this.repository.saveRolePermissionOverride(code,next);else this.repository.saveCustomRole(Object.freeze({...role,permissions:next}));for(const permission of next.filter(x=>!before.has(x)))this.audit(actor,"ROLE_PERMISSION_ADDED",code,{permissionCode:permission});for(const permission of role.permissions.filter(x=>!after.has(x)))this.audit(actor,"ROLE_PERMISSION_REMOVED",code,{permissionCode:permission});return this.required(code)}
+ resetRolePermissions(actor:User,code:string):AdminRole{this.assertAdministrator(actor);const role=this.required(code),defaults=this.getDefaultPermissions(code),before=new Set(role.permissions),after=new Set(defaults);if(role.systemManaged)this.repository.removeRolePermissionOverride(code);else this.repository.saveCustomRole(Object.freeze({...role,permissions:defaults}));for(const permission of defaults.filter(x=>!before.has(x)))this.audit(actor,"ROLE_PERMISSION_ADDED",code,{permissionCode:permission,resetToDefault:true});for(const permission of role.permissions.filter(x=>!after.has(x)))this.audit(actor,"ROLE_PERMISSION_REMOVED",code,{permissionCode:permission,resetToDefault:true});this.audit(actor,"ROLE_PERMISSIONS_RESET",code);return this.required(code)}
+ private canonicalPermissions(code:string):readonly string[]{const grant=matrixDocument.grants[code as keyof typeof matrixDocument.grants];return sorted("allPermissions" in grant&&grant.allPermissions?[...activeCodes]:[...Object.entries(grant.standard).flatMap(([resource,actions])=>actions.map(action=>`${resource}.${action}`)),...grant.workflow])}
+ private canonical(code:string):AdminRole{const role=rolesDocument.roles.find(x=>x.code===code)!;return Object.freeze({...role,catalogVersion:this.catalogVersion,permissions:sorted(this.repository.getRolePermissionOverride(code)??this.canonicalPermissions(code))})}
+ private required(code:string){const role=this.getRole(code);if(!role)throw new RoleCatalogError("Role not found.");return role}
+ private assertCode(code:string){if(!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code))throw new RoleCatalogError("Role code is invalid.")}
+ private assertAdministrator(actor:User){if(!actor.systemRoles.includes("system-administrator"))throw new RoleCatalogError("System Administrator authority is required to manage role permissions.")}
+ private audit(actor:User,action:string,targetId:string,metadata?:Record<string,string|boolean|number|null>){this.repository.appendAudit({id:this.id(),actorId:actor.id,targetType:"ROLE",targetId,action,occurredAt:this.now(),companyId:actor.companyId,metadata})}
+}

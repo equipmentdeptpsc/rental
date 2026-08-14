@@ -88,7 +88,7 @@ export class DualPermissionComparisonService {
       ? sorted(this.legacyAuthorization.getEffectivePermissions(user) as ReadonlySet<Permission>)
       : Object.freeze([] as string[]);
     const roleMappingUsed = user.status === "active"
-      ? [...new Set(user.systemRoles)].map(role => ROLE_PROJECTIONS[role]).filter((mapping): mapping is RoleProjection => Boolean(mapping))
+      ? [...new Set(user.systemRoles)].map(role => ROLE_PROJECTIONS[role as SystemRole]).filter((mapping): mapping is RoleProjection => Boolean(mapping))
       : [];
     const canonical = sorted(roleMappingUsed.flatMap(mapping => permissionsForCanonicalRole(mapping.canonicalRole)));
     const legacySet = new Set(legacy);

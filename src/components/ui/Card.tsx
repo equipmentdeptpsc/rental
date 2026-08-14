@@ -29,7 +29,7 @@ function Header({
 }: CardSectionProps) {
   return (
     <div
-      className={`border-b border-slate-200 p-6 ${className}`}
+      className={`border-b border-slate-200 p-4 sm:p-6 ${className}`}
     >
       {children}
     </div>
@@ -41,7 +41,7 @@ function Body({
   className = "",
 }: CardSectionProps) {
   return (
-    <div className={`p-6 ${className}`}>
+    <div className={`p-4 sm:p-6 ${className}`}>
       {children}
     </div>
   );

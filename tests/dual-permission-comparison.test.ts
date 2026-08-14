@@ -59,7 +59,7 @@ describe("DualPermissionComparisonService", () => {
 
   it("treats unrestricted administrator catalogs as authority-equivalent", () => {
     const result = service.compare(user("system-administrator"));
-    expect(result.canonicalProjectedPermissions).toHaveLength(157);
+    expect(result.canonicalProjectedPermissions).toHaveLength(168);
     expect(result.unexplainedCanonicalOnlyPermissions).toEqual([]);
     expect(result.canonicalMappingWouldIncreaseAuthority).toBe(false);
   });

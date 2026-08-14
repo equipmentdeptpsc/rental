@@ -23,7 +23,7 @@ export function adaptDomainUser(user: DomainUser): AuthenticatedUser {
     ...user,
     systemRoles: Object.freeze([...user.systemRoles]),
     name: user.displayName,
-    role: systemToLegacyRole[user.systemRoles[0]] ?? "Operator",
+    role: systemToLegacyRole[user.systemRoles[0] as SystemRole] ?? "Operator",
   });
 }
 

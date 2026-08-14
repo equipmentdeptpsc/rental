@@ -1,12 +1,13 @@
 # Canonical RBAC catalog specification
 
-Status: design artifact only. Version: `1.0.0`.
+Status: design artifact only. Version: `2.0.0`.
 
 These files define the proposed single source of truth for the production RBAC catalog. They are not imported by application code, do not change runtime behavior, and have not been applied to any database.
 
 ## Artifacts
 
-- `canonical-roles.json`: eight canonical roles and invariant constraints.
+- `canonical-roles.json`: nine canonical roles and invariant constraints.
+- `canonical-permission-groups.json`: administration display groups and configuration sections.
 - `canonical-permissions.json`: 105 derived standard permissions, workflow permissions, deprecated legacy permissions, and migration-only aliases.
 - `role-permission-matrix.json`: deny-by-default canonical grants and scope rules.
 - Matching JSON Schema Draft 2020-12 files validate document shape.
@@ -87,7 +88,7 @@ Shape validation uses the included JSON schemas. Semantic validation must additi
 
 - Validate every artifact against its schema.
 - Expand the Cartesian catalog and snapshot its sorted code manifest.
-- Assert exact counts: 8 roles and 105 standard permissions.
+- Assert exact counts: 9 roles, 105 standard permissions, and 168 active permissions.
 - Assert uniqueness, decomposition, risk classification, reference integrity, and alias acyclicity.
 
 ### Matrix tests

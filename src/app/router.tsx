@@ -55,6 +55,9 @@ import DevelopmentEmailPreviewPage from "@/pages/DevelopmentEmailOutbox/Preview"
 import DevelopmentCustomerReviewOutboxPage from "@/pages/DevelopmentCustomerReviewOutbox";
 import DevelopmentCustomerReviewPreview from "@/pages/DevelopmentCustomerReviewOutbox/Preview";
 import UsersPage from "@/features/users/pages/UsersPage";
+import RolesPage from "@/features/administration/pages/RolesPage";
+import PermissionsPage from "@/features/administration/pages/PermissionsPage";
+import AuditTrailPage from "@/features/administration/pages/AuditTrailPage";
 
 const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
 const CostCodePage = lazy(() => import("@/features/masters/cost-code/pages"));
@@ -130,6 +133,9 @@ export const router = createBrowserRouter([
       { path: "reports", element: permitted("reports.view", <Reports />) },
       { path: "settings", element: permitted("settings.manage", <Settings />) },
       { path: "users", element: permitted("users.manage", <UsersPage />) },
+      { path: "roles", element: permitted("users.manage", <RolesPage />) },
+      { path: "permissions", element: permitted("users.manage", <PermissionsPage />) },
+      { path: "audit-trail", element: permitted("users.manage", <AuditTrailPage />) },
       { path: "development-email-outbox", element: permitted("settings.manage", <DevelopmentEmailOutboxPage />) },
       { path: "development-email-outbox/:id", element: permitted("settings.manage", <DevelopmentEmailPreviewPage />) },
       { path: "development-customer-review-outbox", element: permitted("settings.manage", <DevelopmentCustomerReviewOutboxPage />) },

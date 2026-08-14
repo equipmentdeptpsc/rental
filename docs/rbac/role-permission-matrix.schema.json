@@ -4,13 +4,15 @@
   "title": "Canonical RBAC role-permission matrix",
   "type": "object",
   "additionalProperties": false,
-  "required": ["catalogType", "version", "rolesVersion", "permissionsVersion", "denyByDefault", "grants"],
+  "required": ["catalogType", "version", "rolesVersion", "permissionsVersion", "denyByDefault", "assignmentModel", "protectedCanonicalRoles", "grants"],
   "properties": {
     "catalogType": { "const": "canonical-rbac-role-permission-matrix" },
     "version": { "type": "string" }, "rolesVersion": { "type": "string" }, "permissionsVersion": { "type": "string" },
     "denyByDefault": { "const": true },
+    "assignmentModel": { "const": "user-to-multiple-roles-only" },
+    "protectedCanonicalRoles": { "const": true },
     "grants": {
-      "type": "object", "minProperties": 8, "maxProperties": 8,
+      "type": "object", "minProperties": 9, "maxProperties": 9,
       "additionalProperties": {
         "type": "object", "additionalProperties": false, "required": ["standard", "workflow"],
         "properties": {

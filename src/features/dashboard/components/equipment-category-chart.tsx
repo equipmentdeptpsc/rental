@@ -1,54 +1,9 @@
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
-    CartesianGrid,
-  } from "recharts";
-  
-  interface Props {
-    data: {
-      name: string;
-      value: number;
-    }[];
-  }
-  
-  export default function EquipmentCategoryChart({
-    data,
-  }: Props) {
-    return (
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
-        <h2 className="mb-6 text-lg font-semibold">
-          Equipment by Category
-        </h2>
-  
-        <div className="h-80">
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-          >
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-  
-              <XAxis
-                dataKey="name"
-              />
-  
-              <YAxis
-                allowDecimals={false}
-              />
-  
-              <Tooltip />
-  
-              <Bar
-                dataKey="value"
-                radius={[6, 6, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    );
-  }
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+
+interface Props { data: { name: string; value: number }[] }
+export default function EquipmentCategoryChart({ data }: Props) {
+  return <section className="dashboard-panel" aria-label="Equipment counts by category">
+    <h2 className="dashboard-panel-title">Equipment by Category</h2>
+    <div className="h-48"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ top: 18, right: 8, bottom: 0, left: -24 }}><CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#dbe3ee" /><XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} /><YAxis allowDecimals={false} tick={{ fontSize: 11 }} /><Tooltip /><Bar dataKey="value" fill="#2563eb" radius={[5, 5, 0, 0]} label={{ position: "top", fontSize: 11 }} /></BarChart></ResponsiveContainer></div>
+  </section>;
+}

@@ -1,6 +1,5 @@
 import type { IStorageService } from "@/core/storage/IStorageService";
 import type { AuthSession } from "../domain/session";
-import type { SystemRole } from "../domain/systemRole";
 import type { User } from "../domain/user";
 
 export const AUTH_STORAGE_VERSION = 1;
@@ -27,19 +26,12 @@ export type StorageReadResult<T> =
   | { readonly status: "valid"; readonly value: T }
   | { readonly status: "corrupt"; readonly value: null };
 
-const SYSTEM_ROLES: readonly SystemRole[] = [
-  "system-administrator",
-  "rental-operations",
-  "finance",
-  "management",
-];
-
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isSystemRole(value: unknown): value is SystemRole {
-  return typeof value === "string" && SYSTEM_ROLES.includes(value as SystemRole);
+function isRoleCode(value: unknown): value is string {
+  return typeof value === "string" && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value);
 }
 
 export function isUser(value: unknown): value is User {
@@ -52,7 +44,7 @@ export function isUser(value: unknown): value is User {
     (value.email === undefined || typeof value.email === "string") &&
     (value.companyId === undefined || typeof value.companyId === "string") &&
     Array.isArray(value.systemRoles) &&
-    value.systemRoles.every(isSystemRole) &&
+    value.systemRoles.every(isRoleCode) &&
     (value.status === "active" || value.status === "inactive") &&
     (value.operatorId === undefined || typeof value.operatorId === "string") &&
     typeof value.createdAt === "string" &&

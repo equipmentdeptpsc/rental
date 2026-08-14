@@ -137,6 +137,8 @@ export class LocalUserRepository implements UserRepository {
     return this.setStatus(id, "inactive");
   }
 
+  deleteUser(id:string):void{const records=this.readRecords().records;if(!records.some(({user})=>user.id===id))throw new Error("User not found.");this.writeRecords(records.filter(({user})=>user.id!==id))}
+
   validateLocalCredentials(username: string, password: string): User | undefined {
     const normalized = normalizeUsername(username);
     const record = this.readRecords().records.find(
@@ -160,13 +162,11 @@ export class LocalUserRepository implements UserRepository {
   }
 
   private setStatus(id: string, status: User["status"]): User {
-    const existing = this.getUserById(id);
-    if (!existing) throw new Error(`User not found: ${id}`);
-    return this.updateUser({
-      ...existing,
-      status,
-      updatedAt: new Date().toISOString(),
-    });
+    const records=this.readRecords().records,index=records.findIndex(({user})=>user.id===id);
+    if(index<0)throw new Error(`User not found: ${id}`);
+    const updated={...cloneUser(records[index].user),status,updatedAt:new Date().toISOString()};
+    this.writeRecords(records.map((record,recordIndex)=>recordIndex===index?{...record,user:updated}:record));
+    return cloneUser(updated);
   }
 
   private assertUniqueUser(
@@ -176,11 +176,16 @@ export class LocalUserRepository implements UserRepository {
     const duplicate = records.some(
       ({ user }) =>
         user.id !== candidate.id &&
+        user.companyId === candidate.companyId &&
         normalizeUsername(user.username) === normalizeUsername(candidate.username),
     );
     if (duplicate) {
-      throw new Error(`Username already exists: ${candidate.username}`);
+      throw new Error("Username already exists.");
     }
+    if(!candidate.email)return;
+    const email=normalizeEmail(candidate.email);
+    const duplicateEmail=records.find(({user})=>user.id!==candidate.id&&user.companyId===candidate.companyId&&user.email&&normalizeEmail(user.email)===email)?.user;
+    if(duplicateEmail)throw new Error(`Email already exists. This email is assigned to ${duplicateEmail.displayName} (${duplicateEmail.username}). Edit the existing user and assign additional roles instead.`);
   }
 
   private readRecords(): UsersReadResult {
@@ -225,3 +230,5 @@ export class LocalUserRepository implements UserRepository {
 function normalizeUsername(username: string): string {
   return username.trim().toLocaleLowerCase();
 }
+
+function normalizeEmail(email:string):string{return email.trim().toLocaleLowerCase()}

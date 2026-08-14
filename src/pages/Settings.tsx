@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
@@ -38,6 +38,8 @@ export default function Settings() {
 
   const [showForm, setShowForm] =
     useState(false);
+  const prefixTrigger=useRef<HTMLButtonElement>(null),prefixDialog=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(!showForm)return;prefixDialog.current?.focus();const key=(event:KeyboardEvent)=>{if(event.key==="Escape")closeForm()};document.addEventListener("keydown",key);return()=>document.removeEventListener("keydown",key)},[showForm]);
   const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
   const [backupError, setBackupError] = useState("");
   const [shiftWindows, setShiftWindows] = useState(() => deurShiftWindowRepository.getAll());
@@ -131,6 +133,7 @@ export default function Settings() {
   function closeForm() {
     setEditing(null);
     setShowForm(false);
+    queueMicrotask(() => prefixTrigger.current?.focus());
   }
 
   function save(item: Omit<PrefixRecord, "id">) {
@@ -155,10 +158,6 @@ export default function Settings() {
           </p>
         </div>
 
-        <Button type="button" onClick={newPrefix}>
-          + New Prefix
-        </Button>
-
       </div>
 
       <div className="rounded-xl border bg-white p-6">
@@ -179,13 +178,7 @@ export default function Settings() {
 
       <div className="rounded-xl border bg-white p-6">
 
-        <h2 className="text-2xl font-semibold">
-          Equipment Prefix Master
-        </h2>
-
-        <p className="text-gray-500 mb-6">
-          Manage equipment numbering prefixes.
-        </p>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-2xl font-semibold">Equipment Prefix Master</h2><p className="text-gray-500">Manage equipment numbering prefixes.</p></div><button ref={prefixTrigger} type="button" className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700" onClick={newPrefix}>+ New Prefix</button></div>
 
         <PrefixTable
           prefixes={prefixes}
@@ -276,13 +269,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {showForm && (
-        <PrefixForm
-          initialData={editing}
-          onSave={save}
-          onCancel={closeForm}
-        />
-      )}
+      {showForm&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onMouseDown={event=>{if(event.target===event.currentTarget)closeForm()}}><div ref={prefixDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="prefix-dialog-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl"><h2 id="prefix-dialog-title" className="mb-4 text-xl font-bold">{editing?"Edit Equipment Prefix":"New Equipment Prefix"}</h2><PrefixForm initialData={editing} onSave={save} onCancel={()=>{closeForm();prefixTrigger.current?.focus()}}/></div></div>}
 
     </div>
   );

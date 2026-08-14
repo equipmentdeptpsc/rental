@@ -20,6 +20,7 @@ import { AuthorizationService } from "@/features/auth/services/AuthorizationServ
 import { LegacyAuthCompatibilityRepository } from "@/features/auth/repository/LegacyAuthCompatibilityRepository";
 import { LocalAuthenticationProvider } from "@/features/auth/providers/local/LocalAuthenticationProvider";
 import { UserManagementService } from "@/features/users/services/UserManagementService";
+import { AuthorizationAuditService } from "@/features/administration/services/AuthorizationAuditService";
 import { LocalReadRepository } from "@/core/remote";
 import { customerRepository } from "@/features/customer/repository";
 import { projectRepository } from "@/features/project/repository";
@@ -50,6 +51,9 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
   ];
   const authenticationService = overrides.authentication?.authenticationService ?? new AuthenticationService(authenticationProviders, userRepository);
   const authorizationService = overrides.authentication?.authorizationService ?? new AuthorizationService({ getById: (id) => operatorRepository.getById(id) });
+  const authorizationAuditService=new AuthorizationAuditService();
+  const referenceValues=()=>[equipmentRepository.getAll(),assignmentRepository.getAll(),rentalRepository.getAll(),rentalContractRepository.getAll(),rentalEquipmentLineRepository.getAll(),deurRepository.getAll(),billingStatementRepository.getAll()];
+  const containsUserReference=(value:unknown,userId:string):boolean=>{if(Array.isArray(value))return value.some(item=>containsUserReference(item,userId));if(!value||typeof value!=="object")return false;return Object.entries(value).some(([key,item])=>["userId","actorId","createdByUserId","updatedByUserId","approvedByUserId"].includes(key)?item===userId:containsUserReference(item,userId))};
   const userManagementService = overrides.authentication?.userManagementService ?? new UserManagementService(
     userRepository,
     { create: (user, initialPassword) => {
@@ -62,7 +66,8 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     undefined,
     undefined,
     { getById: (id) => operatorRepository.getById(id) },
-    authorizationService,
+    authorizationService, undefined, authorizationAuditService,
+    {hasBusinessReferences:user=>referenceValues().some(value=>containsUserReference(value,user.id)),hasBlockingAuditHistory:user=>authorizationAuditService.hasBlockingUserHistory(user.id)},
   );
   const authentication = {
     authRepository,
