@@ -49,6 +49,7 @@ import DailyLogs from "@/pages/DailyLogs";
 import NewDailyLog from "@/pages/DailyLogs/New";
 import Billing from "@/pages/Billing";
 import Reports from "@/pages/Reports";
+import ReportPreview from "@/pages/Reports/Preview";
 import Settings from "@/pages/Settings";
 import DevelopmentEmailOutboxPage from "@/pages/DevelopmentEmailOutbox";
 import DevelopmentEmailPreviewPage from "@/pages/DevelopmentEmailOutbox/Preview";
@@ -131,6 +132,7 @@ export const router = createBrowserRouter([
       { path: "daily-logs/new", element: permitted("dailyLog.manage", <NewDailyLog />) },
       { path: "billing", element: permitted("billing.read", <Billing />) },
       { path: "reports", element: permitted("reports.view", <Reports />) },
+      { path: "reports/preview", element: permitted("reports.view", <ReportPreview />) },
       { path: "settings", element: permitted("settings.manage", <Settings />) },
       { path: "users", element: permitted("users.manage", <UsersPage />) },
       { path: "roles", element: permitted("users.manage", <RolesPage />) },

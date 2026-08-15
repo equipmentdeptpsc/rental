@@ -21,7 +21,7 @@ import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes"
 import { useActivityCodes } from "@/features/masters/activity-code";
 import { createRentalOperationalMetadataSnapshot } from "@/features/rental/services/createRentalOperationalMetadataSnapshot";
 import RentalOperationalMetadataCard from "./RentalOperationalMetadataCard";
-import { getAssignmentDisplayName } from "@/features/assignment/utils/assignmentDisplay";
+import { getAssignmentDisplayName, getAssignmentNumber } from "@/features/assignment/utils/assignmentDisplay";
 
 export interface RentalFormData {
   equipmentId: string;
@@ -333,7 +333,7 @@ export default function RentalForm({
             const eligible = Boolean(machine && !machine.deleted && machine.active !== false && ["Available", "Assigned"].includes(machine.status));
             return <label key={item.id} className={`flex items-center gap-3 rounded border p-3 text-sm ${eligible && !duplicateSelected ? "" : "opacity-50"}`}>
               <input type="checkbox" disabled={!eligible || duplicateSelected} checked={form.assignmentIds.includes(item.id)} onChange={(event) => update("assignmentIds", event.target.checked ? [...form.assignmentIds, item.id] : form.assignmentIds.filter((id) => id !== item.id))} />
-              <span><strong>{getAssignmentDisplayName({ assignment: item, equipment: machine, operator, project: projects.find((record) => record.id === item.projectId) })}</strong><br /><span className="text-xs text-slate-500">Assignment ID: {item.id}</span></span>
+              <span><strong>{getAssignmentDisplayName({ assignment: item, equipment: machine, operator, project: projects.find((record) => record.id === item.projectId) })}</strong><br /><span className="text-xs text-slate-500">{getAssignmentNumber(item.id, assignments)}</span></span>
             </label>;
           })}
         </div>

@@ -16,6 +16,9 @@ import { Link } from "react-router-dom";
 import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
 import type { WorkspaceTab } from "../types";
 import { detectClosedRentalIntegrityViolation } from "@/features/rental/services/detectClosedRentalIntegrityViolation";
+import RentalWorkspaceSummaryStrip from "./RentalWorkspaceSummaryStrip";
+import RentalWorkspaceWorkflowPanel from "./RentalWorkspaceWorkflowPanel";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 export default function RentalWorkspaceHeader({ activeTab }: { activeTab: WorkspaceTab }) {
   const aggregate =
@@ -34,71 +37,22 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
   const historicalIntegrityViolations = detectClosedRentalIntegrityViolation(aggregate, displayedCompliance.status);
 
   return (
-    <div className="rounded-xl border bg-white p-6 shadow-sm">
-
-      <div className="flex items-center justify-between">
-
-        <div>
-
-          <h2 className="text-2xl font-semibold">
-            {aggregate.rental.customer}
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            {aggregate.rental.project}
-          </p>
-
+    <div className="app-card space-y-5 p-5 sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental Workspace</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight">{aggregate.rental.customer}</h2>
+          <p className="mt-1 text-sm text-slate-500">{aggregate.rental.project}</p>
+          <p className="mt-1 text-xs text-slate-500">{aggregate.rental.rentalNumber ?? aggregate.rental.id}</p>
         </div>
-
-        <div className="text-right">
-
-          <div className="text-sm text-slate-500">
-            Status
-          </div>
-
-          <div className="font-semibold">
-            {aggregate.rental.status}
-          </div>
-
-          <div className="mt-2"><RentalDeurComplianceIndicator result={displayedCompliance} /></div>
-
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone={aggregate.rental.status === "Closed" ? "neutral" : "info"}>{aggregate.rental.status}</StatusBadge>
+          <RentalDeurComplianceIndicator result={displayedCompliance} />
         </div>
-
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-6 lg:grid-cols-4">
-
-        <Info
-          label="Equipment"
-          value={
-            aggregate.equipment?.equipmentName ??
-            "-"
-          }
-        />
-
-        <Info
-          label="Operator"
-          value={
-            aggregate.operator?.name ??
-            "-"
-          }
-        />
-
-        <Info
-          label="Date Out"
-          value={
-            aggregate.rental.dateOut
-          }
-        />
-
-        <Info
-          label="Expected Return"
-          value={
-            aggregate.rental.expectedReturn ?? "Not specified"
-          }
-        />
-
-      </div>
+      <RentalWorkspaceSummaryStrip />
+      <RentalWorkspaceWorkflowPanel />
 
       <RentalDeurComplianceSummary result={displayedCompliance} policy={aggregate.rental.deurExpectationPolicy} />
       {historicalIntegrityViolations.length > 0 && <div className="mt-4 rounded border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><b>Historical integrity violation</b><p>This Closed rental predates the current closure gate: {historicalIntegrityViolations.join(", ")}. It remains readable and was not automatically changed.</p></div>}
@@ -108,32 +62,14 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       {aggregate.rental.status!=="Closed"&&<div className="mt-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} hideClose={activeTab==="closing"} /></div>}
       {aggregate.rental.status!=="Closed"&&hasPermission("rental.manage")&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
       <ApprovalInvalidationNotice rental={aggregate.rental} />
-      <p className="mt-3 rounded bg-slate-50 p-3 text-sm"><b>{workflow.label}</b> — {workflow.explanation} Next: {workflow.recommendedNextAction}.</p>
-
-    </div>
-  );
-}
-
-interface InfoProps {
-  label: string;
-  value: string;
-}
-
-function Info({
-  label,
-  value,
-}: InfoProps) {
-  return (
-    <div>
-
-      <div className="text-xs uppercase tracking-wide text-slate-500">
-        {label}
-      </div>
-
-      <div className="mt-1 font-medium">
-        {value}
-      </div>
-
+      {workflow.blockingReasons.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+          <b>Blocking reasons</b>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {workflow.blockingReasons.map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

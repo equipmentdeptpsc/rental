@@ -20,7 +20,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }:
     ? [{ title: "OPERATIONS", items: operationsItems }, ...visibleGroups.filter((group) => group.title !== "GENERAL" && group.title !== "OPERATIONS")]
     : visibleGroups;
   return (
-    <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 flex w-[216px] shrink-0 flex-col bg-[#071a33] text-white shadow-xl transition-[width,transform] duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 ${collapsed ? "md:w-[68px]" : "md:w-[216px]"}`}>
+    <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 flex h-dvh w-[216px] shrink-0 flex-col bg-[#071a33] text-white shadow-xl transition-[width,transform] duration-200 md:sticky md:top-0 md:self-start md:translate-x-0 ${collapsed ? "md:w-[68px]" : "md:w-[216px]"}`}>
       <div className={`flex h-[78px] items-center border-b border-white/10 ${collapsed ? "justify-center px-2" : "px-4"}`}>
         {collapsed ? <img src="/branding/primary-structures-corporation-logo.png" alt="Primary Structures Corporation" className="h-9 w-10 object-contain" /> : <OrganizationBrand compact inverse />}
       </div>

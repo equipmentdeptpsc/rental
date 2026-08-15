@@ -14,16 +14,23 @@ import {
 
 import type { EquipmentRecord } from "../types";
 import { presentEquipmentStatus } from "../utils/equipmentStatusPresentation";
+import type { EquipmentStatusFilter } from "../services/equipmentListFilters";
+
+export interface EquipmentDeploymentSummary { project?: string; operator?: string; rentalNumber?: string; assignedDate?: string; dateDeployed?: string; hasAssignment: boolean }
 
 interface Props {
   equipment: EquipmentRecord[];
 
   onDelete(id: string): void;
+  detailMode?: EquipmentStatusFilter;
+  deploymentByEquipment?: Record<string, EquipmentDeploymentSummary>;
 }
 
 export default function EquipmentTable({
   equipment,
   onDelete,
+  detailMode = "All",
+  deploymentByEquipment = {},
 }: Props) {
   const { showToast } =
     useToast();
@@ -68,11 +75,11 @@ export default function EquipmentTable({
   }
 
   return (
-    <ResponsiveTable><div className="rounded-lg border bg-white min-w-max">
+    <ResponsiveTable><div className="app-card min-w-max overflow-hidden">
 
-      <table className="min-w-full">
+      <table className="app-table min-w-full">
 
-        <thead className="bg-gray-100">
+        <thead>
           <tr>
 
             <th className="p-3 text-left">
@@ -91,6 +98,8 @@ export default function EquipmentTable({
               Status
             </th>
 
+            {(detailMode === "Assigned" || detailMode === "Deployed") && <><th className="p-3 text-left">Project</th><th className="p-3 text-left">Operator</th><th className="p-3 text-left">{detailMode === "Assigned" ? "Assignment" : "Rental / Assignment"}</th><th className="p-3 text-left">{detailMode === "Assigned" ? "Assigned Date" : "Date Deployed"}</th></>}
+
             <th className="p-3 text-right">
               Actions
             </th>
@@ -103,7 +112,7 @@ export default function EquipmentTable({
           {equipment.length === 0 && (
             <tr>
               <td
-                colSpan={5}
+                colSpan={detailMode === "Assigned" || detailMode === "Deployed" ? 9 : 5}
                 className="p-6 text-center text-gray-500"
               >
                 No equipment found.
@@ -114,7 +123,7 @@ export default function EquipmentTable({
           {equipment.map((item) => (
             <tr
               key={item.id}
-              className="border-t"
+              className=""
             >
 
               <td className="p-3">
@@ -130,8 +139,10 @@ export default function EquipmentTable({
               </td>
 
               <td className="p-3">
-                {presentEquipmentStatus(item.status)}
+                <span className="app-badge">{presentEquipmentStatus(item.status)}</span>
               </td>
+
+              {(detailMode === "Assigned" || detailMode === "Deployed") && <><td className="p-3">{deploymentByEquipment[item.id]?.project ?? "Not linked"}</td><td className="p-3">{deploymentByEquipment[item.id]?.operator ?? "Not linked"}</td><td className="p-3">{deploymentByEquipment[item.id]?.rentalNumber ?? (deploymentByEquipment[item.id]?.hasAssignment ? "Active assignment" : "Not linked")}</td><td className="p-3">{detailMode === "Assigned" ? deploymentByEquipment[item.id]?.assignedDate ?? "—" : deploymentByEquipment[item.id]?.dateDeployed ?? "—"}</td></>}
 
               <td className="p-3">
 

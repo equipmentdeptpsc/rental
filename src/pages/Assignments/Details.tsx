@@ -17,7 +17,7 @@ import {
 } from "@/features/equipment/history";
 
 import { useAudit } from "@/features/equipment/audit/AuditContext";
-import { displayAssignmentExpectedReturn } from "@/features/assignment/utils/assignmentDisplay";
+import { displayAssignmentExpectedReturn, getAssignmentNumber } from "@/features/assignment/utils/assignmentDisplay";
 import { useActivityCodes } from "@/features/masters/activity-code";
 import AssignmentActivityCodeDisplay from "@/features/assignment/components/AssignmentActivityCodeDisplay";
 
@@ -142,7 +142,7 @@ export default function AssignmentDetails() {
       <div>
 
         <h1 className="text-3xl font-bold">
-          Assignment Details
+          Assignment {getAssignmentNumber(assignment.id, assignments)}
         </h1>
 
         <p className="text-slate-500">

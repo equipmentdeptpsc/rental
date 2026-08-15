@@ -16,6 +16,7 @@ import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useRental } from "@/features/rental/context/RentalContext";
 import CommercialSnapshotCard from "@/features/rental/components/CommercialSnapshotCard";
 import RentalOperationalMetadataCard from "@/features/rental/components/RentalOperationalMetadataCard";
+import { hasDistinctLineCommercialTerms } from "./commercialTermsPresentation";
 
 export default function Overview() {
   const aggregate =
@@ -37,7 +38,7 @@ export default function Overview() {
       <ContractSection
         rental={aggregate.rental}
         hasCommercialTerms={allTermsComplete}
-        showRentalSnapshots={lines.length <= 1}
+        showRentalSnapshots
         equipmentLabel={
           lines.length > 1 ? `${lines.length} equipment lines` : overview.equipment.assetNo === "-"
             ? "Unknown equipment"
@@ -49,7 +50,7 @@ export default function Overview() {
           <p className="mb-2 text-sm font-medium">
             {equipment.find((item) => item.id === line.equipmentId)?.assetNo ?? "Equipment line"}
           </p>
-          <CommercialSnapshotCard snapshot={line.commercialSnapshot} required={line.commercialSnapshotRequired} scope="Rental" />
+          {hasDistinctLineCommercialTerms(line.commercialSnapshot, aggregate.rental.commercialSnapshot) && <CommercialSnapshotCard snapshot={line.commercialSnapshot} required={line.commercialSnapshotRequired} scope="Equipment Line" />}
           <div className="mt-3"><RentalOperationalMetadataCard metadata={line.operationalMetadata} title="Operational Metadata for Equipment Line" /></div>
         </div>
       ))}

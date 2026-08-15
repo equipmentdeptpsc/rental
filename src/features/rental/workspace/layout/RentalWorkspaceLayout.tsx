@@ -8,6 +8,8 @@ import {
 import type { WorkspaceTab } from "../types";
 import { useRentalWorkspaceAggregate } from "..";
 import { parseWorkspaceTab } from "../routing";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { buildWorkspaceTabBadges } from "../presentation/workspaceTabBadges";
 
 interface Props {
   children: ReactElement<{ activeTab: WorkspaceTab }>;
@@ -16,7 +18,10 @@ interface Props {
 export default function RentalWorkspaceLayout({
   children,
 }: Props) {
-  const { rental } = useRentalWorkspaceAggregate();
+  const aggregate = useRentalWorkspaceAggregate();
+  const { equipment } = useEquipment();
+  const { rental } = aggregate;
+  const tabBadges = buildWorkspaceTabBadges(aggregate, equipment);
   const closed = rental.status === "Closed";
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: WorkspaceTab = parseWorkspaceTab(searchParams.get("tab"));
@@ -33,7 +38,7 @@ export default function RentalWorkspaceLayout({
 
       {closed && <p className="rounded border border-slate-300 bg-slate-100 p-4 font-medium">This Rental has been closed. Historical records are read-only.</p>}
 
-      <RentalWorkspaceTabs activeTab={activeTab} onChange={setActiveTab} readOnly={closed} />
+      <RentalWorkspaceTabs activeTab={activeTab} onChange={setActiveTab} readOnly={closed} badges={tabBadges} />
 
       {cloneElement(children, { activeTab })}
 

@@ -7,8 +7,11 @@ import { useMaintenance } from "@/features/maintenance/context/MaintenanceContex
 import { getMaintenanceDueEquipment } from "@/features/maintenance";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useState } from "react";
+import { filterMaintenanceDue, maintenanceHealth, type MaintenanceHealthFilter } from "@/features/maintenance/services/maintenanceListFilters";
 
 export default function MaintenancePage() {
+  const [filter,setFilter]=useState<MaintenanceHealthFilter>("All");
   const { maintenance } =
     useMaintenance();
 
@@ -39,9 +42,11 @@ export default function MaintenancePage() {
         !x.due &&
         x.remaining > 50
     );
+  const filtered=filterMaintenanceDue(dueEquipment,filter);
+  const cards:[[MaintenanceHealthFilter,number,string],...[MaintenanceHealthFilter,number,string][]]=[["All",dueEquipment.length,"blue"],["Overdue",overdue.length,"red"],["Due Soon",dueSoon.length,"amber"],["Healthy",healthy.length,"green"]];
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="app-page">
 
       <div className="flex items-center justify-between">
 
@@ -65,45 +70,7 @@ export default function MaintenancePage() {
 
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-
-        <div className="rounded-xl border border-red-300 bg-red-50 p-5">
-
-          <p className="text-sm text-red-700">
-            Overdue
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold">
-            {overdue.length}
-          </h2>
-
-        </div>
-
-        <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-5">
-
-          <p className="text-sm text-yellow-700">
-            Due Soon
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold">
-            {dueSoon.length}
-          </h2>
-
-        </div>
-
-        <div className="rounded-xl border border-green-300 bg-green-50 p-5">
-
-          <p className="text-sm text-green-700">
-            Healthy
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold">
-            {healthy.length}
-          </h2>
-
-        </div>
-
-      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,count,tone])=><button type="button" key={label} aria-pressed={filter===label} onClick={()=>setFilter(label)} className={`app-card p-5 text-left transition focus-visible:ring-2 focus-visible:ring-blue-500 ${filter===label?"border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-950/50":"hover:border-blue-300"}`}><p className={`text-sm font-medium ${tone==="red"?"text-red-600":tone==="amber"?"text-amber-600":tone==="green"?"text-green-600":"text-blue-600"}`}>{label}</p><strong className="mt-2 block text-3xl">{count}</strong></button>)}</div>
 
       <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
 
@@ -132,6 +99,7 @@ export default function MaintenancePage() {
               <th className="px-4 py-3 text-center">
                 Status
               </th>
+              <th className="px-4 py-3 text-right">Actions</th>
 
             </tr>
 
@@ -139,7 +107,7 @@ export default function MaintenancePage() {
 
           <tbody>
 
-            {dueEquipment.map(
+            {filtered.map(
               (item) => (
 
                 <tr
@@ -178,26 +146,27 @@ export default function MaintenancePage() {
 
                     {item.due ? (
 
-                      <span className="rounded bg-red-100 px-3 py-1 text-red-700">
-                        OVERDUE
+                      <span className="rounded bg-red-100 px-3 py-1 text-red-700 dark:bg-red-950 dark:text-red-300">
+                        Overdue
                       </span>
 
                     ) : item.remaining <=
                       50 ? (
 
-                      <span className="rounded bg-yellow-100 px-3 py-1 text-yellow-700">
-                        DUE SOON
+                      <span className="rounded bg-yellow-100 px-3 py-1 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300">
+                        Due Soon
                       </span>
 
                     ) : (
 
-                      <span className="rounded bg-green-100 px-3 py-1 text-green-700">
-                        OK
+                      <span className="rounded bg-green-100 px-3 py-1 text-green-700 dark:bg-green-950 dark:text-green-300">
+                        {item.equipment.status === "Maintenance" ? "In Maintenance" : maintenanceHealth(item)}
                       </span>
 
                     )}
 
                   </td>
+                  <td className="px-4 py-3"><div className="flex justify-end gap-2"><Link to={`/equipment/${item.equipment.id}`}><Button variant="secondary">View Details</Button></Link>{item.equipment.status === "Maintenance" && maintenance.find(record=>record.equipmentId===item.equipment.id&&record.status!=="Completed")?<Link to={`/maintenance/${maintenance.find(record=>record.equipmentId===item.equipment.id&&record.status!=="Completed")!.id}`}><Button variant="secondary">View Maintenance</Button></Link>:<Link to={`/maintenance/new?equipment=${encodeURIComponent(item.equipment.id)}`}><Button variant="secondary">Schedule Maintenance</Button></Link>}</div></td>
 
                 </tr>
 

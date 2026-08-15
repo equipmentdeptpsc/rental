@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import CustomerStats from "@/features/customer/components/CustomerStats";
@@ -10,31 +11,12 @@ export default function CustomerPage() {
   const { customers } = useCustomer();
 
   return (
-    <div className="space-y-8 p-8">
-
-      <div className="flex items-center justify-between">
-
-        <div>
-
-          <h1 className="text-3xl font-bold">
-            Customers
-          </h1>
-
-          <p className="text-slate-500">
-            Customer Master
-          </p>
-
-        </div>
-
-        <Link to="/customers/new">
-
-          <Button>
-            New Customer
-          </Button>
-
-        </Link>
-
-      </div>
+    <div className="app-page">
+      <PageHeader
+        title="Customers"
+        description="Customer Master"
+        actions={<Link to="/customers/new"><Button>New Customer</Button></Link>}
+      />
 
       <CustomerStats />
 

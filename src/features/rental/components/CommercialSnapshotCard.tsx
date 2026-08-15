@@ -1,6 +1,6 @@
 import type { RentalCommercialSnapshot } from "../types";
 import { resolveCommercialSummary } from "../commercial/resolveCommercialSummary";
-interface Props{snapshot?:RentalCommercialSnapshot;scope:"Rental"|"DEUR";required?:boolean}
+interface Props{snapshot?:RentalCommercialSnapshot;scope:"Rental"|"Equipment Line"|"DEUR";required?:boolean}
 const units:Record<string,string>={"Per Hour":"hour","Per Day":"day","Per Week":"week","Per Month":"month","Per Kilometer":"km","Per Trip":"trip","Per Cubic Meter":"m³"};
 export default function CommercialSnapshotCard({snapshot,scope,required}:Props){
  if(!snapshot)return <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{required?"Commercial snapshot not captured":"Commercial snapshot not captured for this legacy record"}</section>;

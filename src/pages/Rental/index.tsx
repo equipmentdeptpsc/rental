@@ -1,13 +1,15 @@
-import { Link } from "react-router-dom";
-
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
-
+import StatusBadge from "@/components/ui/StatusBadge";
+import TabBadge from "@/components/ui/TabBadge";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
-import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
-import { useEffect, useState } from "react";
+import RentalDeurExceptionsSection from "@/features/rental/components/RentalDeurExceptionsSection";
+import { RentalMobileCard } from "@/features/rental/components/RentalListPresentation";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useProject } from "@/features/project/context/ProjectContext";
@@ -25,230 +27,249 @@ import { reconcileStatementCollections } from "@/features/rental/collections/col
 import { projectRentalCollectionStatus } from "@/features/rental/collections/collectionStatusProjection";
 import { projectActiveRentalEngagements } from "@/features/rental/services/projectActiveRentalEngagements";
 
+type RentalView = "rentals" | "engagements" | "deur-exceptions";
+
+const VIEWS: { id: RentalView; label: string }[] = [
+  { id: "rentals", label: "All Rentals" },
+  { id: "engagements", label: "Engagements" },
+  { id: "deur-exceptions", label: "DEUR Exceptions" },
+];
+
 export default function RentalPage() {
   const { billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
   const { rentals, rentalEquipmentLines } = useRental();
-
-  const { getEquipment, equipment: equipmentRecords } =
-    useEquipment();
+  const { getEquipment, equipment: equipmentRecords } = useEquipment();
   const { assignments } = useAssignment();
   const { operators } = useOperator();
   const { projects } = useProject();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [, setDeurVersion] = useState(0);
+  const [query, setQuery] = useState("");
+
   useEffect(() => subscribeDeurChanges(() => setDeurVersion((value) => value + 1)), []);
-  const { monitored: monitoredRentals, rows: attentionRows } = buildRentalDeurComplianceReport({ rentals, assignments, rentalEquipmentLines, deurs: deurRepository.getAll(), evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
+
+  const view = (searchParams.get("view") as RentalView | null) ?? "rentals";
+  const setView = (next: RentalView) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "rentals") params.delete("view");
+    else params.set("view", next);
+    setSearchParams(params, { replace: true });
+  };
+
+  const { monitored: monitoredRentals, rows: attentionRows } = buildRentalDeurComplianceReport({
+    rentals,
+    assignments,
+    rentalEquipmentLines,
+    deurs: deurRepository.getAll(),
+    evaluationTimestamp: new Date().toISOString(),
+    liveShiftWindows: deurShiftWindowRepository.getAll(),
+  });
   const engagements = projectActiveRentalEngagements({ rentals, lines: rentalEquipmentLines });
+  const filteredRentals = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return rentals;
+    return rentals.filter((rental) => {
+      const presentation = resolveRentalTransactionPresentation({
+        rental,
+        lines: rentalEquipmentLines,
+        equipment: equipmentRecords,
+        operators,
+      });
+      return `${rental.rentalNumber ?? ""} ${rental.customer} ${rental.project} ${presentation.equipmentLabel} ${presentation.operatorLabel}`.toLowerCase().includes(normalized);
+    });
+  }, [equipmentRecords, operators, query, rentalEquipmentLines, rentals]);
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="app-page">
+      <PageHeader
+        title="Rental Transactions"
+        description="Manage equipment rentals, customer engagements, and DEUR compliance."
+        actions={<Link to="/rentals/new"><Button>New Rental</Button></Link>}
+      />
 
-      <div className="flex items-center justify-between">
-
-        <div>
-
-          <h1 className="text-3xl font-bold">
-            Rental Transactions
-          </h1>
-
-          <p className="text-slate-500">
-            Manage equipment rentals.
-          </p>
-
-        </div>
-
-        <Link to="/rentals/new">
-
-          <Button>
-
-            New Rental
-
-          </Button>
-
-        </Link>
-
+      <div className="app-card flex flex-wrap gap-2 p-2" role="tablist" aria-label="Rental list views">
+        {VIEWS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={view === item.id}
+            onClick={() => setView(item.id)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${view === item.id ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}
+          >
+            {item.label}
+            {item.id === "deur-exceptions" && <TabBadge count={attentionRows.length} tone="danger" />}
+          </button>
+        ))}
       </div>
 
-      <section className="rounded-lg border bg-white p-5"><h2 className="text-lg font-semibold">Active Customer / Project Engagements</h2><p className="mb-4 text-sm text-slate-500">Read-only grouping; every Rental and equipment-line identity remains independent.</p><ResponsiveTable><table className="min-w-full text-sm"><thead className="bg-slate-50"><tr>{["Customer","Project","Active Equipment","Returned / Financially Open","DEUR Attention","Rental Transactions","Open Workspace"].map((label)=><th className="px-3 py-2 text-left" key={label}>{label}</th>)}</tr></thead><tbody>{engagements.length===0?<tr><td className="p-6 text-center text-slate-500" colSpan={7}>No active or financially-open engagements.</td></tr>:engagements.map((engagement)=>{const rentalIds=new Set(engagement.rentals.map((rental)=>rental.id));const attention=attentionRows.filter((row)=>rentalIds.has(row.rental.id)).length;return <tr className="border-t" key={engagement.key}><td className="px-3 py-2">{engagement.customer}</td><td className="px-3 py-2">{engagement.project}</td><td className="px-3 py-2">{engagement.activeEquipmentCount}</td><td className="px-3 py-2">{engagement.returnedFinanciallyOpenCount}</td><td className="px-3 py-2">{attention}</td><td className="px-3 py-2">{engagement.rentals.length}</td><td className="px-3 py-2"><div className="flex flex-wrap gap-2">{engagement.rentals.map((rental)=><Link className="text-blue-600 hover:underline" key={rental.id} to={`/rentals/${rental.id}/workspace`}>{rental.rentalNumber??rental.id}</Link>)}</div></td></tr>})}</tbody></table></ResponsiveTable></section>
+      {view === "engagements" && (
+        <section className="app-card p-5">
+          <h2 className="app-section-title">Active Customer / Project Engagements</h2>
+          <p className="app-muted mb-4">Read-only grouping; every Rental and equipment-line identity remains independent.</p>
+          <ResponsiveTable>
+            <table className="app-table min-w-full text-sm">
+              <thead>
+                <tr>
+                  {["Customer", "Project", "Active Equipment", "Returned / Financially Open", "DEUR Attention", "Rental Transactions", "Open Workspace"].map((label) => (
+                    <th className="px-3 py-2 text-left" key={label}>{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {engagements.length === 0 ? (
+                  <tr><td className="p-6 text-center text-slate-500" colSpan={7}>No active or financially-open engagements.</td></tr>
+                ) : engagements.map((engagement) => {
+                  const rentalIds = new Set(engagement.rentals.map((rental) => rental.id));
+                  const attention = attentionRows.filter((row) => rentalIds.has(row.rental.id)).length;
+                  return (
+                    <tr className="border-t" key={engagement.key}>
+                      <td className="px-3 py-2">{engagement.customer}</td>
+                      <td className="px-3 py-2">{engagement.project}</td>
+                      <td className="px-3 py-2">{engagement.activeEquipmentCount}</td>
+                      <td className="px-3 py-2">{engagement.returnedFinanciallyOpenCount}</td>
+                      <td className="px-3 py-2">{attention}</td>
+                      <td className="px-3 py-2">{engagement.rentals.length}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap gap-2">
+                          {engagement.rentals.map((rental) => (
+                            <Link className="app-link" key={rental.id} to={`/rentals/${rental.id}/workspace`}>
+                              {rental.rentalNumber ?? rental.id}
+                            </Link>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </ResponsiveTable>
+        </section>
+      )}
 
-      <ResponsiveTable><div className="rounded-lg border bg-white min-w-max">
+      {view === "rentals" && (
+        <>
+          <section className="app-card grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto]">
+            <input
+              aria-label="Search rentals"
+              className="app-control"
+              placeholder="Search rental number, customer, project, equipment, or operator"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <Button variant="secondary" onClick={() => setQuery("")}>Clear</Button>
+          </section>
 
-        <table className="min-w-full">
+          <div className="space-y-3 lg:hidden">
+            {filteredRentals.length === 0 ? (
+              <p className="app-muted text-center">No rental transactions found.</p>
+            ) : filteredRentals.map((rental) => {
+              const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
+              const rentalDeurs = deurRepository.getByRentalId(rental.id);
+              const effectiveDeur = rentalDeurs.at(-1);
+              const workflow = resolveRentalWorkflowStatus({
+                rental,
+                effectiveDeur,
+                commercialTermsAvailable: Boolean(effectiveDeur?.commercialSnapshot),
+                billableEvidence: Boolean(effectiveDeur?.totals?.operationMinutes || effectiveDeur?.totalOperatingMinutes),
+              });
+              const statements = billingStatementRepository.getByRentalId(rental.id);
+              const totals = statements.map((statement) => reconcileStatementCollections(statement, collectionRepository.getByStatementId(statement.id)));
+              const collection = projectRentalCollectionStatus({
+                hasStatement: statements.length > 0,
+                totalInvoiced: totals.reduce((sum, item) => sum + item.invoiceTotal, 0),
+                totalCollected: totals.reduce((sum, item) => sum + item.totalCollected, 0),
+                outstandingBalance: totals.reduce((sum, item) => sum + item.outstandingBalance, 0),
+              });
+              const compliance = monitoredRentals.find((item) => item.rental.id === rental.id);
+              return (
+                <RentalMobileCard
+                  key={rental.id}
+                  rental={rental}
+                  presentation={presentation}
+                  workflowLabel={workflow.label}
+                  collectionStatus={collection.status}
+                  compliance={compliance ? <RentalDeurComplianceIndicator result={compliance.result} /> : null}
+                />
+              );
+            })}
+          </div>
 
-          <thead className="bg-slate-50">
-
-            <tr>
-
-              <th className="px-4 py-3 text-left">
-                Equipment
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Customer
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Project
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Date Out
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Expected Return
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                Status
-              </th>
-
-              <th className="px-4 py-3 text-left">
-                DEUR Compliance
-              </th>
-
-              <th className="px-4 py-3 text-left">Collection Status</th>
-
-              <th className="px-4 py-3 text-left">
-                Actions
-              </th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {rentals.length === 0 ? (
-
-              <tr>
-
-                <td
-                  colSpan={9}
-                  className="py-10 text-center text-slate-500"
-                >
-                  No rental transactions found.
-                </td>
-
-              </tr>
-
-            ) : (
-
-              rentals.map((rental) => {
-
-                const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
-                const rentalDeurs=deurRepository.getByRentalId(rental.id),effectiveDeur=rentalDeurs.at(-1),workflow=resolveRentalWorkflowStatus({rental,effectiveDeur,commercialTermsAvailable:Boolean(effectiveDeur?.commercialSnapshot),billableEvidence:Boolean(effectiveDeur?.totals?.operationMinutes||effectiveDeur?.totalOperatingMinutes)});
-                const statements=billingStatementRepository.getByRentalId(rental.id),totals=statements.map((statement)=>reconcileStatementCollections(statement,collectionRepository.getByStatementId(statement.id))),collection=projectRentalCollectionStatus({hasStatement:statements.length>0,totalInvoiced:totals.reduce((sum,item)=>sum+item.invoiceTotal,0),totalCollected:totals.reduce((sum,item)=>sum+item.totalCollected,0),outstandingBalance:totals.reduce((sum,item)=>sum+item.outstandingBalance,0)});
-
-                return (
-
-                  <tr
-                    key={rental.id}
-                    className="border-t"
-                  >
-
-                    <td className="px-4 py-3">
-
-                      <p>{presentation.equipmentLabel}</p><p className="text-xs text-slate-500">{presentation.operatorLabel}</p>
-
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {rental.customer}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {rental.project}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {rental.dateOut}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {rental.expectedReturn}
-                    </td>
-
-                    <td className="px-4 py-3">
-
-                      <span
-                        className={`rounded px-2 py-1 text-xs font-medium ${
-                          rental.status ===
-                          "Returned"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}
-                      >
-                        {rental.status}
-                      </span>
-                      <p className="mt-1 text-xs text-slate-600">{workflow.label}</p>
-
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <RentalDeurComplianceIndicator result={monitoredRentals.find((item) => item.rental.id === rental.id)!.result} />
-                    </td>
-
-                    <td className="px-4 py-3">{collection.status}</td>
-
-                    <td className="px-4 py-3">
-
-                      <div className="flex gap-3">
-
-                        <Link
-                          to={`/rentals/${rental.id}/workspace`}
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          Open Workspace
-                        </Link>
-
-                        <RentalQuickActions rental={rental} />
-
-                      </div>
-                      <ApprovalInvalidationNotice rental={rental} />
-
-                    </td>
-
+          <ResponsiveTable>
+            <div className="app-card hidden min-w-max lg:block">
+              <table className="app-table min-w-full">
+                <thead>
+                  <tr>
+                    {["Equipment", "Customer", "Project", "Date Out", "Expected Return", "Status", "DEUR Compliance", "Collection Status", "Actions"].map((label) => (
+                      <th className="px-4 py-3 text-left" key={label}>{label}</th>
+                    ))}
                   </tr>
+                </thead>
+                <tbody>
+                  {filteredRentals.length === 0 ? (
+                    <tr><td colSpan={9} className="py-10 text-center text-slate-500">No rental transactions found.</td></tr>
+                  ) : filteredRentals.map((rental) => {
+                    const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
+                    const rentalDeurs = deurRepository.getByRentalId(rental.id);
+                    const effectiveDeur = rentalDeurs.at(-1);
+                    const workflow = resolveRentalWorkflowStatus({
+                      rental,
+                      effectiveDeur,
+                      commercialTermsAvailable: Boolean(effectiveDeur?.commercialSnapshot),
+                      billableEvidence: Boolean(effectiveDeur?.totals?.operationMinutes || effectiveDeur?.totalOperatingMinutes),
+                    });
+                    const statements = billingStatementRepository.getByRentalId(rental.id);
+                    const totals = statements.map((statement) => reconcileStatementCollections(statement, collectionRepository.getByStatementId(statement.id)));
+                    const collection = projectRentalCollectionStatus({
+                      hasStatement: statements.length > 0,
+                      totalInvoiced: totals.reduce((sum, item) => sum + item.invoiceTotal, 0),
+                      totalCollected: totals.reduce((sum, item) => sum + item.totalCollected, 0),
+                      outstandingBalance: totals.reduce((sum, item) => sum + item.outstandingBalance, 0),
+                    });
+                    const compliance = monitoredRentals.find((item) => item.rental.id === rental.id);
+                    return (
+                      <tr key={rental.id} className="border-t">
+                        <td className="px-4 py-3">
+                          <p>{presentation.equipmentLabel}</p>
+                          <p className="text-xs text-slate-500">{presentation.operatorLabel}</p>
+                        </td>
+                        <td className="px-4 py-3">{rental.customer}</td>
+                        <td className="px-4 py-3">{rental.project}</td>
+                        <td className="px-4 py-3">{rental.dateOut}</td>
+                        <td className="px-4 py-3">{rental.expectedReturn}</td>
+                        <td className="px-4 py-3">
+                          <StatusBadge tone={rental.status === "Returned" ? "success" : "info"}>{rental.status}</StatusBadge>
+                          <p className="mt-1 text-xs text-slate-600">{workflow.label}</p>
+                        </td>
+                        <td className="px-4 py-3">{compliance && <RentalDeurComplianceIndicator result={compliance.result} />}</td>
+                        <td className="px-4 py-3">{collection.status}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-3">
+                            <Link to={`/rentals/${rental.id}/workspace`} className="app-link">Open Workspace</Link>
+                            <RentalQuickActions rental={rental} />
+                          </div>
+                          <ApprovalInvalidationNotice rental={rental} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </ResponsiveTable>
+        </>
+      )}
 
-                );
-
-              })
-
-            )}
-
-          </tbody>
-
-        </table>
-
-      </div></ResponsiveTable>
-
-      <section className="rounded-lg border bg-white p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div><h2 className="text-lg font-semibold">Rentals Missing DEUR</h2><p className="text-sm text-slate-500">Operational compliance only; no records or billing actions are generated.</p></div>
-          <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800">{attentionRows.length}</span>
-        </div>
-        <ResponsiveTable><table className="min-w-full text-sm">
-          <thead className="bg-slate-50"><tr>{["Rental No.", "Work Date", "Shift", "Equipment", "Operator", "Project", "Billing Method", "Expectation Policy", "Status", "Existing DEUR", "Reason"].map((heading) => <th key={heading} className="px-3 py-2 text-left">{heading}</th>)}</tr></thead>
-          <tbody>{attentionRows.length === 0 ? <tr><td colSpan={11} className="p-6 text-center text-slate-500">No rentals currently require DEUR attention.</td></tr> : attentionRows.map(({ rental, assignment, result, expectation }) => {
-            const line = expectation?.rentalEquipmentLineId ? rentalEquipmentLines.find((item) => item.id === expectation.rentalEquipmentLineId) : undefined;
-            const equipment = getEquipment(line?.equipmentId ?? rental.equipmentId);
-            const operator = operators.find((item) => item.id === (line?.operatorId ?? rental.operatorId ?? assignment?.operatorId));
-            const project = projects.find((item) => item.id === rental.projectId);
-            const policy = rental.deurExpectationPolicy;
-            const policyLabel = policy?.frequency === "PER_WORKDAY" ? "Per Workday" : policy?.frequency === "PER_SHIFT" ? `Per Shift — ${policy.expectedShiftCodes?.join(", ")}` : policy?.frequency === "ON_DEMAND" ? "On Demand" : "Legacy Rental Fallback";
-            return <tr key={expectation?.expectationId ?? rental.id} className="border-t">
-              <td className="px-3 py-2"><Link className="text-blue-600 hover:underline" to={`/rentals/${rental.id}/workspace`}>{rental.rentalNumber ?? rental.id}</Link></td>
-              <td className="px-3 py-2">{expectation?.workDate ?? "—"}</td><td className="px-3 py-2">{expectation?.shiftCode ?? "—"}</td>
-              <td className="px-3 py-2">{getRentalEquipmentLabel(equipment)}</td><td className="px-3 py-2">{operator?.name ?? "Not assigned"}</td>
-              <td className="px-3 py-2">{project?.projectName ?? rental.project}</td><td className="px-3 py-2">{rental.billingMethod ?? "Not configured"}</td>
-              <td className="px-3 py-2">{policyLabel}</td><td className="px-3 py-2">{expectation?.status.replace("_", " ") ?? <RentalDeurComplianceIndicator result={result} />}</td>
-              <td className="px-3 py-2">{expectation?.matchingDeurNumber ?? expectation?.matchingEffectiveDeurId ?? "—"}{expectation?.matchingRevisionNumber ? ` R${expectation.matchingRevisionNumber}` : ""}</td>
-              <td className="px-3 py-2">{expectation?.reason ?? result.reason}</td>
-            </tr>;
-          })}</tbody>
-        </table></ResponsiveTable>
-      </section>
-
+      {view === "deur-exceptions" && (
+        <RentalDeurExceptionsSection
+          attentionRows={attentionRows}
+          rentalEquipmentLines={rentalEquipmentLines}
+          getEquipment={getEquipment}
+          operators={operators}
+          projects={projects}
+        />
+      )}
     </div>
   );
 }

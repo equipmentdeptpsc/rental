@@ -1,0 +1,8 @@
+import type { BuiltReport, ReportBuilderConfig, ReportType } from "./reportBuilderService";
+export interface CustomReportSection {id:string;fingerprint:string;type:ReportType;config:ReportBuilderConfig;report:BuiltReport;addedAt:string}
+export interface AddCustomSectionResult {sections:CustomReportSection[];duplicate:boolean}
+export function reportConfigurationFingerprint(config:ReportBuilderConfig):string{return JSON.stringify({type:config.type,period:config.period,status:config.status??"",customer:config.customer??"",project:config.project??"",groupBy:config.groupBy})}
+export function addCustomReportSection(sections:readonly CustomReportSection[],input:Omit<CustomReportSection,"fingerprint">,allowDuplicate=false):AddCustomSectionResult{const fingerprint=reportConfigurationFingerprint(input.config),duplicate=sections.some(section=>section.fingerprint===fingerprint);if(duplicate&&!allowDuplicate)return{sections:[...sections],duplicate:true};return{sections:[...sections,{...input,fingerprint}],duplicate}}
+export function moveCustomReportSection(sections:readonly CustomReportSection[],id:string,direction:-1|1):CustomReportSection[]{const index=sections.findIndex(section=>section.id===id),target=index+direction;if(index<0||target<0||target>=sections.length)return[...sections];const next=[...sections];[next[index],next[target]]=[next[target],next[index]];return next}
+export function removeCustomReportSection(sections:readonly CustomReportSection[],id:string):CustomReportSection[]{return sections.filter(section=>section.id!==id)}
+export function defaultCustomReportName(now:Date):string{return `Custom Report – ${new Intl.DateTimeFormat("en-PH",{month:"short",day:"numeric",year:"numeric"}).format(now)}`}

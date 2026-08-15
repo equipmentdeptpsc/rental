@@ -36,7 +36,7 @@ export default function Header({ onMenu, search }: { onMenu(): void; search?: Re
           <h1 className="truncate text-xl font-semibold capitalize tracking-tight sm:text-2xl">{meta.title}</h1>
           <p className="hidden truncate text-xs text-slate-500 sm:block">{meta.subtitle}</p>
         </div>
-        {search && <div className="hidden w-full max-w-sm xl:block">{search}</div>}
+        {search && <div className="w-auto sm:w-full sm:max-w-xs xl:max-w-sm">{search}</div>}
         <button aria-label={dark ? "Use light mode" : "Use dark mode"} aria-pressed={dark} className="flex items-center gap-2 rounded-md px-2 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setDark((value) => !value)}>
           {dark ? <Sun size={18} /> : <Moon size={18} />}<span className="hidden xl:inline">Dark mode</span>
           <span className={`relative h-5 w-9 rounded-full transition ${dark ? "bg-blue-600" : "bg-slate-300"}`}><span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${dark ? "left-[18px]" : "left-0.5"}`} /></span>
@@ -51,7 +51,6 @@ export default function Header({ onMenu, search }: { onMenu(): void; search?: Re
           <button className="rounded p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" onClick={signOut} title="Sign out"><span className="sr-only">Sign Out</span><ChevronDown aria-hidden="true" size={15} /></button>
         </div>}
       </div>
-      {search && <div className="mt-3 xl:hidden">{search}</div>}
     </header>
   );
 }

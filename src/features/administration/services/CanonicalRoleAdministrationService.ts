@@ -37,5 +37,5 @@ export class CanonicalRoleAdministrationService {
  private required(code:string){const role=this.getRole(code);if(!role)throw new RoleCatalogError("Role not found.");return role}
  private assertCode(code:string){if(!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code))throw new RoleCatalogError("Role code is invalid.")}
  private assertAdministrator(actor:User){if(!actor.systemRoles.includes("system-administrator"))throw new RoleCatalogError("System Administrator authority is required to manage role permissions.")}
- private audit(actor:User,action:string,targetId:string,metadata?:Record<string,string|boolean|number|null>){this.repository.appendAudit({id:this.id(),actorId:actor.id,targetType:"ROLE",targetId,action,occurredAt:this.now(),companyId:actor.companyId,metadata})}
+ private audit(actor:User,action:string,targetId:string,metadata?:Record<string,string|boolean|number|null>){this.repository.appendAudit({id:this.id(),actorId:actor.id,targetType:"ROLE",targetId,action,occurredAt:this.now(),companyId:actor.companyId,metadata:{actorDisplayName:actor.displayName,actorUsername:actor.username,...metadata}})}
 }
