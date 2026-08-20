@@ -30,6 +30,7 @@ import { LocalDeurCommandRepository } from "@/features/rental/deur/commands/Loca
 import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
 import { workDescriptionRepository } from "@/features/masters/work-description";
 import { createLocalOperationalCommands } from "@/features/rental/operations/commands/UnavailableOperationalCommandRepository";
+import { OperatorPinCredentialService } from "@/features/auth/services/OperatorPinCredentialService";
 import {
   InMemoryOperationalEventRepository,
   IndexedDbOfflineOperationalCommandQueue,
@@ -77,6 +78,13 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     authorizationService,
     legacyCompatibilityRepository: overrides.authentication?.legacyCompatibilityRepository ?? new LegacyAuthCompatibilityRepository(storage),
     userManagementService,
+    operatorPinCredentialService: new OperatorPinCredentialService(
+      storage,
+      userRepository,
+      { getAll: () => operatorRepository.getAll(), getById: (id) => operatorRepository.getById(id) },
+      authRepository,
+      (operatorId) => assignmentRepository.getAll().some((assignment) => assignment.operatorId === operatorId && assignment.status === "Active"),
+    ),
   };
   const currentAuthenticatedUser = () => {
     const session = authRepository.getCurrentSession();

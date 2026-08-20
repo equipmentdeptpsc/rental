@@ -129,11 +129,8 @@ export class UserManagementService {
     this.authorize(actor);
     if (actor.id === id) throw new Error("You cannot deactivate your own active account.");
     const existing = this.required(id);
-    if (
-      existing.systemRoles.includes("system-administrator") &&
-      this.activeAdministratorCount() <= 1
-    ) {
-      throw new Error("The system must retain at least one active System Administrator.");
+    if (existing.systemRoles.includes("system-administrator")) {
+      throw new Error("System Administrator deactivation requires the protected governance flow.");
     }
     const updated = this.users.deactivateUser(id);
     this.audit?.record({actor,targetId:updated.id,action:"USER_DEACTIVATED",afterRoles:updated.systemRoles});

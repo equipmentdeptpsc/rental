@@ -37,6 +37,7 @@ export interface AuthContextType {
     /** @deprecated Legacy test/workflow adapter. Production UI must use credentials. */
     (name: string, role: Role): Promise<LoginResult>;
   };
+  loginWithOperatorPin: (operatorCode: string, pin: string) => Promise<LoginResult>;
   logout: () => void;
   hasPermission: (permission: Permission) => boolean;
   /** @deprecated Use session instead. Retained for legacy consumers during RBAC migration. */
@@ -189,6 +190,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRemotePermissions(null);
   }, [authentication]);
 
+  const loginWithOperatorPin = useCallback(async (operatorCode: string, pin: string): Promise<LoginResult> => {
+    const service = authentication.operatorPinCredentialService;
+    if (!service) return { success: false, reason: "PROVIDER_UNAVAILABLE", message: "Operator PIN authentication is unavailable." };
+    const result = await service.authenticate(operatorCode, pin);
+    if (!result.success) return { success: false, reason: result.reason === "INACTIVE_USER" ? "INACTIVE_USER" : "INVALID_CREDENTIALS", message: result.message };
+    authentication.legacyCompatibilityRepository.clear();
+    const adapted = adaptDomainUser(result.user);
+    setUser(adapted);
+    setSession(result.session);
+    setRemotePermissions(null);
+    return { success: true, session: result.session, user: result.user };
+  }, [authentication]);
+
   const value = useMemo<AuthContextType>(
     () => ({
       user,
@@ -199,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoggingOut,
       authenticate,
       login,
+      loginWithOperatorPin,
       logout,
       hasPermission: (permission) =>
         (!user && import.meta.env.MODE === "test") ||
@@ -208,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: session?.id ?? null,
       refreshSession,
     }),
-    [authenticate, authentication, isInitializing, isLoggingOut, isSubmitting, login, logout, refreshSession, remotePermissions, session, user],
+    [authenticate, authentication, isInitializing, isLoggingOut, isSubmitting, login, loginWithOperatorPin, logout, refreshSession, remotePermissions, session, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -19,12 +19,16 @@ export interface OperatorFormData {
     | "Active"
     | "On Leave"
     | "Suspended";
-  linkedLoginName: string;
+  linkedUserId: string;
+  pin: string;
+  confirmPin: string;
 }
 
 interface Props {
   initialData?: Operator;
-  initialLinkedLoginName?: string;
+  initialLinkedUserId?: string;
+  eligibleUsers?: readonly { id: string; displayName: string; username: string }[];
+  requirePin?: boolean;
 
   onSubmit(
     data: OperatorFormData
@@ -33,7 +37,9 @@ interface Props {
 
 export default function OperatorForm({
   initialData,
-  initialLinkedLoginName,
+  initialLinkedUserId,
+  eligibleUsers = [],
+  requirePin = false,
   onSubmit,
 }: Props) {
   const [form, setForm] =
@@ -56,7 +62,9 @@ export default function OperatorForm({
       status:
         initialData?.status ??
         "Active",
-      linkedLoginName: initialLinkedLoginName ?? "",
+      linkedUserId: initialLinkedUserId ?? "",
+      pin: "",
+      confirmPin: "",
     });
 
   function update<
@@ -85,6 +93,7 @@ export default function OperatorForm({
     >
       <Input
         label="Operator Name"
+        required
         value={form.name}
         onChange={(e) =>
           update(
@@ -95,7 +104,8 @@ export default function OperatorForm({
       />
 
       <Input
-        label="Email"
+        label="Email (Optional)"
+        type="email"
         value={form.email}
         onChange={(e) =>
           update(
@@ -106,7 +116,8 @@ export default function OperatorForm({
       />
 
       <Input
-        label="License Number"
+        label="Operator Code / Employee ID"
+        required
         value={form.licenseNumber}
         onChange={(e) =>
           update(
@@ -150,14 +161,13 @@ export default function OperatorForm({
         ]}
       />
 
-      <Input
-        label="Linked Local UAT Operator Login Name"
-        value={form.linkedLoginName}
-        onChange={(e) => update("linkedLoginName", e.target.value)}
-      />
-      <p className="text-xs text-slate-500">
-        Enter the exact name used on the local Login page with the Operator role.
-      </p>
+      <Select label="Linked User" value={form.linkedUserId} onChange={(e) => update("linkedUserId", e.target.value)} options={[{ label: "None", value: "" }, ...eligibleUsers.map((user) => ({ label: `${user.displayName} (${user.username})`, value: user.id }))]} />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input label={requirePin ? "PIN" : "New PIN (Optional)"} type="password" inputMode="numeric" autoComplete="new-password" required={requirePin} minLength={4} maxLength={6} value={form.pin} onChange={(e) => update("pin", e.target.value)} />
+        <Input label="Confirm PIN" type="password" inputMode="numeric" autoComplete="new-password" required={requirePin || Boolean(form.pin)} minLength={4} maxLength={6} value={form.confirmPin} onChange={(e) => update("confirmPin", e.target.value)} />
+      </div>
+      <p className="text-xs text-slate-500">Use 4–6 digits. Repeated and sequential PINs are not accepted.</p>
 
       <Select
         label="Status"

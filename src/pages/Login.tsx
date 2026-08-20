@@ -7,7 +7,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useOptionalOperator } from "@/features/operators/context/OperatorContext";
 
 export default function Login() {
-  const { login, isSubmitting } = useAuth();
+  const { login, loginWithOperatorPin, isSubmitting } = useAuth();
   const { authentication, configuration } = useApplicationDependenciesCompatibility();
   const remote = configuration.persistenceMode === "remote";
   const navigate = useNavigate();
@@ -16,12 +16,15 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [operatorPinMode, setOperatorPinMode] = useState(false);
 
   async function handleLogin(event: FormEvent) {
     event.preventDefault();
     if (isSubmitting) return;
     setMessage("");
-    const result = await login({ username, password });
+    const result = operatorPinMode
+      ? await loginWithOperatorPin(username, password)
+      : await login({ username, password });
     if (!result.success) {
       setMessage(result.message);
       return;
@@ -52,9 +55,9 @@ export default function Login() {
       >
         <h1 className="text-2xl font-bold text-slate-800">Equipment System Login</h1>
         <label className="block text-sm font-medium text-slate-700">
-          {remote ? "Email" : "Username"}
+          {operatorPinMode ? "Operator Code / Employee ID" : remote ? "Email" : "Username"}
           <input
-            autoComplete="username"
+            autoComplete={operatorPinMode ? "off" : "username"}
             className="mt-1 w-full rounded border px-3 py-2 text-sm"
             disabled={isSubmitting}
             onChange={(event) => setUsername(event.target.value)}
@@ -63,9 +66,12 @@ export default function Login() {
           />
         </label>
         <label className="block text-sm font-medium text-slate-700">
-          Password
+          {operatorPinMode ? "PIN" : "Password"}
           <input
-            autoComplete="current-password"
+            autoComplete={operatorPinMode ? "off" : "current-password"}
+            inputMode={operatorPinMode ? "numeric" : undefined}
+            minLength={operatorPinMode ? 4 : undefined}
+            maxLength={operatorPinMode ? 6 : undefined}
             className="mt-1 w-full rounded border px-3 py-2 text-sm"
             disabled={isSubmitting}
             onChange={(event) => setPassword(event.target.value)}
@@ -82,6 +88,9 @@ export default function Login() {
         >
           {isSubmitting ? "Signing in…" : "Login"}
         </button>
+        {!remote && <button type="button" className="w-full rounded border py-2 text-sm" onClick={() => { setOperatorPinMode((value) => !value); setUsername(""); setPassword(""); setMessage(""); }}>
+          {operatorPinMode ? "Use Web User Password" : "Use Operator PIN"}
+        </button>}
         <p className="text-center text-xs text-slate-400">
           {remote ? "Supabase authentication" : "Local UAT authentication only"}
         </p>

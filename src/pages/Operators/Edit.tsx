@@ -3,11 +3,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import OperatorForm from "@/features/operators/components/OperatorForm";
 import { useOperator } from "@/features/operators/context/OperatorContext";
 import { operatorUserLinkRepository } from "@/features/operators/operatorUserLink";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function EditOperator() {
   const { id } = useParams();
 
   const navigate = useNavigate();
+  const { user: actor } = useAuth();
+  const { authentication } = useApplicationDependenciesCompatibility();
 
   const {
     operators,
@@ -26,6 +30,9 @@ export default function EditOperator() {
     );
   }
 
+  const linkedUser = authentication.userRepository.getUsers().find((user) => user.operatorId === operator.id);
+  const eligibleUsers = authentication.userRepository.getUsers().filter((user) => user.status === "active" && (!user.operatorId || user.operatorId === operator.id) && (user.systemRoles.includes("operator") || user.systemRoles.includes("rental-operations")));
+
   return (
     <div className="max-w-3xl mx-auto p-8">
 
@@ -35,14 +42,23 @@ export default function EditOperator() {
 
       <OperatorForm
         initialData={operator}
-        initialLinkedLoginName={operatorUserLinkRepository.getByOperatorId(operator.id)?.loginName}
-        onSubmit={(data) => {
-          const { linkedLoginName, ...operatorData } = data;
+        initialLinkedUserId={linkedUser?.id}
+        eligibleUsers={eligibleUsers}
+        onSubmit={async (data) => {
+          const { linkedUserId, pin, confirmPin, ...operatorData } = data;
           updateOperator({
             ...operator,
             ...operatorData,
           });
-          if (linkedLoginName.trim()) operatorUserLinkRepository.link(linkedLoginName, operator.id);
+          if (actor && linkedUserId) {
+            const selected = authentication.userRepository.getUserById(linkedUserId);
+            if (!selected) throw new Error("Linked user not found.");
+            if (pin) authentication.operatorPinCredentialService?.validatePinInput(pin, confirmPin);
+            if (linkedUser && linkedUser.id !== selected.id) authentication.userManagementService.update(actor, linkedUser.id, { username: linkedUser.username, displayName: linkedUser.displayName, email: linkedUser.email, systemRoles: linkedUser.systemRoles, operatorId: undefined });
+            authentication.userManagementService.update(actor, selected.id, { username: selected.username, displayName: selected.displayName, email: selected.email, systemRoles: selected.systemRoles, operatorId: operator.id });
+            if (pin) await authentication.operatorPinCredentialService?.setPin(selected.id, pin, confirmPin);
+            operatorUserLinkRepository.unlinkOperator(operator.id);
+          }
 
           navigate("/operators");
         }}
