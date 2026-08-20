@@ -42,6 +42,7 @@ export class LocalEquipmentRepository
   create(
     equipment: EquipmentRecord
   ) {
+    this.assertEquipmentCodeAvailable(equipment);
     if(this.data.some(item=>item.id!==equipment.id&&item.assetNo.trim().toLowerCase()===equipment.assetNo.trim().toLowerCase()))throw new Error("Asset Number already exists.");
     this.data.push(equipment);
     this.save();
@@ -50,6 +51,7 @@ export class LocalEquipmentRepository
   update(
     equipment: EquipmentRecord
   ) {
+    this.assertEquipmentCodeAvailable(equipment);
     if(this.data.some(item=>item.id!==equipment.id&&item.assetNo.trim().toLowerCase()===equipment.assetNo.trim().toLowerCase()))throw new Error("Asset Number already exists.");
     const index =
       this.data.findIndex(
@@ -97,5 +99,10 @@ export class LocalEquipmentRepository
 
   private save() {
     storage.set(STORAGE_KEY, this.data);
+  }
+
+  private assertEquipmentCodeAvailable(equipment: EquipmentRecord) {
+    if (!equipment.equipmentName.trim()) throw new Error("Equipment Code is required.");
+    if (this.data.some((item) => item.id !== equipment.id && item.equipmentName.trim().toLocaleLowerCase() === equipment.equipmentName.trim().toLocaleLowerCase())) throw new Error("Equipment Code already exists.");
   }
 }

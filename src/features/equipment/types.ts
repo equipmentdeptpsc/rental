@@ -153,4 +153,6 @@ export interface EquipmentFormData {
   projectId: string;
 
   operatorId: string;
+
+  remarks?: string;
 }

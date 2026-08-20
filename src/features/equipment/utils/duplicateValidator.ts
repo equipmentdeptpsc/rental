@@ -14,6 +14,11 @@ export function validateDuplicateEquipment(
     e => e.id !== current.id
   );
 
+  if (!current.equipmentName.trim()) return { valid: false, message: "Equipment Code is required." };
+  if (others.some((item) => item.equipmentName.trim().toLocaleLowerCase() === current.equipmentName.trim().toLocaleLowerCase())) {
+    return { valid: false, message: "Equipment Code already exists." };
+  }
+
   if (
     others.some(
       e => e.assetNo === current.assetNo

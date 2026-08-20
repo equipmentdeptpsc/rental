@@ -67,8 +67,37 @@ describe("clean UAT master-data initialization", () => {
 
     const optionLabels = Array.from(container.querySelectorAll("option")).map((option) => option.textContent);
     expect(optionLabels).toEqual(expect.arrayContaining([
-      "General Equipment", "Generic", "Moving", "Available", "Company Owned", "Serviceable", "Main Yard",
+      "Generic", "Moving", "Available", "Company Owned", "Serviceable", "Main Yard",
     ]));
+    await act(async () => root.unmount());
+  });
+
+  it("uses progressive creation fields and preserves state during inline Location creation", async () => {
+    initializeRequiredMasterData();
+    const prompt = vi.spyOn(window, "prompt").mockReturnValue("  PSC   Yard  ");
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(createElement(ApplicationDependencyProvider, null,
+        createElement(PrefixProvider, null,
+          createElement(MasterProviders, null,
+            createElement(EquipmentProvider, null,
+              createElement(EquipmentForm, { mode: "create", onSubmit: vi.fn() }))))));
+    });
+    const labels = Array.from(container.querySelectorAll("label")).map((label) => label.textContent);
+    expect(labels).toEqual(expect.arrayContaining(["Equipment Category *", "Equipment Sub-category *", "Equipment Code *", "Cost Code", "Asset Number"]));
+    expect(labels).not.toEqual(expect.arrayContaining(["Equipment Status", "Equipment Condition"]));
+    expect((container.querySelector("details") as HTMLDetailsElement).open).toBe(false);
+    const asset = Array.from(container.querySelectorAll("input")).find((input) => input.labels?.[0]?.textContent === "Asset Number")!;
+    expect(asset.readOnly).toBe(true);
+    const code = Array.from(container.querySelectorAll("input")).find((input) => input.labels?.[0]?.textContent === "Equipment Code *")!;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(code, "CUSTOM-CODE-7"); code.dispatchEvent(new Event("input", { bubbles: true })); });
+    const addLocation = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "+ Add Location")!;
+    await act(async () => addLocation.click());
+    const location = Array.from(container.querySelectorAll("select")).find((select) => select.labels?.[0]?.textContent === "Initial Location")!;
+    expect(location.selectedOptions[0]?.textContent).toBe("PSC Yard");
+    expect(code.value).toBe("CUSTOM-CODE-7");
+    prompt.mockRestore();
     await act(async () => root.unmount());
   });
 

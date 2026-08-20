@@ -47,6 +47,8 @@ const current: EquipmentRecord = existing;
 
     typeId: current.typeId ?? "",
     type: current.type ?? "",
+    brandId: current.brandId ?? "",
+    brand: current.brand ?? "",
 
     costCodeId: current.costCodeId ?? "",
 
@@ -79,6 +81,15 @@ const current: EquipmentRecord = existing;
     categoryId: current.categoryId,
     subcategoryId: current.subcategoryId,
     subcategoryName: current.subcategoryName,
+    status: current.status,
+    statusId: current.statusId,
+    ownershipId: current.ownershipId,
+    ownership: current.ownership,
+    conditionId: current.conditionId,
+    condition: current.condition,
+    locationId: current.locationId,
+    location: current.location,
+    remarks: current.remarks,
 
     maintenanceType:
       current.maintenanceType,
@@ -114,6 +125,8 @@ const current: EquipmentRecord = existing;
       typeId: data.typeId,
 
       type: data.type,
+      brandId: data.brandId,
+      brand: data.brand,
 
       costCodeId: data.costCodeId || undefined,
 
@@ -147,6 +160,13 @@ const current: EquipmentRecord = existing;
       categoryId: data.categoryId,
       subcategoryId: data.subcategoryId,
       subcategoryName: data.subcategoryName,
+      ownershipId: data.ownershipId,
+      ownership: data.ownership,
+      conditionId: data.conditionId,
+      condition: data.condition,
+      locationId: data.locationId,
+      location: data.location,
+      remarks: data.remarks,
 
       maintenanceType:
         data.maintenanceType,
@@ -193,6 +213,7 @@ const current: EquipmentRecord = existing;
 
       <EquipmentForm
         initialData={formData}
+        mode="edit"
         submitLabel="Save Changes"
         onSubmit={handleSubmit}
         onCancel={() =>

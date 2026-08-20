@@ -87,6 +87,13 @@ describe("LocalEquipmentRepository", () => {
       .toBe("cost-code-light");
   });
 
+  it("enforces required, case-insensitive Equipment Code uniqueness at the repository boundary", () => {
+    const repository = new LocalEquipmentRepository();
+    repository.create({ ...equipment("one"), equipmentName: "EXC-OPS-01" });
+    expect(() => repository.create({ ...equipment("two"), equipmentName: " exc-ops-01 " })).toThrow("Equipment Code already exists.");
+    expect(() => repository.create({ ...equipment("blank"), equipmentName: " " })).toThrow("Equipment Code is required.");
+  });
+
   it("loads and reserializes legacy Equipment without a Cost Code", () => {
     const legacy = equipment("legacy");
     storage.set(STORAGE_KEY, [legacy]);

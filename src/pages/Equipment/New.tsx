@@ -10,6 +10,7 @@ import type {
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { validateDuplicateEquipment } from "@/features/equipment/utils/duplicateValidator";
+import { buildManualEquipmentRecord } from "@/features/equipment/services/manualEquipmentRegistration";
 
 export default function NewEquipment() {
   const navigate = useNavigate();
@@ -56,55 +57,7 @@ export default function NewEquipment() {
   function handleSubmit(
     data: EquipmentFormData
   ) {
-    const newRecord: EquipmentRecord = {
-      id: crypto.randomUUID(),
-
-      prefixId: data.prefixId,
-
-      assetNo: data.assetNo,
-
-      equipmentName: data.equipmentName,
-
-      typeId: data.typeId,
-      type: data.type,
-
-      costCodeId: data.costCodeId || undefined,
-
-      manufacturer: data.manufacturer,
-      model: data.model,
-      serialNumber: data.serialNumber,
-      engineNumber: data.engineNumber,
-      chassisNumber: data.chassisNumber,
-      plateNumber: data.plateNumber,
-
-      yearModel:
-        data.yearModel === ""
-          ? undefined
-          : Number(data.yearModel),
-
-      capacity: data.capacity,
-
-      category:
-        data.category as EquipmentRecord["category"],
-      categoryId: data.categoryId,
-      subcategoryId: data.subcategoryId,
-      subcategoryName: data.subcategoryName,
-
-      maintenanceType:
-        data.maintenanceType,
-
-      currentReading: Number(
-        data.currentReading
-      ),
-
-      projectId: "",
-
-      operatorId: "",
-
-      status: "Available",
-
-      deleted: false,
-    };
+    const newRecord = buildManualEquipmentRecord(data);
 
     const validation =
       validateDuplicateEquipment(
@@ -140,6 +93,7 @@ export default function NewEquipment() {
 
       <EquipmentForm
         initialData={formDefaults}
+        mode="create"
         submitLabel="Create Equipment"
         onSubmit={handleSubmit}
         onCancel={() =>

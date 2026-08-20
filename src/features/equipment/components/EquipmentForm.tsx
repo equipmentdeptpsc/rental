@@ -1,653 +1,78 @@
-import { useEffect, useState } from "react";
-
+import { useEffect, useMemo, useState } from "react";
+import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import Button from "@/components/ui/Button";
-
-import type {
-  EquipmentFormData,
-  EquipmentCategory,
-} from "../types";
-
-import { usePrefix } from "@/features/settings";
-import { useEquipmentCategories } from "@/features/masters/equipment-category";
-import { useEquipmentStatuses,} from "@/features/masters/equipment-status";
-import { useEquipmentOwnerships } from "@/features/masters/equipment-ownership/context/EquipmentOwnershipContext";
-import {  useEquipmentConditions,} from "@/features/masters/equipment-condition";
-import {  useEquipmentLocations,} from "@/features/masters/equipment-location";
-import { useEquipmentBrands } from "@/features/masters/equipment-brand";
-import { useEquipmentTypes } from "@/features/masters/equipment-type/context/EquipmentTypeContext";
 import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
-import { getActiveCostCodeOptions } from "../utils/equipmentCostCode";
-import { useEquipment } from "../context/EquipmentContext";
-import { previewCategoryAssetNumber } from "../services/categoryAssetNumber";
+import { useEquipmentBrands } from "@/features/masters/equipment-brand/context/EquipmentBrandContext";
+import { useEquipmentCategories } from "@/features/masters/equipment-category/context/EquipmentCategoryContext";
+import { useEquipmentConditions } from "@/features/masters/equipment-condition/context/EquipmentConditionContext";
+import { useEquipmentLocations } from "@/features/masters/equipment-location/context/EquipmentLocationContext";
+import { useEquipmentModels } from "@/features/masters/equipment-model/context/EquipmentModelContext";
+import { useEquipmentOwnerships } from "@/features/masters/equipment-ownership/context/EquipmentOwnershipContext";
+import { useEquipmentStatuses } from "@/features/masters/equipment-status/context/EquipmentStatusContext";
 import { useEquipmentSubcategories } from "@/features/masters/equipment-subcategory/context";
-import { suggestSubcategoryAssetNumber } from "@/features/masters/equipment-subcategory/repository";
+import { usePrefix } from "@/features/settings";
+import { useEquipment } from "../context/EquipmentContext";
+import { createInlineMasterValue } from "../services/inlineEquipmentMaster";
+import { retainCompatibleSubcategory } from "../services/equipmentCategorySelection";
+import { previewCategoryAssetNumber } from "../services/categoryAssetNumber";
+import type { EquipmentCategory, EquipmentFormData } from "../types";
+import { getActiveCostCodeOptions } from "../utils/equipmentCostCode";
 
-interface Props {
-  initialData?: EquipmentFormData;
+interface Props { initialData?: EquipmentFormData; mode?: "create" | "edit"; submitLabel?: string; onSubmit(data: EquipmentFormData): void; onCancel?(): void }
 
-  submitLabel?: string;
-
-  onSubmit(
-    data: EquipmentFormData
-  ): void;
-
-  onCancel?(): void;
-}
-
-export default function EquipmentForm({
-  initialData,
-  submitLabel = "Save",
-  onSubmit,
-  onCancel,
-}: Props) {
-
-  const { records: equipmentTypes } =
-    useEquipmentTypes();
-
-  const { costCodes } = useCostCodes();
-
-  const { prefixes } = usePrefix();
-  const { equipment } = useEquipment();
-  const { records: equipmentSubcategories } = useEquipmentSubcategories();
-
-  const { records: equipmentBrands } =
-  useEquipmentBrands();
-
-  const {
-    records: equipmentCategories,
-  } = useEquipmentCategories();
-
-  const {
-    records: equipmentStatuses,
-  } = useEquipmentStatuses();
-
-  const {
-    records: equipmentOwnerships,
-  } = useEquipmentOwnerships();
-
-  const {
-    records: equipmentConditions,
-  } = useEquipmentConditions();
-
-  const {
-    records: equipmentLocations,
-  } = useEquipmentLocations();
-
-  const [form, setForm] =
-    useState<EquipmentFormData>({
-      prefixId: "",
-      assetNo: "",
-      equipmentName: "",
-
-      typeId: "",
-      type: "",
-
-      brandId: "",
-      brand: "",
-
-      costCodeId: "",
-
-      manufacturer: "",
-      model: "",
-      serialNumber: "",
-      engineNumber: "",
-      chassisNumber: "",
-      plateNumber: "",
-      yearModel: "",
-      capacity: "",
-
-      category: "",
-
-      maintenanceType:
-        "Engine Hours",
-
-      currentReading: "",
-
-      projectId: "",
-
-      operatorId: "",
-
-      ...initialData,
-    });
+export default function EquipmentForm({ initialData, mode = "edit", submitLabel = "Save", onSubmit, onCancel }: Props) {
+  const { equipment } = useEquipment(); const { prefixes } = usePrefix(); const { costCodes } = useCostCodes();
+  const { records: categories } = useEquipmentCategories(); const { records: subcategories } = useEquipmentSubcategories();
+  const brands = useEquipmentBrands(); const models = useEquipmentModels(); const locations = useEquipmentLocations();
+  const { records: ownerships } = useEquipmentOwnerships(); const { records: statuses } = useEquipmentStatuses(); const { records: conditions } = useEquipmentConditions();
+  const [message, setMessage] = useState("");
+  const [form, setForm] = useState<EquipmentFormData>(() => ({ prefixId: "", assetNo: "", equipmentName: "", typeId: "", type: "", brandId: "", brand: "", costCodeId: "", manufacturer: "", model: "", serialNumber: "", engineNumber: "", chassisNumber: "", plateNumber: "", yearModel: "", capacity: "", category: "", categoryId: "", subcategoryId: "", subcategoryName: "", maintenanceType: "Engine Hours", currentReading: "", projectId: "", operatorId: "", ...initialData }));
+  useEffect(() => { if (initialData) setForm(initialData); }, [initialData]);
+  const update = <K extends keyof EquipmentFormData>(key: K, value: EquipmentFormData[K]) => setForm((current) => ({ ...current, [key]: value }));
+  const availableSubcategories = useMemo(() => subcategories.filter((item) => item.active && item.categoryId === form.categoryId), [form.categoryId, subcategories]);
 
   useEffect(() => {
-    if (initialData) {
-      setForm(initialData);
-    }
-  }, [initialData]);
-
-  function update<
-    K extends keyof EquipmentFormData
-  >(
-    key: K,
-    value: EquipmentFormData[K]
-  ) {
-    setForm(prev => ({
-      ...prev,
-      [key]: value,
-    }));
-  }
-
-  useEffect(() => {
-    if (initialData?.assetNo) return;
-    if (!form.category) {
-      update("assetNo", "");
-      update("prefixId", "");
-      return;
-    }
-    const selectedSubcategory=equipmentSubcategories.find(item=>item.id===form.subcategoryId);
-    const subcategorySuggestion=suggestSubcategoryAssetNumber(selectedSubcategory?.assetPrefix,equipment);
-    if(subcategorySuggestion){update("assetNo",subcategorySuggestion);return;}
+    if (mode === "edit" && initialData?.assetNo) return;
+    if (!form.category) { update("assetNo", ""); update("prefixId", ""); return; }
     const preview = previewCategoryAssetNumber(form.category as EquipmentCategory, prefixes, equipment);
-    if (!preview.success) {
-      update("assetNo", "");
-      update("prefixId", "");
-      return;
-    }
-    update("prefixId", preview.prefixId);
-    update("assetNo", preview.assetNo);
-  }, [
-    form.category,
-    form.subcategoryId,
-    equipmentSubcategories,
-    prefixes,
-    equipment,
-    initialData?.assetNo,
-  ]);
+    update("assetNo", preview.success ? preview.assetNo : ""); update("prefixId", preview.success ? preview.prefixId : "");
+  }, [equipment, form.category, initialData?.assetNo, mode, prefixes]);
 
-  function submit(
-    e: React.FormEvent
-  ) {
-    e.preventDefault();
-    onSubmit(form);
+  function addMaster(kind: "brand" | "model" | "location") {
+    const raw = window.prompt(`Add ${kind === "brand" ? "Manufacturer" : kind === "model" ? "Model" : "Location"}`); if (raw === null) return;
+    const existing = kind === "brand" ? brands.records.map((item) => item.brand) : kind === "model" ? models.records.map((item) => item.equipmentModel) : locations.records.map((item) => item.location);
+    const result = createInlineMasterValue(raw, existing, kind); if (!result.success) { setMessage(result.message); return; }
+    const id = result.id;
+    if (kind === "brand") { brands.create({ id, brand: result.value, description: "Added from Equipment registration", active: true, deleted: false }); update("brandId", id); update("brand", result.value); update("manufacturer", result.value); }
+    if (kind === "model") { models.create({ id, equipmentModel: result.value, description: "Added from Equipment registration", active: true, deleted: false }); update("model", result.value); }
+    if (kind === "location") { locations.create({ id, location: result.value, description: "Added from Equipment registration", active: true, deleted: false }); update("locationId", id); update("location", result.value); }
+    setMessage(`${result.value} added and selected.`);
   }
 
-  return (
-    <form
-      onSubmit={submit}
-      className="space-y-6"
-    >
-      <div className="grid grid-cols-2 gap-4">
-
-        <Input
-          label="Asset Number"
-          value={form.assetNo}
-          placeholder="Select an equipment category to generate the asset number."
-          onChange={(event)=>update("assetNo",event.target.value)}
-        />
-
-        <Input
-          label="Equipment Name"
-          value={form.equipmentName}
-          onChange={(e) =>
-            update(
-              "equipmentName",
-              e.target.value
-            )
-          }
-        />
-
-        <Select
-          label="Equipment Type"
-          value={form.typeId ?? ""}
-          options={[
-            {
-              label:
-                "-- Select Equipment Type --",
-              value: "",
-            },
-            ...equipmentTypes
-              .filter(
-                (item) =>
-                  item.active &&
-                  !item.deleted
-              )
-              .map((item) => ({
-                value: item.id,
-                label: item.equipmentType,
-              })),
-          ]}
-          onChange={(e) => {
-            const selected =
-              equipmentTypes.find(
-                (item) =>
-                  item.id ===
-                  e.target.value
-              );
-
-            update(
-              "typeId",
-              e.target.value
-            );
-
-            update(
-              "type",
-              selected
-                ?.equipmentType ?? ""
-            );
-          }}
-        />
-
-<Select
-  label="Equipment Brand"
-  value={form.brandId ?? ""}
-  options={[
-    {
-      label: "-- Select Equipment Brand --",
-      value: "",
-    },
-    ...equipmentBrands
-      .filter(
-        (item) =>
-          item.active &&
-          !item.deleted
-      )
-      .map((item) => ({
-        value: item.id,
-        label: item.brand,
-      })),
-  ]}
-  onChange={(e) => {
-    const selected =
-      equipmentBrands.find(
-        (item) =>
-          item.id ===
-          e.target.value
-      );
-
-    update(
-      "brandId",
-      e.target.value
-    );
-
-    update(
-      "brand",
-      selected?.brand ?? ""
-    );
-  }}
-/>
-
-        <div>
-          <Select
-            label="Cost Code"
-            value={form.costCodeId ?? ""}
-            options={[
-              { label: "-- Select Cost Code --", value: "" },
-              ...getActiveCostCodeOptions(costCodes),
-            ]}
-            onChange={(event) => update("costCodeId", event.target.value)}
-          />
-          {!form.costCodeId && (
-            <p className="mt-1 text-sm text-amber-700">
-              Cost Code not configured
-            </p>
-          )}
-        </div>
-
-        <Input
-          label="Manufacturer"
-          value={form.manufacturer}
-          onChange={(e) =>
-            update(
-              "manufacturer",
-              e.target.value
-            )
-          }
-        />
-
-        <Input
-          label="Model"
-          value={form.model}
-          onChange={(e) =>
-            update(
-              "model",
-              e.target.value
-            )
-          }
-        />
-
-        <Input
-          label="Serial Number"
-          value={form.serialNumber}
-          onChange={(e) =>
-            update(
-              "serialNumber",
-              e.target.value
-            )
-          }
-        />
-
-        <Input
-          label="Engine Number"
-          value={form.engineNumber}
-          onChange={(e) =>
-            update(
-              "engineNumber",
-              e.target.value
-            )
-          }
-        />
-
-        <Input
-          label="Chassis Number"
-          value={form.chassisNumber}
-          onChange={(e) =>
-            update(
-              "chassisNumber",
-              e.target.value
-            )
-          }
-        />
-
-        <Input
-          label="Plate Number"
-          value={form.plateNumber}
-          onChange={(e) =>
-            update(
-              "plateNumber",
-              e.target.value
-            )
-          }
-        />
-
-        <Input
-          label="Year Model"
-          value={form.yearModel}
-          onChange={(e) =>
-            update(
-              "yearModel",
-              e.target.value
-            )
-          }
-        />
-
-        <Input
-          label="Capacity"
-          value={form.capacity}
-          onChange={(e) =>
-            update(
-              "capacity",
-              e.target.value
-            )
-          }
-        />
-
-<Select
-  label="Equipment Category"
-  value={form.categoryId ?? ""}
-  options={[
-    {
-      label: "-- Select Equipment Category --",
-      value: "",
-    },
-    ...equipmentCategories
-      .filter(
-        (item) =>
-          item.active &&
-          !item.deleted
-      )
-      .map((item) => ({
-        value: item.id,
-        label: item.category,
-      })),
-  ]}
-  onChange={(e) => {
-    const selected =
-      equipmentCategories.find(
-        (item) =>
-          item.id ===
-          e.target.value
-      );
-
-    update(
-      "categoryId",
-      e.target.value
-    );
-
-    update(
-      "category",
-      (selected?.category ??
-        "") as EquipmentCategory
-    );
-    if(form.subcategoryId&&!equipmentSubcategories.some(item=>item.id===form.subcategoryId&&item.categoryId===e.target.value)){
-      update("subcategoryId","");update("subcategoryName","");
-    }
-  }}
-/>
-
-<Select label="Equipment Sub-Category" value={form.subcategoryId??""} options={[{label:"-- Select Equipment Sub-Category --",value:""},...equipmentSubcategories.filter(item=>item.categoryId===form.categoryId&&item.active).map(item=>({value:item.id,label:item.name}))]} onChange={event=>{const selected=equipmentSubcategories.find(item=>item.id===event.target.value);update("subcategoryId",event.target.value);update("subcategoryName",selected?.name??"")}} />
-
-<Select
-  label="Equipment Status"
-  value={form.statusId ?? ""}
-  options={[
-    {
-      label: "-- Select Equipment Status --",
-      value: "",
-    },
-    ...equipmentStatuses
-      .filter(
-        item =>
-          item.active &&
-          !item.deleted
-      )
-      .map(item => ({
-        value: item.id,
-        label: item.status,
-      })),
-  ]}
-  onChange={(e) => {
-
-    const selected =
-      equipmentStatuses.find(
-        item =>
-          item.id ===
-          e.target.value
-      );
-
-    update(
-      "statusId",
-      e.target.value
-    );
-
-    update(
-      "status",
-      selected
-        ?.status as any
-    );
-
-  }}
-/>
-
-<Select
-  label="Equipment Ownership"
-  value={form.ownershipId ?? ""}
-  options={[
-    {
-      label: "-- Select Equipment Ownership --",
-      value: "",
-    },
-    ...equipmentOwnerships
-      .filter(
-        item =>
-          item.active &&
-          !item.deleted
-      )
-      .map(item => ({
-        value: item.id,
-        label: item.ownership,
-      })),
-  ]}
-  onChange={(e) => {
-
-    const selected =
-      equipmentOwnerships.find(
-        item =>
-          item.id ===
-          e.target.value
-      );
-
-    update(
-      "ownershipId",
-      e.target.value
-    );
-
-    update(
-      "ownership",
-      selected?.ownership ?? ""
-    );
-
-  }}
-/>
-
-<Select
-  label="Equipment Condition"
-  value={form.conditionId ?? ""}
-  options={[
-    {
-      label: "-- Select Equipment Condition --",
-      value: "",
-    },
-    ...equipmentConditions
-      .filter(
-        item =>
-          item.active &&
-          !item.deleted
-      )
-      .map(item => ({
-        value: item.id,
-        label: item.condition,
-      })),
-  ]}
-  onChange={(e) => {
-
-    const selected =
-      equipmentConditions.find(
-        item =>
-          item.id ===
-          e.target.value
-      );
-
-    update(
-      "conditionId",
-      e.target.value
-    );
-
-    update(
-      "condition",
-      selected?.condition ?? ""
-    );
-
-  }}
-/>
-
-<Select
-  label="Equipment Location"
-  value={form.locationId ?? ""}
-  options={[
-    {
-      label: "-- Select Equipment Location --",
-      value: "",
-    },
-    ...equipmentLocations
-      .filter(
-        item =>
-          item.active &&
-          !item.deleted
-      )
-      .map(item => ({
-        value: item.id,
-        label: item.location,
-      })),
-  ]}
-  onChange={(e) => {
-
-    const selected =
-      equipmentLocations.find(
-        item =>
-          item.id ===
-          e.target.value
-      );
-
-    update(
-      "locationId",
-      e.target.value
-    );
-
-    update(
-      "location",
-      selected?.location ?? ""
-    );
-
-  }}
-/>
-
-        <Select
-          label="Maintenance Type"
-          value={form.maintenanceType}
-          options={[
-            {
-              label:
-                "Engine Hours",
-              value:
-                "Engine Hours",
-            },
-            {
-              label:
-                "Mileage",
-              value:
-                "Mileage",
-            },
-            {
-              label:
-                "Calendar Days",
-              value:
-                "Calendar Days",
-            },
-          ]}
-          onChange={(e) =>
-            update(
-              "maintenanceType",
-              e.target.value as EquipmentFormData["maintenanceType"]
-            )
-          }
-        />
-
-        <Input
-          label="Current Reading"
-          type="number"
-          value={form.currentReading}
-          onChange={(e) =>
-            update(
-              "currentReading",
-              e.target.value
-            )
-          }
-        />
-
-
+  return <form className="space-y-6" onSubmit={(event) => { event.preventDefault(); onSubmit(form); }}>
+    {message && <p className="rounded border p-3" role="status">{message}</p>}
+    <div className="grid gap-4 md:grid-cols-2">
+      <Select label="Equipment Category" required value={form.categoryId ?? ""} options={[{ label: "-- Select Equipment Category --", value: "" }, ...categories.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.category, value: item.id }))]} onChange={(event) => { const selected = categories.find((item) => item.id === event.target.value); const compatible = retainCompatibleSubcategory(event.target.value, form.subcategoryId, subcategories); update("categoryId", event.target.value); update("category", (selected?.category ?? "") as EquipmentCategory | ""); if (!compatible) { update("subcategoryId", ""); update("subcategoryName", ""); } }} />
+      <Select label="Equipment Sub-category" required disabled={!form.categoryId} value={form.subcategoryId ?? ""} options={[{ label: "-- Select Equipment Sub-category --", value: "" }, ...availableSubcategories.map((item) => ({ label: item.name, value: item.id }))]} onChange={(event) => { const selected = subcategories.find((item) => item.id === event.target.value); update("subcategoryId", event.target.value); update("subcategoryName", selected?.name ?? ""); }} />
+      <Input label="Equipment Code" required value={form.equipmentName} onChange={(event) => update("equipmentName", event.target.value)} />
+      <Select label="Cost Code" value={form.costCodeId ?? ""} options={[{ label: "-- Select Cost Code --", value: "" }, ...getActiveCostCodeOptions(costCodes)]} onChange={(event) => update("costCodeId", event.target.value)} />
+      <Input label="Asset Number" readOnly value={form.assetNo || "AUTO-GENERATED"} />
+    </div>
+    <details className="rounded-xl border p-4" open={mode === "edit" ? true : undefined}><summary className="cursor-pointer font-semibold">Additional Equipment Details</summary>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div><Select label="Manufacturer" value={form.brandId ?? ""} options={[{ label: "-- Select Manufacturer --", value: "" }, ...brands.records.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.brand, value: item.id }))]} onChange={(event) => { const selected = brands.records.find((item) => item.id === event.target.value); update("brandId", event.target.value); update("brand", selected?.brand ?? ""); update("manufacturer", selected?.brand ?? ""); }} /><button className="mt-1 text-sm text-blue-700" type="button" onClick={() => addMaster("brand")}>+ Add Manufacturer</button></div>
+        <div><Select label="Model" value={models.records.find((item) => item.equipmentModel === form.model)?.id ?? ""} options={[{ label: "-- Select Model --", value: "" }, ...models.records.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.equipmentModel, value: item.id }))]} onChange={(event) => update("model", models.records.find((item) => item.id === event.target.value)?.equipmentModel ?? "")} /><button className="mt-1 text-sm text-blue-700" type="button" onClick={() => addMaster("model")}>+ Add Model</button></div>
+        <Input label="Serial Number" value={form.serialNumber} onChange={(event) => update("serialNumber", event.target.value)} />
+        <Select label="Ownership Type" value={form.ownershipId ?? ""} options={[{ label: "-- Select Ownership Type --", value: "" }, ...ownerships.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.ownership, value: item.id }))]} onChange={(event) => { const selected = ownerships.find((item) => item.id === event.target.value); update("ownershipId", event.target.value); update("ownership", selected?.ownership ?? ""); }} />
+        <div><Select label="Initial Location" value={form.locationId ?? ""} options={[{ label: "-- Select Initial Location --", value: "" }, ...locations.records.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.location, value: item.id }))]} onChange={(event) => { const selected = locations.records.find((item) => item.id === event.target.value); update("locationId", event.target.value); update("location", selected?.location ?? ""); }} /><button className="mt-1 text-sm text-blue-700" type="button" onClick={() => addMaster("location")}>+ Add Location</button></div>
+        <Input label="Notes" value={form.remarks ?? ""} onChange={(event) => update("remarks", event.target.value)} />
+        <Select label="Maintenance Type" value={form.maintenanceType} options={["Engine Hours", "Kilometers", "Mileage", "Calendar Days"].map((value) => ({ label: value, value }))} onChange={(event) => update("maintenanceType", event.target.value as EquipmentFormData["maintenanceType"])} />
+        <Input label="Current Reading" type="number" value={form.currentReading} onChange={(event) => update("currentReading", event.target.value)} />
+        {mode === "edit" && <Select label="Equipment Status" value={form.status ?? ""} options={statuses.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.status, value: item.status }))} onChange={(event) => update("status", event.target.value as EquipmentFormData["status"])} />}
+        {mode === "edit" && <Select label="Equipment Condition" value={form.conditionId ?? ""} options={[{ label: "-- Select Equipment Condition --", value: "" }, ...conditions.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.condition, value: item.id }))]} onChange={(event) => { const selected = conditions.find((item) => item.id === event.target.value); update("conditionId", event.target.value); update("condition", selected?.condition ?? ""); }} />}
       </div>
-
-            <div className="flex justify-end gap-3">
-
-        {onCancel && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-        )}
-
-        <Button type="submit">
-          {submitLabel}
-        </Button>
-
-      </div>
-
-    </form>
-  );
+    </details>
+    <div className="flex justify-end gap-3">{onCancel && <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>}<Button type="submit">{submitLabel}</Button></div>
+  </form>;
 }

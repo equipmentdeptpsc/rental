@@ -86,7 +86,7 @@ export function EquipmentProvider({
     item: EquipmentRecord
   ) {
     authorize("equipment.create");
-    const prepared = createEquipmentWithCategoryAssetNumber(item, prefixRepository.getAll(), equipmentRepository.getAll());
+    const prepared = createEquipmentWithCategoryAssetNumber({ ...item, assetNo: "" }, prefixRepository.getAll(), equipmentRepository.getAll());
     if (!prepared.success) return { success: false, message: prepared.message };
     equipmentRepository.create(prepared.record);
     refresh();

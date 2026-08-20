@@ -1,0 +1,38 @@
+import type { EquipmentFormData, EquipmentRecord } from "../types";
+
+export function buildManualEquipmentRecord(data: EquipmentFormData, id = crypto.randomUUID()): EquipmentRecord {
+  return {
+    id,
+    prefixId: data.prefixId,
+    assetNo: data.assetNo,
+    equipmentName: data.equipmentName.trim(),
+    typeId: data.typeId,
+    type: data.type,
+    brandId: data.brandId,
+    brand: data.brand,
+    costCodeId: data.costCodeId || undefined,
+    manufacturer: data.manufacturer,
+    model: data.model,
+    serialNumber: data.serialNumber,
+    engineNumber: data.engineNumber,
+    chassisNumber: data.chassisNumber,
+    plateNumber: data.plateNumber,
+    yearModel: data.yearModel === "" ? undefined : Number(data.yearModel),
+    capacity: data.capacity,
+    category: data.category as EquipmentRecord["category"],
+    categoryId: data.categoryId,
+    subcategoryId: data.subcategoryId,
+    subcategoryName: data.subcategoryName,
+    ownershipId: data.ownershipId,
+    ownership: data.ownership,
+    locationId: data.locationId,
+    location: data.location,
+    remarks: data.remarks,
+    maintenanceType: data.maintenanceType,
+    currentReading: Number(data.currentReading || 0),
+    projectId: "",
+    operatorId: "",
+    status: "Available",
+    deleted: false,
+  };
+}
