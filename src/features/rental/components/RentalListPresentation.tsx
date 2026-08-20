@@ -1,8 +1,6 @@
-import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
-import ResponsiveTable from "@/components/ui/ResponsiveTable";
 import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
 import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
 import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";

@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { buildDashboardActionQueue } from "../services/dashboardActionQueue";
 import type { DashboardActionItem } from "../services/dashboardActionQueue";
 
 export default function DashboardActionQueue({ items }: { items: readonly DashboardActionItem[] }) {

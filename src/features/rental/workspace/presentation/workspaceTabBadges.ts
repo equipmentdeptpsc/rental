@@ -22,7 +22,7 @@ export function buildWorkspaceTabBadges(
   const lineBlockers = resolveRentalBillingBlockers({
     lines: aggregate.rentalEquipmentLines,
     deurs: aggregate.deurs,
-    equipment,
+    equipment: [...equipment],
     pendingReviewDeurIds: new Set(
       developmentCustomerReviewOutbox
         .getAll()

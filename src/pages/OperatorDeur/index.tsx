@@ -98,9 +98,6 @@ export default function OperatorDeurPage() {
   const submitted = !active ? [...deurs].filter((record) => record.operatorId === operator?.id && (!selectedLine || record.rentalEquipmentLineId === selectedLine.id) && record.workDate === calendarDateAt(clock, rental?.deurExpectationPolicy?.timezone) && ["Submitted", "Pending Acknowledgement", "Acknowledged", "Rejected"].includes(record.status)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] : undefined;
   const projection = active ? projectDigitalDeurRunningState({ deur: active, evaluationTimestamp: clock }) : undefined;
   const selectedIdleReason = activeIdleReasons.find((reason) => reason.id === idleReasonId);
-  const activeIdleEvent = projection?.valid && projection.value.activeEventType === "idle"
-    ? [...(active?.events ?? [])].reverse().find((event) => event.activityType === "idle" && event.action === "start")
-    : undefined;
   const activityHistory = active ? reviewTimelineForDeur(active) : [];
   useEffect(() => { if (!projection?.valid || !projection.value.isRunning) return; const timer = window.setInterval(() => setClock(new Date().toISOString()), 1_000); return () => window.clearInterval(timer); }, [active?.id, active?.updatedAt, projection?.valid && projection.value.isRunning]);
   const accountAccess=routeResolution.status==="RESOLVED"?resolveOperatorAccountLineAccess(user,operators,routeResolution.line.operatorId):undefined;
