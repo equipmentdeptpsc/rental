@@ -11,7 +11,7 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
   const { user, hasPermission } = useAuth();
   const { transitionRental, returnRental, releaseRental, submitForApproval, approveRental, rejectRental, getReleaseReadiness } = useRental();
   const { showToast } = useToast(); const [pending, setPending] = useState<RentalQuickActionId>();
-  const model = deriveRentalQuickActions(rental, { manage: hasPermission("rental.manage"), approve: hasPermission("rental.approve"), submit: hasPermission("rental.approve"), release: hasPermission("rental.release"), return: hasPermission("rental.return") });
+  const model = deriveRentalQuickActions(rental, { manage: hasPermission("rental.manage"), approve: hasPermission("rental.approval.decide"), submit: hasPermission("rental.approval.submit"), release: hasPermission("rental.release"), return: hasPermission("rental.return") });
   function run(id: RentalQuickActionId) {
     if (pending) return; setPending(id); let result;
     if (id === "reserve") {

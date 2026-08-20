@@ -14,6 +14,8 @@ export const PERMISSIONS = {
     "rental.release",
     "rental.return",
     "rental.approve",
+    "rental.approval.submit",
+    "rental.approval.decide",
     "rental.commercialTerms.manage",
   ],
   deur: ["deur.read", "deur.create", "deur.review", "deur.correct"],

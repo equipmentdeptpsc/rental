@@ -44,6 +44,8 @@ describe("system role permission mappings", () => {
     const permissions = permissionsFor("rental-operations");
 
     expect(permissions).toContain("rental.manage");
+    expect(permissions).toContain("rental.approval.submit");
+    expect(permissions).not.toContain("rental.approval.decide");
     expect(permissions).toContain("deur.correct");
     expect(permissions).toContain("billing.read");
     expect(permissions).toContain("maintenance.read");
@@ -64,7 +66,7 @@ describe("system role permission mappings", () => {
     expect(permissions).not.toContain("deur.create");
   });
 
-  it("gives Management read-only permissions", () => {
+  it("gives Management rental decision authority without unrelated mutations", () => {
     const permissions = permissionsFor("management");
     const mutationSuffixes = [
       ".create",
@@ -82,6 +84,8 @@ describe("system role permission mappings", () => {
     expect(permissions).toContain("billing.read");
     expect(permissions).toContain("reports.view");
     expect(permissions).toContain("maintenance.read");
+    expect(permissions).toContain("rental.approval.decide");
+    expect(permissions).not.toContain("rental.approval.submit");
     expect(permissions).not.toContain("maintenance.manage");
     expect(
       [...permissions].some((permission) =>
@@ -101,6 +105,15 @@ describe("AuthorizationService", () => {
     expect(scoped.hasPermission(operatorUser, "deur.create")).toBe(true);
     expect(scoped.hasPermission(operatorUser, "rental.read")).toBe(false);
     expect(scoped.hasPermission(operatorUser, "maintenance.manage")).toBe(false);
+  });
+
+  it("honors remote effective permissions while retaining operator persona restrictions", () => {
+    const scoped = new AuthorizationService({ getById: (id) => id === "operator-1" ? { id, status: "Active" } : undefined });
+    const operatorUser = { ...user([]), operatorId: "operator-1" };
+
+    expect(scoped.hasGrantedPermission(operatorUser, "deur.read", new Set(["deur.read"]))).toBe(true);
+    expect(scoped.hasGrantedPermission(operatorUser, "rental.read", new Set(["rental.read"]))).toBe(false);
+    expect(scoped.hasGrantedPermission({ ...operatorUser, status: "inactive" }, "deur.read", new Set(["deur.read"]))).toBe(false);
   });
 
   it("does not classify missing or inactive Operator links as an Operator persona", () => {

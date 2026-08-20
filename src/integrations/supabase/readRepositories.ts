@@ -18,7 +18,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
   return {
     users: new SupabaseReadRepository<User>(client, { repositoryName: "User", table: "users", columns: "id,username,display_name,email,company_id,status,operator_id,created_at,updated_at,user_roles(app_roles(code))", searchColumns: ["username", "display_name", "email"], mapRow: mapUser }, core),
     equipment: new SupabaseReadRepository<EquipmentRecord>(client, { repositoryName: "Equipment", table: "equipment", searchColumns: ["asset_no", "equipment_name", "serial_number"] }, core),
-    rentals: new SupabaseReadRepository<RentalRecord>(client, { repositoryName: "Rental", table: "rentals", searchColumns: ["rental_number", "customer_snapshot", "project_snapshot"] }, core),
+    rentals: new SupabaseReadRepository<RentalRecord>(client, { repositoryName: "Rental", table: "rentals", searchColumns: ["rental_number", "customer_snapshot", "project_snapshot"], mapRow: mapRental }, core),
     assignments: new SupabaseReadRepository<AssignmentRecord>(client, { repositoryName: "Assignment", table: "assignments", searchColumns: ["remarks"] }, core),
     operators: new SupabaseReadRepository<Operator>(client, { repositoryName: "Operator", table: "operators", searchColumns: ["name", "email", "license_number"] }, core),
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"] }, core),
@@ -28,6 +28,15 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines" }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
   };
+}
+function mapRental(row: Record<string, unknown>): RepositoryResult<RentalRecord> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row);
+  if (!base.success) return base;
+  return repositorySuccess({
+    ...base.value,
+    customer: base.value.customer ?? base.value.customerSnapshot ?? "",
+    project: base.value.project ?? base.value.projectSnapshot ?? "",
+  } as unknown as RentalRecord);
 }
 function mapUser(row: Record<string, unknown>): RepositoryResult<User> {
   const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;

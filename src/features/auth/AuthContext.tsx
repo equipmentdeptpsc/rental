@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { authentication } = useApplicationDependenciesCompatibility();
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [remotePermissions, setRemotePermissions] = useState<ReadonlySet<string> | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -64,9 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authentication.legacyCompatibilityRepository.clear();
         setUser(adaptDomainUser(restored.value.user));
         setSession(restored.value.session);
+        setRemotePermissions(new Set(restored.value.permissions));
       } else {
         setUser(null);
         setSession(null);
+        setRemotePermissions(null);
       }
       setIsInitializing(false);
       return;
@@ -76,11 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authentication.legacyCompatibilityRepository.clear();
       setUser(adaptDomainUser(restored.user));
       setSession(restored.session);
+      setRemotePermissions(null);
     } else {
       const legacyUser =
         authentication.legacyCompatibilityRepository.getCurrentUser();
       setUser(legacyUser ? adaptLegacyUser(legacyUser) : null);
       setSession(null);
+      setRemotePermissions(null);
     }
     setIsInitializing(false);
   }, [authentication]);
@@ -125,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authentication.legacyCompatibilityRepository.clear();
           setUser(adaptDomainUser(remote.value.user));
           setSession(remote.value.session);
+          setRemotePermissions(new Set(remote.value.permissions));
           return { success: true, session: remote.value.session, user: remote.value.user };
         }
         const result = authentication.authenticationService.login(request);
@@ -132,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authentication.legacyCompatibilityRepository.clear();
           setUser(adaptDomainUser(result.user));
           setSession(result.session);
+          setRemotePermissions(null);
         }
         return result;
       } finally {
@@ -157,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         setUser(adapted);
         setSession(compatibilitySession);
+        setRemotePermissions(null);
         return {
           success: true,
           session: compatibilitySession,
@@ -178,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authentication.legacyCompatibilityRepository.clear();
     setUser(null);
     setSession(null);
+    setRemotePermissions(null);
   }, [authentication]);
 
   const value = useMemo<AuthContextType>(
@@ -193,11 +202,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       hasPermission: (permission) =>
         (!user && import.meta.env.MODE === "test") ||
-        authentication.authorizationService.hasPermission(user, permission),
+        (remotePermissions
+          ? authentication.authorizationService.hasGrantedPermission(user, permission, remotePermissions)
+          : authentication.authorizationService.hasPermission(user, permission)),
       token: session?.id ?? null,
       refreshSession,
     }),
-    [authenticate, authentication, isInitializing, isLoggingOut, isSubmitting, login, logout, refreshSession, session, user],
+    [authenticate, authentication, isInitializing, isLoggingOut, isSubmitting, login, logout, refreshSession, remotePermissions, session, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

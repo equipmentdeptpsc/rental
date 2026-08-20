@@ -34,6 +34,19 @@ export class AuthorizationService {
     return this.getEffectivePermissions(user).has(permission);
   }
 
+  hasGrantedPermission(
+    user: User | null | undefined,
+    permission: Permission,
+    grantedPermissions: ReadonlySet<string>,
+  ): boolean {
+    return Boolean(
+      user
+      && user.status === "active"
+      && grantedPermissions.has(permission)
+      && this.personaPolicy.permits(user, permission),
+    );
+  }
+
   hasAnyPermission(
     user: User | null | undefined,
     permissions: readonly Permission[],

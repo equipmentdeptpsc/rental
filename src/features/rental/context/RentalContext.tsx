@@ -690,7 +690,7 @@ export function RentalProvider({
   }
 
   function submitForApproval(id: string): RentalTransitionResult {
-    if (!hasPermission("rental.approve")) return { success: false, message: "You do not have permission to submit Rental approvals." };
+    if (!hasPermission("rental.approval.submit")) return { success: false, message: "You do not have permission to submit Rental approvals." };
     const rental = rentalRepository.getById(id);
     if (!rental) return { success: false, message: "Rental not found." };
     const lines = rentalEquipmentLineRepository.getByRentalId(id);
@@ -730,7 +730,7 @@ export function RentalProvider({
   }
 
   function decideApproval(id: string, decision: "Approved" | "Rejected", remarks: string): RentalTransitionResult {
-    if (!hasPermission("rental.approve")) return { success: false, message: "You do not have permission to decide Rental approvals." };
+    if (!hasPermission("rental.approval.decide")) return { success: false, message: "You do not have permission to decide Rental approvals." };
     const rental = rentalRepository.getById(id);
     if (!rental) return { success: false, message: "Rental not found." };
     const result = decideRentalApproval(rental, user, decision, remarks, new Date().toISOString(), true);

@@ -9,7 +9,7 @@ export type ManagerReviewerResolution =
 export function resolveManagerReviewer(users: readonly User[], companyId?: string): ManagerReviewerResolution {
   const eligible = users.filter((user) => user.status === "active"
     && (!companyId || user.companyId === companyId)
-    && authorizationService.hasPermission(user, "rental.approve"));
+    && authorizationService.hasPermission(user, "rental.approval.decide"));
   if (eligible.length === 0) return { success: false, code: "MANAGER_REVIEWER_NOT_CONFIGURED" };
   if (eligible.length > 1) return { success: false, code: "MULTIPLE_MANAGER_REVIEWERS" };
   const [user] = eligible;

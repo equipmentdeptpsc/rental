@@ -35,7 +35,7 @@ describe("Phase C12 review recipients, evidence, and billing",()=>{
     const storage=new MemoryStorage(),repository=new LocalUserRepository(storage);repository.createUser(admin,"password");
     const service=new UserManagementService(repository,{create:(user,password)=>repository.createUser(user,password)});
     expect(()=>service.create(admin,{username:"bad",displayName:"Bad",email:"bad\r\nBcc:x",systemRoles:["rental-operations"],initialPassword:"x"})).toThrow("valid application-user email");
-    const reviewer=(id:string,companyId:string,status:User["status"]="active"):User=>({id,companyId,username:id,displayName:id,email:`${id}@example.test`,systemRoles:["rental-operations"],status,createdAt:"",updatedAt:""});
+    const reviewer=(id:string,companyId:string,status:User["status"]="active"):User=>({id,companyId,username:id,displayName:id,email:`${id}@example.test`,systemRoles:["management"],status,createdAt:"",updatedAt:""});
     expect(resolveManagerReviewer([],"TENANT-A")).toMatchObject({success:false,code:"MANAGER_REVIEWER_NOT_CONFIGURED"});
     expect(resolveManagerReviewer([reviewer("inactive","TENANT-A","inactive")],"TENANT-A")).toMatchObject({success:false,code:"MANAGER_REVIEWER_NOT_CONFIGURED"});
     expect(resolveManagerReviewer([reviewer("other","TENANT-B")],"TENANT-A")).toMatchObject({success:false,code:"MANAGER_REVIEWER_NOT_CONFIGURED"});

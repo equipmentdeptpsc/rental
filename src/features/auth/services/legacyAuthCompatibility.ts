@@ -14,7 +14,7 @@ const systemToLegacyRole: Readonly<Record<SystemRole, Role>> = {
 
 const legacyToSystemRole: Readonly<Record<Role, SystemRole>> = {
   Admin: "system-administrator",
-  Manager: "rental-operations",
+  Manager: "management",
   Operator: "management",
 };
 

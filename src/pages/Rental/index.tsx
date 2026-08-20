@@ -26,6 +26,8 @@ import { collectionRepository } from "@/features/rental/collections/repository";
 import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
 import { projectRentalCollectionStatus } from "@/features/rental/collections/collectionStatusProjection";
 import { projectActiveRentalEngagements } from "@/features/rental/services/projectActiveRentalEngagements";
+import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
+import { filterRentalList } from "@/features/rental/services/filterRentalList";
 
 type RentalView = "rentals" | "engagements" | "deur-exceptions";
 
@@ -37,11 +39,21 @@ const VIEWS: { id: RentalView; label: string }[] = [
 
 export default function RentalPage() {
   const { billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
-  const { rentals, rentalEquipmentLines } = useRental();
-  const { getEquipment, equipment: equipmentRecords } = useEquipment();
-  const { assignments } = useAssignment();
-  const { operators } = useOperator();
-  const { projects } = useProject();
+  const rentalContext = useRental();
+  const equipmentContext = useEquipment();
+  const assignmentContext = useAssignment();
+  const operatorContext = useOperator();
+  const projectContext = useProject();
+  const fallbackListData = useMemo(() => ({
+    rentals: rentalContext.rentals,
+    rentalEquipmentLines: rentalContext.rentalEquipmentLines,
+    equipment: equipmentContext.equipment,
+    assignments: assignmentContext.assignments,
+    operators: operatorContext.operators,
+    projects: projectContext.projects,
+  }), [assignmentContext.assignments, equipmentContext.equipment, operatorContext.operators, projectContext.projects, rentalContext.rentalEquipmentLines, rentalContext.rentals]);
+  const { rentals, rentalEquipmentLines, equipment: equipmentRecords, assignments, operators, projects } = useRentalListData(fallbackListData);
+  const getEquipment = (id: string) => equipmentRecords.find((record) => record.id === id);
   const [searchParams, setSearchParams] = useSearchParams();
   const [, setDeurVersion] = useState(0);
   const [query, setQuery] = useState("");
@@ -66,17 +78,7 @@ export default function RentalPage() {
   });
   const engagements = projectActiveRentalEngagements({ rentals, lines: rentalEquipmentLines });
   const filteredRentals = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return rentals;
-    return rentals.filter((rental) => {
-      const presentation = resolveRentalTransactionPresentation({
-        rental,
-        lines: rentalEquipmentLines,
-        equipment: equipmentRecords,
-        operators,
-      });
-      return `${rental.rentalNumber ?? ""} ${rental.customer} ${rental.project} ${presentation.equipmentLabel} ${presentation.operatorLabel}`.toLowerCase().includes(normalized);
-    });
+    return filterRentalList({ rentals, lines: rentalEquipmentLines, equipment: equipmentRecords, operators, query });
   }, [equipmentRecords, operators, query, rentalEquipmentLines, rentals]);
 
   return (

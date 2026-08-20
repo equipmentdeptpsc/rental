@@ -43,7 +43,7 @@ export const SYSTEM_ROLE_DEFINITIONS: Readonly<
       "rental.manage",
       "rental.release",
       "rental.return",
-      "rental.approve",
+      "rental.approval.submit",
       "rental.commercialTerms.manage",
       "deur.read",
       "deur.create",
@@ -84,6 +84,7 @@ export const SYSTEM_ROLE_DEFINITIONS: Readonly<
     permissions: permissionSet([
       "dashboard.read",
       ...supportingReadPermissions,
+      "rental.approval.decide",
       "maintenance.read",
       "dailyLog.read",
       "billing.read",
