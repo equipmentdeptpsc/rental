@@ -50,6 +50,7 @@ export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
     { icon: "users", label: "Permissions", path: "/permissions", permission: "users.manage" },
     { icon: "settings", label: "Settings", path: "/settings", permission: "settings.manage" },
     { icon: "users", label: "Audit Trail", path: "/audit-trail", permission: "users.manage" },
+    { icon: "settings", label: "Data Migration", path: "/data-migration", permission: "masterData.manage" },
   ] },
 ]);
 
