@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
 
 import Button from "@/components/ui/Button";
 
@@ -13,6 +14,8 @@ export default function AssignmentsPage() {
   const { equipment } = useEquipment();
   const { operators } = useOperator();
   const { projects } = useProject();
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("All");
 
   function equipmentName(id: string) {
     const item = equipment.find((e) => e.id === id);
@@ -33,6 +36,15 @@ export default function AssignmentsPage() {
 
     return item?.projectName ?? "Unknown Project";
   }
+
+  const visibleAssignments = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return assignments.filter((assignment) => {
+      if (status !== "All" && assignment.status !== status) return false;
+      const haystack = [equipmentName(assignment.equipmentId), operatorName(assignment.operatorId), projectName(assignment.projectId), assignment.assignedDate, assignment.startDate, assignment.expectedReturn, assignment.status].join(" ").toLowerCase();
+      return !normalized || haystack.includes(normalized);
+    });
+  }, [assignments, equipment, operators, projects, query, status]);
 
   return (
     <div className="space-y-6 p-6">
@@ -57,6 +69,13 @@ export default function AssignmentsPage() {
           </Button>
         </Link>
 
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <input aria-label="Search assignments" className="min-w-64 rounded-lg border px-3 py-2" placeholder="Search equipment, operator, or project" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <select aria-label="Filter assignment status" className="rounded-lg border px-3 py-2" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option>All</option><option>Active</option><option>Completed</option><option>Cancelled</option>
+        </select>
       </div>
 
       <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -101,7 +120,7 @@ export default function AssignmentsPage() {
 
           <tbody>
 
-            {assignments.length === 0 && (
+            {visibleAssignments.length === 0 && (
 
               <tr>
 
@@ -116,7 +135,7 @@ export default function AssignmentsPage() {
 
             )}
 
-            {assignments.map((assignment) => (
+            {visibleAssignments.map((assignment) => (
 
               <tr
                 key={assignment.id}

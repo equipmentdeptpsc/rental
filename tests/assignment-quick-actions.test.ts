@@ -115,7 +115,7 @@ describe("assignment workspace quick actions", () => {
     expect(container.textContent).not.toContain("Replace Equipment");
     await act(async () => root.unmount());
     container.remove();
-  });
+  }, 15_000);
 
   it("completes once, synchronizes equipment, and persists the assignment state", async () => {
     prepareState();

@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import type { AssignmentRecord } from "../types";
-import { hasActiveAssignmentConflict } from "../utils/selectAvailableEquipment";
+import { getActiveAssignmentConflictMessage, hasActiveAssignmentConflict } from "../utils/selectAvailableEquipment";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useOptionalAuth } from "@/features/auth/AuthContext";
@@ -31,6 +31,8 @@ interface AssignmentContextType {
     id: string,
     returnedDate: string
   ): AssignmentRecord | undefined;
+
+  cancelAssignment(id: string): AssignmentRecord | undefined;
 
   deleteAssignment(
     id: string
@@ -108,19 +110,11 @@ export function AssignmentProvider({
     assignment: AssignmentRecord
   ) {
     authorize();
-    if (
-      isEquipmentAssigned(
-        assignment.equipmentId
-      )
-    )
+    const conflict = getActiveAssignmentConflictMessage(activeAssignments, assignment);
+    if (conflict) {
+      if (assignment.startDate) throw new Error(conflict);
       return false;
-
-    if (
-      isOperatorAssigned(
-        assignment.operatorId
-      )
-    )
-      return false;
+    }
 
     assignmentRepository.create(
       assignment
@@ -137,6 +131,8 @@ export function AssignmentProvider({
     authorize();
     if (assignment.status === "Active") {
       if (hasActiveAssignmentConflict(activeAssignments, assignment, assignment.id)) {
+        const conflict = getActiveAssignmentConflictMessage(activeAssignments, assignment, assignment.id);
+        if (assignment.startDate && conflict) throw new Error(conflict);
         return false;
       }
     }
@@ -179,6 +175,16 @@ export function AssignmentProvider({
     return updated;
   }
 
+  function cancelAssignment(id: string) {
+    authorize();
+    const existing = assignmentRepository.getById(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, status: "Cancelled" as const };
+    assignmentRepository.update(updated);
+    refresh();
+    return updated;
+  }
+
   function deleteAssignment(
     id: string
   ) {
@@ -214,6 +220,7 @@ export function AssignmentProvider({
       addAssignment,
       updateAssignment,
       completeAssignment,
+      cancelAssignment,
       deleteAssignment,
       getAssignment,
       isEquipmentAssigned,

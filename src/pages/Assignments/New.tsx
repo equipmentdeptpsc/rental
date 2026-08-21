@@ -108,12 +108,12 @@ export default function NewAssignment() {
           data.activityCodeId || undefined,
 
         assignedDate:
-          new Date()
-            .toISOString()
-            .split("T")[0],
+          data.assignmentDate!,
+
+        startDate: data.startDate!,
 
         expectedReturn:
-          "",
+          data.endDate!,
 
         remarks:
           data.remarks,
@@ -122,14 +122,15 @@ export default function NewAssignment() {
           "Active",
       };
 
-    const success =
-      addAssignment(
-        assignment
-      );
+    let success = false;
+    try { success = addAssignment(assignment); } catch (error) {
+      alert(error instanceof Error ? error.message : "Assignment failed.");
+      return;
+    }
 
     if (!success) {
       alert(
-        "Equipment or operator is already assigned."
+        "Equipment or operator is already booked for the selected dates."
       );
 
       return;

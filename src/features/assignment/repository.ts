@@ -2,6 +2,7 @@ import type { AssignmentRecord } from "./types";
 
 import { storage } from "@/core/storage";
 import type { CrudRepository } from "@/core/persistence";
+import { getActiveAssignmentConflictMessage } from "./utils/selectAvailableEquipment";
 
 const STORAGE_KEY = "assignments";
 const clone = <T>(value: T): T => structuredClone(value);
@@ -44,6 +45,8 @@ export const assignmentRepository =
     create(
       assignment: AssignmentRecord
     ) {
+      const conflict = assignment.status === "Active" ? getActiveAssignmentConflictMessage(assignments, assignment) : undefined;
+      if (conflict) throw new Error(conflict);
       assignments.unshift(
         clone(assignment)
       );
@@ -54,6 +57,8 @@ export const assignmentRepository =
     update(
       assignment: AssignmentRecord
     ) {
+      const conflict = assignment.status === "Active" ? getActiveAssignmentConflictMessage(assignments, assignment, assignment.id) : undefined;
+      if (conflict) throw new Error(conflict);
       assignments =
         assignments.map((a) =>
           a.id === assignment.id

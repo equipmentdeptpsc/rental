@@ -4,11 +4,13 @@ import AssignmentForm, {
   type AssignmentFormData,
 } from "@/features/assignment/components/AssignmentForm";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
+import { createHistoryEvent, useEquipmentHistory } from "@/features/equipment/history";
 
 export default function EditAssignment() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getAssignment, updateAssignment } = useAssignment();
+  const { log } = useEquipmentHistory();
   const assignment = id ? getAssignment(id) : undefined;
 
   if (!assignment) {
@@ -18,16 +20,26 @@ export default function EditAssignment() {
   const existingAssignment = assignment;
 
   function handleSubmit(data: AssignmentFormData) {
-    const updated = updateAssignment({
-      ...existingAssignment,
-      ...data,
-      expectedReturn: existingAssignment.expectedReturn,
-    });
+    let updated = false;
+    try {
+      updated = updateAssignment({
+        ...existingAssignment,
+        ...data,
+        assignedDate: data.assignmentDate!,
+        startDate: data.startDate!,
+        expectedReturn: data.endDate!,
+      });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Assignment update failed.");
+      return;
+    }
 
     if (!updated) {
       alert("Equipment or operator is already assigned to an active assignment.");
       return;
     }
+
+    log(createHistoryEvent(existingAssignment.equipmentId, "Assignment Booking Updated", `Booking dates updated to ${data.startDate} through ${data.endDate}.`, "UPDATED"));
 
     navigate(`/assignments/${existingAssignment.id}`);
   }
@@ -50,9 +62,13 @@ export default function EditAssignment() {
       )}
 
       <AssignmentForm
+        currentAssignmentId={existingAssignment.id}
         initialEquipmentId={existingAssignment.equipmentId}
         initialData={{
           equipmentId: existingAssignment.equipmentId,
+          assignmentDate: existingAssignment.assignedDate,
+          startDate: existingAssignment.startDate || existingAssignment.assignedDate,
+          endDate: existingAssignment.expectedReturn || existingAssignment.startDate || existingAssignment.assignedDate,
           operatorId: existingAssignment.operatorId,
           projectId: existingAssignment.projectId,
           activityCodeId: existingAssignment.activityCodeId,

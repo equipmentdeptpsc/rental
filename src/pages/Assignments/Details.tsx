@@ -29,6 +29,7 @@ export default function AssignmentDetails() {
   const {
     assignments,
     completeAssignment,
+    cancelAssignment,
   } = useAssignment();
 
   const {
@@ -136,6 +137,18 @@ export default function AssignmentDetails() {
     navigate("/assignments");
   }
 
+  const currentAssignment = assignment;
+
+  function handleCancelAssignment() {
+    if (!window.confirm("Cancel this assignment booking?")) return;
+    if (!cancelAssignment(currentAssignment.id)) return;
+    if (equipment && !assignments.some((item) => item.id !== currentAssignment.id && item.status === "Active" && item.equipmentId === currentAssignment.equipmentId)) {
+      updateEquipment({ ...equipment, status: "Available", projectId: "", operatorId: "" });
+    }
+    log(createHistoryEvent(currentAssignment.equipmentId, "Assignment Cancelled", `Booking ${currentAssignment.startDate || currentAssignment.assignedDate} to ${currentAssignment.expectedReturn} cancelled.`, "UPDATED"));
+    navigate("/assignments");
+  }
+
   return (
     <div className="space-y-6 p-8">
 
@@ -204,8 +217,10 @@ export default function AssignmentDetails() {
             }
           />
 
+          <Info label="Start Date" value={assignment.startDate || assignment.assignedDate} />
+
           <Info
-            label="Expected Return"
+            label="End Date / Expected Return"
             value={
               displayAssignmentExpectedReturn(assignment.expectedReturn)
             }
@@ -257,7 +272,8 @@ export default function AssignmentDetails() {
 
         <Button
           variant="secondary"
-          disabled
+          disabled={assignment.status !== "Active"}
+          onClick={handleCancelAssignment}
         >
           Cancel Assignment
         </Button>

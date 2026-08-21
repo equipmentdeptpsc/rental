@@ -27,6 +27,8 @@ interface Props {
 
   initialData?: Partial<AssignmentFormData>;
 
+  currentAssignmentId?: string;
+
   lockEquipment?: boolean;
 
   submitLabel?: string;
@@ -36,6 +38,7 @@ export default function AssignmentForm({
   onSubmit,
   initialEquipmentId,
   initialData,
+  currentAssignmentId,
   lockEquipment = false,
   submitLabel = "Assign Equipment",
 }: Props) {
@@ -51,29 +54,48 @@ export default function AssignmentForm({
   const { assignments } =
     useAssignment();
 
-  const { records: activityCodes } = useActivityCodes();
+  const { records: activityCodes, create: createActivityCode } = useActivityCodes();
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const [form, setForm] = useState<AssignmentFormData>({
+    assignmentDate: today,
+    startDate: today,
+    endDate: today,
+    equipmentId: initialEquipmentId ?? "",
+    operatorId: "",
+    projectId: "",
+    activityCodeId: "",
+    remarks: "",
+    ...initialData,
+  });
 
   const availableEquipment =
     useMemo(() =>
       selectAvailableEquipment(
         equipment,
         assignments,
-        initialEquipmentId
+        currentAssignmentId,
+        form.startDate || "",
+        form.endDate || "",
       ), [
       equipment,
       assignments,
-      initialEquipmentId,
+      currentAssignmentId,
+      form.startDate,
+      form.endDate,
     ]);
 
   const availableOperators =
     useMemo(
       () =>
-        operators.filter(
-          (o) =>
-            o.status ===
-            "Active"
-        ),
-      [operators]
+        operators.filter((o) => o.status === "Active" && !assignments.some((assignment) => {
+          if (assignment.status !== "Active" || assignment.id === currentAssignmentId) return false;
+          const start = assignment.startDate || assignment.assignedDate;
+          const end = assignment.expectedReturn || start;
+          return assignment.operatorId === o.id && Boolean(form.startDate && form.endDate) && form.startDate! <= end && start <= form.endDate!;
+        })),
+      [operators, assignments, form.startDate, form.endDate, currentAssignmentId]
     );
 
   const activeProjects =
@@ -86,23 +108,6 @@ export default function AssignmentForm({
         ),
       [projects]
     );
-
-  const [form, setForm] =
-    useState<AssignmentFormData>({
-      equipmentId:
-        initialEquipmentId ??
-        "",
-
-      operatorId: "",
-
-      projectId: "",
-
-      activityCodeId: "",
-
-      remarks: "",
-
-      ...initialData,
-    });
 
   const activityCodeConfiguration = evaluateAssignmentActivityCodeConfiguration(
     form.activityCodeId,
@@ -135,7 +140,25 @@ export default function AssignmentForm({
   ) {
     e.preventDefault();
 
+    if (!form.assignmentDate || !form.startDate || !form.endDate) {
+      alert("Assignment Date, Start Date, and End Date are required.");
+      return;
+    }
+    if (form.endDate < form.startDate) {
+      alert("End Date cannot be earlier than Start Date.");
+      return;
+    }
     onSubmit(form);
+  }
+
+  function addActivityCode() {
+    const code = window.prompt("Activity Code");
+    if (!code?.trim()) return;
+    const description = window.prompt("Activity Code description");
+    if (!description?.trim()) return;
+    const result = createActivityCode({ id: crypto.randomUUID(), activityCode: code, description, active: true, deleted: false });
+    if (!result.success) return alert(result.message);
+    update("activityCodeId", result.record.id);
   }
 
   return (
@@ -143,6 +166,11 @@ export default function AssignmentForm({
       onSubmit={submit}
       className="space-y-5"
     >
+      <div className="grid gap-4 md:grid-cols-3">
+        <Input label="Assignment Date" type="date" required value={form.assignmentDate || ""} onChange={(e) => update("assignmentDate", e.target.value)} />
+        <Input label="Start Date" type="date" required value={form.startDate || ""} onChange={(e) => update("startDate", e.target.value)} />
+        <Input label="End Date" type="date" required min={form.startDate} value={form.endDate || ""} onChange={(e) => update("endDate", e.target.value)} />
+      </div>
       <Select
         label="Equipment"
         value={
@@ -244,6 +272,9 @@ export default function AssignmentForm({
             ...getActiveAssignmentActivityCodeOptions(activityCodes),
           ]}
         />
+        <button type="button" className="mt-2 text-sm font-medium text-blue-700 hover:underline" onClick={addActivityCode}>
+          Add Activity Code
+        </button>
         {(activityCodeConfiguration.status === "missing" ||
           activityCodeConfiguration.status === "not-found") && (
           <p className="mt-1 text-sm text-amber-700">

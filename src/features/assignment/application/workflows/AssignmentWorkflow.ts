@@ -52,11 +52,8 @@ if (!validation.valid) {
   };
 }
 
-if (_deps.isEquipmentAssigned?.(_data.equipmentId)) {
-  return {
-    success: false,
-    message: "This equipment is already assigned.",
-  };
+if (!_data.startDate && _deps.isEquipmentAssigned?.(_data.equipmentId)) {
+  return { success: false, message: "This equipment is already assigned." };
 }
 
 if (!equipment) {

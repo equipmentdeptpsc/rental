@@ -4,7 +4,6 @@ import EquipmentForm from "@/features/equipment/components/EquipmentForm";
 
 import type {
   EquipmentFormData,
-  EquipmentRecord,
 } from "@/features/equipment/types";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";

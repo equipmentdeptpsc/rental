@@ -16,6 +16,8 @@ export interface AssignmentRecord {
 
   assignedDate: string;
 
+  startDate?: string;
+
   expectedReturn: string;
 
   returnedDate?: string;
@@ -30,6 +32,12 @@ export interface AssignmentRecord {
 }
 
 export interface AssignmentFormData {
+  assignmentDate?: string;
+
+  startDate?: string;
+
+  endDate?: string;
+
   equipmentId: string;
 
   operatorId: string;
