@@ -14,7 +14,7 @@ const equipment = (id: string, assetNo: string, equipmentName = id, category: Eq
 describe("Milestone 3 Equipment creation rules", () => {
   beforeEach(() => storage.clear());
   it("keeps the user-entered Equipment Code and defaults manual status without condition", () => {
-    const created = buildManualEquipmentRecord(form(), "equipment-1");
+    const created = buildManualEquipmentRecord(form(), "00000000-0000-4000-8000-000000000001");
     expect(created).toMatchObject({ equipmentName: "EXC-OPS-01", status: "Available" });
     expect(created).not.toHaveProperty("condition");
     expect(created).not.toHaveProperty("conditionId");
@@ -34,7 +34,7 @@ describe("Milestone 3 Equipment creation rules", () => {
 
   it("ignores a supplied create-time Asset Number but preserves edit identity and status", () => {
     const prefixes = new PrefixRepository().getAll();
-    const manual = buildManualEquipmentRecord(form(), "new");
+    const manual = buildManualEquipmentRecord(form(), "00000000-0000-4000-8000-000000000002");
     expect(createEquipmentWithCategoryAssetNumber({ ...manual, assetNo: "" }, prefixes, [])).toMatchObject({ success: true, record: { assetNo: "ME-000001", status: "Available" } });
     const existing = { ...equipment("legacy", "LEGACY-77"), status: "Rented" as const };
     expect(createEquipmentWithCategoryAssetNumber(existing, prefixes, [], { preserveAssetNumber: true })).toMatchObject({ success: true, record: { assetNo: "LEGACY-77", status: "Rented" } });

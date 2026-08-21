@@ -19,7 +19,7 @@ const input = {
   rentals: [rental],
   lines: [{ id: "line-1", rentalId: rental.id, equipmentId: "equipment-1", operatorId: "operator-1", status: "Active" as const, createdAt: "", updatedAt: "" }],
   equipment: [{ id: "equipment-1", prefixId: "eq", assetNo: "EXC-0042", equipmentName: "Crawler Excavator", category: "Moving Equipment" as const, status: "Rented" as const, maintenanceType: "Engine Hours" as const, currentReading: 100, projectId: "project-1", operatorId: "operator-1" }],
-  operators: [{ id: "operator-1", name: "Juan Operator", status: "Active" as const }],
+  operators: [{ id: "operator-1", name: "Juan Operator", email: "", licenseNumber: "OP-001", certificationType: "Heavy Machinery" as const, joinedDate: "2026-01-01", status: "Active" as const }],
 };
 
 describe("rental list search", () => {
