@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SupabaseRemoteUserAdministration } from "@/integrations/supabase/SupabaseRemoteUserAdministration";
 
 const migration=readFileSync("supabase/migrations/20260822000100_trusted_remote_user_administration.sql","utf8");
+const serviceRoleReads=readFileSync("supabase/migrations/20260822000150_trusted_user_admin_service_role_reads.sql","utf8");
 const worker=readFileSync("worker/userAdministration.ts","utf8");
 const page=readFileSync("src/features/users/pages/UsersPage.tsx","utf8");
 
@@ -46,6 +47,23 @@ describe("trusted remote user administration",()=>{
     expect(migration).toContain("lookup_application_user_provisioning_command");
     expect(migration).not.toMatch(/GRANT SELECT ON erp\.user_provisioning_commands/);
     expect(worker).not.toContain('.from("user_provisioning_commands")');
+  });
+  it("grants only the Worker service-role columns and preserves the command-table boundary",()=>{
+    expect(serviceRoleReads).toContain("GRANT SELECT (id, company_id, status, operator_id) ON erp.users TO service_role");
+    expect(serviceRoleReads).toContain("GRANT SELECT (user_id, permission_code) ON erp.effective_user_permissions TO service_role");
+    expect(serviceRoleReads).toContain("GRANT SELECT (user_id, role_id) ON erp.user_roles TO service_role");
+    expect(serviceRoleReads).toContain("GRANT SELECT (id, code) ON erp.app_roles TO service_role");
+    expect(serviceRoleReads).toContain("GRANT SELECT (role_id, permission_id) ON erp.role_permissions TO service_role");
+    expect(serviceRoleReads).toContain("GRANT SELECT (id, code) ON erp.app_permissions TO service_role");
+    expect(serviceRoleReads).toContain("GRANT SELECT (id, company_id, status) ON erp.operators TO service_role");
+    expect(serviceRoleReads).toContain("REVOKE SELECT ON erp.user_provisioning_commands FROM service_role");
+    expect(serviceRoleReads).not.toMatch(/\bTO\s+(?:PUBLIC|anon|authenticated)\b/i);
+    expect(serviceRoleReads).not.toMatch(/GRANT\s+SELECT\s+ON\s+erp\.user_provisioning_commands/i);
+    expect(worker).toContain('.from("users").select("id,company_id,status")');
+    expect(worker).toContain('.from("users").select("id,company_id,operator_id")');
+    expect(worker).toContain('.from("effective_user_permissions").select("permission_code")');
+    expect(worker).toContain('.from("app_roles").select("code")');
+    expect(worker).toContain('.from("operators").select("id")');
   });
   it("compensates Auth creation when canonical provisioning fails and never reports compensation failure as success",()=>{
     expect(worker).toContain("auth.admin.deleteUser(auth.data.user.id)");
