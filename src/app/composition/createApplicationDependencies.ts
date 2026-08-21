@@ -13,6 +13,7 @@ import { createDisabledRemoteOperationalCommands,createUnavailableOperationalCom
 import { createSupabaseOperationalCommands } from "@/integrations/supabase/SupabaseOperationalCommandRepository";
 import { SupabaseOperationalEventRepository } from "@/integrations/supabase/SupabaseOperationalEventRepository";
 import { SupabaseOperationalRealtimeSource } from "@/integrations/supabase/SupabaseOperationalRealtimeSource";
+import { SupabaseRemoteUserAdministration } from "@/integrations/supabase/SupabaseRemoteUserAdministration";
 import { BrowserReplayCoordinator,IndexedDbOfflineOperationalCommandQueue,InMemoryOfflineOperationalCommandQueue,OperationalEventStream,OperatorSynchronizationService,PollingOperationalEventTransport,RealtimeOperationalEventTransport,WorkspaceSynchronization } from "@/features/rental/realtime";
 
 export interface ApplicationRuntimeConfiguration { persistenceMode?:string;equipmentStatusSource?:string;supabaseUrl?:string;supabasePublishableKey?:string;remoteOperationalWritesEnabled?:boolean;operationalReadTransport?:string }
@@ -46,5 +47,5 @@ export function createApplicationDependencies(configuration:ApplicationRuntimeCo
     : new PollingOperationalEventTransport(eventRepository);
   const eventStream=new OperationalEventStream(eventTransport);
   const synchronization={tenantId:"AUTHENTICATED_TENANT",publishEnabled:false,transportMode:(useRealtime?"realtime-with-polling-recovery":"polling") as "realtime-with-polling-recovery"|"polling",repository:eventRepository,transport:eventTransport,stream:eventStream,operator:new OperatorSynchronizationService(eventStream),workspace:new WorkspaceSynchronization(eventStream),offlineQueue:typeof indexedDB==="undefined"?new InMemoryOfflineOperationalCommandQueue():new IndexedDbOfflineOperationalCommandQueue(),replayCoordinator:new BrowserReplayCoordinator(typeof navigator!=="undefined"?navigator.locks:undefined)};
-  return{...dependencies,readRepositories,commandRepositories:{deurCommands:new SupabaseDeurCommandRepository(client,readRepositories.deurs),...operationalCommands},changeNotifications:{subscribeDeur:()=>()=>{}},synchronization,authentication:{...dependencies.authentication,remoteAuthenticationProvider},configuration:{equipmentStatusSource:"supabase",persistenceMode:PersistenceMode.Remote,remoteOperationalWritesEnabled:configuration.remoteOperationalWritesEnabled===true}};
+  return{...dependencies,readRepositories,commandRepositories:{deurCommands:new SupabaseDeurCommandRepository(client,readRepositories.deurs),...operationalCommands},changeNotifications:{subscribeDeur:()=>()=>{}},synchronization,authentication:{...dependencies.authentication,remoteAuthenticationProvider,remoteUserAdministration:new SupabaseRemoteUserAdministration(client)},configuration:{equipmentStatusSource:"supabase",persistenceMode:PersistenceMode.Remote,remoteOperationalWritesEnabled:configuration.remoteOperationalWritesEnabled===true}};
 }

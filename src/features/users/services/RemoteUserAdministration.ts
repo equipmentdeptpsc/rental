@@ -1,0 +1,12 @@
+import type { User } from "@/features/auth/domain/user";
+import type { Operator } from "@/features/operators/types";
+import type { CreateUserInput } from "./UserManagementService";
+
+export interface RemoteAssignableRole { readonly code: string; readonly name: string }
+export interface RemoteUserAdministration {
+  listUsers(): Promise<readonly User[]>;
+  listRoles(): Promise<readonly RemoteAssignableRole[]>;
+  listOperators(): Promise<readonly Operator[]>;
+  create(input: CreateUserInput & { commandId: string; idempotencyKey: string }): Promise<User>;
+  resetPassword(userId: string, newPassword: string): Promise<void>;
+}

@@ -32,6 +32,7 @@ import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
 import type { RemoteAuthenticationProvider } from "@/features/auth/providers/RemoteAuthenticationProvider";
 import type { OperatorPinCredentialService } from "@/features/auth/services/OperatorPinCredentialService";
+import type { RemoteUserAdministration } from "@/features/users/services/RemoteUserAdministration";
 import type { DeurCommandRepository } from "@/features/rental/deur/commands/contracts";
 import type { OperationalCommandRepositories } from "@/features/rental/operations/commands/contracts";
 import type {
@@ -84,6 +85,7 @@ export interface AuthenticationDependencies {
   userManagementService: UserManagementService;
   remoteAuthenticationProvider?: RemoteAuthenticationProvider;
   operatorPinCredentialService?: OperatorPinCredentialService;
+  remoteUserAdministration?: RemoteUserAdministration;
 }
 export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; readRepositories: ApplicationReadRepositories; commandRepositories: ApplicationCommandRepositories; changeNotifications: ApplicationChangeNotifications; synchronization: OperationalSynchronizationDependencies; authentication: AuthenticationDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource;persistenceMode:PersistenceMode;remoteOperationalWritesEnabled:boolean}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
 export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies>; synchronization?: OperationalSynchronizationDependencies; authentication?: Partial<AuthenticationDependencies> };
