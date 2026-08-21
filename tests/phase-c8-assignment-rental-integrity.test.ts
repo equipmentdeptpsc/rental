@@ -38,6 +38,8 @@ describe("Phase C8 assignment-to-rental integrity",()=>{
     const first=mergeOperatorDeurVersions({},[deur]);
     expect(first).toEqual({"deur-a":3});
     expect(mergeOperatorDeurVersions(first,[{...deur}])).toBe(first);
+    expect(mergeOperatorDeurVersions(first,[{...deur,rowVersion:4} as DeurRecord & {rowVersion:number}])).toEqual({"deur-a":4});
+    expect(mergeOperatorDeurVersions({"deur-a":5},[{...deur,rowVersion:4} as DeurRecord & {rowVersion:number}])).toEqual({"deur-a":5});
     expect(mergeOperatorDeurVersions(first,[])).toEqual({});
   });
 

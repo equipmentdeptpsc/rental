@@ -120,6 +120,38 @@ describe("Phase C1 DEUR remote command foundation", () => {
     expect(acceptedTimes).toEqual([...acceptedTimes].sort());
   });
 
+  it("transitions every Operator activity without overlap and replays repeated commands exactly once", async () => {
+    let tick = 0;
+    const repository = fixture(() => userA, () => new Date(Date.UTC(2026, 7, 21, 0, tick++)).toISOString());
+    const started = await repository.startShift(startInput("deur-transitions", lineA));
+    expect(started.success).toBe(true); if (!started.success) return;
+    let record = started.record, version = started.version;
+    const transition = async (action: "START_IDLE"|"RESUME_OPERATION"|"START_MEAL_BREAK"|"START_BREAKDOWN"|"END_ACTIVITY", key: string) => {
+      const command = { ...versioned(record, version, key), action, ...(action === "START_IDLE" ? { idleReasonId: "waiting", idleReasonLabelSnapshot: "Waiting" } : {}) };
+      const result = action === "END_ACTIVITY" ? await repository.stopCurrentActivity(command) : await repository.startOrChangeActivity(command);
+      expect(result).toMatchObject({ success: true, version: version + 1 });
+      if (!result.success) throw new Error(`${action} failed`);
+      const open = result.record.events?.filter(event => event.action === "start" && !result.record.events?.some(candidate => candidate.action === "end" && candidate.activityType === event.activityType && candidate.sequence > event.sequence)) ?? [];
+      expect(open.filter(event => event.activityType !== "shift")).toHaveLength(action === "END_ACTIVITY" ? 0 : 1);
+      record = result.record; version = result.version;
+      return { command, result };
+    };
+    await transition("START_IDLE", "idle-one");
+    await transition("RESUME_OPERATION", "resume-one");
+    await transition("START_MEAL_BREAK", "meal-from-operation");
+    await transition("START_BREAKDOWN", "breakdown-from-meal");
+    await transition("RESUME_OPERATION", "resume-from-breakdown");
+    await transition("END_ACTIVITY", "stop-operation");
+    await transition("START_IDLE", "idle-two");
+    await transition("START_MEAL_BREAK", "meal-from-idle");
+    const repeated = await transition("START_BREAKDOWN", "replay-breakdown");
+    const replay = await repository.startOrChangeActivity(repeated.command);
+    expect(replay).toMatchObject({ success: true, disposition: "REPLAYED", version });
+    expect(replay.success && replay.record.events).toHaveLength(record.events?.length ?? 0);
+    const completed = await repository.completeShift({ ...versioned(record, version, "end-shift"), meterRequirement: "none" });
+    expect(completed).toMatchObject({ success: true, version: version + 1 });
+  });
+
   it("rejects invalid lifecycle, evidence, inactive identities, Finance and Management mutation", async () => {
     let actor: DeurCommandActor | null = userA;
     const mutableAssignment = { ...assignmentA }, mutableOperator = { ...operatorA }, mutableLine = { ...lineA }, mutableRental = { ...rental };
