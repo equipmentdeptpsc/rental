@@ -25,8 +25,10 @@ import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/r
 import type { DeurShiftWindowDefinition } from "@/features/rental/types";
 import { normalizeDeurShiftWindow } from "@/features/rental/deur/shift-window/normalizeDeurShiftWindow";
 import ManagerApproverSettings from "@/features/settings/manager-approver/ManagerApproverSettings";
+import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/composition";
 
 export default function Settings() {
+  const { configuration } = useApplicationDependenciesCompatibility();
   const {
     prefixes,
     addPrefix,
@@ -187,12 +189,12 @@ export default function Settings() {
 
       </div>
 
-      <div className="rounded-xl border bg-white p-6">
+      {configuration.persistenceMode !== PersistenceMode.Remote && <div className="rounded-xl border bg-white p-6">
         <h2 className="text-2xl font-semibold">Development Email Outbox</h2>
         <p className="mb-4 text-gray-500">Preview locally generated Manager approval emails. No production email provider is connected.</p>
         <Link to="/development-email-outbox" className="inline-flex rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700">Open Development Email Outbox</Link>
         <Link to="/development-customer-review-outbox" className="ml-3 inline-flex rounded-lg border border-blue-600 px-5 py-3 font-medium text-blue-700">Open Customer Review Outbox</Link>
-      </div>
+      </div>}
 
       <ManagerApproverSettings />
 
