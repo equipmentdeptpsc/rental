@@ -23,7 +23,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     operators: new SupabaseReadRepository<Operator>(client, { repositoryName: "Operator", table: "operators", searchColumns: ["name", "email", "license_number"] }, core),
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"] }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"] }, core),
-    billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "customer_snapshot", "project_snapshot"] }, core),
+    billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"] }, core),
     deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", searchColumns: ["deur_number", "operational_remarks"] }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines" }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
