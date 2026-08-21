@@ -22,6 +22,7 @@ export interface NotificationRecipient {
 }
 
 export interface NotificationTemplateInput {
+  sourceVersion?: number;
   recipientName: string;
   companyName: string;
   rentalReference: string;

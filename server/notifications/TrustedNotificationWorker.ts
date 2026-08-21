@@ -19,7 +19,7 @@ export interface TrustedNotificationWorkerRepository {
   }): Promise<void>;
   getGroupedReviewPath?(id: string): Promise<string | undefined>;
   resolveGroupedReviewDelivery?(id: string): Promise<GroupedReviewDeliveryResolution>;
-  loadBillingStatementDocument?(statementId: string, companyId: string): Promise<InvoiceDocument | undefined>;
+  loadBillingStatementDocument?(statementId: string, companyId: string, sourceVersion: number): Promise<InvoiceDocument | undefined>;
 }
 export interface SafeProviderOutcomeLogger { log(event: Record<string, unknown>): void }
 
@@ -39,7 +39,10 @@ export class TrustedNotificationWorker {
     let providerCalls = 0;
     for (const intent of claimed) {
       if (intent.type === "BILLING_STATEMENT_EMAIL") {
-        const document = await this.repository.loadBillingStatementDocument?.(intent.sourceAggregateId, intent.companyId);
+        const sourceVersion = Number(intent.input.sourceVersion);
+        const document = Number.isSafeInteger(sourceVersion) && sourceVersion > 0
+          ? await this.repository.loadBillingStatementDocument?.(intent.sourceAggregateId, intent.companyId, sourceVersion)
+          : undefined;
         if (!document) { await this.repository.complete({ id:intent.id,workerId,status:"DeadLetter",failureCategory:"Cancelled",notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
         const delivered = await sendBillingStatementEmail({ document, provider:this.provider, from:this.from, idempotencyKey:intent.idempotencyKey });
         if (delivered.success) { providerCalls++; await this.repository.complete({ id:intent.id,workerId,status:"ProviderAccepted",providerName:delivered.provider,providerMessageId:delivered.providerMessageId,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }

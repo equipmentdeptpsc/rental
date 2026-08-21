@@ -13,7 +13,7 @@ const money = (value: number, currency: string) => currency === "PHP"
   : new Intl.NumberFormat("en-PH", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
 export default function InvoiceDocumentView({ document, emailRepository }: { document: InvoiceDocument; emailRepository?: BillingStatementEmailCommandRepository }) {
-  const auth = useOptionalAuth(); const pendingRef=useRef(false); const commandRef=useRef<{commandId:string;idempotencyKey:string}>(); const [sending,setSending]=useState(false); const [message,setMessage]=useState("");
+  const auth = useOptionalAuth(); const pendingRef=useRef(false); const commandRef=useRef<{commandId:string;idempotencyKey:string}|undefined>(undefined); const [sending,setSending]=useState(false); const [message,setMessage]=useState("");
   const trustedEmail=useMemo(()=>emailRepository??(()=>{const url=import.meta.env.VITE_SUPABASE_URL,key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;return url&&key?new SupabaseBillingStatementEmailCommandRepository(getSupabaseBrowserClient({url,publishableKey:key})):undefined;})(),[emailRepository]);
   const downloadPdf = async () => {
     const logoResponse = await fetch(organizationBranding.logoAssetPath);

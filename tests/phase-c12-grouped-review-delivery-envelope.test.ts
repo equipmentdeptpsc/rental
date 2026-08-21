@@ -23,7 +23,8 @@ describe("C12 grouped review server credential and AES-GCM envelope", () => {
     expect(decryptGroupedReviewDeliveryEnvelope(first, id, key)).toBe(path);
     expect(() => decryptGroupedReviewDeliveryEnvelope(first, randomUUID(), key)).toThrow(/authentication failed/);
     expect(() => decryptGroupedReviewDeliveryEnvelope(first, id, randomBytes(32))).toThrow(/authentication failed/);
-    expect(() => decryptGroupedReviewDeliveryEnvelope({ ...first, ciphertext: `A${first.ciphertext.slice(1)}` }, id, key)).toThrow(/authentication failed/);
+    const tamperedCiphertext = `${first.ciphertext[0] === "A" ? "B" : "A"}${first.ciphertext.slice(1)}`;
+    expect(() => decryptGroupedReviewDeliveryEnvelope({ ...first, ciphertext: tamperedCiphertext }, id, key)).toThrow(/authentication failed/);
     expect(() => decryptGroupedReviewDeliveryEnvelope({ ...first, keyVersion: 2 as 1 }, id, key)).toThrow(/Unsupported/);
   });
   it("decrypts after a fresh configuration load without reusing the process-A key object",()=>{

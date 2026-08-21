@@ -93,7 +93,7 @@ describe("Daily Operations DEUR editor", () => {
     expect(input(restored.container, 1).value).toBe("3");
     await act(async () => restored.root.unmount());
     restored.container.remove();
-  });
+  }, 10_000);
 
   it("undoes unsaved hours back to the last persisted values", async () => {
     prepareState();

@@ -112,10 +112,10 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
     if (!result.success) throw new Error(`Notification completion rejected (${result.code ?? "unknown"}).`);
   }
 
-  async loadBillingStatementDocument(statementId: string, expectedCompanyId: string): Promise<InvoiceDocument | undefined> {
+  async loadBillingStatementDocument(statementId: string, expectedCompanyId: string, sourceVersion: number): Promise<InvoiceDocument | undefined> {
     const statementResult = await this.service.schema("erp").from("billing_statements").select("*").eq("id", statementId).eq("company_id",expectedCompanyId).is("deleted_at", null).maybeSingle();
     if (statementResult.error || !statementResult.data) return undefined;
-    const row = statementResult.data as Record<string, unknown>; const companyId = text(row.company_id); if(companyId!==expectedCompanyId||text(row.approval_status)!=="Approved")return undefined; const rentalId = text(row.rental_id);
+    const row = statementResult.data as Record<string, unknown>; const companyId = text(row.company_id); if(companyId!==expectedCompanyId||text(row.approval_status)!=="Approved"||number(row.row_version)!==sourceVersion)return undefined; const rentalId = text(row.rental_id);
     const [lineResult, rentalResult, collectionResult] = await Promise.all([
       this.service.schema("erp").from("billing_statement_lines").select("*").eq("billing_statement_id", statementId).eq("company_id", companyId),
       this.service.schema("erp").from("rentals").select("*").eq("id", rentalId).eq("company_id", companyId).maybeSingle(),

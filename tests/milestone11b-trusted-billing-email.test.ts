@@ -29,11 +29,18 @@ describe("Milestone 11B.1 trusted Billing email migration",()=>{
 describe("Milestone 11B.1 Worker Billing delivery",()=>{
   it("reloads the canonical document, attaches one PDF, and records provider acceptance",async()=>{
     let request:EmailDeliveryRequest|undefined;const provider:EmailDeliveryProvider={name:"fake",send:async value=>(request=value,{accepted:true,provider:"fake",providerMessageId:"provider-1"})};
-    const complete=vi.fn();const repository:TrustedNotificationWorkerRepository={claimBatch:async()=>[{id:"notification-1",companyId:"tenant",type:"BILLING_STATEMENT_EMAIL",recipient:{destination:"billing@example.test",displayName:"Billing Contact"},sourceAggregateType:"BILLING_STATEMENT",sourceAggregateId:"statement-1",templateVersion:1,idempotencyKey:"billing-email-1",input:{recipientName:"Billing Contact",companyName:"Company",rentalReference:"R-1"},attempt:1}],complete,loadBillingStatementDocument:async()=>invoiceDocument};
+    const loadBillingStatementDocument=vi.fn(async()=>invoiceDocument);const complete=vi.fn();const repository:TrustedNotificationWorkerRepository={claimBatch:async()=>[{id:"notification-1",companyId:"tenant",type:"BILLING_STATEMENT_EMAIL",recipient:{destination:"billing@example.test",displayName:"Billing Contact"},sourceAggregateType:"BILLING_STATEMENT",sourceAggregateId:"statement-1",templateVersion:1,idempotencyKey:"billing-email-1",input:{recipientName:"Billing Contact",companyName:"Company",rentalReference:"R-1",sourceVersion:3},attempt:1}],complete,loadBillingStatementDocument};
     await expect(new TrustedNotificationWorker(repository,provider,"sender@example.test",1,"https://uat.test",undefined,true).runOnce("00000000-0000-4000-8000-000000000001")).resolves.toEqual({claimed:1,providerCalls:1});
     expect(request?.attachments).toEqual([expect.objectContaining({filename:"Billing-Statement-BS-1.pdf",contentType:"application/pdf",contentBase64:expect.any(String)})]);
     expect(request?.email.subject).toBe("Billing Statement BS-1 — Rental R-1");
+    expect(loadBillingStatementDocument).toHaveBeenCalledWith("statement-1","tenant",3);
     expect(complete).toHaveBeenCalledWith(expect.objectContaining({status:"ProviderAccepted",notificationType:"BILLING_STATEMENT_EMAIL",uatOverrideApplied:true}));
+  });
+  it("dead-letters a stale queued source version without calling the provider",async()=>{
+    const provider:EmailDeliveryProvider={name:"fake",send:vi.fn()};const complete=vi.fn();
+    const repository:TrustedNotificationWorkerRepository={claimBatch:async()=>[{id:"notification-stale",companyId:"tenant",type:"BILLING_STATEMENT_EMAIL",recipient:{destination:"billing@example.test",displayName:"Billing Contact"},sourceAggregateType:"BILLING_STATEMENT",sourceAggregateId:"statement-1",templateVersion:1,idempotencyKey:"billing-email-stale",input:{recipientName:"Billing Contact",companyName:"Company",rentalReference:"R-1",sourceVersion:3},attempt:1}],complete,loadBillingStatementDocument:async(_statementId,_companyId,sourceVersion)=>sourceVersion===4?invoiceDocument:undefined};
+    await expect(new TrustedNotificationWorker(repository,provider,"sender@example.test").runOnce("00000000-0000-4000-8000-000000000002")).resolves.toEqual({claimed:1,providerCalls:0});
+    expect(provider.send).not.toHaveBeenCalled();expect(complete).toHaveBeenCalledWith(expect.objectContaining({status:"DeadLetter",failureCategory:"Cancelled",notificationType:"BILLING_STATEMENT_EMAIL"}));
   });
 });
 

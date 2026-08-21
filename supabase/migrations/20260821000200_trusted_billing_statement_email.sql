@@ -33,7 +33,7 @@ BEGIN
   IF rental_record.customer_review_email_snapshot IS NULL OR rental_record.customer_review_email_snapshot!~'^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
     THEN RETURN jsonb_build_object('success',false,'code','CUSTOMER_EMAIL_MISSING','message','Customer email address is missing.'); END IF;
   fingerprint=encode(extensions.digest(target.id||'|'||target.row_version||'|'||lower(rental_record.customer_review_email_snapshot),'sha256'),'hex');
-  PERFORM pg_advisory_xact_lock(hashtextextended(tenant||':'||actor||':'||command->>'idempotencyKey',0));
+  PERFORM pg_advisory_xact_lock(hashtextextended(tenant||':'||actor||':'||(command->>'idempotencyKey'),0));
   SELECT * INTO existing FROM erp.notification_outbox WHERE company_id=tenant AND idempotency_key=command->>'idempotencyKey';
   IF existing.id IS NOT NULL THEN
     IF existing.notification_type<>'BILLING_STATEMENT_EMAIL' OR existing.payload_fingerprint<>fingerprint OR existing.source_aggregate_id<>target.id
@@ -44,7 +44,7 @@ BEGIN
     template_version,idempotency_key,payload_fingerprint,template_payload,initiating_actor_id,correlation_id,source_version,rental_id,customer_id)
   VALUES(notification_id,tenant,'BILLING_STATEMENT_EMAIL',lower(rental_record.customer_review_email_snapshot),coalesce(nullif(btrim(rental_record.customer_review_name_snapshot),''),'Customer Representative'),
     'BILLING_STATEMENT',target.id,1,command->>'idempotencyKey',fingerprint,
-    jsonb_build_object('statementId',target.id,'statementNumber',target.statement_no,'rentalId',rental_record.id,'rentalNumber',rental_record.rental_number,'customerId',rental_record.customer_id,'companyName',company_record.name),
+    jsonb_build_object('statementId',target.id,'statementNumber',target.statement_no,'sourceVersion',target.row_version,'rentalId',rental_record.id,'rentalNumber',rental_record.rental_number,'customerId',rental_record.customer_id,'companyName',company_record.name),
     actor,command->>'commandId',target.row_version,rental_record.id,rental_record.customer_id);
   INSERT INTO erp.audit_log(id,company_id,aggregate_type,aggregate_id,action,actor_id,occurred_at,correlation_id,new_values,metadata)
   VALUES(extensions.gen_random_uuid()::text,tenant,'BillingStatement',target.id,'BILLING_STATEMENT_EMAIL_QUEUED',actor,clock_timestamp(),command->>'commandId',
