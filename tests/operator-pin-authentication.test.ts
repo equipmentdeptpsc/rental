@@ -5,6 +5,7 @@ import type { User } from "@/features/auth/domain/user";
 import { AuthorizationService } from "@/features/auth/services/AuthorizationService";
 import { OPERATOR_PIN_CREDENTIAL_STORAGE_KEY, OperatorPinCredentialService } from "@/features/auth/services/OperatorPinCredentialService";
 import type { Operator } from "@/features/operators/types";
+import { AuthenticationService } from "@/features/auth/services/AuthenticationService";
 
 class MemoryStorage implements IStorageService {
   values = new Map<string, unknown>();
@@ -70,6 +71,35 @@ describe("Operator PIN credentials", () => {
     const authorization = new AuthorizationService({ getById: () => currentOperator });
     expect(authorization.hasPermission(currentUser, "deur.read")).toBe(true);
     expect(authorization.hasPermission(currentUser, "rental.read")).toBe(false);
+  });
+
+  it("authorizes the canonical Operator role after PIN login and local session restoration", async () => {
+    const canonicalOperatorUser = { ...user, systemRoles: ["operator"] };
+    const { service, currentOperator } = setup({ user: canonicalOperatorUser });
+    await service.setPin(canonicalOperatorUser.id, "2580", "2580");
+    const authenticated = await service.authenticate("EMP-0042", "2580");
+    expect(authenticated).toMatchObject({ success: true, user: { systemRoles: ["operator"] } });
+    const authorization = new AuthorizationService({ getById: () => currentOperator });
+    expect(authorization.hasPermission(canonicalOperatorUser, "deur.read")).toBe(true);
+    expect(authorization.hasPermission(canonicalOperatorUser, "deur.create")).toBe(true);
+    expect(authorization.hasPermission(canonicalOperatorUser, "users.manage")).toBe(false);
+    expect(authorization.hasPermission(canonicalOperatorUser, "rental.manage")).toBe(false);
+
+    if (!authenticated.success) throw new Error("PIN authentication did not produce a session.");
+    const restored = new AuthenticationService(
+      [{ id: "local-operator-pin", authenticate: () => ({ success: true, session: authenticated.session }), restoreSession: () => authenticated.session, logout: () => undefined, clearSession: () => undefined }],
+      { getUsers: () => [canonicalOperatorUser], getUserById: () => canonicalOperatorUser, getUserByUsername: () => canonicalOperatorUser, createUser: () => canonicalOperatorUser, updateUser: () => canonicalOperatorUser, activateUser: () => canonicalOperatorUser, deactivateUser: () => canonicalOperatorUser },
+    ).initialize();
+    expect(restored.user).toEqual(canonicalOperatorUser);
+    expect(authorization.hasPermission(restored.user, "deur.read")).toBe(true);
+  });
+
+  it("denies an inactive canonical User and an unlinked identity", async () => {
+    const inactive = setup({ user: { ...user, status: "inactive", systemRoles: ["operator"] } });
+    await inactive.service.setPin(user.id, "2580", "2580");
+    expect(await inactive.service.authenticate("EMP-0042", "2580")).toMatchObject({ success: false, reason: "INACTIVE_USER" });
+    const unlinked = setup({ user: { ...user, operatorId: undefined, systemRoles: ["operator"] } });
+    await expect(unlinked.service.setPin(user.id, "2580", "2580")).rejects.toThrow("linked Operator");
   });
 
   it("keeps optional Operator email and existing email-era records compatible", () => {

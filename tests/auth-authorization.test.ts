@@ -11,6 +11,7 @@ import {
 import type { SystemRole } from "@/features/auth/domain/systemRole";
 import type { User } from "@/features/auth/domain/user";
 import { AuthorizationService } from "@/features/auth/services/AuthorizationService";
+import { getAuthorizedLandingPage, getVisibleNavigation } from "@/app/navigation/navigationConfig";
 
 const authorization = new AuthorizationService();
 
@@ -34,6 +35,16 @@ function permissionsFor(role: SystemRole): ReadonlySet<Permission> {
 }
 
 describe("system role permission mappings", () => {
+  it("maps the canonical Operator role to only Digital DEUR runtime access", () => {
+    const scoped = new AuthorizationService({ getById: () => ({ id: "operator-1", status: "Active" }) });
+    const canonicalOperator = { ...user([]), systemRoles: ["operator"], operatorId: "operator-1" };
+    expect(scoped.hasPermission(canonicalOperator, "deur.read")).toBe(true);
+    expect(scoped.hasPermission(canonicalOperator, "deur.create")).toBe(true);
+    expect(scoped.hasPermission(canonicalOperator, "users.manage")).toBe(false);
+    expect(scoped.hasPermission(canonicalOperator, "rental.manage")).toBe(false);
+    expect(getVisibleNavigation(canonicalOperator, scoped).flatMap(group => group.items).map(item => item.path)).toEqual(["/operator"]);
+    expect(getAuthorizedLandingPage(canonicalOperator, scoped)).toBe("/operator");
+  });
   it("gives System Administrator every catalog permission", () => {
     expect([...permissionsFor("system-administrator")].sort()).toEqual(
       [...ALL_PERMISSIONS].sort(),

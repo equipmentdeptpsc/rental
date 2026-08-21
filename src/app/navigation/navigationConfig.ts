@@ -59,7 +59,9 @@ export function getVisibleNavigation(
   authorization: AuthorizationService,
 ): readonly NavigationGroup[] {
   if (authorization.isOperatorPersona(user)) {
-    return [{ title: "OPERATIONS", items: [{ icon: "operators", label: "My Shift", path: "/operator", permission: "deur.read" }] }];
+    return authorization.hasPermission(user, "deur.read")
+      ? [{ title: "OPERATIONS", items: [{ icon: "operators", label: "My Shift", path: "/operator", permission: "deur.read" }] }]
+      : [];
   }
   const groups = APP_NAVIGATION_GROUPS.map((group) => ({
     ...group,
@@ -77,7 +79,7 @@ export function getAuthorizedLandingPage(
   authorization: AuthorizationService,
   _options: { hasActiveOperatorLink?: boolean } = {},
 ): string | null {
-  if (authorization.isOperatorPersona(user)) return "/operator";
+  if (authorization.isOperatorPersona(user)) return authorization.hasPermission(user, "deur.read") ? "/operator" : null;
   if (
     user?.systemRoles.includes("system-administrator") &&
     authorization.hasPermission(user, "dashboard.read")

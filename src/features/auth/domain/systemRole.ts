@@ -3,6 +3,7 @@ import type { Permission } from "./permission";
 export type SystemRole =
   | "system-administrator"
   | "rental-operations"
+  | "operator"
   | "finance"
   | "management";
 

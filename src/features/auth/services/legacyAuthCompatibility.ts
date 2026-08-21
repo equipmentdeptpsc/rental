@@ -8,6 +8,7 @@ export type AuthenticatedUser = DomainUser & LegacyUser;
 const systemToLegacyRole: Readonly<Record<SystemRole, Role>> = {
   "system-administrator": "Admin",
   "rental-operations": "Admin",
+  operator: "Operator",
   finance: "Operator",
   management: "Manager",
 };

@@ -64,6 +64,14 @@ export const SYSTEM_ROLE_DEFINITIONS: Readonly<
       "reports.view",
     ]),
   }),
+  operator: Object.freeze({
+    id: "operator",
+    displayName: "Operator",
+    permissions: permissionSet([
+      "deur.read",
+      "deur.create",
+    ]),
+  }),
   finance: Object.freeze({
     id: "finance",
     displayName: "Finance",

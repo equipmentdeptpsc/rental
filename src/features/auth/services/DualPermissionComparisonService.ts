@@ -53,6 +53,11 @@ const ROLE_PROJECTIONS: Readonly<Record<SystemRole, RoleProjection>> = Object.fr
     comparisonOnly: true, manualClassificationRequired: true,
     rationale: "Temporary comparison only; each user requires manual operational-role classification before migration.",
   }),
+  operator: Object.freeze({
+    legacyRole: "operator", canonicalRole: "operator",
+    comparisonOnly: true, manualClassificationRequired: false,
+    rationale: "Canonical Operator role comparison; runtime access remains constrained by the active Operator persona policy.",
+  }),
   management: Object.freeze({
     legacyRole: "management", canonicalRole: "read-only-auditor",
     comparisonOnly: true, manualClassificationRequired: false,
