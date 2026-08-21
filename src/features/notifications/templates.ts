@@ -21,13 +21,16 @@ function title(type: NotificationType) {
     MANAGER_CORRECTION_CONFIRMED: "Manager correction request confirmed",
     CUSTOMER_CORRECTION_WORK_ITEM: "Customer correction work item created",
     MANAGER_CORRECTION_WORK_ITEM: "Manager correction work item created",
+    BILLING_STATEMENT_EMAIL: "Billing Statement",
   };
   return titles[type];
 }
 
 export function renderNotificationTemplate(type: NotificationType, input: NotificationTemplateInput): RenderedEmail {
-  const subject = title(type).replaceAll(/[\r\n]/g, " ");
   const isGroupedCustomerReview = type === "CUSTOMER_GROUPED_REVIEW_REQUESTED";
+  const subject = (isGroupedCustomerReview
+    ? `Action Required: Pending DEUR Acknowledgement — Rental ${input.rentalReference}`
+    : title(type)).replaceAll(/[\r\n]/g, " ");
   const lines = [
     `Hello ${input.recipientName},`, title(type), `Company: ${input.companyName}`,
     input.customerName ? `Customer: ${input.customerName}` : "",

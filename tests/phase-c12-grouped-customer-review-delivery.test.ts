@@ -61,7 +61,7 @@ describe("Phase C12 grouped Customer Review delivery migration", () => {
 describe("grouped Customer Review email template", () => {
   it("renders grouped context, counts, secure CTA, fallback, and line-by-line guidance", () => {
     const email = renderNotificationTemplate("CUSTOMER_GROUPED_REVIEW_REQUESTED", groupedInput);
-    expect(email.subject).toMatch(/Grouped DEUR review requested/);
+    expect(email.subject).toBe("Action Required: Pending DEUR Acknowledgement — Rental RENTAL-001");
     for (const evidence of ["UAT & Equipment", "Customer One", "Project Alpha", "RENTAL-001", "2026-08-11", "Total equipment lines: 3", "Awaiting acknowledgement: 2", "In Progress: 1"]) expect(email.text).toContain(evidence);
     expect(email.text).toContain(groupedInput.reviewUrl); expect(email.text).toContain("line-by-line");
     expect(email.html).toContain("REVIEW &amp; ACKNOWLEDGE DEURs"); expect(email.html).toContain("min-width:260px");

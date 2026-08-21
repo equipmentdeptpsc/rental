@@ -8,10 +8,6 @@ import {
   
   import ActivityCard from "./ActivityCard";
   import CreateDeurAction from "./CreateDeurAction";
-  import ActivityControls from "./controls/ActivityControls";
-  import ActivityTimelineCard from "./cards/ActivityTimelineCard";
-  import useTodayActivities from "./hooks/useTodayActivities";
-  import DeurHoursEntry from "./DeurHoursEntry";
   import CurrentActivityCard from "@/features/rental/deur/components/CurrentActivityCard";
   import { useEffect, useMemo, useState } from "react";
   import { useRentalWorkspaceAggregate } from "..";
@@ -44,10 +40,8 @@ import {
     const summary =
       useDailyOperations();
 
-    const activities =
-      useTodayActivities();
-
     const previewRecord = aggregate.activeDeur ?? aggregate.deurs.at(-1);
+    const operationalOpen = !["Returned", "Closed", "Cancelled"].includes(aggregate.rental.status);
     const timelineMode=!previewRecord?.evidenceMode||previewRecord.evidenceMode==="TIME_TIMELINE";
     const presentation=previewRecord?resolveDeurPresentation({deur:previewRecord,lines:aggregate.rentalEquipmentLines,equipment,operators}):undefined;
     const sendReview=()=>{
@@ -89,9 +83,7 @@ import {
     if (aggregate.rentalEquipmentLines.length > 1) {
       return <div className="space-y-6">
         <RentalLineOperationsGrid aggregate={aggregate} equipment={equipment} operators={operators} evaluatedAt={evaluatedAt.toISOString()} />
-        <CreateDeurAction />
-        <ManualDeurAction />
-        <ManualOdometerDeurAction />
+        {operationalOpen && <><CreateDeurAction /><ManualDeurAction /><ManualOdometerDeurAction /></>}
         <p className="rounded border bg-slate-50 p-3 text-sm text-slate-600">Open a specific Equipment Line to continue its DEUR, customer-review, correction, and submission workflow. No combined Rental-level DEUR is selected.</p>
       </div>;
     }
@@ -106,10 +98,8 @@ import {
         </div>
 
         {previewRecord && presentation && <p className="rounded border bg-white p-3 text-xs text-slate-600">Equipment: {presentation.equipment} · Line: {presentation.line} · Operator: {presentation.operator} · DEUR: {previewRecord.deurNumber ?? "Number unavailable"} · Work Date: {previewRecord.workDate}{previewRecord.shift ? ` · ${previewRecord.shift}` : ""} · Status: {previewRecord.status}</p>}
-        <CreateDeurAction />
-        <ManualDeurAction />
-        <ManualOdometerDeurAction />
-        {previewRecord && <CreateDeurCorrectionAction deur={previewRecord} />}
+        {operationalOpen && <><CreateDeurAction /><ManualDeurAction /><ManualOdometerDeurAction /></>}
+        {operationalOpen && previewRecord && <CreateDeurCorrectionAction deur={previewRecord} />}
         {previewRecord?.status === "Submitted" && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4"><p className="font-semibold">Awaiting Customer review</p><p className="text-sm text-amber-900">A Customer acknowledgement is required before Billing.</p>{!developmentCustomerReviewOutbox.getAll().some(item=>item.deurId===previewRecord.id&&item.revisionNumber===(previewRecord.revision?.revisionNumber??1))&&<button className="mt-3 rounded bg-amber-700 px-4 py-2 font-medium text-white" onClick={sendReview}>Generate Missing Acknowledgement Request</button>}{reviewMessage&&<p className="mt-2 text-sm">{reviewMessage}</p>}</div>}
   
         {timelineMode && <OperationSummaryCard
@@ -150,15 +140,7 @@ import {
         )}
 
         {previewRecord&&!timelineMode&&<DeurEvidencePanel deur={previewRecord}/>}
-        {previewRecord&&!timelineMode&&<SubmitEvidenceButton deur={previewRecord}/>}
-        {timelineMode&&<DeurHoursEntry />}
-
-        {timelineMode&&<ActivityControls />}
-
-        {timelineMode&&<ActivityTimelineCard
-          activities={activities}
-        />}
-  
+        {operationalOpen&&previewRecord&&!timelineMode&&<SubmitEvidenceButton deur={previewRecord}/>}
       </div>
     );
   }

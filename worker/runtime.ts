@@ -23,7 +23,7 @@ export function createProductionDependencies(environment:GroupedReviewWorkerEnvi
  const publicReview=createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{persistSession:false,autoRefreshToken:false}});
  const scheduler=new DailyGroupedCustomerReviewService(new SupabaseDailyGroupedReviewRepository(service),config.encryptionKey);
  const notifications=new TrustedNotificationWorker(new SupabaseTrustedNotificationRepository(service,service,config.encryptionKey,publicReview),
-  new ResendEmailDeliveryProvider({apiKey:config.resendApiKey,uatRecipientOverride:config.uatRecipientOverride}),config.fromAddress,config.notificationBatchLimit,config.publicBaseUrl,providerLogger);
+  new ResendEmailDeliveryProvider({apiKey:config.resendApiKey,uatRecipientOverride:config.uatRecipientOverride}),config.fromAddress,config.notificationBatchLimit,config.publicBaseUrl,providerLogger,Boolean(config.uatRecipientOverride));
  return{runScheduler:command=>scheduler.run(command),runNotificationWorker:workerId=>notifications.runOnce(workerId)};
 }
 

@@ -1,40 +1,47 @@
+import { useEffect, useMemo, useState } from "react";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { useAssignment } from "@/features/assignment/context/AssignmentContext";
+import type { AssignmentRecord } from "@/features/assignment/types";
 import type { RentalAggregate } from "@/features/rental/aggregate";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
-import { buildRentalLineOperations } from "./buildRentalLineOperations";
-import { RentalLineOperationCard } from "./RentalLineOperationCard";
+import { useAuth } from "@/features/auth/AuthContext";
+import { buildRentalLineOperations, type RentalLineOperationState } from "./buildRentalLineOperations";
 
-export default function RentalLineOperationsGrid({ aggregate, equipment, operators, evaluatedAt }: {
-  aggregate: RentalAggregate;
-  equipment: EquipmentRecord[];
-  operators: Operator[];
-  evaluatedAt: string;
-}) {
+const hours = (minutes: number) => `${(minutes / 60).toFixed(2)} h`;
+export const canViewManagementOperationalSnapshot = (roles: readonly string[] | undefined) => Boolean(roles?.some((role) => role === "management" || role === "system-administrator"));
+
+export default function RentalLineOperationsGrid({ aggregate, equipment, operators, evaluatedAt }: { aggregate: RentalAggregate; equipment: EquipmentRecord[]; operators: Operator[]; evaluatedAt: string }) {
   const { synchronization } = useApplicationDependenciesCompatibility();
-  useEffect(() => {
-    if (!synchronization.tenantId) return;
-    return synchronization.workspace.subscribeRental(
-      synchronization.tenantId,
-      aggregate.rental.id,
-    );
-  }, [synchronization, aggregate.rental.id]);
-  const states = buildRentalLineOperations({
-    lines: aggregate.rentalEquipmentLines,
-    deurs: aggregate.deurs,
-    evaluatedAt,
-  });
-  return <section aria-label="Rental equipment line operations" className="space-y-3">
-    <h2 className="text-lg font-semibold">Equipment Line Operations</h2>
-    <div className="grid gap-4 xl:grid-cols-2">
-      {states.map((state) => <RentalLineOperationCard
-        key={state.line.id}
-        rentalId={aggregate.rental.id}
-        state={state}
-        machine={equipment.find((item) => item.id === state.line.equipmentId)}
-        operator={operators.find((item) => item.id === state.line.operatorId)}
-      />)}
-    </div>
-  </section>;
+  const { assignments } = useAssignment();
+  const { user } = useAuth();
+  useEffect(() => { if (!synchronization.tenantId) return; return synchronization.workspace.subscribeRental(synchronization.tenantId, aggregate.rental.id); }, [synchronization, aggregate.rental.id]);
+  const states = useMemo(() => buildRentalLineOperations({ lines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, evaluatedAt }), [aggregate.rentalEquipmentLines, aggregate.deurs, evaluatedAt]);
+  const preferred = states.find((state) => state.priority === "critical") ?? states.find((state) => state.deur && ["Draft", "In Progress"].includes(state.deur.status)) ?? states.find((state) => state.priority === "warning") ?? states[0];
+  const [selectedId, setSelectedId] = useState(preferred?.line.id ?? "");
+  const selected = states.find((state) => state.line.id === selectedId) ?? preferred;
+  useEffect(() => { if (selectedId && states.some((state) => state.line.id === selectedId)) return; setSelectedId(preferred?.line.id ?? ""); }, [preferred?.line.id, selectedId, states]);
+  const canViewManagement = canViewManagementOperationalSnapshot(user?.systemRoles);
+  if (!states.length) return <p className="rounded border border-amber-300 bg-amber-50 p-4">This Rental has no equipment lines.</p>;
+  const identity = (state: RentalLineOperationState) => ({ machine: equipment.find((item) => item.id === state.line.equipmentId), operator: operators.find((item) => item.id === state.line.operatorId), assignment: assignments.find((item) => item.id === state.line.assignmentId) });
+  return <div className="space-y-6">
+    <section aria-label="Rental equipment selector" className="space-y-3"><div><h2 className="text-xl font-semibold">Daily Operations</h2><p className="text-sm text-slate-600">Monitoring only. Field activity is recorded by the Operator Digital DEUR.</p></div><div className="flex gap-3 overflow-x-auto pb-2">{states.map((state) => { const item=identity(state); return <button key={state.line.id} type="button" aria-pressed={selected?.line.id===state.line.id} onClick={()=>setSelectedId(state.line.id)} className={`min-w-52 rounded-xl border p-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 ${selected?.line.id===state.line.id?"border-blue-600 bg-blue-50":"bg-white"}`}><span className="block font-semibold">{item.machine?.equipmentName??state.line.equipmentId}</span><span className="block text-xs text-slate-500">{item.machine?.assetNo??"Asset number unavailable"}</span><span className="mt-2 block text-sm font-medium">{state.deur?state.currentActivity:"No Active DEUR"}</span><span className="block text-xs text-slate-600">{item.operator?.name??"No Operator assigned."}</span></button>})}</div></section>
+    <section className="overflow-hidden rounded-xl border bg-white"><div className="border-b p-4"><h2 className="font-semibold">Rental Operations Summary</h2></div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-slate-600"><tr>{["Equipment","Asset Number","Operator","Deployment","DEUR","Current Activity","Operation Time","Issue / Alert","Last Update"].map((label)=><th key={label} className="whitespace-nowrap px-3 py-2">{label}</th>)}</tr></thead><tbody>{states.map((state)=>{const item=identity(state);return <tr key={state.line.id} tabIndex={0} onClick={()=>setSelectedId(state.line.id)} onKeyDown={(event)=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();setSelectedId(state.line.id)}}} className={`cursor-pointer border-t focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${selected?.line.id===state.line.id?"bg-blue-50":""}`}><td className="px-3 py-3 font-medium">{item.machine?.equipmentName??state.line.equipmentId}</td><td className="px-3 py-3">{item.machine?.assetNo??"—"}</td><td className="px-3 py-3">{item.operator?.name??"No Operator assigned."}</td><td className="px-3 py-3">{item.assignment?.status??state.line.status}</td><td className="px-3 py-3">{state.deur?.status??"Not started"}</td><td className="px-3 py-3 font-medium">{state.deur?state.currentActivity:"Not started"}</td><td className="px-3 py-3">{hours(state.projectedOperationMinutes)}</td><td className={`px-3 py-3 ${state.priority==="critical"?"font-semibold text-red-700":state.priority==="warning"?"text-amber-800":"text-slate-600"}`}>{state.issue}</td><td className="whitespace-nowrap px-3 py-3">{state.lastUpdate?new Date(state.lastUpdate).toLocaleString():"Not available"}</td></tr>})}</tbody></table></div></section>
+    {selected && <SelectedEquipmentOperations state={selected} aggregate={aggregate} {...identity(selected)}/>}
+    {canViewManagement && <ManagementOperationalSnapshot aggregate={aggregate} states={states}/>}
+  </div>;
 }
-import { useEffect } from "react";
-import { useApplicationDependenciesCompatibility } from "@/app/composition";
+
+function SelectedEquipmentOperations({state,aggregate,machine,operator,assignment}:{state:RentalLineOperationState;aggregate:RentalAggregate;machine?:EquipmentRecord;operator?:Operator;assignment?:AssignmentRecord}){
+  const deur=state.deur;
+  return <section aria-label="Selected equipment operational detail" className="space-y-5 rounded-xl border bg-white p-5"><div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-semibold">{machine?.equipmentName??state.line.equipmentId}</h2><p className="text-sm text-slate-600">{machine?.assetNo??"Asset number unavailable"}</p></div><span className={`h-fit rounded-full px-3 py-1 text-sm font-semibold ${state.priority==="critical"?"bg-red-100 text-red-800":state.priority==="warning"?"bg-amber-100 text-amber-800":"bg-emerald-100 text-emerald-800"}`}>{state.deur?state.currentActivity:"Not Started"}</span></div><div className="grid gap-5 lg:grid-cols-2"><Summary title="Identity" rows={[["Equipment Code",machine?.equipmentName??state.line.equipmentId],["Asset Number",machine?.assetNo??"Not available"],["Operator",operator?.name??"No Operator assigned."],["Project",aggregate.project?.projectName??aggregate.rental.project],["Assignment",assignment?.status??state.line.status]]}/><Summary title="Current Operation" rows={[["Current Activity",deur?state.currentActivity:"Operator has not started a DEUR for this equipment."],["DEUR",deur?.deurNumber??deur?.id??"Not started"],["DEUR Status",deur?.status??"Not started"],["Shift",deur?deur.endOfDay?"Completed":"Active":"Not started"],["Last Update",state.lastUpdate?new Date(state.lastUpdate).toLocaleString():"Not available"]]}/><Summary title="Time Summary" rows={[["Operating",hours(state.projectedOperationMinutes)],["Idle / Waiting",hours(state.idleMinutes)],["Standby",hours(state.standbyMinutes)],["Breakdown",hours(state.breakdownMinutes)],["Meal Break",hours(state.mealBreakMinutes)],["Total Shift",hours(state.shiftMinutes)]]}/><Summary title="Issues" rows={[["Current Issue",state.issue],["Billing Eligibility",deur?.billingLocked||deur?.billingStatementId?"Consumed":state.billingEligible?"Eligible":"Not eligible"]]}/></div>{deur?.events?.length?<details className="rounded-lg border p-4"><summary className="cursor-pointer font-medium">View Activity History ({deur.events.length})</summary><ol className="mt-3 space-y-2 text-sm">{[...deur.events].sort((a,b)=>a.sequence-b.sequence).map((event)=><li key={event.id} className="border-l-2 pl-3"><strong>{event.activityType} — {event.action}</strong><span className="block text-slate-500">{new Date(event.timestamp).toLocaleString()}</span></li>)}</ol></details>:<p className="text-sm text-slate-600">No activity history recorded.</p>}</section>;
+}
+
+function Summary({title,rows}:{title:string;rows:Array<[string,string]>}){return <section><h3 className="border-b pb-2 font-semibold">{title}</h3><dl className="mt-3 space-y-2 text-sm">{rows.map(([label,value])=><div key={label} className="flex justify-between gap-3"><dt className="text-slate-500">{label}</dt><dd className="text-right font-medium">{value}</dd></div>)}</dl></section>}
+
+export function ManagementOperationalSnapshot({aggregate,states}:{aggregate:RentalAggregate;states:RentalLineOperationState[]}){
+  const active=states.filter((state)=>state.deur&&["Draft","In Progress"].includes(state.deur.status));const operating=active.filter((state)=>state.currentActivity==="Operating");const issues=states.filter((state)=>state.priority!=="normal");const totalHours=states.reduce((sum,state)=>sum+state.projectedOperationMinutes,0)/60;const closed=aggregate.rental.status==="Closed";
+  return <section aria-label="Management operational snapshot" className="rounded-xl border border-slate-300 bg-slate-50 p-5"><div className="flex flex-wrap justify-between gap-2"><div><h2 className="text-xl font-semibold">Management Snapshot</h2><p className="text-sm text-slate-600">{closed?"Final read-only Rental snapshot":"Current operational and business snapshot"}</p></div><span className="font-semibold">{aggregate.rental.status}</span></div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Equipment Deployed" value={String(states.length)}/><Metric label="Currently Operating" value={String(operating.length)}/><Metric label="Total DEURs" value={String(aggregate.deurs.length)}/><Metric label="Operating Hours" value={totalHours.toFixed(2)}/><Metric label="Billed / Invoiced" value={currency(aggregate.billing.invoiced)}/><Metric label="Collected" value={currency(aggregate.billing.collected)}/><Metric label="Outstanding" value={currency(aggregate.billing.outstanding)}/><Metric label="Issues / Blockers" value={String(issues.length)}/></div><p className="mt-4 text-sm">Collection status: <strong>{aggregate.billing.collectionStatus??"No billing statement generated."}</strong></p>{closed&&<p className="mt-2 text-sm">Rental period: {aggregate.rental.dateOut} to {aggregate.rental.expectedReturn??"Not recorded"}. Historical DEUR and return evidence remain read-only in this workspace.</p>}</section>;
+}
+function Metric({label,value}:{label:string;value:string}){return <div className="rounded-lg bg-white p-3"><p className="text-xs uppercase text-slate-500">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>}
+function currency(value:number){return new Intl.NumberFormat("en-PH",{style:"currency",currency:"PHP"}).format(value)}

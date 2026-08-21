@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import { useFormSubmission } from "@/components/form/useFormSubmission";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
@@ -42,7 +43,7 @@ export interface RentalFormData {
 }
 
 interface Props {
-  onSubmit(data: RentalFormData): void;
+  onSubmit(data: RentalFormData): void | Promise<void>;
 
   initialEquipmentId?: string;
 
@@ -82,6 +83,7 @@ export default function RentalForm({
   assignment,
   initialAssignmentIds = [],
 }: Props) {
+  const submission=useFormSubmission("Rental",onSubmit);
   const { equipment } =
     useEquipment();
 
@@ -169,8 +171,7 @@ export default function RentalForm({
 
         ...customers.map((c) => ({
           value: c.id,
-          label:
-            c.companyName,
+          label:`${c.customerCode} — ${c.companyName}`,
         })),
       ],
       [customers]
@@ -217,8 +218,6 @@ export default function RentalForm({
     [projects, form.customerId]
   );
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const selectedEquipment = equipment.find((record) => record.id === form.equipmentId);
   const metadataPreview = selectedEquipment
     ? createRentalOperationalMetadataSnapshot({ equipment: selectedEquipment, assignment, costCodes, activityCodes })
@@ -250,24 +249,24 @@ export default function RentalForm({
       className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
-        if (isSubmitting) return;
+        if (submission.busy) return;
 
         const dateError = validateNewRentalDates(form.dateOut, form.expectedReturn);
         if (dateError) {
-          window.alert(dateError);
+          submission.fail(dateError);
           return;
         }
         if (form.deurExpectationFrequency === "PER_SHIFT" && form.expectedShiftCodes.length === 0) {
-          window.alert("Select at least one expected DEUR shift.");
+          submission.fail("Select at least one expected DEUR shift.");
           return;
         }
 
-        setIsSubmitting(true);
-        onSubmit({ ...form, expectedReturn: form.expectedReturn || undefined });
-        setIsSubmitting(false);
+        void submission.submit({ ...form, expectedReturn: form.expectedReturn || undefined });
       }}
     >
+      {submission.feedback}
       <Select
+        searchable clearable
         label="Equipment"
         value={
           form.equipmentId
@@ -287,6 +286,7 @@ export default function RentalForm({
       />
 
       <Select
+        searchable clearable
         label="Customer"
         value={form.customerId}
         options={
@@ -301,6 +301,7 @@ export default function RentalForm({
       />
 
       <Select
+          searchable clearable
           label="Project"
           value={form.projectId}
           disabled={!form.customerId}
@@ -340,6 +341,7 @@ export default function RentalForm({
       </fieldset>
 
       {form.assignmentIds.length <= 1 && <Select
+        searchable clearable
         label="Operator"
         value={form.operatorId}
         disabled={lockOperator}
@@ -428,8 +430,8 @@ export default function RentalForm({
       <p className="text-xs text-slate-600">{EXPECTED_RETURN_GUIDANCE}</p>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting}>
-          Save Rental
+        <Button type="submit" disabled={submission.busy}>
+          {submission.busy?"Saving...":"Save Rental"}
         </Button>
       </div>
     </form>

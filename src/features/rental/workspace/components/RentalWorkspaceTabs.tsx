@@ -5,7 +5,7 @@ import {
 } from "../types";
 import type { WorkspaceTabBadge } from "../presentation/workspaceTabBadges";
 
-const closedAllowed = new Set<WorkspaceTab>(["overview", "timeline", "invoices", "collections"]);
+const closedAllowed = new Set<WorkspaceTab>(["overview", "timeline", "deur", "invoices", "collections"]);
 export default function RentalWorkspaceTabs({
   activeTab,
   onChange,

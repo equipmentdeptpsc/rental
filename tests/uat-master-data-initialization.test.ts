@@ -55,6 +55,7 @@ describe("clean UAT master-data initialization", () => {
   });
 
   it("makes every required Equipment form dropdown selectable", async () => {
+    initializeRequiredMasterData();
     const container = document.createElement("div");
     const root = createRoot(container);
     await act(async () => {
@@ -65,10 +66,19 @@ describe("clean UAT master-data initialization", () => {
               createElement(EquipmentForm, { onSubmit: vi.fn() }))))));
     });
 
-    const optionLabels = Array.from(container.querySelectorAll("option")).map((option) => option.textContent);
-    expect(optionLabels).toEqual(expect.arrayContaining([
-      "Generic", "Moving", "Available", "Company Owned", "Serviceable", "Main Yard",
-    ]));
+    const expectedByLabel = new Map([
+      ["Manufacturer", "Generic"], ["Equipment Category *", "Moving"], ["Equipment Status", "Available"],
+      ["Ownership Type", "Company Owned"], ["Equipment Condition", "Serviceable"], ["Initial Location", "Main Yard"],
+    ]);
+    const verified = new Set<string>();
+    for (const input of Array.from(container.querySelectorAll<HTMLInputElement>('[role="combobox"]'))) {
+      const expected = expectedByLabel.get(input.labels?.[0]?.textContent ?? "");
+      if (!expected) continue;
+      await act(async () => input.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+      expect(container.textContent).toContain(expected);
+      verified.add(expected);
+    }
+    expect(verified.size).toBe(expectedByLabel.size);
     await act(async () => root.unmount());
   });
 
@@ -94,8 +104,8 @@ describe("clean UAT master-data initialization", () => {
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(code, "CUSTOM-CODE-7"); code.dispatchEvent(new Event("input", { bubbles: true })); });
     const addLocation = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "+ Add Location")!;
     await act(async () => addLocation.click());
-    const location = Array.from(container.querySelectorAll("select")).find((select) => select.labels?.[0]?.textContent === "Initial Location")!;
-    expect(location.selectedOptions[0]?.textContent).toBe("PSC Yard");
+    const location = Array.from(container.querySelectorAll<HTMLInputElement>('[role="combobox"]')).find((input) => input.labels?.[0]?.textContent === "Initial Location")!;
+    expect(location.value).toBe("PSC Yard");
     expect(code.value).toBe("CUSTOM-CODE-7");
     prompt.mockRestore();
     await act(async () => root.unmount());

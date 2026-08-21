@@ -25,10 +25,9 @@ export function billingStatementPdfText(document: InvoiceDocument, preparedBy = 
     `Customer Representative: ${document.customerRepresentativeName ?? "Not provided"}`,
     `Representative Email: ${document.customerRepresentativeEmail ?? "Not provided"}`,
     `Project: ${document.project}`,
-    "DEUR | DATE | EQUIPMENT / OPERATOR | DESCRIPTION | METHOD | QTY | RATE | AMOUNT",
-    ...document.lines.map((line) => `${line.deurReference ?? "DEUR reference unavailable"} | ${line.workDate} | ${line.equipmentLabel} / ${line.operatorLabel} | ${line.description} | ${line.billingMethod ?? "Not recorded"} | ${line.quantity !== undefined ? line.quantity.toFixed(2) : (line.hours ?? 0).toFixed(2)} | ${money(line.unitRate ?? line.hourlyRate, document.currency)} | ${money(line.grandTotal ?? line.amount, document.currency)}`),
+    "DEUR NO. | DATE | EQUIPMENT | SERVICE / ACTIVITY | QTY / HOURS | RATE | AMOUNT",
+    ...document.serviceLines.map((line) => `${line.deurReference} | ${line.workDate} | ${line.equipmentLabel} / ${line.operatorLabel} | ${line.service} | ${line.quantityLabel} | ${line.rate === undefined ? "-" : money(line.rate, document.currency)} | ${money(line.amount, document.currency)}`),
     `Subtotal: ${money(document.subtotal, document.currency)}`,
-    ...(document.optionalChargeTotals ?? []).map(charge=>`${charge.label}: ${money(charge.amount,document.currency)}`),
     ...(document.vatApplicable ? [`VAT: ${money(document.vat ?? 0, document.currency)}`] : []),
     ...(document.withholdingTaxApplicable ? [`Withholding Tax: (${money(document.withholdingTax ?? 0, document.currency)})`] : []),
     `GRAND TOTAL: ${money(document.grandTotal, document.currency)}`,
@@ -61,7 +60,7 @@ function readPng(bytes?: Uint8Array): PngImage | undefined {
 const text = (value: string, x: number, y: number, size = 8) => `BT /F1 ${size} Tf ${x} ${y} Td (${escapePdf(short(value, 90))}) Tj ET`;
 const rightText = (value: string, right: number, y: number, size = 8) => text(value, right - ascii(value).length * size * .48, y, size);
 
-function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["lines"], pageIndex: number, pageCount: number, preparedBy: string, hasLogo: boolean) {
+function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["serviceLines"], pageIndex: number, pageCount: number, preparedBy: string, hasLogo: boolean) {
   const commands: string[] = [];
   if (hasLogo) commands.push("q 120 0 0 50.72 36 750 cm /Logo Do Q");
   commands.push(text(organizationBranding.companyName.toUpperCase(), 172, 791, 12));
@@ -81,27 +80,25 @@ function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["line
     commands.push(text(`Representative: ${document.customerRepresentativeName ?? "Not provided"}`, 300, 675, 8));
     commands.push(text(`Email: ${document.customerRepresentativeEmail ?? "Not provided"}`, 36, 660, 8));
     commands.push(text(`Project: ${document.project}`, 300, 660, 8));
-    const first = document.lines[0];
+    const first = document.lines?.[0];
     commands.push(text(`Equipment: ${first?.equipmentLabel ?? "Not provided"}`, 36, 645, 8));
     commands.push(text(`Operator: ${first?.operatorLabel ?? "Not provided"}`, 300, 645, 8));
     tableTop = 620;
   }
 
   commands.push("0.92 g 36 " + tableTop + " 540 20 re f 0 g");
-  const headers = [["DEUR",38],["DATE",96],["EQUIPMENT / OPERATOR",148],["DESCRIPTION",278],["METHOD",388],["QTY",442],["RATE",479],["AMOUNT",532]] as const;
+  const headers = [["DEUR",38],["DATE",96],["EQUIPMENT",148],["SERVICE",278],["QTY / HRS",408],["RATE",479],["AMOUNT",532]] as const;
   headers.forEach(([label,x]) => commands.push(text(label,x,tableTop+7,6.5)));
   commands.push(`0.7 G 36 ${tableTop} m 576 ${tableTop} l S`);
   pageLines.forEach((line, index) => {
     const y = tableTop - 19 - index * 24;
-    commands.push(text(line.deurReference ?? "Unavailable",38,y,6.5));
+    commands.push(text(line.deurReference,38,y,6.5));
     commands.push(text(line.workDate,96,y,6.5));
-    commands.push(text(short(line.equipmentLabel,20),148,y+4,6.5));
-    commands.push(text(short(line.operatorLabel,20),148,y-5,6));
-    commands.push(text(short(line.description,24),278,y,6.5));
-    commands.push(text(short(line.billingMethod ?? "-",10),388,y,6.5));
-    commands.push(rightText(line.quantity !== undefined ? line.quantity.toFixed(2) : (line.hours ?? 0).toFixed(2),467,y,6.5));
-    commands.push(rightText(money(line.unitRate ?? line.hourlyRate,document.currency),523,y,6.5));
-    commands.push(rightText(money(line.grandTotal ?? line.amount,document.currency),574,y,6.5));
+    commands.push(text(short(`${line.equipmentLabel} / ${line.operatorLabel}`,20),148,y,6.5));
+    commands.push(text(short(line.service,24),278,y,6.5));
+    commands.push(rightText(line.quantityLabel,467,y,6.5));
+    commands.push(rightText(line.rate === undefined ? "-" : money(line.rate,document.currency),523,y,6.5));
+    commands.push(rightText(money(line.amount,document.currency),574,y,6.5));
     commands.push(`0.88 G 36 ${y-9} m 576 ${y-9} l S`);
   });
 
@@ -111,7 +108,6 @@ function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["line
       commands.push(text(label,410,y,strong?9:8)); commands.push(rightText(value,574,y,strong?9:8)); y -= 15;
     };
     total("Subtotal", money(document.subtotal,document.currency));
-    for (const charge of document.optionalChargeTotals ?? []) total(charge.label,money(charge.amount,document.currency));
     if (document.vatApplicable) total("VAT", money(document.vat ?? 0,document.currency));
     if (document.withholdingTaxApplicable) total("Withholding Tax", `(${money(document.withholdingTax ?? 0,document.currency)})`);
     commands.push(`0.5 G 408 ${y+8} m 576 ${y+8} l S`);
@@ -137,7 +133,7 @@ function concat(parts: Uint8Array[]) {
 export function generateBillingStatementPdf(document: InvoiceDocument, preparedBy = "Administrator", logoPng?: Uint8Array): Uint8Array {
   const png = readPng(logoPng);
   const rowsPerPage = 18;
-  const pageChunks = Array.from({ length: Math.max(1, Math.ceil(document.lines.length / rowsPerPage)) }, (_, index) => document.lines.slice(index * rowsPerPage, (index + 1) * rowsPerPage));
+  const pageChunks = Array.from({ length: Math.max(1, Math.ceil(document.serviceLines.length / rowsPerPage)) }, (_, index) => document.serviceLines.slice(index * rowsPerPage, (index + 1) * rowsPerPage));
   const fontId = 3 + pageChunks.length * 2;
   const imageId = png ? fontId + 1 : undefined;
   const pageIds = pageChunks.map((_, index) => 3 + index * 2);

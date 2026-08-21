@@ -56,7 +56,7 @@ describe("Primary Structures Corporation branding and Billing Statement PDF",()=
     const source=statement();source.lines=Array.from({length:38},(_,index)=>line(index+1));source.subtotal=5700;source.grandTotal=5700;
     const pdfText=new TextDecoder("latin1").decode(generateBillingStatementPdf(buildInvoiceDocument(source)));
     expect(pdfText).toContain("/Count 3");
-    expect((pdfText.match(/EQUIPMENT \/ OPERATOR/g)??[])).toHaveLength(3);
+    expect((pdfText.match(/EQUIPMENT/g)??[])).toHaveLength(3);
     expect(pdfText).toContain("Page 1 of 3");
     expect(pdfText).toContain("Page 3 of 3");
   });

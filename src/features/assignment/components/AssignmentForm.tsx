@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
+import { useFormSubmission } from "@/components/form/useFormSubmission";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
@@ -19,9 +20,7 @@ import type { AssignmentFormData } from "../types";
 export type { AssignmentFormData } from "../types";
 
 interface Props {
-  onSubmit(
-    data: AssignmentFormData
-  ): void;
+  onSubmit(data: AssignmentFormData): void | Promise<void>;
 
   initialEquipmentId?: string;
 
@@ -42,6 +41,7 @@ export default function AssignmentForm({
   lockEquipment = false,
   submitLabel = "Assign Equipment",
 }: Props) {
+  const submission=useFormSubmission("Assignment",onSubmit);
   const { equipment } =
     useEquipment();
 
@@ -141,14 +141,14 @@ export default function AssignmentForm({
     e.preventDefault();
 
     if (!form.assignmentDate || !form.startDate || !form.endDate) {
-      alert("Assignment Date, Start Date, and End Date are required.");
+      submission.fail("Assignment Date, Start Date, and End Date are required.");
       return;
     }
     if (form.endDate < form.startDate) {
-      alert("End Date cannot be earlier than Start Date.");
+      submission.fail("End Date cannot be earlier than Start Date.");
       return;
     }
-    onSubmit(form);
+    void submission.submit(form);
   }
 
   function addActivityCode() {
@@ -157,7 +157,7 @@ export default function AssignmentForm({
     const description = window.prompt("Activity Code description");
     if (!description?.trim()) return;
     const result = createActivityCode({ id: crypto.randomUUID(), activityCode: code, description, active: true, deleted: false });
-    if (!result.success) return alert(result.message);
+    if (!result.success) return submission.fail(result.message);
     update("activityCodeId", result.record.id);
   }
 
@@ -166,12 +166,14 @@ export default function AssignmentForm({
       onSubmit={submit}
       className="space-y-5"
     >
+      {submission.feedback}
       <div className="grid gap-4 md:grid-cols-3">
         <Input label="Assignment Date" type="date" required value={form.assignmentDate || ""} onChange={(e) => update("assignmentDate", e.target.value)} />
         <Input label="Start Date" type="date" required value={form.startDate || ""} onChange={(e) => update("startDate", e.target.value)} />
         <Input label="End Date" type="date" required min={form.startDate} value={form.endDate || ""} onChange={(e) => update("endDate", e.target.value)} />
       </div>
       <Select
+        searchable clearable
         label="Equipment"
         value={
           form.equipmentId
@@ -208,6 +210,7 @@ export default function AssignmentForm({
       )}
 
       <Select
+        searchable clearable
         label="Operator"
         value={
           form.operatorId
@@ -235,6 +238,7 @@ export default function AssignmentForm({
       />
 
       <Select
+        searchable clearable
         label="Project"
         value={
           form.projectId
@@ -264,6 +268,7 @@ export default function AssignmentForm({
 
       <div>
         <Select
+          searchable clearable
           label="Activity Code"
           value={form.activityCodeId ?? ""}
           onChange={(event) => update("activityCodeId", event.target.value)}
@@ -304,8 +309,8 @@ export default function AssignmentForm({
       />
 
       <div className="flex justify-end">
-        <Button type="submit">
-          {submitLabel}
+        <Button type="submit" disabled={submission.busy}>
+          {submission.busy?"Saving...":submitLabel}
         </Button>
       </div>
     </form>

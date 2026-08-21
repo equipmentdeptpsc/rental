@@ -11,7 +11,6 @@ import type {
 
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
-import { useToast } from "@/components/ui/toast/ToastContext";
 import { useProject } from "@/features/project/context/ProjectContext";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
 
@@ -60,19 +59,14 @@ export default function NewRental() {
   const {customers}=useCustomer();
   const assignmentProjectError = getAssignmentProjectError(assignment, projects);
 
-    const {
-    showToast,
-  } = useToast();
-
   function handleSubmit(
     data: RentalFormData
   ) {
     const selectedProject = projects.find((project) => project.id === data.projectId);
     const selectedCustomer=customers.find(customer=>customer.id===data.customerId);
-    if(!selectedCustomer||!data.customerRepresentativeName?.trim()||!data.customerReviewEmail||!isValidBusinessEmail(data.customerReviewEmail)){showToast("A valid rental-specific Customer representative and review email are required.","error");return}
+    if(!selectedCustomer||!data.customerRepresentativeName?.trim()||!data.customerReviewEmail||!isValidBusinessEmail(data.customerReviewEmail)){throw new Error("A valid rental-specific Customer representative and review email are required.")}
     if (!selectedProject || selectedProject.customerId !== data.customerId) {
-      showToast("The selected Project must belong to the selected Customer.", "error");
-      return;
+      throw new Error("The selected Project must belong to the selected Customer.");
     }
     const rentalId =
       crypto.randomUUID();
@@ -131,19 +125,8 @@ export default function NewRental() {
     const result = addRental(rental, lineInputs);
 
     if (!result.success) {
-      showToast(
-        result.message ??
-          "Unable to create rental.",
-        "error"
-      );
-
-      return;
+      throw new Error(result.message ?? "Unable to create rental.");
     }
-
-    showToast(
-      "Rental created successfully",
-      "success"
-    );
 
     navigate(
       `/rentals/${rentalId}/commercial-terms`

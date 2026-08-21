@@ -25,7 +25,7 @@ describe("RENT-MULTI-001 foundation", () => {
   it("projects three stable lines and simultaneous independent activities", () => {
     const records = [deur("deur-a", "line-a", "excavator", "operator-a", "operation"), deur("deur-b", "line-b", "truck", "operator-b", "idle")];
     const states = buildRentalLineOperations({ lines, deurs: records, evaluatedAt: "2026-07-29T01:05:00Z" });
-    expect(states.map((item) => [item.line.id, item.currentActivity])).toEqual([["line-a", "operation"], ["line-b", "idle"], ["line-c", undefined]]);
+    expect(states.map((item) => [item.line.id, item.currentActivity])).toEqual([["line-a", "Operating"], ["line-b", "Idle / Waiting"], ["line-c", "No Active Activity"]]);
     const changed = applyDigitalDeurOperatorAction({ deur: records[0], action: "START_IDLE", actionTimestamp: "2026-07-29T01:05:00Z", actor: { id: "operator-a", name: "A" }, idleReason: { id: "waiting", labelSnapshot: "Waiting for materials" } });
     expect(changed.success).toBe(true);
     expect(records[1].events).toHaveLength(2);

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
+import CanonicalSelect from "@/components/ui/Select";
 import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
 import { useEquipmentBrands } from "@/features/masters/equipment-brand/context/EquipmentBrandContext";
 import { useEquipmentCategories } from "@/features/masters/equipment-category/context/EquipmentCategoryContext";
@@ -18,10 +18,13 @@ import { retainCompatibleSubcategory } from "../services/equipmentCategorySelect
 import { previewCategoryAssetNumber } from "../services/categoryAssetNumber";
 import type { EquipmentCategory, EquipmentFormData } from "../types";
 import { getActiveCostCodeOptions } from "../utils/equipmentCostCode";
+import { useFormSubmission } from "@/components/form/useFormSubmission";
 
-interface Props { initialData?: EquipmentFormData; mode?: "create" | "edit"; submitLabel?: string; onSubmit(data: EquipmentFormData): void; onCancel?(): void }
+interface Props { initialData?: EquipmentFormData; mode?: "create" | "edit"; submitLabel?: string; onSubmit(data: EquipmentFormData): void | Promise<void>; onCancel?(): void }
+const Select=(props:ComponentProps<typeof CanonicalSelect>)=><CanonicalSelect searchable clearable {...props}/>;
 
 export default function EquipmentForm({ initialData, mode = "edit", submitLabel = "Save", onSubmit, onCancel }: Props) {
+  const submission = useFormSubmission("Equipment", onSubmit);
   const { equipment } = useEquipment(); const { prefixes } = usePrefix(); const { costCodes } = useCostCodes();
   const { records: categories } = useEquipmentCategories(); const { records: subcategories } = useEquipmentSubcategories();
   const brands = useEquipmentBrands(); const models = useEquipmentModels(); const locations = useEquipmentLocations();
@@ -50,7 +53,8 @@ export default function EquipmentForm({ initialData, mode = "edit", submitLabel 
     setMessage(`${result.value} added and selected.`);
   }
 
-  return <form className="space-y-6" onSubmit={(event) => { event.preventDefault(); onSubmit(form); }}>
+  return <form className="space-y-6" onSubmit={(event) => { event.preventDefault(); void submission.submit(form); }}>
+    {submission.feedback}
     {message && <p className="rounded border p-3" role="status">{message}</p>}
     <div className="grid gap-4 md:grid-cols-2">
       <Select label="Equipment Category" required value={form.categoryId ?? ""} options={[{ label: "-- Select Equipment Category --", value: "" }, ...categories.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.category, value: item.id }))]} onChange={(event) => { const selected = categories.find((item) => item.id === event.target.value); const compatible = retainCompatibleSubcategory(event.target.value, form.subcategoryId, subcategories); update("categoryId", event.target.value); update("category", (selected?.category ?? "") as EquipmentCategory | ""); if (!compatible) { update("subcategoryId", ""); update("subcategoryName", ""); } }} />
@@ -73,6 +77,6 @@ export default function EquipmentForm({ initialData, mode = "edit", submitLabel 
         {mode === "edit" && <Select label="Equipment Condition" value={form.conditionId ?? ""} options={[{ label: "-- Select Equipment Condition --", value: "" }, ...conditions.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.condition, value: item.id }))]} onChange={(event) => { const selected = conditions.find((item) => item.id === event.target.value); update("conditionId", event.target.value); update("condition", selected?.condition ?? ""); }} />}
       </div>
     </details>
-    <div className="flex justify-end gap-3">{onCancel && <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>}<Button type="submit">{submitLabel}</Button></div>
+    <div className="flex justify-end gap-3">{onCancel && <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>}<Button type="submit" disabled={submission.busy}>{submission.busy ? "Saving..." : submitLabel}</Button></div>
   </form>;
 }

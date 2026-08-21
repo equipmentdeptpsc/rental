@@ -69,8 +69,8 @@ describe("final business workflow stabilization", () => {
 
   it("uses statement grand total in email and produces a PDF statement snapshot", () => {
     const email=buildBillingStatementEmail({statementNumber:"BS-1",rentalNumber:"R-1",customer:"Customer",representativeName:"Rep",recipient:"rep@test.dev",project:"Project",billingFrom:"2026-07-01",billingTo:"2026-07-31",amountDue:310,currency:"PHP"});
-    expect(email.body).toContain("Amount Due: PHP 310.00");
-    const document={statementNo:"BS-1",statementDate:"2026-07-27",customer:"Customer",rentalNumber:"R-1",project:"Project",billingFrom:"2026-07-01",billingTo:"2026-07-31",currency:"PHP",subtotal:300,vat:30,withholdingTax:20,grandTotal:310,lines:[{equipmentLabel:"UAT 1 (ME-000001)",operatorLabel:"UAT Operator 1",deurReference:"DEUR-000001 R1",workDate:"2026-07-27",description:"Rental",billingMethod:"Hourly",hourlyRate:100,amount:300,optionalCharges:[]}]} as unknown as InvoiceDocument;
+    expect(email.body).toContain("Total Amount: PHP 310.00");
+    const document={statementNo:"BS-1",statementDate:"2026-07-27",customer:"Customer",rentalNumber:"R-1",project:"Project",billingFrom:"2026-07-01",billingTo:"2026-07-31",currency:"PHP",subtotal:300,vat:30,withholdingTax:20,grandTotal:310,serviceLines:[{key:"service-1",equipmentLabel:"UAT 1 (ME-000001)",operatorLabel:"UAT Operator 1",deurReference:"DEUR-000001 R1",workDate:"2026-07-27",service:"Rental",quantityLabel:"3.00 hr",rate:100,amount:300}]} as unknown as InvoiceDocument;
     expect(new TextDecoder().decode(generateBillingStatementPdf(document)).startsWith("%PDF-1.4")).toBe(true);
     expect(billingStatementPdfText(document)).toEqual(expect.arrayContaining(["GRAND TOTAL: PHP 310.00"]));
   });

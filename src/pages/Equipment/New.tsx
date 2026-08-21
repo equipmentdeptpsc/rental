@@ -65,14 +65,12 @@ export default function NewEquipment() {
       );
 
     if (!validation.valid) {
-      alert(validation.message);
-      return;
+      throw new Error(validation.message);
     }
 
     const created = addEquipment(newRecord);
     if (!created.success || !created.record) {
-      alert(created.message ?? "Equipment could not be created.");
-      return;
+      throw new Error(created.message ?? "Equipment could not be created.");
     }
 
     logAction({

@@ -19,8 +19,7 @@ export default function NewProject() {
       projectCodeReadOnly
       onSubmit={(data) => {
         if (projects.some(project => project.projectCode.toLowerCase() === data.projectCode.toLowerCase())) {
-          alert("Project code already exists.");
-          return;
+          throw new Error("Project code already exists.");
         }
         const customer = customers.find((item) => item.id === data.customerId);
         addProject({

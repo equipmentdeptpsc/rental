@@ -71,7 +71,8 @@ export default function Login() {
             autoComplete={operatorPinMode ? "off" : "current-password"}
             inputMode={operatorPinMode ? "numeric" : undefined}
             minLength={operatorPinMode ? 4 : undefined}
-            maxLength={operatorPinMode ? 6 : undefined}
+            maxLength={operatorPinMode ? 4 : undefined}
+            pattern={operatorPinMode ? "[0-9]{4}" : undefined}
             className="mt-1 w-full rounded border px-3 py-2 text-sm"
             disabled={isSubmitting}
             onChange={(event) => setPassword(event.target.value)}

@@ -6,6 +6,7 @@ export interface EmailDeliveryRequest {
   recipientName: string;
   email: RenderedEmail;
   idempotencyKey: string;
+  attachments?: Array<{ filename: string; contentType: "application/pdf"; contentBase64: string }>;
 }
 
 export interface ProviderSafeDiagnostic {

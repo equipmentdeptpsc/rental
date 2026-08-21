@@ -66,7 +66,7 @@ export class OperatorPinCredentialService {
 
   private validatePin(pin: string, confirmation: string): void {
     if (pin !== confirmation) throw new Error("PIN and Confirm PIN do not match.");
-    if (!/^\d{4,6}$/.test(pin)) throw new Error("PIN must contain 4 to 6 numeric digits.");
+    if (!/^\d{4}$/.test(pin)) throw new Error("PIN must contain exactly 4 numeric digits.");
     if (/^(\d)\1+$/.test(pin) || ["0123", "1234", "2345", "3456", "4567", "5678", "6789", "9876", "8765", "7654", "6543", "5432", "4321", "3210"].some((value) => pin.includes(value))) {
       throw new Error("Choose a PIN that is not repeated or sequential.");
     }

@@ -87,3 +87,7 @@ import {
   
     return context;
   }
+
+  export function useOptionalToast() {
+    return useContext(ToastContext);
+  }

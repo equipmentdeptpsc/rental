@@ -1,4 +1,5 @@
 import type { RentalCommercialSnapshot } from "../types";
+import type { RentalContractRecord } from "../types/RentalContract";
 
 export interface CommercialSummaryRow {
   key: string;
@@ -7,10 +8,10 @@ export interface CommercialSummaryRow {
   kind: "money" | "hours";
 }
 
-export function resolveCommercialSummary(snapshot?: RentalCommercialSnapshot): CommercialSummaryRow[] {
+export function resolveCommercialSummary(snapshot?: RentalCommercialSnapshot | RentalContractRecord): CommercialSummaryRow[] {
   if (!snapshot) return [];
   const rows: CommercialSummaryRow[] = [];
-  const money = (key: keyof RentalCommercialSnapshot, label: string) => {
+  const money = (key: "unitRate" | "standbyRate" | "overtimeRate" | "contractAmount" | "operatorRate" | "fuelCharge" | "mobilizationFee" | "demobilizationFee", label: string) => {
     const value = snapshot[key];
     if (typeof value === "number") rows.push({ key, label, value, kind: "money" });
   };

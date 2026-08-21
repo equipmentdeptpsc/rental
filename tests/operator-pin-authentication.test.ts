@@ -36,6 +36,18 @@ function setup(overrides: { operator?: Operator; user?: User; assigned?: boolean
 }
 
 describe("Operator PIN credentials", () => {
+  it("keeps existing 5-6 digit verifier records login-compatible until reset", async () => {
+    const { service, storage } = setup();
+    const pin = "258093";
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]);
+    const verifier = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: 120_000 }, material, 256));
+    const encode = (value: Uint8Array) => btoa(String.fromCharCode(...value));
+    storage.set(OPERATOR_PIN_CREDENTIAL_STORAGE_KEY, [{ userId: user.id, salt: encode(salt), verifier: encode(verifier), iterations: 120_000, updatedAt: "2026-08-20T00:00:00.000Z" }]);
+
+    expect(await service.authenticate("EMP-0042", pin)).toMatchObject({ success: true });
+  });
+
   it("creates and resets a salted verifier without persisting or exposing the PIN", async () => {
     const { service, storage } = setup();
     await service.setPin(user.id, "2580", "2580");
@@ -54,6 +66,8 @@ describe("Operator PIN credentials", () => {
     await expect(service.setPin(user.id, "abcd", "abcd")).rejects.toThrow("numeric");
     await expect(service.setPin(user.id, "1111", "1111")).rejects.toThrow("repeated or sequential");
     await expect(service.setPin(user.id, "1234", "1234")).rejects.toThrow("repeated or sequential");
+    await expect(service.setPin(user.id, "258", "258")).rejects.toThrow("exactly 4");
+    await expect(service.setPin(user.id, "25809", "25809")).rejects.toThrow("exactly 4");
   });
 
   it("denies a wrong PIN, inactive Operator, and Operator without an assignment", async () => {

@@ -4,6 +4,7 @@ export interface Operator {
     email: string;
     licenseNumber: string;
     certificationType: 'Heavy Machinery' | 'Forklift' | 'Crane Logistics' | 'None';
+    certificationTypes?: Array<'Heavy Machinery' | 'Forklift' | 'Crane Logistics'>;
     status: 'Active' | 'On Leave' | 'Suspended';
     joinedDate: string;
   }

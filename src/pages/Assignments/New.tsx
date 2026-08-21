@@ -78,12 +78,7 @@ export default function NewAssignment() {
         }
       );
       if (!workflow.success) {
-        alert(
-          workflow.message ??
-            "Assignment failed."
-        );
-      
-        return;
+        throw new Error(workflow.message ?? "Assignment failed.");
       }
 
       const equipment =
@@ -124,16 +119,11 @@ export default function NewAssignment() {
 
     let success = false;
     try { success = addAssignment(assignment); } catch (error) {
-      alert(error instanceof Error ? error.message : "Assignment failed.");
-      return;
+      throw error instanceof Error ? error : new Error("Assignment failed.");
     }
 
     if (!success) {
-      alert(
-        "Equipment or operator is already booked for the selected dates."
-      );
-
-      return;
+      throw new Error("Equipment or operator is already booked for the selected dates.");
     }
 
     if (equipment) {

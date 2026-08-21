@@ -49,6 +49,7 @@ export class ResendEmailDeliveryProvider implements EmailDeliveryProvider {
         },
         body: JSON.stringify({
           from, to: [to], subject, html, text,
+          ...(request.attachments?.length ? { attachments: request.attachments.map(attachment => ({ filename: attachment.filename, content: attachment.contentBase64, content_type: attachment.contentType })) } : {}),
         }),
       });
       if (response.status === 429) {

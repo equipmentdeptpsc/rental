@@ -3,6 +3,8 @@ import type { EmailDeliveryProvider } from "../../src/features/notifications/Ema
 import type { DeliveryStatus, NotificationIntent } from "../../src/features/notifications/domain";
 import { renderNotificationTemplate } from "../../src/features/notifications/templates";
 import { decideNotificationFailure } from "./NotificationRetryPolicy";
+import type { InvoiceDocument } from "../../src/features/rental/workspace/invoice/InvoiceDocumentBuilder";
+import { sendBillingStatementEmail } from "../../src/features/rental/billing-email/sendBillingStatementEmail";
 
 export interface ClaimedNotification extends NotificationIntent { attempt: number }
 export type GroupedReviewDeliveryResolution =
@@ -13,9 +15,11 @@ export interface TrustedNotificationWorkerRepository {
   complete(input: {
     id: string; workerId: string; status: DeliveryStatus; providerName?: string;
     providerMessageId?: string; failureCategory?: string; retryAfterSeconds?: number;
+    notificationType?: NotificationIntent["type"]; uatOverrideApplied?: boolean;
   }): Promise<void>;
   getGroupedReviewPath?(id: string): Promise<string | undefined>;
   resolveGroupedReviewDelivery?(id: string): Promise<GroupedReviewDeliveryResolution>;
+  loadBillingStatementDocument?(statementId: string, companyId: string): Promise<InvoiceDocument | undefined>;
 }
 export interface SafeProviderOutcomeLogger { log(event: Record<string, unknown>): void }
 
@@ -27,12 +31,22 @@ export class TrustedNotificationWorker {
     private readonly batchSize = 10,
     private readonly publicBaseUrl = "https://review.invalid/",
     private readonly logger?: SafeProviderOutcomeLogger,
+    private readonly uatOverrideApplied = false,
   ) {}
 
   async runOnce(workerId = randomUUID()): Promise<{ claimed: number; providerCalls: number }> {
     const claimed = await this.repository.claimBatch(workerId, Math.max(1, Math.min(this.batchSize, 50)));
     let providerCalls = 0;
     for (const intent of claimed) {
+      if (intent.type === "BILLING_STATEMENT_EMAIL") {
+        const document = await this.repository.loadBillingStatementDocument?.(intent.sourceAggregateId, intent.companyId);
+        if (!document) { await this.repository.complete({ id:intent.id,workerId,status:"DeadLetter",failureCategory:"Cancelled",notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
+        const delivered = await sendBillingStatementEmail({ document, provider:this.provider, from:this.from, idempotencyKey:intent.idempotencyKey });
+        if (delivered.success) { providerCalls++; await this.repository.complete({ id:intent.id,workerId,status:"ProviderAccepted",providerName:delivered.provider,providerMessageId:delivered.providerMessageId,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
+        if (delivered.code === "PDF_GENERATION_FAILED" || delivered.code === "RECIPIENT_REQUIRED") { await this.repository.complete({ id:intent.id,workerId,status:"DeadLetter",failureCategory:delivered.code === "PDF_GENERATION_FAILED"?"TemplateFailure":"InvalidRecipient",notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
+        providerCalls++; const failure=delivered.delivery&&!delivered.delivery.accepted?delivered.delivery:undefined; const decision=decideNotificationFailure(failure?.category??"UnknownProviderFailure",false,intent.attempt,failure?.retryAfterSeconds);
+        await this.repository.complete({id:intent.id,workerId,status:decision.status,failureCategory:failure?.category??"UnknownProviderFailure",retryAfterSeconds:decision.delaySeconds,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied}); continue;
+      }
       let reviewUrl: string | undefined;
       if (intent.requiresReviewCredential) {
         const resolution = await this.repository.resolveGroupedReviewDelivery?.(intent.id);

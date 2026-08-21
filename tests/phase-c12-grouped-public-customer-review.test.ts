@@ -52,8 +52,19 @@ describe("grouped public Customer Review page", () => {
     const repository: PublicCustomerReviewBatchRepository = { lookup: vi.fn().mockResolvedValue({ success: true, disposition: "AVAILABLE", value: batch }), acknowledgeItem: vi.fn(), requestCorrection: vi.fn() };
     const container = await render(repository);
     expect(container.textContent).toContain("UAT Equipment Company"); expect(container.textContent).toContain("Grouped Customer");
-    expect(container.textContent).toContain("SUBMITTED AWAITING ACKNOWLEDGEMENT"); expect(container.textContent).toContain("IN PROGRESS"); expect(container.textContent).toContain("Activity Timeline");
+    expect(container.textContent).toContain("Awaiting acknowledgement"); expect(container.textContent).toContain("In progress"); expect(container.textContent).toContain("Activity Timeline");
+    expect(container.textContent).toContain("0 of 2 submitted DEURs reviewed · 2 remaining");
+    expect(container.textContent).toContain("Work date: 2026-08-11");
     expect([...container.querySelectorAll("button")].filter(button => button.textContent === "Acknowledge DEUR")).toHaveLength(2);
+    expect(container.textContent).not.toMatch(/Acknowledge All|Bulk/);
+  });
+
+  it("organizes Rental lines by work date and reports completion without a bulk action", async () => {
+    const completed = { ...batch, actionableCount: 0, acknowledgedCount: 2, batchStatus: "COMPLETED" as const, items: batch.items.map((item, index) => ({ ...item, workDate: index === 0 ? "2026-08-10" : "2026-08-11", reviewState: index === 2 ? item.reviewState : "ACKNOWLEDGED" as const, availableActions: [] })) };
+    const repository: PublicCustomerReviewBatchRepository = { lookup: vi.fn().mockResolvedValue({ success: true, disposition: "COMPLETED", value: completed }), acknowledgeItem: vi.fn(), requestCorrection: vi.fn() };
+    const container = await render(repository);
+    expect(container.textContent).toContain("Work date: 2026-08-10"); expect(container.textContent).toContain("Work date: 2026-08-11");
+    expect(container.textContent).toContain("All pending DEURs for this Rental have been reviewed.");
     expect(container.textContent).not.toMatch(/Acknowledge All|Bulk/);
   });
 

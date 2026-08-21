@@ -188,8 +188,7 @@ const current: EquipmentRecord = existing;
       );
 
     if (!validation.valid) {
-      alert(validation.message);
-      return;
+      throw new Error(validation.message);
     }
 
     updateEquipment(updated);
