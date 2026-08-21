@@ -188,9 +188,9 @@ class DeurRepository {
   }
 
   submit(id: string, actor: { name: string; id?: string }, authenticatedUser?: User | null) {
-    assertMutationPermission(authenticatedUser, "deur.review");
+    assertMutationPermission(authenticatedUser, "deur.create");
     const current = this.getById(id);
-    if (authenticatedUser && authenticatedUser.operatorId !== current?.operatorId) throw new AuthorizationError("deur.review");
+    if (authenticatedUser && authenticatedUser.operatorId !== current?.operatorId) throw new AuthorizationError("deur.create");
     const result = this.review(id, (record) => submitDeur(record, actor), "submit");
     if (!result.success) return result;
     const request = createCustomerReviewRequestForSubmittedDeur(result.record);

@@ -78,7 +78,7 @@ export class InMemoryDeurCommandRepository implements DeurCommandRepository {
     return { success: true, value: structuredClone(current) };
   }
   private validateScope(input: DeurCommandIdentity): DeurLifecycleCommandResult | undefined {
-    const actor = this.actor()!; if (!actor.permissions.includes("deur.create") && !actor.permissions.includes("deur.review")) return failure("FORBIDDEN");
+    const actor = this.actor()!; if (!actor.permissions.includes("deur.create")) return failure("FORBIDDEN");
     if (!actor.operatorId || actor.operatorId !== input.operatorId) return failure("OWNERSHIP_MISMATCH");
     const operator = this.fixture.operators.find((item) => item.id === input.operatorId); if (!operator) return failure("NOT_FOUND"); if (operator.status !== "Active") return failure("OPERATOR_INACTIVE");
     const rental = this.fixture.rentals.find((item) => item.id === input.rentalId); if (!rental) return failure("NOT_FOUND"); if (!["Released", "Active"].includes(rental.status)) return failure("RENTAL_INACTIVE");
