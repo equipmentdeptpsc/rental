@@ -62,13 +62,13 @@ export function EquipmentStatusProvider({
   const [records, setRecords] =
     useState<
       EquipmentStatusRecord[]
-    >(() => equipmentStatusRepository.getAll());
+    >(() => readOnly ? [] : equipmentStatusRepository.getAll());
   const [loadState,setLoadState]=useState<EquipmentStatusLoadState>("idle");
   const [error,setError]=useState<RepositoryError>();
   const requestSequence=useRef(0);
   const controller=useRef<AbortController|undefined>(undefined);
 
-  const refresh=useCallback(()=>{const sequence=++requestSequence.current;controller.current?.abort();const next=new AbortController();controller.current=next;setLoadState("loading");setError(undefined);void equipmentStatusRead.list({signal:next.signal}).then(result=>{if(next.signal.aborted||sequence!==requestSequence.current)return;if(!result.success){setError(result.error);setLoadState("error");return;}setRecords(result.value.map(record=>structuredClone(record)));setLoadState(result.value.length===0?"empty":"loaded");}).catch(cause=>{if(next.signal.aborted||sequence!==requestSequence.current)return;setError({code:"EQUIPMENT_STATUS_READ_UNEXPECTED",message:"Equipment Status loading failed unexpectedly.",context:{repository:"EquipmentStatus"},recoverability:"RETRYABLE",recommendedAction:"Retry the Equipment Status request.",cause});setLoadState("error");});},[equipmentStatusRead]);
+  const refresh=useCallback(()=>{const sequence=++requestSequence.current;controller.current?.abort();const next=new AbortController();controller.current=next;setLoadState("loading");setError(undefined);void equipmentStatusRead.list({signal:next.signal}).then(result=>{if(next.signal.aborted||sequence!==requestSequence.current)return;if(!result.success){if(readOnly)setRecords([]);setError(result.error);setLoadState("error");return;}setRecords(result.value.map(record=>structuredClone(record)));setLoadState(result.value.length===0?"empty":"loaded");}).catch(cause=>{if(next.signal.aborted||sequence!==requestSequence.current)return;if(readOnly)setRecords([]);setError({code:"EQUIPMENT_STATUS_READ_UNEXPECTED",message:"Equipment Status loading failed unexpectedly.",context:{repository:"EquipmentStatus"},recoverability:"RETRYABLE",recommendedAction:"Retry the Equipment Status request.",cause});setLoadState("error");});},[equipmentStatusRead,readOnly]);
 
   useEffect(() => {
     refresh();

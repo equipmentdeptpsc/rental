@@ -17,7 +17,7 @@ import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/r
 import { rentalBillingMethods, rentalTypes } from "@/features/rental/types";
 import { prefixRepository } from "@/features/settings/repository/prefixRepository";
 import { resetApplicationData } from "@/features/settings/services/applicationBackupService";
-import { ApplicationDependencyProvider } from "@/app/composition";
+import { ApplicationDependencyProvider, createLocalApplicationDependencies } from "@/app/composition";
 import MasterProviders from "@/app/MasterProviders";
 import { PrefixProvider } from "@/features/settings/context/PrefixContext";
 import { EquipmentProvider } from "@/features/equipment/context/EquipmentContext";
@@ -56,10 +56,11 @@ describe("clean UAT master-data initialization", () => {
 
   it("makes every required Equipment form dropdown selectable", async () => {
     initializeRequiredMasterData();
+    const localDependencies = createLocalApplicationDependencies();
     const container = document.createElement("div");
     const root = createRoot(container);
     await act(async () => {
-      root.render(createElement(ApplicationDependencyProvider, null,
+      root.render(createElement(ApplicationDependencyProvider, { dependencies: localDependencies },
         createElement(PrefixProvider, null,
           createElement(MasterProviders, null,
             createElement(EquipmentProvider, null,
