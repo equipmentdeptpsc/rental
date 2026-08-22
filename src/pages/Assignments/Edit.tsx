@@ -5,8 +5,16 @@ import AssignmentForm, {
 } from "@/features/assignment/components/AssignmentForm";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { createHistoryEvent, useEquipmentHistory } from "@/features/equipment/history";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { getAssignmentRuntimeCapability, REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/assignment/services/assignmentRuntimeCapability";
 
 export default function EditAssignment() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  if (!getAssignmentRuntimeCapability(configuration).legacyMutations) return <div className="mx-auto max-w-3xl space-y-4 p-8"><h1 className="text-3xl font-bold">Edit Assignment</h1><div className="rounded border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status"><h2 className="font-semibold">Assignment editing unavailable</h2><p className="mt-1 text-sm">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p></div></div>;
+  return <LocalEditAssignment />;
+}
+
+function LocalEditAssignment() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getAssignment, updateAssignment } = useAssignment();
