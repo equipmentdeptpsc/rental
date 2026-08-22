@@ -6,12 +6,16 @@ import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useRental } from "@/features/rental/context/RentalContext";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
 
 interface Props {
   rentalId: string;
 }
 
 export default function ReleaseRentalAction({ rentalId }: Props) {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const mutationsAvailable = canUseLegacyRentalMutations(configuration);
   const { user } = useAuth();
   const { releaseRental } = useRental();
   const { showToast } = useToast();
@@ -22,6 +26,8 @@ export default function ReleaseRentalAction({ rentalId }: Props) {
   useEffect(() => {
     setReleasedById(adminUsers[0]?.id ?? "");
   }, [adminUsers]);
+
+  if (!mutationsAvailable) return null;
 
   if (adminUsers.length === 0) {
     return (

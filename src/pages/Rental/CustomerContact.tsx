@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useRental } from "@/features/rental/context/RentalContext";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 
 export default function RentalCustomerContactPage() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const mutationsAvailable = canUseLegacyRentalMutations(configuration);
   const { rentalId = "" } = useParams();
   const { getRental, updateCustomerContact } = useRental();
   const rental = getRental(rentalId);
@@ -13,6 +17,7 @@ export default function RentalCustomerContactPage() {
   const [phone, setPhone] = useState(contact?.contactNumber ?? "");
   const [message, setMessage] = useState("");
   if (!rental) return <main className="p-8">Rental not found.</main>;
+  if (!mutationsAvailable) return <main className="p-8"><Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link><p className="mt-4 rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p></main>;
   if (rental.status === "Closed") return <main className="p-8"><Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link><p className="mt-4 rounded bg-slate-100 p-4">This Rental has been closed. Historical records are read-only.</p></main>;
   return <main className="mx-auto max-w-xl space-y-4 p-6">
     <Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link>

@@ -56,6 +56,7 @@ import { collectionRepository } from "../collections/repository";
 import { reconcileStatementCollections } from "../collections/collectionService";
 import { isInvoicePreparationComplete } from "../billingstatement/services/BillingReadiness";
 import { resolveRentalStatusAfterLineReturn } from "../services/resolveRentalStatusAfterLineReturn";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "../services/rentalRuntimeCapability";
 
 const releaseFieldMessage = (field: string) => field === "deurPolicy" ? "DEUR expectation policy" : field === "operationalMetadata" ? "operational metadata snapshot" : field === "snapshotFreshness" ? "stale DEUR release snapshot" : field === "snapshot" ? "persisted DEUR release snapshot" : field === "billingTerms" ? "commercial terms" : field;
 
@@ -127,7 +128,10 @@ export function RentalProvider({
 }: {
   children: ReactNode;
 }) {
-  const { rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository } = useApplicationDependenciesCompatibility().repositories;
+  const dependencies = useApplicationDependenciesCompatibility();
+  const { rental: rentalRepository, rentalContract: rentalContractRepository, rentalEquipmentLine: rentalEquipmentLineRepository, deur: deurRepository, billingStatement: billingStatementRepository, costCode: costCodeRepository, activityCode: activityCodeRepository, deurShiftWindow: deurShiftWindowRepository } = dependencies.repositories;
+  const legacyMutationsEnabled = canUseLegacyRentalMutations(dependencies.configuration);
+  const unavailable = () => ({ success: false as const, message: REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE });
   const [bootstrap] = useState(() => {
     const initialRentals = rentalRepository.getAll();
     const lineCompatibility = rentalEquipmentLineRepository.ensureCompatibility(initialRentals);
@@ -195,6 +199,7 @@ export function RentalProvider({
   }
 
   function configureLineDeurExpectation(rentalId: string, lineId: string, workDescriptionId: string, remarks?: string): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to configure Rental DEUR expectations." };
     const rental = rentalRepository.getById(rentalId);
     const line = rentalEquipmentLineRepository.getById(lineId);
@@ -236,6 +241,7 @@ export function RentalProvider({
   }
 
   function addRental(item: RentalRecord, equipmentLines?: NewRentalEquipmentLineInput[]) {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const dateError = validateNewRentalDates(item.dateOut, item.expectedReturn);
     if (dateError) return { success: false, message: dateError };
@@ -395,6 +401,7 @@ export function RentalProvider({
   }
 
   function updateRental(item: RentalRecord) {
+    if (!legacyMutationsEnabled) return;
     if (!hasPermission("rental.manage")) return;
     const current = rentalRepository.getById(item.id);
     if (!current) return;
@@ -404,12 +411,13 @@ export function RentalProvider({
     if (materialChanged && current.approvalStatus === "Approved") auditRental(current, next, "APPROVAL_INVALIDATED", "Material Rental details changed.");
     refreshRentals();
   }
-  function updateCustomerContact(id:string,input:RentalCustomerContactInput):RentalTransitionResult{if(!hasPermission("rental.manage"))return{success:false,message:"You do not have permission to manage Rentals."};const current=rentalRepository.getById(id);if(!current)return{success:false,message:"Rental not found."};const result=updateRentalCustomerContact(current,input,{id:user?.id,name:user?.name??"",role:user?.role},new Date().toISOString(),developmentCustomerReviewOutbox.hasPendingForRental(current.rentalNumber??current.id),true);if(!result.success)return result;rentalRepository.update(result.rental);auditRental(current,result.rental,"CUSTOMER_CONTACT_UPDATED",`Customer review recipient changed from ${maskEmail(current.customerContactSnapshot?.representativeEmail)} to ${maskEmail(result.rental.customerContactSnapshot?.representativeEmail)}.`);refreshRentals();return{success:true,rental:result.rental}}
+  function updateCustomerContact(id:string,input:RentalCustomerContactInput):RentalTransitionResult{if(!legacyMutationsEnabled)return unavailable();if(!hasPermission("rental.manage"))return{success:false,message:"You do not have permission to manage Rentals."};const current=rentalRepository.getById(id);if(!current)return{success:false,message:"Rental not found."};const result=updateRentalCustomerContact(current,input,{id:user?.id,name:user?.name??"",role:user?.role},new Date().toISOString(),developmentCustomerReviewOutbox.hasPendingForRental(current.rentalNumber??current.id),true);if(!result.success)return result;rentalRepository.update(result.rental);auditRental(current,result.rental,"CUSTOMER_CONTACT_UPDATED",`Customer review recipient changed from ${maskEmail(current.customerContactSnapshot?.representativeEmail)} to ${maskEmail(result.rental.customerContactSnapshot?.representativeEmail)}.`);refreshRentals();return{success:true,rental:result.rental}}
 
   function transitionRental(
     id: string,
     nextStatus: RentalLifecycleStatus
   ): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     const requiredPermission = nextStatus === "Released" ? "rental.release" : nextStatus === "Returned" ? "rental.return" : "rental.manage";
     if (!hasPermission(requiredPermission)) return { success: false, message: "You do not have permission to perform this Rental transition." };
     let current = rentalRepository.getById(id);
@@ -595,6 +603,7 @@ export function RentalProvider({
   }
 
   function deleteRental(id: string) {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const rental = rentalRepository.getById(id);
 
@@ -616,6 +625,7 @@ export function RentalProvider({
   }
 
   function returnRental(id: string): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.return")) return { success: false, message: "You do not have permission to return Rental equipment." };
     const rental = rentalRepository.getById(id);
     if (!rental) return { success: false, message: "Rental not found." };
@@ -660,6 +670,7 @@ export function RentalProvider({
     id: string,
     releasedBy: string
   ): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.release")) return { success: false, message: "An Admin must release this equipment." };
 
     const current = rentalRepository.getById(id);
@@ -690,6 +701,7 @@ export function RentalProvider({
   }
 
   function submitForApproval(id: string): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.approval.submit")) return { success: false, message: "You do not have permission to submit Rental approvals." };
     const rental = rentalRepository.getById(id);
     if (!rental) return { success: false, message: "Rental not found." };
@@ -730,6 +742,7 @@ export function RentalProvider({
   }
 
   function decideApproval(id: string, decision: "Approved" | "Rejected", remarks: string): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.approval.decide")) return { success: false, message: "You do not have permission to decide Rental approvals." };
     const rental = rentalRepository.getById(id);
     if (!rental) return { success: false, message: "Rental not found." };
@@ -747,12 +760,14 @@ export function RentalProvider({
   }
 
   function addContract(contract: RentalContractRecord) {
+    if (!legacyMutationsEnabled) return;
     if (!hasPermission("rental.commercialTerms.manage")) return;
     rentalContractRepository.create(contract);
     refreshContracts();
   }
 
   function updateContract(contract: RentalContractRecord) {
+    if (!legacyMutationsEnabled) return;
     if (!hasPermission("rental.commercialTerms.manage")) return;
     const rentalId = contract.rentalId ?? contract.id;
     const rental = rentalRepository.getById(rentalId);
@@ -765,6 +780,7 @@ export function RentalProvider({
   }
 
   function deleteContract(id: string) {
+    if (!legacyMutationsEnabled) return;
     if (!hasPermission("rental.commercialTerms.manage")) return;
     rentalContractRepository.delete(id);
     refreshContracts();
@@ -778,6 +794,7 @@ export function RentalProvider({
   }
 
   function saveCommercialTerms(id: string, input: RentalCommercialTermsInput): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     const lines = rentalEquipmentLineRepository.getByRentalId(id);
     if (lines.length !== 1) return { success: false, message: "A single Rental Equipment Line is required by the compatibility save path." };
     return saveCommercialTermsForRentalEquipmentLine(id, lines[0].id, input);
@@ -789,6 +806,7 @@ export function RentalProvider({
   }
 
   function saveCommercialTermsForRentalEquipmentLine(rentalId: string, lineId: string, input: RentalCommercialTermsInput): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.commercialTerms.manage")) return { success: false, message: "You do not have permission to edit Commercial Terms." };
     const rental = rentalRepository.getById(rentalId);
     if (!rental) return { success: false, message: "Rental not found." };
@@ -810,6 +828,7 @@ export function RentalProvider({
   }
 
   function saveCommercialTermsForSelectedLines(rentalId: string, lineIds: string[], input: RentalCommercialTermsInput): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.commercialTerms.manage")) return { success: false, message: "You do not have permission to edit Commercial Terms." };
     const rental = rentalRepository.getById(rentalId);
     if (!rental) return { success: false, message: "Rental not found." };
@@ -825,6 +844,7 @@ export function RentalProvider({
   }
 
   function addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput) {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const rental = rentalRepository.getById(rentalId);
     if (!rental) return { success: false, message: "Rental not found." };
@@ -846,6 +866,7 @@ export function RentalProvider({
   }
 
   function removeRentalEquipmentLine(rentalId: string, lineId: string) {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.manage")) return { success: false, message: "You do not have permission to manage Rentals." };
     const rental = rentalRepository.getById(rentalId);
     const line = rentalEquipmentLineRepository.getById(lineId);
@@ -870,6 +891,7 @@ export function RentalProvider({
   }
 
   function returnRentalEquipmentLine(rentalId: string, lineId: string): RentalTransitionResult {
+    if (!legacyMutationsEnabled) return unavailable();
     if (!hasPermission("rental.return")) return { success: false, message: "You do not have permission to return Rental equipment." };
     const rental = rentalRepository.getById(rentalId);
     const line = rentalEquipmentLineRepository.getById(lineId);

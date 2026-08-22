@@ -15,8 +15,12 @@ import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes"
 import { getEquipmentCostCodeDisplay } from "@/features/equipment/utils/equipmentCostCode";
 import { presentEquipmentStatus } from "@/features/equipment/utils/equipmentStatusPresentation";
 import { validateEquipmentAssignment } from "@/features/assignment/utils/assignmentValidation";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
 
 export default function EquipmentDetails() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const rentalCreationAvailable = canUseLegacyRentalMutations(configuration);
   const { id } = useParams();
 
   const { getEquipment } =
@@ -265,13 +269,13 @@ export default function EquipmentDetails() {
 
           {assignmentEligibility.valid ? <Link to={`/assignments/new?equipment=${equipment.id}`}><Button>Assign</Button></Link> : <span title={assignmentEligibility.message}><Button disabled>Assign</Button></span>}
 
-          <Link
+          {rentalCreationAvailable && <Link
             to={`/rentals/new?equipment=${equipment.id}`}
           >
             <Button>
               Rent
             </Button>
-          </Link>
+          </Link>}
 
           <Link
             to={`/maintenance/new?equipment=${equipment.id}`}

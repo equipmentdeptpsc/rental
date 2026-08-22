@@ -12,6 +12,8 @@ import type { RentalContractRecord } from "@/features/rental/types/RentalContrac
 import { canEditRentalCommercialTerms, type RentalCommercialTermsInput } from "@/features/rental/services/configureRentalCommercialTerms";
 import { getCommercialConfigurationProgress, getNextUnconfiguredLine, isCommerciallyConfigured } from "@/features/rental/commercial/commercialConfigurationProgress";
 import { resolveCommercialSummary } from "@/features/rental/commercial/resolveCommercialSummary";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 
 const optionalNumber = (value: string) => value.trim() === "" ? undefined : Number(value);
 export const commercialRateLabel=(method:RentalBillingMethod)=>({
@@ -87,6 +89,8 @@ export function LineTermsEditor({ rental, line, contract, equipmentLabel, operat
 }
 
 export default function RentalCommercialTermsPage() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const mutationsAvailable = canUseLegacyRentalMutations(configuration);
   const { rentalId = "" } = useParams(); const { showToast } = useToast();
   const { getRental, rentalEquipmentLines, getContractForRentalEquipmentLine, saveCommercialTermsForRentalEquipmentLine, saveCommercialTermsForSelectedLines, addRentalEquipmentLine, removeRentalEquipmentLine } = useRental();
   const { equipment } = useEquipment(); const { operators } = useOperator(); const { assignments } = useAssignment();
@@ -101,6 +105,7 @@ export default function RentalCommercialTermsPage() {
   const [bulkLineIds, setBulkLineIds] = useState<string[]>([]);
   useEffect(() => { if (savedLineId) resultRef.current?.focus({ preventScroll: false }); }, [savedLineId]);
   if (!rental) return <div className="p-8">Rental not found.</div>;
+  if (!mutationsAvailable) return <main className="p-8"><Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link><h1 className="mt-4 text-2xl font-bold">Commercial terms unavailable</h1><p className="mt-3 rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p></main>;
   const editable = canEditRentalCommercialTerms(rental);
   const progress = getCommercialConfigurationProgress(lines, contracts); const incompleteLines = lines.filter((line) => !isCommerciallyConfigured(line, contracts)); const allConfigured = progress.allConfigured;
   const promptLine = lines.find((line) => line.id === promptLineId); const promptEquipment = equipment.find((item) => item.id === promptLine?.equipmentId);

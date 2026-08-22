@@ -28,6 +28,7 @@ import { projectRentalCollectionStatus } from "@/features/rental/collections/col
 import { projectActiveRentalEngagements } from "@/features/rental/services/projectActiveRentalEngagements";
 import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 import { filterRentalList } from "@/features/rental/services/filterRentalList";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 
 type RentalView = "rentals" | "engagements" | "deur-exceptions";
 
@@ -38,7 +39,9 @@ const VIEWS: { id: RentalView; label: string }[] = [
 ];
 
 export default function RentalPage() {
-  const { billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
+  const dependencies = useApplicationDependenciesCompatibility();
+  const { billingStatement: billingStatementRepository } = dependencies.repositories;
+  const mutationsAvailable = canUseLegacyRentalMutations(dependencies.configuration);
   const rentalContext = useRental();
   const equipmentContext = useEquipment();
   const assignmentContext = useAssignment();
@@ -52,7 +55,8 @@ export default function RentalPage() {
     operators: operatorContext.operators,
     projects: projectContext.projects,
   }), [assignmentContext.assignments, equipmentContext.equipment, operatorContext.operators, projectContext.projects, rentalContext.rentalEquipmentLines, rentalContext.rentals]);
-  const { rentals, rentalEquipmentLines, equipment: equipmentRecords, assignments, operators, projects } = useRentalListData(fallbackListData);
+  const rentalList = useRentalListData(fallbackListData);
+  const { rentals, rentalEquipmentLines, equipment: equipmentRecords, assignments, operators, projects } = rentalList.data;
   const getEquipment = (id: string) => equipmentRecords.find((record) => record.id === id);
   const [searchParams, setSearchParams] = useSearchParams();
   const [, setDeurVersion] = useState(0);
@@ -86,7 +90,7 @@ export default function RentalPage() {
       <PageHeader
         title="Rental Transactions"
         description="Manage equipment rentals, customer engagements, and DEUR compliance."
-        actions={<Link to="/rentals/new"><Button>New Rental</Button></Link>}
+        actions={mutationsAvailable ? <Link to="/rentals/new"><Button>New Rental</Button></Link> : undefined}
       />
 
       <div className="app-card flex flex-wrap gap-2 p-2" role="tablist" aria-label="Rental list views">
@@ -105,7 +109,11 @@ export default function RentalPage() {
         ))}
       </div>
 
-      {view === "engagements" && (
+      {!mutationsAvailable && <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</div>}
+      {rentalList.status === "loading" && <div className="app-card p-6 text-center text-slate-600" role="status">Loading canonical Rental data…</div>}
+      {rentalList.status === "error" && <div className="app-card border border-red-200 p-6" role="alert"><h2 className="font-semibold text-red-800">Rental data unavailable</h2><p className="mt-1 text-sm text-red-700">{rentalList.message}</p><Button className="mt-4" variant="secondary" onClick={rentalList.retry}>Retry</Button></div>}
+
+      {rentalList.status === "loaded" && view === "engagements" && (
         <section className="app-card p-5">
           <h2 className="app-section-title">Active Customer / Project Engagements</h2>
           <p className="app-muted mb-4">Read-only grouping; every Rental and equipment-line identity remains independent.</p>
@@ -150,7 +158,7 @@ export default function RentalPage() {
         </section>
       )}
 
-      {view === "rentals" && (
+      {rentalList.status === "loaded" && view === "rentals" && (
         <>
           <section className="app-card grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto]">
             <input
@@ -263,7 +271,7 @@ export default function RentalPage() {
         </>
       )}
 
-      {view === "deur-exceptions" && (
+      {rentalList.status === "loaded" && view === "deur-exceptions" && (
         <RentalDeurExceptionsSection
           attentionRows={attentionRows}
           rentalEquipmentLines={rentalEquipmentLines}

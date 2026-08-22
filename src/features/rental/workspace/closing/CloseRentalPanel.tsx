@@ -18,8 +18,12 @@ import { executeRentalBillingHandoff, prepareRentalBillingHandoff, type BillingH
 import { billingHandoffAuditRepository } from "@/features/rental/billingstatement/repository/BillingHandoffAuditRepository";
 import BillingHandoffReviewDialog from "./BillingHandoffReviewDialog";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 
 export default function CloseRentalPanel() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const mutationsAvailable = canUseLegacyRentalMutations(configuration);
   const { user } = useAuth();
   const aggregate =
     useRentalWorkspaceAggregate();
@@ -103,6 +107,10 @@ export default function CloseRentalPanel() {
       return;
     }
     showToast(result.issues.map((item) => item.message).join(" "), "error");
+  }
+
+  if (!mutationsAvailable) {
+    return <div className="space-y-4"><h2 className="text-2xl font-semibold">Close Rental</h2><p className="rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p></div>;
   }
 
   return (

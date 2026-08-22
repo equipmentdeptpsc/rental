@@ -20,8 +20,12 @@ import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { displayAssignmentExpectedReturn, getAssignmentNumber } from "@/features/assignment/utils/assignmentDisplay";
 import { useActivityCodes } from "@/features/masters/activity-code";
 import AssignmentActivityCodeDisplay from "@/features/assignment/components/AssignmentActivityCodeDisplay";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 
 export default function AssignmentDetails() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const rentalCreationAvailable = canUseLegacyRentalMutations(configuration);
   const { id } = useParams();
 
   const navigate = useNavigate();
@@ -245,13 +249,13 @@ export default function AssignmentDetails() {
 
       <div className="flex flex-wrap gap-3">
 
-        <Link
+        {rentalCreationAvailable ? <Link
           to={`/rentals/new?assignment=${encodeURIComponent(assignment.id)}`}
         >
           <Button>
             Start Rental
           </Button>
-        </Link>
+        </Link> : <span className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" title={REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}>Rental creation unavailable</span>}
 
         {assignment.status ===
           "Active" && (

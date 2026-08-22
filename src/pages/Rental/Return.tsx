@@ -9,8 +9,12 @@ import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useReturnRental } from "@/features/rental/services/useReturnRental";
 import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 
 export default function ReturnRental() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const mutationsAvailable = canUseLegacyRentalMutations(configuration);
   const navigate = useNavigate();
   const { id } = useParams();
   const { rentals, rentalEquipmentLines, returnRentalEquipmentLine } = useRental();
@@ -48,6 +52,10 @@ export default function ReturnRental() {
 
   if (!rental) {
     return <div className="p-8">Rental not found.</div>;
+  }
+
+  if (!mutationsAvailable) {
+    return <div className="p-8"><h1 className="text-2xl font-bold">Rental return unavailable</h1><p className="mt-4 rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p></div>;
   }
 
   return (

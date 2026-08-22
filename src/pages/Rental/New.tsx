@@ -21,8 +21,12 @@ import {
 } from "@/features/rental/utils/rentalFormOptions";
 import { resolveAssignmentRentalLookup } from "@/features/rental/utils/assignmentRentalLookup";
 import { isValidBusinessEmail, normalizeBusinessEmail } from "@/shared/validation/email";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 
 export default function NewRental() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const creationAvailable = canUseLegacyRentalMutations(configuration);
   const navigate =
     useNavigate();
 
@@ -132,6 +136,16 @@ export default function NewRental() {
       `/rentals/${rentalId}/commercial-terms`
     );
   }
+
+  if (!creationAvailable) return (
+    <div className="mx-auto max-w-3xl space-y-4 p-6">
+      <h1 className="text-3xl font-bold">New Rental</h1>
+      <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status">
+        <h2 className="font-semibold">Rental creation unavailable</h2>
+        <p className="mt-1 text-sm">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">

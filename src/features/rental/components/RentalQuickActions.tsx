@@ -6,9 +6,13 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useRental } from "../context/RentalContext";
 import type { RentalRecord } from "../types";
 import { deriveRentalQuickActions, visibleRentalQuickActions, type RentalQuickActionId } from "../quick-actions/rentalQuickActions";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { canUseLegacyRentalMutations } from "../services/rentalRuntimeCapability";
 
 export default function RentalQuickActions({ rental, hideClose = false }: { rental: RentalRecord; hideClose?: boolean }) {
   const { user, hasPermission } = useAuth();
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const mutationsAvailable = canUseLegacyRentalMutations(configuration);
   const { transitionRental, returnRental, releaseRental, submitForApproval, approveRental, rejectRental, getReleaseReadiness } = useRental();
   const { showToast } = useToast(); const [pending, setPending] = useState<RentalQuickActionId>();
   const model = deriveRentalQuickActions(rental, { manage: hasPermission("rental.manage"), approve: hasPermission("rental.approval.decide"), submit: hasPermission("rental.approval.submit"), release: hasPermission("rental.release"), return: hasPermission("rental.return") });
@@ -29,5 +33,6 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
   }
   const canEditTerms = hasPermission("rental.commercialTerms.manage") && ["Draft", "Assigned", "Reserved"].includes(rental.status);
   const actions = visibleRentalQuickActions(model, hideClose); const releaseReady = rental.status === "Reserved" ? getReleaseReadiness(rental.id).eligible : true;
+  if (!mutationsAvailable) return null;
   return <div className="flex flex-wrap items-center gap-2">{model.message && <span className="text-sm text-slate-600">{model.message}</span>}{canEditTerms && <Link className="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700" to={`/rentals/${rental.id}/commercial-terms`}>Edit Commercial Terms</Link>}{actions.map((action) => <Button key={action.id} variant="secondary" disabled={Boolean(pending) || (action.id === "release" && !releaseReady)} title={action.id === "release" && !releaseReady ? "Complete every DEUR release-readiness requirement first." : undefined} onClick={() => run(action.id)}>{pending === action.id ? "Working…" : action.label}</Button>)}</div>;
 }
