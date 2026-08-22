@@ -6,7 +6,7 @@ export interface CreateAssignmentCommand extends OperationalCommandMetadata {
   operatorId: string;
   projectId: string;
   assignedDate: string;
-  expectedReturn: string;
+  expectedReturn?: string;
   activityCodeId?: string;
   remarks?: string;
 }

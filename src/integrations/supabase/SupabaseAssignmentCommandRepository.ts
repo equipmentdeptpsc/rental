@@ -31,6 +31,16 @@ export class SupabaseAssignmentCommandRepository implements AssignmentCommandRep
         refreshRequired: true,
       };
     }
+    const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
+    if (candidate?.success === false && typeof candidate.code === "string") {
+      return {
+        success: false,
+        code: candidate.code as Extract<OperationalCommandResult<AssignmentCreationProjection>, { success: false }>["code"],
+        message: failureMessage(candidate.code),
+        retryable: false,
+        refreshRequired: ["CONFLICT", "EQUIPMENT_UNAVAILABLE", "PERSISTENCE_FAILURE"].includes(candidate.code),
+      };
+    }
     if (!isOperationalCommandResult<AssignmentCreationProjection>(data) || (data.success && !isProjection(data.value))) {
       return {
         success: false,
@@ -42,6 +52,20 @@ export class SupabaseAssignmentCommandRepository implements AssignmentCommandRep
     }
     return data;
   }
+}
+
+function failureMessage(code: string) {
+  const messages: Record<string, string> = {
+    UNAUTHENTICATED: "Your session has expired. Sign in and try again.",
+    FORBIDDEN: "You do not have permission to create Assignments.",
+    VALIDATION_REJECTED: "The Assignment request is incomplete or invalid.",
+    NOT_FOUND: "Referenced Assignment information is unavailable. Refresh and try again.",
+    EQUIPMENT_UNAVAILABLE: "The selected Equipment is unavailable for Assignment.",
+    CONFLICT: "The Assignment identity or selected Operator is already in use.",
+    IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
+    PERSISTENCE_FAILURE: "The remote service could not save the Assignment. Refresh before retrying.",
+  };
+  return messages[code] ?? "The remote Assignment command was rejected.";
 }
 
 function isProjection(value: unknown): value is AssignmentCreationProjection {

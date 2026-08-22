@@ -2,16 +2,22 @@ import { useEffect, useState } from "react";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import type { AssignmentRecord } from "@/features/assignment/types";
+import { subscribeCanonicalAssignmentRefresh } from "@/features/assignment/remote/canonicalAssignmentRefresh";
 
 export interface CanonicalAssignmentEquipment {
   id: string;
   assetNo: string;
   equipmentName: string;
+  statusId?: string;
+  active: boolean;
+  deleted: boolean;
 }
 
 export interface CanonicalAssignmentOperator {
   id: string;
   name: string;
+  status: string;
+  deleted: boolean;
 }
 
 export interface CanonicalAssignmentProject {
@@ -47,6 +53,10 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
   const retry = () => setAttempt((value) => value + 1);
 
   useEffect(() => {
+    return subscribeCanonicalAssignmentRefresh(retry);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     setState({ status: "loading", data: emptyData() });
     void Promise.all([
@@ -62,8 +72,14 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
       }
       const data: CanonicalAssignmentData = {
         assignments: assignments.value.items,
-        equipment: equipment.value.items.map((record) => ({ id: record.id, assetNo: record.assetNo, equipmentName: record.equipmentName })),
-        operators: operators.value.items.map((record) => ({ id: record.id, name: record.name })),
+        equipment: equipment.value.items.map((record) => {
+          const canonical = record as unknown as Record<string, unknown>;
+          return { id: record.id, assetNo: record.assetNo, equipmentName: record.equipmentName, statusId: text(canonical.statusId) || undefined, active: canonical.active === true, deleted: canonical.deletedAt !== null && canonical.deletedAt !== undefined };
+        }),
+        operators: operators.value.items.map((record) => {
+          const canonical = record as unknown as Record<string, unknown>;
+          return { id: record.id, name: record.name, status: record.status, deleted: canonical.deletedAt !== null && canonical.deletedAt !== undefined };
+        }),
         projects: projects.value.items.map((record) => {
           const canonical = record as unknown as Record<string, unknown>;
           return { id: record.id, projectCode: text(canonical.projectCode) || undefined, name: text(canonical.name), active: canonical.active === true };

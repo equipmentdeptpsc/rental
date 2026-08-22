@@ -40,10 +40,15 @@ import {
 } from "@/features/assignment/application";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getAssignmentRuntimeCapability, REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/assignment/services/assignmentRuntimeCapability";
+import RemoteAssignmentForm from "@/features/assignment/components/RemoteAssignmentForm";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function NewAssignment() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  if (!getAssignmentRuntimeCapability(configuration).legacyMutations) return <div className="mx-auto max-w-3xl space-y-4 p-8"><h1 className="text-3xl font-bold">New Assignment</h1><div className="rounded border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status"><h2 className="font-semibold">Assignment creation unavailable</h2><p className="mt-1 text-sm">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p></div></div>;
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const capability = getAssignmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalAssignment));
+  if (capability.canonicalMutations && hasPermission("assignment.manage")) return <RemoteAssignmentForm />;
+  if (!capability.legacyMutations) return <div className="mx-auto max-w-3xl space-y-4 p-8"><h1 className="text-3xl font-bold">New Assignment</h1><div className="rounded border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status"><h2 className="font-semibold">Assignment creation unavailable</h2><p className="mt-1 text-sm">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p></div></div>;
   return <LocalNewAssignment />;
 }
 
