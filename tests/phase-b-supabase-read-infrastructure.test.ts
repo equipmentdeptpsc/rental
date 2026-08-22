@@ -45,6 +45,32 @@ describe("Phase B Supabase read infrastructure", () => {
     expect(result).toEqual(repositorySuccess({ items: [{ id: "equipment-1", assetNo: "EQ-001", equipmentName: "Crane", active: true }], nextCursor: undefined }));
   });
 
+  it("preserves canonical Assignment identity and maps its relationship and date fields", async () => {
+    const client = readClient({ data: [{
+      id: "c43b7841-8394-452f-b1fa-9823245fda46",
+      equipment_id: "equipment-1",
+      operator_id: "operator-1",
+      project_id: "project-1",
+      assigned_date: "2026-08-23",
+      expected_return: "2026-08-24",
+      status: "Active",
+    }], error: null });
+    const repository = new SupabaseReadRepository<{
+      id: string; equipmentId: string; operatorId: string; projectId: string;
+      assignedDate: string; expectedReturn: string; status: string;
+    }>(client, { repositoryName: "Assignment", table: "assignments" }, createRemoteCore());
+
+    await expect(repository.list()).resolves.toEqual(repositorySuccess({ items: [{
+      id: "c43b7841-8394-452f-b1fa-9823245fda46",
+      equipmentId: "equipment-1",
+      operatorId: "operator-1",
+      projectId: "project-1",
+      assignedDate: "2026-08-23",
+      expectedReturn: "2026-08-24",
+      status: "Active",
+    }], nextCursor: undefined }));
+  });
+
   it("returns typed validation and authorization/transport failures", async () => {
     const malformed = new SupabaseReadRepository<{ id: string }>(readClient({ data: [{ name: "missing-id" }], error: null }), { repositoryName: "Customer", table: "customers" }, createRemoteCore());
     await expect(malformed.list()).resolves.toMatchObject({ success: false, error: { code: "REMOTE_ROW_MALFORMED" } });

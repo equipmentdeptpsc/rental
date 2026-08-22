@@ -63,7 +63,7 @@ export default function NewRental() {
   const fallbackData = useMemo(() => ({ rentals, rentalEquipmentLines, equipment: localEquipment, assignments: localAssignments, operators: localOperators, projects: localProjects, customers: localCustomers }), [rentals, rentalEquipmentLines, localEquipment, localAssignments, localOperators, localProjects, localCustomers]);
   const canonicalData = useRentalListData(fallbackData);
   const { assignments, projects, customers } = canonicalData.data;
-  const assignmentLookup = resolveAssignmentRentalLookup(assignmentQuery, assignments);
+  const assignmentLookup = resolveAssignmentRentalLookup(assignmentQuery, assignments, canonicalData.status === "loading");
   const assignment = assignmentLookup.state === "found" ? assignmentLookup.assignment : undefined;
   const initialEquipmentId = assignment?.equipmentId ?? equipmentParam ?? "";
   const assignmentPrefill = getRentalAssignmentPrefill(assignment);

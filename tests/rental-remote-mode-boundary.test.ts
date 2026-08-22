@@ -62,6 +62,12 @@ describe("Rental remote-mode boundary", () => {
     expect(rendered.container.textContent).not.toContain("local-rental");
   });
 
+  it("continues to expose the local dataset in local persistence mode", async () => {
+    const rendered = renderHook(createLocalApplicationDependencies());
+    await act(async () => rendered.root.render(rendered.element));
+    expect(rendered.container.textContent).toBe("loaded:local-rental:");
+  });
+
   it("loads the canonical remote dataset and retries an explicit error", async () => {
     const success = repositorySuccess({ items: [], nextCursor: undefined });
     const failure = repositoryFailure("REMOTE_FAILED", "failed", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" });
