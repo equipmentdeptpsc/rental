@@ -23,10 +23,22 @@ import { resolveAssignmentRentalLookup } from "@/features/rental/utils/assignmen
 import { isValidBusinessEmail, normalizeBusinessEmail } from "@/shared/validation/email";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseCanonicalRemoteRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
+import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
+import { useAuth } from "@/features/auth/AuthContext";
+import { useMemo, useRef } from "react";
+import { isRentalType } from "@/features/rental/types";
+import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
+import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useOperator } from "@/features/operators/context/OperatorContext";
 
 export default function NewRental() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  const creationAvailable = canUseLegacyRentalMutations(configuration);
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const localCreation = canUseLegacyRentalMutations(configuration);
+  const remoteCreation = canUseCanonicalRemoteRentalMutations(configuration) && Boolean(commandRepositories.canonicalRental) && hasPermission("rental.manage");
+  const creationAvailable = localCreation || remoteCreation;
+  const remoteSubmission = useRef<{ commandId: string; idempotencyKey: string } | undefined>(undefined);
   const navigate =
     useNavigate();
 
@@ -40,30 +52,24 @@ export default function NewRental() {
       "equipment"
     );
 
-  const {
-    assignments,
-  } = useAssignment();
+  const { assignments: localAssignments } = useAssignment();
+  const localEquipment = useEquipment().equipment;
+  const localOperators = useOperator().operators;
 
+  const { addRental, rentals, rentalEquipmentLines } = useRental();
+
+  const { projects: localProjects } = useProject();
+  const { customers: localCustomers }=useCustomer();
+  const fallbackData = useMemo(() => ({ rentals, rentalEquipmentLines, equipment: localEquipment, assignments: localAssignments, operators: localOperators, projects: localProjects, customers: localCustomers }), [rentals, rentalEquipmentLines, localEquipment, localAssignments, localOperators, localProjects, localCustomers]);
+  const canonicalData = useRentalListData(fallbackData);
+  const { assignments, projects, customers } = canonicalData.data;
   const assignmentLookup = resolveAssignmentRentalLookup(assignmentQuery, assignments);
   const assignment = assignmentLookup.state === "found" ? assignmentLookup.assignment : undefined;
-
-  const initialEquipmentId =
-    assignment?.equipmentId ??
-    equipmentParam ??
-    "";
-
+  const initialEquipmentId = assignment?.equipmentId ?? equipmentParam ?? "";
   const assignmentPrefill = getRentalAssignmentPrefill(assignment);
-
-  const {
-    addRental,
-    rentals,
-  } = useRental();
-
-  const { projects } = useProject();
-  const {customers}=useCustomer();
   const assignmentProjectError = getAssignmentProjectError(assignment, projects);
 
-  function handleSubmit(
+  async function handleSubmit(
     data: RentalFormData
   ) {
     const selectedProject = projects.find((project) => project.id === data.projectId);
@@ -126,6 +132,20 @@ export default function NewRental() {
       
       };
 
+    if (remoteCreation) {
+      if (!isRentalType(data.rentalType)) throw new Error("Select a Rental type.");
+      const identity = remoteSubmission.current ??= { commandId: rentalId, idempotencyKey: crypto.randomUUID() };
+      const result = await commandRepositories.canonicalRental!.createDraft({
+        ...identity, customerId: data.customerId, projectId: data.projectId, dateOut: data.dateOut,
+        expectedReturn: data.expectedReturn || undefined, rentalType: data.rentalType,
+        lines: data.assignmentIds.map((assignmentId) => ({ assignmentId })),
+      });
+      if (!result.success) throw new Error(result.message);
+      requestCanonicalRentalRefresh();
+      navigate(`/rentals/${result.value.rentalId}/commercial-terms`);
+      return;
+    }
+
     const result = addRental(rental, lineInputs);
 
     if (!result.success) {
@@ -146,6 +166,8 @@ export default function NewRental() {
       </div>
     </div>
   );
+  if (remoteCreation && canonicalData.status === "loading") return <div className="p-6">Loading canonical Rental data…</div>;
+  if (remoteCreation && canonicalData.status === "error") return <div className="p-6" role="alert">{canonicalData.message}<button className="ml-3 underline" onClick={canonicalData.retry}>Retry</button></div>;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
@@ -181,6 +203,7 @@ export default function NewRental() {
         initialProjectWarning={assignmentProjectError}
         assignment={assignment}
         initialAssignmentIds={assignment ? [assignment.id] : []}
+        canonicalData={remoteCreation ? { equipment: canonicalData.data.equipment, customers, projects, operators: canonicalData.data.operators, assignments } : undefined}
       />}
 
     </div>

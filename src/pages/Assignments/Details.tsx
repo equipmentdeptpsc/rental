@@ -21,11 +21,14 @@ import { displayAssignmentExpectedReturn, getAssignmentNumber } from "@/features
 import { useActivityCodes } from "@/features/masters/activity-code";
 import AssignmentActivityCodeDisplay from "@/features/assignment/components/AssignmentActivityCodeDisplay";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
-import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function AssignmentDetails() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  const rentalCreationAvailable = canUseLegacyRentalMutations(configuration);
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const rentalCreationAvailable = canUseLegacyRentalMutations(configuration)
+    || (canUseCanonicalRemoteRentalMutations(configuration) && Boolean(commandRepositories.canonicalRental) && hasPermission("rental.manage"));
   const { id } = useParams();
 
   const navigate = useNavigate();

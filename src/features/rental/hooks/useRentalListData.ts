@@ -5,8 +5,10 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
 import type { ProjectRecord } from "@/features/project/types";
+import type { CustomerRecord } from "@/features/customer/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { RentalRecord } from "@/features/rental/types";
+import { subscribeCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 
 export interface RentalListData {
   rentals: RentalRecord[];
@@ -15,6 +17,7 @@ export interface RentalListData {
   assignments: AssignmentRecord[];
   operators: Operator[];
   projects: ProjectRecord[];
+  customers: CustomerRecord[];
 }
 
 export type RentalListLoadState =
@@ -28,7 +31,7 @@ type RentalListInternalState =
   | { status: "error"; data: RentalListData; message: string };
 
 const emptyRemoteData = (): RentalListData => ({
-  rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [],
+  rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [], customers: [],
 });
 
 export function useRentalListData(fallback: RentalListData): RentalListLoadState {
@@ -39,6 +42,8 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
     remote ? { status: "loading", data: emptyRemoteData() } : { status: "loaded", data: fallback },
   );
   const retry = () => setAttempt((value) => value + 1);
+
+  useEffect(() => subscribeCanonicalRentalRefresh(retry), []);
 
   useEffect(() => {
     if (!remote) {
@@ -54,10 +59,11 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
       readRepositories.assignments.list(),
       readRepositories.operators.list(),
       readRepositories.projects.list(),
-    ]).then(([rentals, lines, equipment, assignments, operators, projects]) => {
+      readRepositories.customers.list(),
+    ]).then(([rentals, lines, equipment, assignments, operators, projects, customers]) => {
       if (!active) return;
       if (!rentals.success || !lines.success || !equipment.success
-        || !assignments.success || !operators.success || !projects.success) {
+        || !assignments.success || !operators.success || !projects.success || !customers.success) {
         setState({ status: "error", data: emptyRemoteData(), message: "Canonical Rental data could not be loaded. Retry the request or contact support." });
         return;
       }
@@ -68,6 +74,7 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
         assignments: assignments.value.items,
         operators: operators.value.items,
         projects: projects.value.items,
+        customers: customers.value.items,
       } });
     }).catch(() => {
       if (active) setState({ status: "error", data: emptyRemoteData(), message: "Canonical Rental data could not be loaded. Retry the request or contact support." });

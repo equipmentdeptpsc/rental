@@ -1,0 +1,37 @@
+import { describe, expect, it, vi } from "vitest";
+import { SupabaseCanonicalRentalRepository } from "@/integrations/supabase/SupabaseCanonicalRentalRepository";
+
+function client(responses: unknown[]) {
+  const rpc = vi.fn().mockImplementation(() => Promise.resolve(responses.shift()));
+  return { value: { schema: vi.fn(() => ({ rpc })) }, rpc };
+}
+
+describe("canonical remote Rental repository", () => {
+  it("uses the protected workspace and reference RPCs and maps legitimate empty results", async () => {
+    const remote = client([
+      { data: { success: true, rentalId: "r-1", contracts: [], commercialSnapshots: [] }, error: null },
+      { data: { success: true, costCodes: [], activityCodes: [] }, error: null },
+    ]);
+    const repository = new SupabaseCanonicalRentalRepository(remote.value as never);
+    expect(await repository.readWorkspace("r-1")).toEqual({ success: true, value: { rentalId: "r-1", contracts: [], commercialSnapshots: [] } });
+    expect(await repository.readReferenceData()).toEqual({ success: true, value: { costCodes: [], activityCodes: [] } });
+    expect(remote.rpc).toHaveBeenNthCalledWith(1, "read_canonical_rental_workspace", { target_rental_id: "r-1" });
+    expect(remote.rpc).toHaveBeenNthCalledWith(2, "read_canonical_rental_reference_data", {});
+  });
+
+  it("uses command RPCs, preserves idempotency input, and accepts replayed outcomes", async () => {
+    const response = { success: true, disposition: "REPLAYED", value: { rentalId: "r-1", rentalNumber: "RNT-2026-000001", status: "Draft", approvalStatus: "NotSubmitted", version: 1, lineIds: ["l-1"] } };
+    const remote = client([{ data: response, error: null }]);
+    const repository = new SupabaseCanonicalRentalRepository(remote.value as never);
+    const input = { commandId: "r-1", idempotencyKey: "stable-key", customerId: "c-1", projectId: "p-1", dateOut: "2026-08-22", rentalType: "Operated Rental" as const, lines: [{ assignmentId: "a-1" }] };
+    expect(await repository.createDraft(input)).toEqual(response);
+    expect(remote.rpc).toHaveBeenCalledWith("command_create_draft_rental", { command: input });
+  });
+
+  it("does not expose raw transport errors or fabricate local results", async () => {
+    const remote = client([{ data: null, error: { message: "relation secret_table denied" } }]);
+    const result = await new SupabaseCanonicalRentalRepository(remote.value as never).readReferenceData();
+    expect(result).toEqual({ success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying." });
+    expect(JSON.stringify(result)).not.toContain("secret_table");
+  });
+});

@@ -224,6 +224,9 @@ export interface RentalRecord {
   statusId: string;
 
   status: RentalLifecycleStatus;
+
+  /** Canonical remote optimistic-concurrency token. */
+  rowVersion?: number;
 }
 
 export function isOverdue(

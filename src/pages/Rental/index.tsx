@@ -28,7 +28,8 @@ import { projectRentalCollectionStatus } from "@/features/rental/collections/col
 import { projectActiveRentalEngagements } from "@/features/rental/services/projectActiveRentalEngagements";
 import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 import { filterRentalList } from "@/features/rental/services/filterRentalList";
-import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { useAuth } from "@/features/auth/AuthContext";
 
 type RentalView = "rentals" | "engagements" | "deur-exceptions";
 
@@ -40,8 +41,10 @@ const VIEWS: { id: RentalView; label: string }[] = [
 
 export default function RentalPage() {
   const dependencies = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
   const { billingStatement: billingStatementRepository } = dependencies.repositories;
-  const mutationsAvailable = canUseLegacyRentalMutations(dependencies.configuration);
+  const mutationsAvailable = canUseLegacyRentalMutations(dependencies.configuration)
+    || (canUseCanonicalRemoteRentalMutations(dependencies.configuration) && Boolean(dependencies.commandRepositories.canonicalRental) && hasPermission("rental.manage"));
   const rentalContext = useRental();
   const equipmentContext = useEquipment();
   const assignmentContext = useAssignment();
@@ -54,6 +57,7 @@ export default function RentalPage() {
     assignments: assignmentContext.assignments,
     operators: operatorContext.operators,
     projects: projectContext.projects,
+    customers: [],
   }), [assignmentContext.assignments, equipmentContext.equipment, operatorContext.operators, projectContext.projects, rentalContext.rentalEquipmentLines, rentalContext.rentals]);
   const rentalList = useRentalListData(fallbackListData);
   const { rentals, rentalEquipmentLines, equipment: equipmentRecords, assignments, operators, projects } = rentalList.data;

@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApplicationDependencyProvider, createLocalApplicationDependencies, PersistenceMode, type ApplicationDependencies } from "@/app/composition";
 import { repositoryFailure, repositorySuccess } from "@/core/persistence";
 import { useRentalListData, type RentalListData } from "@/features/rental/hooks/useRentalListData";
-import { canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
 
-const empty: RentalListData = { rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [] };
+const empty: RentalListData = { rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [], customers: [] };
 const fallback: RentalListData = { ...empty, rentals: [{ id: "local-rental", status: "Draft" } as RentalListData["rentals"][number]] };
 const roots: Root[] = [];
 
@@ -45,6 +45,9 @@ describe("Rental remote-mode boundary", () => {
     expect(canUseLegacyRentalMutations(local)).toBe(true);
     expect(canUseLegacyRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: false })).toBe(false);
     expect(canUseLegacyRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: true })).toBe(false);
+    expect(canUseCanonicalRemoteRentalMutations(local)).toBe(false);
+    expect(canUseCanonicalRemoteRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: false })).toBe(false);
+    expect(canUseCanonicalRemoteRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: true })).toBe(true);
   });
 
   it("never exposes local fallback while canonical remote Rental data is loading or fails", async () => {

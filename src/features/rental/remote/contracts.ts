@@ -1,0 +1,40 @@
+import type { RentalBillingMethod, RentalType, TransactionRelationship, VatApplicability } from "@/features/rental/types";
+
+export interface CanonicalRentalContract {
+  id: string; rentalId: string; rentalEquipmentLineId: string; contractNo: string;
+  billingMethod: RentalBillingMethod; currency: string; unitRate: number;
+  minimumBillableHours?: number; overtimeRate?: number; standbyRate?: number;
+  mobilizationFee?: number; demobilizationFee?: number; fuelCharge?: number;
+  operatorIncluded: boolean; operatorRate?: number; contractAmount?: number;
+  taxRate?: number; withholdingTax?: number; transactionRelationship?: TransactionRelationship;
+  vatApplicability?: VatApplicability; remarks?: string; startDate: string;
+  expectedEndDate: string; status: "Draft" | "Active"; rowVersion: number;
+}
+export interface CanonicalCommercialSnapshot extends Omit<CanonicalRentalContract, "contractNo" | "remarks" | "startDate" | "expectedEndDate" | "status" | "rowVersion"> {
+  sourceContractId: string; capturedAt: string;
+}
+export interface CanonicalReferenceCode { id: string; code: string; name: string; active: boolean; sortOrder: number }
+export interface CanonicalRentalWorkspace { rentalId: string; contracts: CanonicalRentalContract[]; commercialSnapshots: CanonicalCommercialSnapshot[] }
+export interface CanonicalRentalReferenceData { costCodes: CanonicalReferenceCode[]; activityCodes: CanonicalReferenceCode[] }
+
+export type CanonicalRentalFailureCode = "UNAUTHENTICATED" | "FORBIDDEN" | "VALIDATION_REJECTED" | "NOT_FOUND" | "MISSING_RELATIONSHIP" | "EQUIPMENT_UNAVAILABLE" | "RENTAL_NUMBER_CONFLICT" | "RENTAL_CONFLICT" | "CONFLICT" | "LINE_SET_MISMATCH" | "INVALID_TRANSITION" | "RELEASE_NOT_READY" | "IDEMPOTENCY_MISMATCH" | "PERSISTENCE_FAILURE" | "TRANSPORT_FAILURE" | "INVALID_RESPONSE";
+export type CanonicalReadResult<T> = { success: true; value: T } | { success: false; code: CanonicalRentalFailureCode; message: string };
+export interface CanonicalCommandValue { rentalId: string; rentalNumber?: string; status: string; approvalStatus?: string; version: number; lineIds?: string[] }
+export type CanonicalCommandResult = { success: true; disposition: "ACCEPTED" | "REPLAYED"; value: CanonicalCommandValue } | { success: false; code: CanonicalRentalFailureCode; message: string; details?: unknown; currentVersion?: number };
+
+export interface CreateCanonicalDraftInput { commandId: string; idempotencyKey: string; customerId: string; projectId: string; dateOut: string; expectedReturn?: string; rentalType: RentalType; lines: { assignmentId: string }[] }
+export interface CanonicalTermsInput { billingMethod: RentalBillingMethod; currency: string; unitRate: number; minimumBillableHours?: number; overtimeRate?: number; standbyRate?: number; mobilizationFee?: number; demobilizationFee?: number; fuelCharge?: number; operatorIncluded: boolean; operatorRate?: number; contractAmount?: number; taxRate?: number; withholdingTax?: number; transactionRelationship?: TransactionRelationship; vatApplicability?: VatApplicability; remarks?: string }
+export interface UpdateCanonicalTermsInput { commandId: string; idempotencyKey: string; rentalId: string; expectedVersion: number; lines: { lineId: string; commercialTerms: CanonicalTermsInput; costCodeId: string; activityCodeId: string; workDescriptionId: string; deurPolicy: Record<string, unknown>; operationalRemarks?: string; shiftWindows?: unknown[]; workDate?: string; meterRequirement?: string }[] }
+export interface CanonicalVersionedInput { commandId: string; idempotencyKey: string; rentalId: string; expectedVersion: number }
+export interface DecideCanonicalApprovalInput extends CanonicalVersionedInput { decision: "Approved" | "Rejected"; remarks?: string }
+
+export interface CanonicalRentalRemoteRepository {
+  readWorkspace(rentalId: string): Promise<CanonicalReadResult<CanonicalRentalWorkspace>>;
+  readReferenceData(): Promise<CanonicalReadResult<CanonicalRentalReferenceData>>;
+  createDraft(input: CreateCanonicalDraftInput): Promise<CanonicalCommandResult>;
+  updateTerms(input: UpdateCanonicalTermsInput): Promise<CanonicalCommandResult>;
+  submitApproval(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
+  decideApproval(input: DecideCanonicalApprovalInput): Promise<CanonicalCommandResult>;
+  reserve(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
+  release(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
+}

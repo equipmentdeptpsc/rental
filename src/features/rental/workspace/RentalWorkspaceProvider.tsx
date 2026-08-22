@@ -26,6 +26,10 @@ import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { collectionRepository } from "@/features/rental/collections/repository";
 import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
 import { projectRentalCollectionStatus } from "@/features/rental/collections/collectionStatusProjection";
+import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
+import { useCanonicalRentalWorkspace } from "@/features/rental/remote/useCanonicalRentalRemoteData";
+import { PersistenceMode } from "@/app/composition";
+import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -46,12 +50,20 @@ export default function RentalWorkspaceProvider({
   rentalId,
   children,
 }: RentalWorkspaceProviderProps) {
-  const { deur: deurRepository, billingStatement: billingStatementRepository } = useApplicationDependenciesCompatibility().repositories;
-  const { rentals, contracts, rentalEquipmentLines } = useRental();
-  const { assignments } = useAssignment();
-  const { equipment: equipmentRecords } = useEquipment();
-  const { operators } = useOperator();
-  const { projects } = useProject();
+  const dependencies = useApplicationDependenciesCompatibility();
+  const { deur: deurRepository, billingStatement: billingStatementRepository } = dependencies.repositories;
+  const localRental = useRental();
+  const localAssignments = useAssignment().assignments;
+  const localEquipment = useEquipment().equipment;
+  const localOperators = useOperator().operators;
+  const localProjects = useProject().projects;
+  const remote = dependencies.configuration.persistenceMode === PersistenceMode.Remote;
+  const fallbackList = useMemo(() => ({ rentals: localRental.rentals, rentalEquipmentLines: localRental.rentalEquipmentLines, assignments: localAssignments, equipment: localEquipment, operators: localOperators, projects: localProjects, customers: [] }), [localRental.rentals, localRental.rentalEquipmentLines, localAssignments, localEquipment, localOperators, localProjects]);
+  const list = useRentalListData(fallbackList);
+  const workspace = useCanonicalRentalWorkspace(rentalId);
+  const rentals = list.data.rentals, rentalEquipmentLines = list.data.rentalEquipmentLines, assignments = list.data.assignments;
+  const equipmentRecords = list.data.equipment, operators = list.data.operators, projects = list.data.projects;
+  const contracts = remote && workspace.status === "loaded" ? workspace.data.contracts as unknown as RentalContractRecord[] : localRental.contracts;
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
 
   useEffect(
@@ -132,6 +144,8 @@ export default function RentalWorkspaceProvider({
     });
   }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository]);
 
+  if (remote && (list.status === "loading" || workspace.status === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
+  if (remote && (list.status === "error" || workspace.status === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); }}>Retry</button></div>;
   if (!aggregate) {
     return (
       <div className="rounded-xl border bg-white p-8">

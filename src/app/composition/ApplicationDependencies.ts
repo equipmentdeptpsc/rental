@@ -35,6 +35,7 @@ import type { OperatorPinCredentialService } from "@/features/auth/services/Oper
 import type { RemoteUserAdministration } from "@/features/users/services/RemoteUserAdministration";
 import type { DeurCommandRepository } from "@/features/rental/deur/commands/contracts";
 import type { OperationalCommandRepositories } from "@/features/rental/operations/commands/contracts";
+import type { CanonicalRentalRemoteRepository } from "@/features/rental/remote/contracts";
 import type {
   OperationalEventRepository,
   OperationalEventStream,
@@ -61,7 +62,7 @@ export interface ApplicationReadRepositories {
   rentalEquipmentLines: ReadOnlyRepository<RentalEquipmentLine>;
   workDescriptions: ReadOnlyRepository<WorkDescriptionRecord>;
 }
-export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository }
+export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository }
 export interface ApplicationChangeNotifications { subscribeDeur(listener: (record: DeurRecord) => void): () => void }
 export interface OperationalSynchronizationDependencies {
   readonly tenantId?: string;

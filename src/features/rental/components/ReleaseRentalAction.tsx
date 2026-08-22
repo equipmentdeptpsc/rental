@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
@@ -7,27 +7,42 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
-import { canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
+import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 
 interface Props {
   rentalId: string;
 }
 
 export default function ReleaseRentalAction({ rentalId }: Props) {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  const mutationsAvailable = canUseLegacyRentalMutations(configuration);
-  const { user } = useAuth();
+  const dependencies = useApplicationDependenciesCompatibility();
+  const { configuration } = dependencies;
+  const legacyMutations = canUseLegacyRentalMutations(configuration);
+  const canonicalMutations = canUseCanonicalRemoteRentalMutations(configuration) && Boolean(dependencies.commandRepositories.canonicalRental);
+  const mutationsAvailable = legacyMutations || canonicalMutations;
+  const { user, hasPermission } = useAuth();
   const { releaseRental } = useRental();
   const { showToast } = useToast();
   const location = useLocation();
   const adminUsers = useMemo(() => user ? [user] : [], [user]);
   const [releasedById, setReleasedById] = useState("");
+  const [pending, setPending] = useState(false);
+  const identity = useRef<{ commandId: string; idempotencyKey: string } | undefined>(undefined);
 
   useEffect(() => {
     setReleasedById(adminUsers[0]?.id ?? "");
   }, [adminUsers]);
 
   if (!mutationsAvailable) return null;
+  if (canonicalMutations) return hasPermission("rental.release") ? <Button variant="secondary" disabled={pending} onClick={async () => {
+    if (pending) return; setPending(true);
+    const rental = await dependencies.readRepositories.rentals.getById(rentalId);
+    if (!rental.success || !rental.value || typeof rental.value.rowVersion !== "number") { showToast("Canonical Rental version is unavailable. Refresh and try again.", "error"); setPending(false); return; }
+    const commandIdentity = identity.current ??= { commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() };
+    const result = await dependencies.commandRepositories.canonicalRental!.release({ ...commandIdentity, rentalId, expectedVersion: rental.value.rowVersion });
+    if (result.success) { identity.current = undefined; requestCanonicalRentalRefresh(); }
+    showToast(result.success ? "Equipment released successfully." : result.message, result.success ? "success" : "error"); setPending(false);
+  }}>{pending ? "Releasing…" : "Release"}</Button> : null;
 
   if (adminUsers.length === 0) {
     return (

@@ -16,11 +16,14 @@ import { getEquipmentCostCodeDisplay } from "@/features/equipment/utils/equipmen
 import { presentEquipmentStatus } from "@/features/equipment/utils/equipmentStatusPresentation";
 import { validateEquipmentAssignment } from "@/features/assignment/utils/assignmentValidation";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
-import { canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function EquipmentDetails() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  const rentalCreationAvailable = canUseLegacyRentalMutations(configuration);
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const rentalCreationAvailable = canUseLegacyRentalMutations(configuration)
+    || (canUseCanonicalRemoteRentalMutations(configuration) && Boolean(commandRepositories.canonicalRental) && hasPermission("rental.manage"));
   const { id } = useParams();
 
   const { getEquipment } =

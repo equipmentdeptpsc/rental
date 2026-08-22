@@ -23,6 +23,10 @@ import { useActivityCodes } from "@/features/masters/activity-code";
 import { createRentalOperationalMetadataSnapshot } from "@/features/rental/services/createRentalOperationalMetadataSnapshot";
 import RentalOperationalMetadataCard from "./RentalOperationalMetadataCard";
 import { getAssignmentDisplayName, getAssignmentNumber } from "@/features/assignment/utils/assignmentDisplay";
+import type { EquipmentRecord } from "@/features/equipment/types";
+import type { CustomerRecord } from "@/features/customer/types";
+import type { ProjectRecord } from "@/features/project/types";
+import type { Operator } from "@/features/operators/types";
 
 export interface RentalFormData {
   equipmentId: string;
@@ -59,6 +63,7 @@ interface Props {
 
   assignment?: AssignmentRecord;
   initialAssignmentIds?: string[];
+  canonicalData?: { equipment: EquipmentRecord[]; customers: CustomerRecord[]; projects: ProjectRecord[]; operators: Operator[]; assignments: AssignmentRecord[] };
 }
 
 export const EXPECTED_RETURN_GUIDANCE = "Leave blank for an open-ended rental. The rental remains active until the equipment is formally returned.";
@@ -82,17 +87,23 @@ export default function RentalForm({
   initialProjectWarning,
   assignment,
   initialAssignmentIds = [],
+  canonicalData,
 }: Props) {
   const submission=useFormSubmission("Rental",onSubmit);
-  const { equipment } =
+  const { equipment: localEquipment } =
     useEquipment();
 
-  const { customers } =
+  const { customers: localCustomers } =
     useCustomer();
 
-  const { projects } = useProject();
-  const { operators } = useOperator();
-  const { assignments } = useAssignment();
+  const { projects: localProjects } = useProject();
+  const { operators: localOperators } = useOperator();
+  const { assignments: localAssignments } = useAssignment();
+  const equipment = canonicalData?.equipment ?? localEquipment;
+  const customers = canonicalData?.customers ?? localCustomers;
+  const projects = canonicalData?.projects ?? localProjects;
+  const operators = canonicalData?.operators ?? localOperators;
+  const assignments = canonicalData?.assignments ?? localAssignments;
   const { costCodes } = useCostCodes();
   const { records: activityCodes } = useActivityCodes();
 

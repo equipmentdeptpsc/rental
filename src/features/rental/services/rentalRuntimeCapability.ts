@@ -8,3 +8,7 @@ export const REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE =
 export function canUseLegacyRentalMutations(configuration: RentalRuntimeConfiguration): boolean {
   return configuration.persistenceMode === PersistenceMode.Local;
 }
+
+export function canUseCanonicalRemoteRentalMutations(configuration: RentalRuntimeConfiguration): boolean {
+  return configuration.persistenceMode === PersistenceMode.Remote && configuration.remoteOperationalWritesEnabled;
+}
