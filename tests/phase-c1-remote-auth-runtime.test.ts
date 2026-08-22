@@ -57,7 +57,7 @@ describe("Phase C1 remote authentication runtime", () => {
     await act(async () => root!.render(createElement(ApplicationDependencyProvider, { dependencies }, createElement(AuthProvider, null, createElement(Probe)))));
     let result;
     await act(async () => { result = await auth?.login({ username: "disabled@example.com", password: "secret" }); });
-    expect(result).toMatchObject({ success: false, reason: "INACTIVE_USER" });
+    expect(result).toMatchObject({ success: false, reason: "INVALID_CREDENTIALS", message: "Invalid username/email or password." });
     expect(auth?.isAuthenticated).toBe(false);
   });
 });

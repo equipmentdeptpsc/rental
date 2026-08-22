@@ -9,9 +9,23 @@ export class SupabaseAuthenticationProvider implements RemoteAuthenticationProvi
   constructor(private readonly client: SupabaseClient, private readonly users: ReadOnlyRepository<User>) {}
 
   async login(credentials: { username: string; password: string }): Promise<RepositoryResult<RemoteAuthenticatedIdentity>> {
-    const response = await this.client.auth.signInWithPassword({ email: credentials.username, password: credentials.password });
-    if (response.error || !response.data.session) return authFailure(response.error, "SUPABASE_LOGIN_FAILED");
-    return this.resolveIdentity(response.data.session) as Promise<RepositoryResult<RemoteAuthenticatedIdentity>>;
+    const identifier=credentials.username.trim();
+    let session:Session|undefined;
+    if(isEmail(identifier)){
+      const response=await this.client.auth.signInWithPassword({email:identifier,password:credentials.password});
+      if(response.error||!response.data.session)return interactiveAuthFailure();
+      session=response.data.session;
+    }else{
+      const response=await fetch("/api/auth/username-login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({identifier,password:credentials.password})}).catch(()=>null);
+      const payload=response?await response.json().catch(()=>null) as {success?:boolean;session?:{accessToken?:unknown;refreshToken?:unknown}}|null:null;
+      if(!response?.ok||payload?.success!==true||typeof payload.session?.accessToken!=="string"||typeof payload.session.refreshToken!=="string")return interactiveAuthFailure();
+      const installed=await this.client.auth.setSession({access_token:payload.session.accessToken,refresh_token:payload.session.refreshToken});
+      if(installed.error||!installed.data.session)return interactiveAuthFailure();
+      session=installed.data.session;
+    }
+    const resolved=await this.resolveIdentity(session);
+    if(!resolved.success||!resolved.value){await this.client.auth.signOut();return interactiveAuthFailure();}
+    return resolved as RepositoryResult<RemoteAuthenticatedIdentity>;
   }
   async logout(): Promise<RepositoryResult<void>> {
     const response = await this.client.auth.signOut();
@@ -50,6 +64,10 @@ export class SupabaseAuthenticationProvider implements RemoteAuthenticationProvi
       permissions,
     });
   }
+}
+function isEmail(identifier:string):boolean{return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)}
+function interactiveAuthFailure<T>():RepositoryResult<T>{
+  return repositoryFailure("REMOTE_AUTHORIZATION_DENIED","Invalid username/email or password.",{recoverability:"USER_ACTION_REQUIRED",recommendedAction:"Verify the supplied credentials."});
 }
 function authFailure<T>(error: { message?: string; status?: number } | null, code: string): RepositoryResult<T> {
   const authorization = error?.status === 401 || error?.status === 403;

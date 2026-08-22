@@ -1,4 +1,5 @@
 export interface WorkerAssetsBinding { fetch(request: Request): Promise<Response> }
+export interface RateLimitBinding { limit(input:{key:string}):Promise<{success:boolean}> }
 
 export interface GroupedReviewWorkerEnvironment {
   ASSETS: WorkerAssetsBinding;
@@ -14,6 +15,10 @@ export interface GroupedReviewWorkerEnvironment {
   NOTIFICATION_JOB_CRON?: string;
   NOTIFICATION_WORKER_BATCH_LIMIT?: string;
   SCHEDULER_BATCH_LIMIT?: string;
+  USERNAME_LOGIN_NETWORK_BURST?: RateLimitBinding;
+  USERNAME_LOGIN_NETWORK_SUSTAINED?: RateLimitBinding;
+  USERNAME_LOGIN_IDENTIFIER_BURST?: RateLimitBinding;
+  USERNAME_LOGIN_IDENTIFIER_SUSTAINED?: RateLimitBinding;
 }
 
 export type ScheduledJob = "DAILY_GROUPED_REVIEW_SCHEDULER" | "NOTIFICATION_RETRY_WORKER";

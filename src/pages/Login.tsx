@@ -55,7 +55,7 @@ export default function Login() {
       >
         <h1 className="text-2xl font-bold text-slate-800">Equipment System Login</h1>
         <label className="block text-sm font-medium text-slate-700">
-          {operatorPinMode ? "Operator Code / Employee ID" : remote ? "Email" : "Username"}
+          {operatorPinMode ? "Operator Code / Employee ID" : remote ? "Email or Username" : "Username"}
           <input
             autoComplete={operatorPinMode ? "off" : "username"}
             className="mt-1 w-full rounded border px-3 py-2 text-sm"

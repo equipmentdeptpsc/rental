@@ -25,7 +25,13 @@
       },
       "triggers": {
         "crons": []
-      }
+      },
+      "ratelimits": [
+        { "name": "USERNAME_LOGIN_NETWORK_BURST", "namespace_id": "220001", "simple": { "limit": 5, "period": 10 } },
+        { "name": "USERNAME_LOGIN_NETWORK_SUSTAINED", "namespace_id": "220002", "simple": { "limit": 30, "period": 60 } },
+        { "name": "USERNAME_LOGIN_IDENTIFIER_BURST", "namespace_id": "220003", "simple": { "limit": 3, "period": 10 } },
+        { "name": "USERNAME_LOGIN_IDENTIFIER_SUSTAINED", "namespace_id": "220004", "simple": { "limit": 10, "period": 60 } }
+      ]
     }
   }
 }

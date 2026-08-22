@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { success: false, reason: "INVALID_CREDENTIALS", message: "Enter a valid email and password." };
           }
           const remote = await authentication.remoteAuthenticationProvider.login({ username: payload.username, password: payload.password });
-          if (!remote.success) return { success: false, reason: remote.error.code === "REMOTE_USER_UNAVAILABLE" ? "INACTIVE_USER" : "INVALID_CREDENTIALS", message: remote.error.message };
+          if (!remote.success) return { success: false, reason: "INVALID_CREDENTIALS", message: "Invalid username/email or password." };
           authentication.legacyCompatibilityRepository.clear();
           setUser(adaptDomainUser(remote.value.user));
           setSession(remote.value.session);
