@@ -1,12 +1,14 @@
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { RentalRecord } from "@/features/rental/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
+import type { Permission } from "@/features/auth/domain/permission";
 
 export interface DashboardActionItem {
   id: string;
   title: string;
   description: string;
   href: string;
+  permission: Permission;
   tone: "warning" | "danger" | "info";
   count?: number;
 }
@@ -39,6 +41,7 @@ export function buildDashboardActionQueue(input: {
       title: "DEUR in progress",
       description: "Daily operational evidence still being recorded.",
       href: "/rentals?view=deur-exceptions",
+      permission: "rental.read",
       tone: "warning",
       count: missingDeur,
     });
@@ -49,6 +52,7 @@ export function buildDashboardActionQueue(input: {
       title: "DEUR corrections requested",
       description: "Customer or manager requested a correction.",
       href: "/rentals?view=deur-exceptions",
+      permission: "rental.read",
       tone: "danger",
       count: rejectedDeur,
     });
@@ -59,6 +63,7 @@ export function buildDashboardActionQueue(input: {
       title: "DEUR awaiting acknowledgement",
       description: "Submitted DEURs need customer or manager review.",
       href: "/rentals?view=deur-exceptions",
+      permission: "rental.read",
       tone: "info",
       count: pendingReview,
     });
@@ -69,6 +74,7 @@ export function buildDashboardActionQueue(input: {
       title: "Manager approvals pending",
       description: "Rentals waiting for release authorization.",
       href: "/rentals",
+      permission: "rental.read",
       tone: "warning",
       count: input.pendingManagerApprovals,
     });
@@ -79,6 +85,7 @@ export function buildDashboardActionQueue(input: {
       title: "Customer acknowledgements pending",
       description: "Review requests sent and awaiting response.",
       href: "/rentals?view=deur-exceptions",
+      permission: "rental.read",
       tone: "info",
       count: input.pendingCustomerAcknowledgements,
     });
@@ -89,6 +96,7 @@ export function buildDashboardActionQueue(input: {
       title: "Expected returns",
       description: "Equipment scheduled to return soon.",
       href: "/rentals",
+      permission: "rental.read",
       tone: "info",
       count: input.expectedReturns,
     });

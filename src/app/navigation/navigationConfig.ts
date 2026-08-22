@@ -57,16 +57,18 @@ export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
 export function getVisibleNavigation(
   user: User | null | undefined,
   authorization: AuthorizationService,
+  hasPermission: (permission: Permission) => boolean = (permission) =>
+    authorization.hasPermission(user, permission),
 ): readonly NavigationGroup[] {
   if (authorization.isOperatorPersona(user)) {
-    return authorization.hasPermission(user, "deur.read")
+    return hasPermission("deur.read")
       ? [{ title: "OPERATIONS", items: [{ icon: "operators", label: "My Shift", path: "/operator", permission: "deur.read" }] }]
       : [];
   }
   const groups = APP_NAVIGATION_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) =>
-      authorization.hasPermission(user, item.permission),
+      hasPermission(item.permission),
     ),
   })).filter((group) => group.items.length > 0);
   return groups;

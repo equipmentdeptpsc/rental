@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
+import DashboardActionQueue from "@/features/dashboard/components/DashboardActionQueue";
 import { buildDashboardActionQueue } from "@/features/dashboard/services/dashboardActionQueue";
 import { buildRentalWorkflowSteps, workflowBannerTone } from "@/features/rental/workspace/presentation/rentalWorkflowPresentation";
 
@@ -17,6 +21,21 @@ describe("UX presentation helpers", () => {
     expect(items.some((item) => item.id === "deur-missing")).toBe(true);
     expect(items.some((item) => item.id === "manager-approval")).toBe(true);
     expect(items.some((item) => item.id === "expected-returns")).toBe(true);
+    expect(items.every((item) => item.permission === "rental.read")).toBe(true);
+
+    const denied = renderToStaticMarkup(createElement(
+      MemoryRouter,
+      null,
+      createElement(DashboardActionQueue, { items, hasPermission: () => false }),
+    ));
+    expect(denied).not.toContain('href="/rentals');
+
+    const allowed = renderToStaticMarkup(createElement(
+      MemoryRouter,
+      null,
+      createElement(DashboardActionQueue, { items, hasPermission: (permission) => permission === "rental.read" }),
+    ));
+    expect(allowed).toContain('href="/rentals');
   });
 
   it("maps rental workflow stages to stepper and banner tones", () => {

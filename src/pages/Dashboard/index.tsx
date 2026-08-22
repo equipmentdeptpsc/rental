@@ -7,6 +7,7 @@ import EquipmentStatusChart from "@/features/dashboard/components/equipment-stat
 import DashboardActionQueue from "@/features/dashboard/components/DashboardActionQueue";
 import KpiCard from "@/components/ui/KpiCard";
 import { useDashboardViewModel } from "@/features/dashboard/hooks/useDashboardViewModel";
+import { useAuth } from "@/features/auth/AuthContext";
 
 const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 const dateTime = new Intl.DateTimeFormat("en-PH", { dateStyle: "short", timeStyle: "short" });
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [updatedAt, setUpdatedAt] = useState(() => new Date());
   const model = useDashboardViewModel(refreshKey);
+  const { hasPermission } = useAuth();
   const { operational, financial } = model;
   const refresh = () => { setRefreshKey((value) => value + 1); setUpdatedAt(new Date()); };
 
@@ -38,11 +40,11 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <DashboardActionQueue items={model.actionQueue} />
+        <DashboardActionQueue items={model.actionQueue} hasPermission={hasPermission} />
         <div className="grid gap-4">
           <Panel title="Revenue">
             <MetricRows rows={[["Billed", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)], ["Outstanding", currency.format(financial.revenue.outstanding)]]} />
-            <Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>
+            {hasPermission("billing.read") && <Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>}
           </Panel>
           <Panel title="Upcoming">
             <div className="grid grid-cols-[1fr_auto] items-center gap-4">
@@ -64,11 +66,11 @@ export default function Dashboard() {
           <MetricRows rows={[["Total Equipment", model.fleetUtilization.total], ["Available", model.fleetUtilization.available], ["Assigned", model.fleetUtilization.assigned], ["Deployed", model.fleetUtilization.deployed], ["Maintenance", model.fleetUtilization.maintenance]]} />
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Fleet utilization" aria-valuemin={0} aria-valuemax={100} aria-valuenow={model.utilizationRate}><div className="h-full rounded-full bg-blue-600 transition-[width]" style={{ width: `${model.utilizationRate}%` }} /></div>
         </Panel>
-        <Panel title="Recent Activity" action={<Link to="/audit-trail">View all</Link>}>
+        <Panel title="Recent Activity" action={hasPermission("users.manage") ? <Link to="/audit-trail">View all</Link> : undefined}>
           <div className="space-y-3">{model.activity.length ? model.activity.map((item) => <div key={item.id} className="flex gap-3 text-xs"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.kind === "rental" ? "bg-purple-500" : "bg-blue-500"}`} /><div className="min-w-0 flex-1"><strong className="block truncate capitalize">{item.title}</strong><span className="block truncate text-slate-500">{item.description}</span></div><time className="shrink-0 text-slate-500">{time.format(new Date(item.timestamp))}</time></div>) : <Empty />}</div>
         </Panel>
-        <Panel title="Recent Equipment Activity" action={<Link to="/equipment">View all</Link>}>
-          <div className="overflow-x-auto"><table className="w-full min-w-[430px] text-left text-[11px]"><thead><tr className="border-b border-slate-200 dark:border-slate-700"><th className="py-2">Equipment</th><th>Activity</th><th>By</th><th>At</th></tr></thead><tbody>{model.recentEquipmentActivity.map((item) => <tr key={item.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800"><td className="py-2.5"><Link className="font-medium text-blue-600" to={`/equipment/${item.equipmentId}`}>{item.equipment?.assetNo ?? "Unknown"}</Link></td><td>{item.title}</td><td>{item.actor}</td><td>{time.format(new Date(item.timestamp))}</td></tr>)}</tbody></table>{!model.recentEquipmentActivity.length && <Empty />}</div>
+        <Panel title="Recent Equipment Activity" action={hasPermission("equipment.read") ? <Link to="/equipment">View all</Link> : undefined}>
+          <div className="overflow-x-auto"><table className="w-full min-w-[430px] text-left text-[11px]"><thead><tr className="border-b border-slate-200 dark:border-slate-700"><th className="py-2">Equipment</th><th>Activity</th><th>By</th><th>At</th></tr></thead><tbody>{model.recentEquipmentActivity.map((item) => <tr key={item.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800"><td className="py-2.5">{hasPermission("equipment.read") ? <Link className="font-medium text-blue-600" to={`/equipment/${item.equipmentId}`}>{item.equipment?.assetNo ?? "Unknown"}</Link> : <span className="font-medium">{item.equipment?.assetNo ?? "Unknown"}</span>}</td><td>{item.title}</td><td>{item.actor}</td><td>{time.format(new Date(item.timestamp))}</td></tr>)}</tbody></table>{!model.recentEquipmentActivity.length && <Empty />}</div>
         </Panel>
       </div>
 

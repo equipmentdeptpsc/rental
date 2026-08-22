@@ -93,6 +93,32 @@ describe("permission-aware navigation", () => {
     expect(labels("finance")).not.toContain("Settings");
   });
 
+  it("uses the authenticated effective permission set instead of static role permissions", () => {
+    const finance = user("finance");
+    const granted = new Set(["billing.read"]);
+    const visible = getVisibleNavigation(
+      finance,
+      authorization,
+      (permission) => granted.has(permission),
+    ).flatMap((group) => group.items.map((item) => item.label));
+    expect(visible).toEqual(["Billing"]);
+
+    const administrator = user("system-administrator");
+    expect(getVisibleNavigation(
+      administrator,
+      authorization,
+      (permission) => permission === "dashboard.read",
+    ).flatMap((group) => group.items.map((item) => item.label))).toEqual(["Dashboard"]);
+  });
+
+  it("applies the same effective permission check to Operator navigation", () => {
+    const scoped = new AuthorizationService({ getById: (id) => ({ id, status: "Active" }) });
+    const linked = { ...user("rental-operations"), operatorId: "operator-1" };
+    expect(getVisibleNavigation(linked, scoped, () => false)).toEqual([]);
+    expect(getVisibleNavigation(linked, scoped, (permission) => permission === "deur.read")
+      .flatMap((group) => group.items.map((item) => item.label))).toEqual(["My Shift"]);
+  });
+
   it("shows operational modules to Rental Operations without Settings", () => {
     expect(labels("rental-operations")).toContain("Maintenance");
     expect(labels("rental-operations")).toContain("Billing");

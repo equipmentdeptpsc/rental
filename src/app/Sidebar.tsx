@@ -12,9 +12,9 @@ const icons: Readonly<Record<NavigationItem["icon"], LucideIcon>> = {
 };
 
 export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }: { collapsed: boolean; mobileOpen: boolean; onToggle(): void; onNavigate(): void }) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { authentication } = useApplicationDependenciesCompatibility();
-  const visibleGroups = getVisibleNavigation(user, authentication.authorizationService);
+  const visibleGroups = getVisibleNavigation(user, authentication.authorizationService, hasPermission);
   const operationsItems = visibleGroups.filter((group) => group.title === "GENERAL" || group.title === "OPERATIONS").flatMap((group) => group.items);
   const groups = operationsItems.length
     ? [{ title: "OPERATIONS", items: operationsItems }, ...visibleGroups.filter((group) => group.title !== "GENERAL" && group.title !== "OPERATIONS")]
