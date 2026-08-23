@@ -18,6 +18,8 @@ import { ApplicationDependencyProvider, createLocalApplicationDependencies, Pers
 import { repositoryFailure, repositorySuccess } from "@/core/persistence";
 import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
 import { getOperatorRuntimeCapability } from "@/features/operators/services/operatorRuntimeCapability";
+import { requestCanonicalOperatorRefresh } from "@/features/operators/remote/canonicalOperatorRefresh";
+import type { Operator } from "@/features/operators/types";
 import { getProjectRuntimeCapability } from "@/features/project/services/projectRuntimeCapability";
 import EquipmentPage from "@/pages/Equipment";
 import EquipmentDetails from "@/pages/Equipment/Details";
@@ -80,6 +82,15 @@ describe("remote canonical Operator boundary", () => {
     expect((await render(createElement(NewOperator), remoteDependencies(), "/operators/new")).textContent).toContain("Changes unavailable");
     expect((await render(createElement(EditOperator), remoteDependencies(), "/operators/edit/local-operator")).textContent).toContain("Changes unavailable");
     expect(local.addOperator).not.toHaveBeenCalled(); expect(local.updateOperator).not.toHaveBeenCalled(); expect(local.deleteOperator).not.toHaveBeenCalled();
+  });
+  it("re-reads the canonical list after a successful create refresh", async () => {
+    const dependencies = remoteDependencies(); let items: Operator[] = [];
+    dependencies.readRepositories.operators.list = vi.fn(async () => repositorySuccess({ items, nextCursor: undefined }));
+    const container = await render(createElement(OperatorsPage), dependencies);
+    expect(container.textContent).toContain("No canonical Operators found.");
+    items = [{ id: "canonical-operator", name: "New Canonical Operator", email: "", licenseNumber: "", status: "Active", certificationType: "None", joinedDate: "2026-08-23" }];
+    await act(async () => { requestCanonicalOperatorRefresh(); await Promise.resolve(); });
+    expect(container.textContent).toContain("New Canonical Operator"); expect(container.textContent).toContain("Active"); expect(container.textContent).not.toContain("Juan Pedro");
   });
 });
 

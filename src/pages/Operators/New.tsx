@@ -7,10 +7,14 @@ import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getOperatorRuntimeCapability, REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/operators/services/operatorRuntimeCapability";
 import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
+import RemoteOperatorForm from "@/features/operators/components/RemoteOperatorForm";
 
 export default function NewOperator() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  return getOperatorRuntimeCapability(configuration).legacyMutations ? <LocalNewOperator /> : <RemoteMutationUnavailable title="New Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const capability = getOperatorRuntimeCapability(configuration, Boolean(commandRepositories.canonicalOperator));
+  if (capability.canonicalMutations && hasPermission("operator.manage")) return <RemoteOperatorForm />;
+  return capability.legacyMutations ? <LocalNewOperator /> : <RemoteMutationUnavailable title="New Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 
 function LocalNewOperator() {

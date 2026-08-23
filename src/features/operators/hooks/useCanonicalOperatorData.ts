@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { subscribeCanonicalOperatorRefresh } from "@/features/operators/remote/canonicalOperatorRefresh";
 
 export interface CanonicalOperatorProjection {
   id: string;
@@ -21,6 +22,7 @@ export function useCanonicalOperatorData() {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ status: "loading", items: [] });
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  useEffect(() => subscribeCanonicalOperatorRefresh(retry), [retry]);
   useEffect(() => {
     let active = true;
     setState({ status: "loading", items: [] });
