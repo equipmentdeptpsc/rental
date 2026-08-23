@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { subscribeCanonicalProjectRefresh } from "@/features/project/remote/canonicalProjectRefresh";
 
 export interface CanonicalProjectProjection {
   id: string;
@@ -20,6 +21,7 @@ export function useCanonicalProjectData() {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ status: "loading", items: [] });
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  useEffect(() => subscribeCanonicalProjectRefresh(retry), [retry]);
   useEffect(() => {
     let active = true;
     setState({ status: "loading", items: [] });

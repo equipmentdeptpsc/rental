@@ -9,6 +9,7 @@ const local = vi.hoisted(() => ({
   projects: [{ id: "local-project", projectCode: "LOCAL", projectName: "Local Project", status: "Active" }],
   deleteEquipment: vi.fn(), deleteOperator: vi.fn(), addEquipment: vi.fn(), updateEquipment: vi.fn(), addOperator: vi.fn(), updateOperator: vi.fn(), addProject: vi.fn(), updateProject: vi.fn(),
 }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: () => true }) }));
 vi.mock("@/features/equipment/context/EquipmentContext", () => ({ useEquipment: () => ({ equipment: local.equipment, getEquipment: (id: string) => local.equipment.find((item) => item.id === id), deleteEquipment: local.deleteEquipment, addEquipment: local.addEquipment, updateEquipment: local.updateEquipment }) }));
 vi.mock("@/features/operators/context/OperatorContext", () => ({ useOperator: () => ({ operators: local.operators, deleteOperator: local.deleteOperator, addOperator: local.addOperator, updateOperator: local.updateOperator }) }));
 vi.mock("@/features/project/context/ProjectContext", () => ({ useProject: () => ({ projects: local.projects, addProject: local.addProject, updateProject: local.updateProject }) }));
@@ -98,8 +99,8 @@ describe("master-data runtime capabilities", () => {
   it("preserves local reads/mutations and makes remote reads canonical-only", () => {
     const localConfiguration = createLocalApplicationDependencies().configuration;
     for (const capability of [getEquipmentRuntimeCapability, getOperatorRuntimeCapability, getProjectRuntimeCapability]) {
-      expect(capability(localConfiguration)).toEqual({ canonicalReads: false, legacyReads: true, legacyMutations: true });
-      expect(capability({ ...localConfiguration, persistenceMode: PersistenceMode.Remote })).toEqual({ canonicalReads: true, legacyReads: false, legacyMutations: false });
+      expect(capability(localConfiguration)).toMatchObject({ canonicalReads: false, legacyReads: true, legacyMutations: true });
+      expect(capability({ ...localConfiguration, persistenceMode: PersistenceMode.Remote })).toMatchObject({ canonicalReads: true, legacyReads: false, legacyMutations: false });
     }
   });
 });

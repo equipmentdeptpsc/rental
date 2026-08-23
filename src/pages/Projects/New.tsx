@@ -7,10 +7,15 @@ import { useCustomer } from "@/features/customer/context/CustomerContext";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getProjectRuntimeCapability, REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/project/services/projectRuntimeCapability";
 import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
+import RemoteProjectForm from "@/features/project/components/RemoteProjectForm";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function NewProject() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  return getProjectRuntimeCapability(configuration).legacyMutations ? <LocalNewProject /> : <RemoteMutationUnavailable title="New Project" message={REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE} />;
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const capability = getProjectRuntimeCapability(configuration, Boolean(commandRepositories.canonicalProject));
+  if (capability.canonicalMutations && hasPermission("project.manage")) return <RemoteProjectForm />;
+  return capability.legacyMutations ? <LocalNewProject /> : <RemoteMutationUnavailable title="New Project" message={REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 
 function LocalNewProject() {

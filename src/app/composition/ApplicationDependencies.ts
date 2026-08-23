@@ -37,6 +37,7 @@ import type { DeurCommandRepository } from "@/features/rental/deur/commands/cont
 import type { OperationalCommandRepositories } from "@/features/rental/operations/commands/contracts";
 import type { CanonicalRentalRemoteRepository } from "@/features/rental/remote/contracts";
 import type { AssignmentCommandRepository } from "@/features/assignment/commands/contracts";
+import type { ProjectCommandRepository } from "@/features/project/commands/contracts";
 import type {
   OperationalEventRepository,
   OperationalEventStream,
@@ -63,7 +64,7 @@ export interface ApplicationReadRepositories {
   rentalEquipmentLines: ReadOnlyRepository<RentalEquipmentLine>;
   workDescriptions: ReadOnlyRepository<WorkDescriptionRecord>;
 }
-export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository }
+export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository }
 export interface ApplicationChangeNotifications { subscribeDeur(listener: (record: DeurRecord) => void): () => void }
 export interface OperationalSynchronizationDependencies {
   readonly tenantId?: string;
