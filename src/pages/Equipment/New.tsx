@@ -13,10 +13,15 @@ import { buildManualEquipmentRecord } from "@/features/equipment/services/manual
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getEquipmentRuntimeCapability, REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/equipment/services/equipmentRuntimeCapability";
 import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
+import { useAuth } from "@/features/auth/AuthContext";
+import RemoteEquipmentForm from "@/features/equipment/components/RemoteEquipmentForm";
 
 export default function NewEquipment() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  return getEquipmentRuntimeCapability(configuration).legacyMutations ? <LocalNewEquipment /> : <RemoteMutationUnavailable title="New Equipment" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const capability = getEquipmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalEquipment));
+  if (capability.canonicalMutations && hasPermission("equipment.create")) return <RemoteEquipmentForm />;
+  return capability.legacyMutations ? <LocalNewEquipment /> : <RemoteMutationUnavailable title="New Equipment" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 
 function LocalNewEquipment() {

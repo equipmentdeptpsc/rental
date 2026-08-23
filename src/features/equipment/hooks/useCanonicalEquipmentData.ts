@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { subscribeCanonicalEquipmentRefresh } from "@/features/equipment/remote/canonicalEquipmentRefresh";
 
 export interface CanonicalEquipmentProjection {
   id: string;
@@ -31,6 +32,7 @@ export function useCanonicalEquipmentData() {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ status: "loading", items: [] });
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  useEffect(() => subscribeCanonicalEquipmentRefresh(retry), [retry]);
 
   useEffect(() => {
     let active = true;

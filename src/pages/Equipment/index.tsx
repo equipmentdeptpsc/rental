@@ -15,6 +15,7 @@ import { filterEquipmentList, type EquipmentStatusFilter } from "@/features/equi
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
 import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonicalEquipmentData";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function EquipmentPage() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -22,13 +23,16 @@ export default function EquipmentPage() {
 }
 
 function CanonicalEquipmentPage() {
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
   const data = useCanonicalEquipmentData();
   if (data.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Equipment…</div>;
   if (data.status === "error") return <div className="p-8" role="alert">{data.message}<button className="ml-3 underline" onClick={data.retry}>Retry</button></div>;
   const visible = data.items.filter((item) => item.active && !item.deleted);
   const counts = new Map<string, number>();
   for (const item of visible) counts.set(item.statusLabel ?? "Unavailable", (counts.get(item.statusLabel ?? "Unavailable") ?? 0) + 1);
-  return <div className="app-page"><PageHeader title="Equipment" description="Canonical company equipment. Remote changes are unavailable." />
+  const canCreate = getEquipmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalEquipment)).canonicalMutations && hasPermission("equipment.create");
+  return <div className="app-page"><PageHeader title="Equipment" description="Canonical company equipment." actions={canCreate ? <Link to="/equipment/new"><Button>Add Equipment</Button></Link> : undefined} />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><div className="app-card p-4"><p className="text-xs text-slate-500">All</p><strong className="mt-1 block text-2xl">{visible.length}</strong></div>{[...counts].slice(0, 4).map(([label, value]) => <div className="app-card p-4" key={label}><p className="text-xs text-slate-500">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}</div>
     {!visible.length ? <div className="app-card p-8 text-center text-slate-500">No canonical Equipment found.</div> : <ResponsiveEquipmentTable items={visible} />}
   </div>;
