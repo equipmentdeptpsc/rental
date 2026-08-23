@@ -22,8 +22,11 @@ export interface EquipmentCreationProjection {
 
 export interface EquipmentCostCodeReference { id: string; code: string; name: string; active: true; sortOrder: number; }
 export interface EquipmentReferenceData { costCodes: EquipmentCostCodeReference[]; }
+export type EquipmentReferenceDataResult =
+  | ({ success: true } & EquipmentReferenceData)
+  | { success: false; code: "TRANSPORT_FAILURE" | "INVALID_RESPONSE"; message: string; retryable: boolean };
 
 export interface EquipmentCommandRepository {
-  readReferenceData(): Promise<OperationalCommandResult<EquipmentReferenceData>>;
+  readReferenceData(): Promise<EquipmentReferenceDataResult>;
   createEquipment(command: CreateEquipmentCommand): Promise<OperationalCommandResult<EquipmentCreationProjection>>;
 }
