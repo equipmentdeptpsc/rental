@@ -5,8 +5,26 @@ import ResponsiveTable from "@/components/ui/ResponsiveTable";
 
 import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useState } from "react";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { useCanonicalOperatorData } from "@/features/operators/hooks/useCanonicalOperatorData";
+import { getOperatorRuntimeCapability } from "@/features/operators/services/operatorRuntimeCapability";
 
 export default function OperatorsPage() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getOperatorRuntimeCapability(configuration).canonicalReads ? <CanonicalOperatorsPage /> : <LocalOperatorsPage />;
+}
+
+function CanonicalOperatorsPage() {
+  const data = useCanonicalOperatorData();
+  const [query, setQuery] = useState("");
+  if (data.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Operators…</div>;
+  if (data.status === "error") return <div className="p-8" role="alert">{data.message}<button className="ml-3 underline" onClick={data.retry}>Retry</button></div>;
+  const term = query.trim().toLocaleLowerCase();
+  const visible = data.items.filter((operator) => !operator.deleted && (!term || `${operator.name} ${operator.licenseNumber ?? ""} ${operator.email ?? ""}`.toLocaleLowerCase().includes(term)));
+  return <div className="space-y-6"><div><h1 className="text-3xl font-bold">Operators</h1><p className="text-gray-500">Canonical company Operators. Remote changes, user links, and PIN changes are unavailable.</p></div><input aria-label="Search Operators" className="w-full rounded border bg-white p-3" placeholder="Search canonical Operators" value={query} onChange={(event) => setQuery(event.target.value)} />{!visible.length ? <div className="rounded-lg border bg-white p-8 text-center text-slate-500">No canonical Operators found.</div> : <ResponsiveTable><div className="min-w-max rounded-lg border bg-white"><table className="min-w-full"><thead className="bg-slate-50"><tr><th className="p-3 text-left">Name</th><th className="p-3 text-left">Certification</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{visible.map((operator) => <tr className="border-t" key={operator.id}><td className="p-3">{operator.name}</td><td className="p-3">{operator.certificationType ?? "—"}</td><td className="p-3">{operator.status}</td></tr>)}</tbody></table></div></ResponsiveTable>}</div>;
+}
+
+function LocalOperatorsPage() {
   const {
     operators,
     deleteOperator,

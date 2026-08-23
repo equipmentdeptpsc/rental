@@ -18,8 +18,25 @@ import { validateEquipmentAssignment } from "@/features/assignment/utils/assignm
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
 import { useAuth } from "@/features/auth/AuthContext";
+import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
+import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonicalEquipmentData";
 
 export default function EquipmentDetails() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getEquipmentRuntimeCapability(configuration).canonicalReads ? <CanonicalEquipmentDetails /> : <LocalEquipmentDetails />;
+}
+
+function CanonicalEquipmentDetails() {
+  const { id } = useParams();
+  const data = useCanonicalEquipmentData();
+  if (data.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Equipment…</div>;
+  if (data.status === "error") return <div className="p-8" role="alert">{data.message}<button className="ml-3 underline" onClick={data.retry}>Retry</button></div>;
+  const equipment = data.items.find((item) => item.id === id && !item.deleted);
+  if (!equipment) return <div className="p-8">Equipment not found.</div>;
+  return <div className="space-y-6 p-8"><div><h1 className="text-3xl font-bold">{equipment.equipmentName}</h1><p className="mt-1 text-slate-500">Asset No. {equipment.assetNo}</p></div><div className="grid gap-4 md:grid-cols-3"><div className="app-card p-5"><p className="text-sm text-slate-500">Canonical Status</p><strong className="mt-2 block text-2xl">{equipment.statusLabel ?? "Unavailable"}</strong></div><div className="app-card p-5"><p className="text-sm text-slate-500">Active</p><strong className="mt-2 block text-2xl">{equipment.active ? "Yes" : "No"}</strong></div><div className="app-card p-5"><p className="text-sm text-slate-500">Current Reading</p><strong className="mt-2 block text-2xl">{equipment.currentReading ?? "—"}</strong></div></div><section className="app-card p-6"><h2 className="text-xl font-semibold">Canonical Equipment Information</h2><dl className="mt-4 grid gap-3 md:grid-cols-2"><div><dt className="text-sm text-slate-500">Manufacturer</dt><dd>{equipment.manufacturer ?? "—"}</dd></div><div><dt className="text-sm text-slate-500">Model</dt><dd>{equipment.model ?? "—"}</dd></div><div><dt className="text-sm text-slate-500">Serial Number</dt><dd>{equipment.serialNumber ?? "—"}</dd></div><div><dt className="text-sm text-slate-500">Maintenance Tracking</dt><dd>{equipment.maintenanceType ?? "—"}</dd></div></dl></section><p className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Assignment, Rental, maintenance, daily-log, history, edit, and deletion panels are unavailable here until their canonical read or command boundaries are certified.</p><Link className="text-blue-600 underline" to="/equipment">Back to Equipment</Link></div>;
+}
+
+function LocalEquipmentDetails() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const rentalCreationAvailable = canUseLegacyRentalMutations(configuration)

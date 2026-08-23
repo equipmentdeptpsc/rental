@@ -10,8 +10,16 @@ import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { validateDuplicateEquipment } from "@/features/equipment/utils/duplicateValidator";
 import { buildManualEquipmentRecord } from "@/features/equipment/services/manualEquipmentRegistration";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { getEquipmentRuntimeCapability, REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/equipment/services/equipmentRuntimeCapability";
+import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
 
 export default function NewEquipment() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getEquipmentRuntimeCapability(configuration).legacyMutations ? <LocalNewEquipment /> : <RemoteMutationUnavailable title="New Equipment" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
+}
+
+function LocalNewEquipment() {
   const navigate = useNavigate();
 
   const {

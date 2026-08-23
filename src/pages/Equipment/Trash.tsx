@@ -15,8 +15,16 @@ import {
   restoredHistory,
   deletedHistory,
 } from "@/features/equipment/application";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { getEquipmentRuntimeCapability, REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/equipment/services/equipmentRuntimeCapability";
+import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
 
 export default function EquipmentTrash() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getEquipmentRuntimeCapability(configuration).legacyMutations ? <LocalEquipmentTrash /> : <RemoteMutationUnavailable title="Equipment Trash" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
+}
+
+function LocalEquipmentTrash() {
   const {
     getDeletedEquipment,
     restoreEquipment,

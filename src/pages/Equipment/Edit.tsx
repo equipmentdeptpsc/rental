@@ -8,10 +8,18 @@ import type {
 } from "@/features/equipment/types";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { getEquipmentRuntimeCapability, REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/equipment/services/equipmentRuntimeCapability";
+import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
 import { useAudit } from "@/features/equipment/audit/AuditContext";
 import { validateDuplicateEquipment } from "@/features/equipment/utils/duplicateValidator";
 
 export default function EditEquipment() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getEquipmentRuntimeCapability(configuration).legacyMutations ? <LocalEditEquipment /> : <RemoteMutationUnavailable title="Edit Equipment" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
+}
+
+function LocalEditEquipment() {
   const navigate = useNavigate();
 
   const { id } = useParams();

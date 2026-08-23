@@ -5,8 +5,15 @@ import { useOperator } from "@/features/operators/context/OperatorContext";
 import { operatorUserLinkRepository } from "@/features/operators/operatorUserLink";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useAuth } from "@/features/auth/AuthContext";
+import { getOperatorRuntimeCapability, REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/operators/services/operatorRuntimeCapability";
+import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
 
 export default function EditOperator() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getOperatorRuntimeCapability(configuration).legacyMutations ? <LocalEditOperator /> : <RemoteMutationUnavailable title="Edit Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
+}
+
+function LocalEditOperator() {
   const { id } = useParams();
 
   const navigate = useNavigate();

@@ -12,8 +12,33 @@ import { useRental } from "@/features/rental/context/RentalContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useProject } from "@/features/project/context/ProjectContext";
 import { filterEquipmentList, type EquipmentStatusFilter } from "@/features/equipment/services/equipmentListFilters";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
+import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonicalEquipmentData";
 
 export default function EquipmentPage() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getEquipmentRuntimeCapability(configuration).canonicalReads ? <CanonicalEquipmentPage /> : <LocalEquipmentPage />;
+}
+
+function CanonicalEquipmentPage() {
+  const data = useCanonicalEquipmentData();
+  if (data.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Equipment…</div>;
+  if (data.status === "error") return <div className="p-8" role="alert">{data.message}<button className="ml-3 underline" onClick={data.retry}>Retry</button></div>;
+  const visible = data.items.filter((item) => item.active && !item.deleted);
+  const counts = new Map<string, number>();
+  for (const item of visible) counts.set(item.statusLabel ?? "Unavailable", (counts.get(item.statusLabel ?? "Unavailable") ?? 0) + 1);
+  return <div className="app-page"><PageHeader title="Equipment" description="Canonical company equipment. Remote changes are unavailable." />
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><div className="app-card p-4"><p className="text-xs text-slate-500">All</p><strong className="mt-1 block text-2xl">{visible.length}</strong></div>{[...counts].slice(0, 4).map(([label, value]) => <div className="app-card p-4" key={label}><p className="text-xs text-slate-500">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}</div>
+    {!visible.length ? <div className="app-card p-8 text-center text-slate-500">No canonical Equipment found.</div> : <ResponsiveEquipmentTable items={visible} />}
+  </div>;
+}
+
+function ResponsiveEquipmentTable({ items }: { items: ReturnType<typeof useCanonicalEquipmentData>["items"] }) {
+  return <div className="app-card overflow-x-auto"><table className="app-table min-w-full"><thead><tr><th>Asset No.</th><th>Equipment</th><th>Category</th><th>Status</th><th className="text-right">Action</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{item.assetNo}</td><td>{item.equipmentName}</td><td>{item.category ?? "—"}</td><td>{item.statusLabel ?? "Unavailable"}</td><td className="text-right"><Link className="text-blue-600 underline" to={`/equipment/${item.id}`}>View</Link></td></tr>)}</tbody></table></div>;
+}
+
+function LocalEquipmentPage() {
   const {
     equipment,
     deleteEquipment,

@@ -2,8 +2,16 @@ import { useNavigate, useParams } from "react-router-dom";
 import ProjectForm from "@/features/project/components/ProjectForm";
 import { useProject } from "@/features/project/context/ProjectContext";
 import { useCustomer } from "@/features/customer/context/CustomerContext";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { getProjectRuntimeCapability, REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/project/services/projectRuntimeCapability";
+import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
 
 export default function EditProject() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getProjectRuntimeCapability(configuration).legacyMutations ? <LocalEditProject /> : <RemoteMutationUnavailable title="Edit Project" message={REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE} />;
+}
+
+function LocalEditProject() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { projects, updateProject } = useProject();
