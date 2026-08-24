@@ -1,4 +1,4 @@
-﻿BEGIN;
+BEGIN;
 
 -- Align the pre-P7 remote permission catalogue with the application's
 -- current canonical permission model.

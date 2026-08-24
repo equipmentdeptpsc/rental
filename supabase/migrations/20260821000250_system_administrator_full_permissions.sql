@@ -1,4 +1,4 @@
-﻿BEGIN;
+BEGIN;
 
 -- System Administrator is the unrestricted administrative role in the
 -- application authorization model. Synchronize it with every canonical
