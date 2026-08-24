@@ -3,13 +3,11 @@ import { describe, expect, it } from "vitest";
 import { createRentalOperationalMetadataSnapshot } from "@/features/rental/services/createRentalOperationalMetadataSnapshot";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { AssignmentRecord } from "@/features/assignment/types";
-import type { CostCodeRecord } from "@/features/masters/cost-code";
-import type { ActivityCodeRecord } from "@/features/masters/activity-code";
 
 const equipment: EquipmentRecord = { id: "equipment", prefixId: "", assetNo: "EQ-1", equipmentName: "Excavator", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "", operatorId: "", status: "Assigned", costCodeId: "cost" };
 const assignment: AssignmentRecord = { id: "assignment", equipmentId: "equipment", operatorId: "operator", projectId: "project", assignedDate: "", expectedReturn: "", remarks: "", status: "Active", activityCodeId: "activity" };
-const cost: CostCodeRecord = { id: "cost", code: " 5031HEAVYEQPT ", description: " Heavy Equipment ", defaultRate: 0, unit: "Hour", active: false, deleted: true };
-const activity: ActivityCodeRecord = { id: "activity", activityCode: " LDC ", description: " LAUCHANCO DEVELOPMENT CORPORATION ", active: false, deleted: true };
+const cost = { id: "cost", code: " 5031HEAVYEQPT ", name: " Heavy Equipment " };
+const activity = { id: "activity", code: " LDC ", name: " LAUCHANCO DEVELOPMENT CORPORATION " };
 
 describe("Rental operational metadata snapshot", () => {
   it("captures trimmed Cost Code and Activity Code IDs, codes, and names", () => {
@@ -46,7 +44,7 @@ describe("Rental operational metadata snapshot", () => {
   it("reports unknown and invalid referenced masters in stable source order", () => {
     const notFound = createRentalOperationalMetadataSnapshot({ equipment, assignment, costCodes: [], activityCodes: [] });
     expect(notFound.issues.map((issue) => issue.code)).toEqual(["COST_CODE_NOT_FOUND", "ACTIVITY_CODE_NOT_FOUND"]);
-    const invalid = createRentalOperationalMetadataSnapshot({ equipment, assignment, costCodes: [{ ...cost, code: "" }], activityCodes: [{ ...activity, description: "" }] });
+    const invalid = createRentalOperationalMetadataSnapshot({ equipment, assignment, costCodes: [{ ...cost, code: "" }], activityCodes: [{ ...activity, name: "" }] });
     expect(invalid.issues.map((issue) => issue.code)).toEqual(["COST_CODE_INVALID", "ACTIVITY_CODE_INVALID"]);
   });
 
@@ -63,7 +61,7 @@ describe("Rental operational metadata snapshot", () => {
     const result = createRentalOperationalMetadataSnapshot(inputs);
     result.snapshot.costCode!.name = "Mutated";
     expect(inputs).toEqual(before);
-    expect(cost.description).toBe(" Heavy Equipment ");
+    expect(cost.name).toBe(" Heavy Equipment ");
     expect(() => JSON.stringify(result)).not.toThrow();
   });
 

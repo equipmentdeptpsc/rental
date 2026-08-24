@@ -9,6 +9,7 @@ import type { CustomerRecord } from "@/features/customer/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { RentalRecord } from "@/features/rental/types";
 import { subscribeCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
+import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
 
 export interface RentalListData {
   rentals: RentalRecord[];
@@ -18,6 +19,8 @@ export interface RentalListData {
   operators: Operator[];
   projects: ProjectRecord[];
   customers: CustomerRecord[];
+  costCodes: CanonicalReferenceCode[];
+  activityCodes: CanonicalReferenceCode[];
 }
 
 export type RentalListLoadState =
@@ -31,11 +34,11 @@ type RentalListInternalState =
   | { status: "error"; data: RentalListData; message: string };
 
 const emptyRemoteData = (): RentalListData => ({
-  rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [], customers: [],
+  rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [], customers: [], costCodes: [], activityCodes: [],
 });
 
 export function useRentalListData(fallback: RentalListData): RentalListLoadState {
-  const { readRepositories, configuration } = useApplicationDependenciesCompatibility();
+  const { readRepositories, commandRepositories, configuration } = useApplicationDependenciesCompatibility();
   const remote = configuration.persistenceMode === "remote";
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<RentalListInternalState>(() =>
@@ -60,10 +63,11 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
       readRepositories.operators.list(),
       readRepositories.projects.list(),
       readRepositories.customers.list(),
-    ]).then(([rentals, lines, equipment, assignments, operators, projects, customers]) => {
+      commandRepositories.canonicalRental?.readReferenceData(),
+    ]).then(([rentals, lines, equipment, assignments, operators, projects, customers, references]) => {
       if (!active) return;
       if (!rentals.success || !lines.success || !equipment.success
-        || !assignments.success || !operators.success || !projects.success || !customers.success) {
+        || !assignments.success || !operators.success || !projects.success || !customers.success || !references?.success) {
         setState({ status: "error", data: emptyRemoteData(), message: "Canonical Rental data could not be loaded. Retry the request or contact support." });
         return;
       }
@@ -75,12 +79,14 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
         operators: operators.value.items,
         projects: projects.value.items,
         customers: customers.value.items,
+        costCodes: references.value.costCodes,
+        activityCodes: references.value.activityCodes,
       } });
     }).catch(() => {
       if (active) setState({ status: "error", data: emptyRemoteData(), message: "Canonical Rental data could not be loaded. Retry the request or contact support." });
     });
     return () => { active = false; };
-  }, [attempt, fallback, readRepositories, remote]);
+  }, [attempt, commandRepositories.canonicalRental, fallback, readRepositories, remote]);
 
   return { ...state, retry } as RentalListLoadState;
 }

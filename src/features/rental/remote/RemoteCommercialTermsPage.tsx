@@ -21,7 +21,7 @@ export default function RemoteCommercialTermsPage({ rentalId }: { rentalId: stri
   const dependencies = useApplicationDependenciesCompatibility();
   const localRental = useRental(), localAssignments = useAssignment().assignments, localEquipment = useEquipment().equipment;
   const localOperators = useOperator().operators, localProjects = useProject().projects, localCustomers = useCustomer().customers;
-  const fallback = useMemo(() => ({ rentals: localRental.rentals, rentalEquipmentLines: localRental.rentalEquipmentLines, assignments: localAssignments, equipment: localEquipment, operators: localOperators, projects: localProjects, customers: localCustomers }), [localRental.rentals, localRental.rentalEquipmentLines, localAssignments, localEquipment, localOperators, localProjects, localCustomers]);
+  const fallback = useMemo(() => ({ rentals: localRental.rentals, rentalEquipmentLines: localRental.rentalEquipmentLines, assignments: localAssignments, equipment: localEquipment, operators: localOperators, projects: localProjects, customers: localCustomers, costCodes: [], activityCodes: [] }), [localRental.rentals, localRental.rentalEquipmentLines, localAssignments, localEquipment, localOperators, localProjects, localCustomers]);
   const list = useRentalListData(fallback), workspace = useCanonicalRentalWorkspace(rentalId), references = useCanonicalRentalReferenceData();
   const [workDescriptions, setWorkDescriptions] = useState<WorkDescriptionRecord[]>([]), [workError, setWorkError] = useState("");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({}), [saving, setSaving] = useState(false), [message, setMessage] = useState("");

@@ -1,8 +1,8 @@
 import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
+import type { OperationalCodeSnapshot, RentalOperationalMetadataSnapshot } from "../types";
 import type { ActivityCodeRecord } from "@/features/masters/activity-code";
 import type { CostCodeRecord } from "@/features/masters/cost-code";
-import type { OperationalCodeSnapshot, RentalOperationalMetadataSnapshot } from "../types";
 
 export type RentalOperationalMetadataIssueCode =
   | "COST_CODE_NOT_CONFIGURED"
@@ -18,8 +18,8 @@ export interface RentalOperationalMetadataIssue { code: RentalOperationalMetadat
 interface Input {
   equipment: EquipmentRecord;
   assignment?: AssignmentRecord;
-  costCodes: CostCodeRecord[];
-  activityCodes: ActivityCodeRecord[];
+  costCodes: ({ id: string; code: string; name: string } | CostCodeRecord)[];
+  activityCodes: ({ id: string; code: string; name: string } | ActivityCodeRecord)[];
 }
 
 export interface RentalOperationalMetadataSnapshotResult {
@@ -45,7 +45,7 @@ export function createRentalOperationalMetadataSnapshot(input: Input): RentalOpe
     const record = input.costCodes.find((candidate) => candidate.id === input.equipment.costCodeId);
     if (!record) issues.push({ code: "COST_CODE_NOT_FOUND" });
     else {
-      const captured = snapshot(record.id, record.code, record.description);
+      const captured = snapshot(record.id, record.code, "name" in record ? record.name : record.description);
       if (captured) result.costCode = captured;
       else issues.push({ code: "COST_CODE_INVALID" });
     }
@@ -59,7 +59,7 @@ export function createRentalOperationalMetadataSnapshot(input: Input): RentalOpe
     const record = input.activityCodes.find((candidate) => candidate.id === input.assignment!.activityCodeId);
     if (!record) issues.push({ code: "ACTIVITY_CODE_NOT_FOUND" });
     else {
-      const captured = snapshot(record.id, record.activityCode, record.description);
+      const captured = snapshot(record.id, "code" in record ? record.code : record.activityCode, "name" in record ? record.name : record.description);
       if (captured) result.activityCode = captured;
       else issues.push({ code: "ACTIVITY_CODE_INVALID" });
     }

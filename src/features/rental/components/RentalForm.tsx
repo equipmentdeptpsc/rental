@@ -27,6 +27,7 @@ import type { EquipmentRecord } from "@/features/equipment/types";
 import type { CustomerRecord } from "@/features/customer/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { Operator } from "@/features/operators/types";
+import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
 
 export interface RentalFormData {
   equipmentId: string;
@@ -66,7 +67,7 @@ interface Props {
 
   assignment?: AssignmentRecord;
   initialAssignmentIds?: string[];
-  canonicalData?: { equipment: EquipmentRecord[]; customers: CustomerRecord[]; projects: ProjectRecord[]; operators: Operator[]; assignments: AssignmentRecord[] };
+  canonicalData?: { equipment: EquipmentRecord[]; customers: CustomerRecord[]; projects: ProjectRecord[]; operators: Operator[]; assignments: AssignmentRecord[]; costCodes: CanonicalReferenceCode[]; activityCodes: CanonicalReferenceCode[] };
 }
 
 export const EXPECTED_RETURN_GUIDANCE = "Leave blank for an open-ended rental. The rental remains active until the equipment is formally returned.";
@@ -112,6 +113,8 @@ export default function RentalForm({
   const assignments = canonicalData?.assignments ?? localAssignments;
   const { costCodes } = useCostCodes();
   const { records: activityCodes } = useActivityCodes();
+  const metadataCostCodes = canonicalData?.costCodes ?? costCodes.map((record) => ({ id: record.id, code: record.code, name: record.description }));
+  const metadataActivityCodes = canonicalData?.activityCodes ?? activityCodes.map((record) => ({ id: record.id, code: record.activityCode, name: record.description }));
 
     const availableEquipment =
     useMemo(() => {
@@ -237,7 +240,7 @@ export default function RentalForm({
 
   const selectedEquipment = equipment.find((record) => record.id === form.equipmentId);
   const metadataPreview = selectedEquipment
-    ? createRentalOperationalMetadataSnapshot({ equipment: selectedEquipment, assignment, costCodes, activityCodes })
+    ? createRentalOperationalMetadataSnapshot({ equipment: selectedEquipment, assignment, costCodes: metadataCostCodes, activityCodes: metadataActivityCodes })
     : undefined;
 
   useEffect(() => {

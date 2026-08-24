@@ -58,7 +58,7 @@ export default function RentalWorkspaceProvider({
   const localOperators = useOperator().operators;
   const localProjects = useProject().projects;
   const remote = dependencies.configuration.persistenceMode === PersistenceMode.Remote;
-  const fallbackList = useMemo(() => ({ rentals: localRental.rentals, rentalEquipmentLines: localRental.rentalEquipmentLines, assignments: localAssignments, equipment: localEquipment, operators: localOperators, projects: localProjects, customers: [] }), [localRental.rentals, localRental.rentalEquipmentLines, localAssignments, localEquipment, localOperators, localProjects]);
+  const fallbackList = useMemo(() => ({ rentals: localRental.rentals, rentalEquipmentLines: localRental.rentalEquipmentLines, assignments: localAssignments, equipment: localEquipment, operators: localOperators, projects: localProjects, customers: [], costCodes: [], activityCodes: [] }), [localRental.rentals, localRental.rentalEquipmentLines, localAssignments, localEquipment, localOperators, localProjects]);
   const list = useRentalListData(fallbackList);
   const workspace = useCanonicalRentalWorkspace(rentalId);
   const rentals = list.data.rentals, rentalEquipmentLines = list.data.rentalEquipmentLines, assignments = list.data.assignments;

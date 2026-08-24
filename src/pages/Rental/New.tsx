@@ -61,7 +61,7 @@ export default function NewRental() {
 
   const { projects: localProjects } = useProject();
   const { customers: localCustomers }=useCustomer();
-  const fallbackData = useMemo(() => ({ rentals, rentalEquipmentLines, equipment: localEquipment, assignments: localAssignments, operators: localOperators, projects: localProjects, customers: localCustomers }), [rentals, rentalEquipmentLines, localEquipment, localAssignments, localOperators, localProjects, localCustomers]);
+  const fallbackData = useMemo(() => ({ rentals, rentalEquipmentLines, equipment: localEquipment, assignments: localAssignments, operators: localOperators, projects: localProjects, customers: localCustomers, costCodes: [], activityCodes: [] }), [rentals, rentalEquipmentLines, localEquipment, localAssignments, localOperators, localProjects, localCustomers]);
   const canonicalData = useRentalListData(fallbackData);
   const { assignments, projects, customers } = canonicalData.data;
   const assignmentLookup = resolveAssignmentRentalLookup(assignmentQuery, assignments, canonicalData.status === "loading");
@@ -208,7 +208,7 @@ export default function NewRental() {
         initialProjectWarning={assignmentProjectError}
         assignment={assignment}
         initialAssignmentIds={assignment ? [assignment.id] : []}
-        canonicalData={remoteCreation ? { equipment: canonicalData.data.equipment, customers, projects, operators: canonicalData.data.operators, assignments } : undefined}
+        canonicalData={remoteCreation ? { equipment: canonicalData.data.equipment, customers, projects, operators: canonicalData.data.operators, assignments, costCodes: canonicalData.data.costCodes, activityCodes: canonicalData.data.activityCodes } : undefined}
       />}
 
     </div>

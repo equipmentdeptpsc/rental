@@ -57,7 +57,7 @@ export default function RentalPage() {
     assignments: assignmentContext.assignments,
     operators: operatorContext.operators,
     projects: projectContext.projects,
-    customers: [],
+    customers: [], costCodes: [], activityCodes: [],
   }), [assignmentContext.assignments, equipmentContext.equipment, operatorContext.operators, projectContext.projects, rentalContext.rentalEquipmentLines, rentalContext.rentals]);
   const rentalList = useRentalListData(fallbackListData);
   const { rentals, rentalEquipmentLines, equipment: equipmentRecords, assignments, operators, projects } = rentalList.data;
