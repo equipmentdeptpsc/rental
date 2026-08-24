@@ -5,15 +5,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApplicationDependencyProvider, createLocalApplicationDependencies, PersistenceMode, type ApplicationDependencies } from "@/app/composition";
 import { repositoryFailure, repositorySuccess } from "@/core/persistence";
 import { useRentalListData, type RentalListData } from "@/features/rental/hooks/useRentalListData";
+import type { CanonicalRentalReferenceData, CanonicalRentalRemoteRepository } from "@/features/rental/remote/contracts";
 import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
 
 const empty: RentalListData = { rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [], customers: [], costCodes: [], activityCodes: [] };
 const fallback: RentalListData = { ...empty, rentals: [{ id: "local-rental", status: "Draft" } as RentalListData["rentals"][number]] };
 const roots: Root[] = [];
 
-function dependencies(list: ReturnType<typeof vi.fn>, references = { costCodes: [], activityCodes: [] }): ApplicationDependencies {
+function dependencies(list: ReturnType<typeof vi.fn>, references: CanonicalRentalReferenceData = { costCodes: [], activityCodes: [] }): ApplicationDependencies {
   const local = createLocalApplicationDependencies();
   const repository = { ...local.readRepositories.rentals, list };
+  const unusedCanonicalFailure = { success: false as const, code: "VALIDATION_REJECTED" as const, message: "Unused test repository method." };
+  const canonicalRental: CanonicalRentalRemoteRepository = {
+    readWorkspace: vi.fn(async () => unusedCanonicalFailure),
+    readReferenceData: vi.fn(async () => ({ success: true as const, value: references })),
+    createDraft: vi.fn(async () => unusedCanonicalFailure),
+    updateTerms: vi.fn(async () => unusedCanonicalFailure),
+    submitApproval: vi.fn(async () => unusedCanonicalFailure),
+    decideApproval: vi.fn(async () => unusedCanonicalFailure),
+    reserve: vi.fn(async () => unusedCanonicalFailure),
+    release: vi.fn(async () => unusedCanonicalFailure),
+  };
   return {
     ...local,
     readRepositories: {
@@ -24,7 +36,7 @@ function dependencies(list: ReturnType<typeof vi.fn>, references = { costCodes: 
       workDescriptions: repository,
     } as ApplicationDependencies["readRepositories"],
     configuration: { ...local.configuration, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: true },
-    commandRepositories: { ...local.commandRepositories, canonicalRental: { readReferenceData: vi.fn(async () => ({ success: true as const, value: references })) } as ApplicationDependencies["commandRepositories"]["canonicalRental"] },
+    commandRepositories: { ...local.commandRepositories, canonicalRental },
   };
 }
 
