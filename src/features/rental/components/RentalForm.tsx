@@ -52,12 +52,15 @@ interface Props {
   initialEquipmentId?: string;
 
   initialProjectId?: string;
+  initialCustomerId?: string;
 
   initialOperatorId?: string;
 
   lockEquipment?: boolean;
 
   lockOperator?: boolean;
+  lockCustomer?: boolean;
+  lockProject?: boolean;
 
   initialProjectWarning?: string;
 
@@ -81,9 +84,12 @@ export default function RentalForm({
   onSubmit,
   initialEquipmentId,
   initialProjectId,
+  initialCustomerId,
   initialOperatorId,
   lockEquipment = false,
   lockOperator = false,
+  lockCustomer = false,
+  lockProject = false,
   initialProjectWarning,
   assignment,
   initialAssignmentIds = [],
@@ -203,11 +209,11 @@ export default function RentalForm({
         initialEquipmentId ??
         "",
 
-      customerId: "",
+      customerId: initialCustomerId ?? "",
   
-      customer: "",
-      customerRepresentativeName: "",
-      customerReviewEmail: "",
+      customer: customers.find((item) => item.id === initialCustomerId)?.companyName ?? "",
+      customerRepresentativeName: customers.find((item) => item.id === initialCustomerId)?.contactPerson ?? "",
+      customerReviewEmail: customers.find((item) => item.id === initialCustomerId)?.email ?? "",
       operatorId: initialOperatorId ?? "",
   
       projectId: initialProjectId ?? "",
@@ -238,10 +244,14 @@ export default function RentalForm({
     setForm((prev) => ({
       ...prev,
       equipmentId: initialEquipmentId ?? prev.equipmentId,
+      customerId: initialCustomerId ?? prev.customerId,
+      customer: customers.find((item) => item.id === initialCustomerId)?.companyName ?? prev.customer,
+      customerRepresentativeName: customers.find((item) => item.id === initialCustomerId)?.contactPerson ?? prev.customerRepresentativeName,
+      customerReviewEmail: customers.find((item) => item.id === initialCustomerId)?.email ?? prev.customerReviewEmail,
       projectId: initialProjectId && !prev.projectId ? initialProjectId : prev.projectId,
       operatorId: initialOperatorId ?? prev.operatorId,
     }));
-  }, [initialEquipmentId, initialProjectId, initialOperatorId]);
+  }, [customers, initialCustomerId, initialEquipmentId, initialProjectId, initialOperatorId]);
 
   function update<
     K extends keyof RentalFormData
@@ -300,6 +310,7 @@ export default function RentalForm({
         searchable clearable
         label="Customer"
         value={form.customerId}
+        disabled={lockCustomer}
         options={
           customerOptions
         }
@@ -315,7 +326,7 @@ export default function RentalForm({
           searchable clearable
           label="Project"
           value={form.projectId}
-          disabled={!form.customerId}
+          disabled={lockProject || !form.customerId}
           options={projectOptions}
           onChange={(e) => update("projectId", e.target.value)}
       />

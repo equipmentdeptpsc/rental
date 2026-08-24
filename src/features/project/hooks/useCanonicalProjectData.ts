@@ -30,7 +30,7 @@ export function useCanonicalProjectData() {
       if (!result.success) return setState({ status: "error", items: [], message: "Canonical Project data could not be loaded." });
       setState({ status: "loaded", items: result.value.items.map((record) => {
         const row = record as unknown as Record<string, unknown>;
-        return { id: record.id, projectCode: text(row.projectCode), name: text(row.name) ?? "Unnamed Project", active: row.active === true, customerId: text(row.customerId), location: text(row.location), deleted: row.deletedAt !== null && row.deletedAt !== undefined };
+        return { id: record.id, projectCode: text(row.projectCode), name: record.projectName, active: record.status === "Active", customerId: record.customerId, location: record.location || undefined, deleted: record.deleted === true };
       }) });
     }).catch(() => { if (active) setState({ status: "error", items: [], message: "Canonical Project data could not be loaded." }); });
     return () => { active = false; };

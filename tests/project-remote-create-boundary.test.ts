@@ -56,7 +56,7 @@ describe("canonical Project remote create boundary", () => {
     await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
     expect(createProject).toHaveBeenCalledTimes(1);
     expect(createProject).toHaveBeenCalledWith(expect.objectContaining({ projectCode: "PROJECT-001", name: "Canonical Project", customerId: "fd753935-f65c-456b-ad54-55265dc3223d", location: "Site" }));
-    expect(createProject.mock.calls[0][0].location).not.toContain("UAT-CUS-001");
+    expect((createProject.mock.calls[0][0] as { location?: string }).location).not.toContain("UAT-CUS-001");
     for (const field of ["companyId", "active", "status", "projectManager", "client", "legacyPayload"]) expect(createProject.mock.calls[0][0]).not.toHaveProperty(field);
     expect(state.addProject).not.toHaveBeenCalled(); expect(refreshed).toHaveBeenCalledTimes(1); expect(container.textContent).toContain("Canonical Project destination");
     unsubscribe();

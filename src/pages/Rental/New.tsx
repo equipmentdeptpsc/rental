@@ -31,6 +31,7 @@ import { isRentalType } from "@/features/rental/types";
 import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
+import { resolveAssignmentRentalOrigin } from "@/features/rental/services/resolveAssignmentRentalOrigin";
 
 export default function NewRental() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
@@ -65,9 +66,10 @@ export default function NewRental() {
   const { assignments, projects, customers } = canonicalData.data;
   const assignmentLookup = resolveAssignmentRentalLookup(assignmentQuery, assignments, canonicalData.status === "loading");
   const assignment = assignmentLookup.state === "found" ? assignmentLookup.assignment : undefined;
+  const assignmentOrigin = assignment ? resolveAssignmentRentalOrigin(assignment, projects, customers) : undefined;
   const initialEquipmentId = assignment?.equipmentId ?? equipmentParam ?? "";
   const assignmentPrefill = getRentalAssignmentPrefill(assignment);
-  const assignmentProjectError = getAssignmentProjectError(assignment, projects);
+  const assignmentProjectError = assignmentOrigin && !assignmentOrigin.success ? assignmentOrigin.message : getAssignmentProjectError(assignment, projects);
 
   async function handleSubmit(
     data: RentalFormData
@@ -188,7 +190,7 @@ export default function NewRental() {
 
       </div>
 
-      {assignmentLookup.state === "loading" ? <p className="text-slate-500">Loading assignment…</p> : "message" in assignmentLookup ? <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{assignmentLookup.message}</p> : <RentalForm
+      {assignmentLookup.state === "loading" ? <p className="text-slate-500">Loading assignment…</p> : "message" in assignmentLookup ? <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{assignmentLookup.message}</p> : assignmentOrigin && !assignmentOrigin.success ? <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700" role="alert">{assignmentOrigin.message}</p> : <RentalForm
         onSubmit={
           handleSubmit
         }
@@ -197,9 +199,12 @@ export default function NewRental() {
           undefined
         }
         initialProjectId={assignmentPrefill.projectId}
+        initialCustomerId={assignmentOrigin?.success ? assignmentOrigin.customer.id : undefined}
         initialOperatorId={assignmentPrefill.operatorId}
         lockEquipment={Boolean(assignment)}
         lockOperator={Boolean(assignment)}
+        lockCustomer={Boolean(assignmentOrigin?.success)}
+        lockProject={Boolean(assignmentOrigin?.success)}
         initialProjectWarning={assignmentProjectError}
         assignment={assignment}
         initialAssignmentIds={assignment ? [assignment.id] : []}
