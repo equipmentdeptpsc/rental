@@ -105,7 +105,7 @@ export const router = createBrowserRouter([
       { path: "equipment/trash", element: permitted("equipment.restore", <EquipmentTrash />) },
       { path: "equipment/:id", element: permitted("equipment.read", <EquipmentDetails />) },
       { path: "customers", element: permitted("customer.read", <CustomerPage />) },
-      { path: "customers/new", element: permitted("customer.manage", <NewCustomer />) },
+      { path: "customers/new", element: permitted("customer.create", <NewCustomer />) },
       { path: "customers/:id", element: permitted("customer.read", <CustomerDetails />) },
       { path: "customers/edit/:id", element: permitted("customer.manage", <EditCustomer />) },
       { path: "operators", element: permitted("operator.read", <Operators />) },

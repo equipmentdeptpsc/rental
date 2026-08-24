@@ -21,13 +21,21 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     rentals: new SupabaseReadRepository<RentalRecord>(client, { repositoryName: "Rental", table: "rentals", searchColumns: ["rental_number", "customer_snapshot", "project_snapshot"], mapRow: mapRental }, core),
     assignments: new SupabaseReadRepository<AssignmentRecord>(client, { repositoryName: "Assignment", table: "assignments", searchColumns: ["remarks"], mapRow: mapAssignment }, core),
     operators: new SupabaseReadRepository<Operator>(client, { repositoryName: "Operator", table: "operators", searchColumns: ["name", "email", "license_number"] }, core),
-    customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"] }, core),
+    customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"] }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"] }, core),
     deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", searchColumns: ["deur_number", "operational_remarks"] }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines" }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
   };
+}
+export function mapCustomer(row: Record<string, unknown>): RepositoryResult<CustomerRecord> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row);
+  if (!base.success) return base;
+  const value = base.value;
+  if (typeof value.customerCode !== "string" || typeof value.name !== "string" || typeof value.active !== "boolean") return repositoryFailure("REMOTE_ROW_MALFORMED", "Remote Customer requires code, name, and active state.", { context: { repository: "Customer" }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Repair the canonical Customer row." });
+  const optional = (item: unknown) => typeof item === "string" && item ? item : undefined;
+  return repositorySuccess({ id: String(value.id), customerCode: value.customerCode, companyName: value.name, contactNumber: optional(value.phone), email: optional(value.email), address: optional(value.address), active: value.active } as CustomerRecord);
 }
 function mapAssignment(row: Record<string, unknown>): RepositoryResult<AssignmentRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row);

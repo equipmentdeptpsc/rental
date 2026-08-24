@@ -5,13 +5,13 @@ export interface CustomerRecord {
   
     companyName: string;
   
-    contactPerson: string;
+    contactPerson?: string;
   
-    contactNumber: string;
+    contactNumber?: string;
   
-    email: string;
+    email?: string;
   
-    address: string;
+    address?: string;
   
     active: boolean;
   }

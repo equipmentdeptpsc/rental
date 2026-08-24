@@ -19,7 +19,7 @@ export const PERMISSIONS = {
     "rental.commercialTerms.manage",
   ],
   deur: ["deur.read", "deur.create", "deur.review", "deur.correct"],
-  customer: ["customer.read", "customer.manage"],
+  customer: ["customer.read", "customer.create", "customer.manage"],
   project: ["project.read", "project.manage"],
   operator: ["operator.read", "operator.manage"],
   maintenance: ["maintenance.read", "maintenance.manage"],

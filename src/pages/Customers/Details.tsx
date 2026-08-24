@@ -7,8 +7,26 @@ import { useCustomer } from "@/features/customer/context/CustomerContext";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { getCustomerRuntimeCapability } from "@/features/customer/services/customerRuntimeCapability";
+import { useCanonicalCustomerData } from "@/features/customer/hooks/useCanonicalCustomerData";
 
 export default function CustomerDetails() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return getCustomerRuntimeCapability(configuration).canonicalReads ? <RemoteCustomerDetails /> : <LocalCustomerDetails />;
+}
+
+function RemoteCustomerDetails() {
+  const { id } = useParams(); const data = useCanonicalCustomerData();
+  if (data.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Customer…</div>;
+  if (data.status === "error") return <div className="p-8" role="alert">{data.message}</div>;
+  const customer = data.items.find((item) => item.id === id); if (!customer) return <div className="p-8">Customer not found.</div>;
+  return <div className="space-y-6 p-8"><div><h1 className="text-3xl font-bold">{customer.companyName}</h1><p className="text-slate-500">{customer.customerCode} · Canonical Customer</p></div><div className="grid gap-4 rounded-xl border bg-white p-6 md:grid-cols-2"><Info label="Email" value={customer.email ?? "Not recorded"} /><Info label="Phone" value={customer.contactNumber ?? "Not recorded"} /><Info label="Address" value={customer.address ?? "Not recorded"} /><Info label="Status" value={customer.active ? "Active" : "Inactive"} /><Info label="Contact Person" value="Not represented in the canonical Customer schema" /></div></div>;
+}
+
+function Info({ label, value }: { label: string; value: string }) { return <div><div className="text-xs uppercase tracking-wide text-slate-500">{label}</div><div className="mt-1 font-medium">{value}</div></div>; }
+
+function LocalCustomerDetails() {
   const { id } = useParams();
   const { customers } = useCustomer();
   const { rentals } = useRental();
