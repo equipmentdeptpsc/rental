@@ -77,7 +77,7 @@ function isProjection(value: unknown): value is AssignmentCreationProjection {
     && typeof row.operatorId === "string"
     && typeof row.projectId === "string"
     && typeof row.assignedDate === "string"
-    && typeof row.expectedReturn === "string"
+    && (typeof row.expectedReturn === "string" || row.expectedReturn === null)
     && typeof row.remarks === "string"
     && row.status === "Active"
     && typeof row.createdAt === "string"

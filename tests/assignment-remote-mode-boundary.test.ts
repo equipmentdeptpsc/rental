@@ -127,9 +127,27 @@ describe("canonical Assignment remote UI boundary", () => {
     }
     await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
     expect(createAssignment).toHaveBeenCalledWith(expect.objectContaining({ equipmentId: "canonical-equipment", operatorId: "canonical-operator", projectId: "canonical-project" }));
+    expect((createAssignment.mock.calls as unknown[][])[0][0]).toHaveProperty("expectedReturn", undefined);
     expect(refreshed).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("Canonical destination");
     unsubscribe();
+  });
+
+  it("keeps Assigned Date required before invoking the canonical command", async () => {
+    authState.permissions.add("assignment.manage");
+    const dependencies = remoteDependencies();
+    const createAssignment = vi.fn();
+    dependencies.commandRepositories.canonicalAssignment = { createAssignment };
+    const container = await render(createElement(NewAssignment), dependencies, "/assignments/new");
+    await act(async () => { await Promise.resolve(); });
+    const assignedDate = [...container.querySelectorAll("input")].find((input) => input.type === "date" && input.required) as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(assignedDate, "");
+      assignedDate.dispatchEvent(new Event("change", { bubbles: true }));
+      (container.querySelector("form") as HTMLFormElement).dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(createAssignment).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Complete the required Assignment fields and enter valid dates.");
   });
 
   it("keeps controlled canonical command failures on the form", async () => {

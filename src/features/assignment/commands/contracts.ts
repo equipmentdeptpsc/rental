@@ -19,7 +19,7 @@ export interface AssignmentCreationProjection {
   projectId: string;
   activityCodeId?: string;
   assignedDate: string;
-  expectedReturn: string;
+  expectedReturn: string | null;
   remarks: string;
   status: "Active";
   createdAt: string;

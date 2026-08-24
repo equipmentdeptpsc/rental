@@ -18,7 +18,7 @@ export interface AssignmentRecord {
 
   startDate?: string;
 
-  expectedReturn: string;
+  expectedReturn?: string;
 
   returnedDate?: string;
 

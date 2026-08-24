@@ -63,4 +63,10 @@ describe("canonical Assignment command adapter", () => {
     const rpc = vi.fn(async () => ({ data: { success: false, code: "EQUIPMENT_UNAVAILABLE" }, error: null }));
     await expect(new SupabaseAssignmentCommandRepository({ schema: () => ({ rpc }) }).createAssignment({ commandId: "command", idempotencyKey: "key", assignmentId: projection.id, equipmentId: "equipment", operatorId: "operator", projectId: "project", assignedDate: "2026-08-23" })).resolves.toMatchObject({ success: false, code: "EQUIPMENT_UNAVAILABLE", retryable: false });
   });
+
+  it("accepts the canonical nullable Expected Return projection", async () => {
+    const nullableProjection = { ...projection, expectedReturn: null };
+    const rpc = vi.fn(async () => ({ data: { success: true, disposition: "ACCEPTED", serverOccurredAt: projection.createdAt, refresh: [projection.id], value: nullableProjection }, error: null }));
+    await expect(new SupabaseAssignmentCommandRepository({ schema: () => ({ rpc }) }).createAssignment({ commandId: "command", idempotencyKey: "key", assignmentId: projection.id, equipmentId: "equipment", operatorId: "operator", projectId: "project", assignedDate: "2026-08-23" })).resolves.toMatchObject({ success: true, value: { expectedReturn: null } });
+  });
 });
