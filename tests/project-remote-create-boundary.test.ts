@@ -32,6 +32,10 @@ function setInput(node: HTMLInputElement, value: string) {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(node, value);
   node.dispatchEvent(new Event("input", { bubbles: true }));
 }
+function setSelect(node: HTMLSelectElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(node, value);
+  node.dispatchEvent(new Event("change", { bubbles: true }));
+}
 afterEach(async () => { state.permissions = new Set(["project.manage"]); vi.clearAllMocks(); while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical Project remote create boundary", () => {
@@ -44,16 +48,28 @@ describe("canonical Project remote create boundary", () => {
 
   it("submits only canonical Project inputs and refreshes canonical reads", async () => {
     const { dependencies, createProject } = remoteDependencies();
+    dependencies.readRepositories.customers.list = vi.fn(async () => ({ success: true as const, value: { items: [{ id: "fd753935-f65c-456b-ad54-55265dc3223d", customerCode: "UAT-CUS-001", companyName: "UAT Equipment Rental Customer", active: true }], nextCursor: undefined } }));
     const refreshed = vi.fn(); const unsubscribe = subscribeCanonicalProjectRefresh(refreshed);
     const container = await render(dependencies);
-    await act(async () => { setInput(input(container, "Project Code"), " PROJECT-001 "); setInput(input(container, "Project Name"), " Canonical Project "); setInput(input(container, "Location"), " Site "); });
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { setInput(input(container, "Project Code"), " PROJECT-001 "); setInput(input(container, "Project Name"), " Canonical Project "); setSelect(input(container, "Customer") as unknown as HTMLSelectElement, "fd753935-f65c-456b-ad54-55265dc3223d"); setInput(input(container, "Location"), " Site "); });
     await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
     expect(createProject).toHaveBeenCalledTimes(1);
-    expect(createProject).toHaveBeenCalledWith(expect.objectContaining({ projectCode: "PROJECT-001", name: "Canonical Project", location: "Site" }));
-    expect(createProject.mock.calls[0][0]).not.toHaveProperty("customerId");
+    expect(createProject).toHaveBeenCalledWith(expect.objectContaining({ projectCode: "PROJECT-001", name: "Canonical Project", customerId: "fd753935-f65c-456b-ad54-55265dc3223d", location: "Site" }));
+    expect(createProject.mock.calls[0][0].location).not.toContain("UAT-CUS-001");
     for (const field of ["companyId", "active", "status", "projectManager", "client", "legacyPayload"]) expect(createProject.mock.calls[0][0]).not.toHaveProperty(field);
     expect(state.addProject).not.toHaveBeenCalled(); expect(refreshed).toHaveBeenCalledTimes(1); expect(container.textContent).toContain("Canonical Project destination");
     unsubscribe();
+  });
+
+  it("omits Customer and location when both optional fields are blank", async () => {
+    const { dependencies, createProject } = remoteDependencies();
+    dependencies.readRepositories.customers.list = vi.fn(async () => ({ success: true as const, value: { items: [], nextCursor: undefined } }));
+    const container = await render(dependencies);
+    await act(async () => { setInput(input(container, "Project Code"), "PROJECT-002"); setInput(input(container, "Project Name"), "No Customer Project"); });
+    await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
+    expect(createProject.mock.calls[0][0]).not.toHaveProperty("customerId");
+    expect(createProject.mock.calls[0][0]).not.toHaveProperty("location");
   });
 
   it("reuses one command identity while a controlled failure remains on the form", async () => {
