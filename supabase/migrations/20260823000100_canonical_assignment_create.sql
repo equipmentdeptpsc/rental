@@ -10,7 +10,7 @@ SELECT r.id,p.id FROM erp.app_roles r CROSS JOIN erp.app_permissions p
 WHERE r.code='system-administrator' AND p.code='assignment.manage'
 ON CONFLICT(role_id,permission_id) DO NOTHING;
 
-CREATE FUNCTION erp.command_create_assignment(command jsonb) RETURNS jsonb
+CREATE OR REPLACE FUNCTION erp.command_create_assignment(command jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=erp,auth,extensions,pg_catalog AS $$
 DECLARE
  tenant text=erp.current_company_id(); actor text=auth.uid()::text; now_at timestamptz=clock_timestamp();

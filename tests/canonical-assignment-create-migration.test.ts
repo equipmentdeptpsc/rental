@@ -10,7 +10,7 @@ const sql = fs.readFileSync(path.resolve("supabase/migrations", filename), "utf8
 describe("canonical Assignment create migration", () => {
   it("uses a new approved-lineage command with current authority helpers", () => {
     expect(filename).not.toMatch(/20260803007[7-9]00|20260803008[0-3]00/);
-    expect(sql).toContain("CREATE FUNCTION erp.command_create_assignment(command jsonb)");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION erp.command_create_assignment(command jsonb)");
     expect(sql).toContain("erp.current_company_id()");
     expect(sql).toContain("erp.current_user_has_permission('assignment.manage')");
     expect(sql).toContain("'assignment.manage','Manage Assignments'");
