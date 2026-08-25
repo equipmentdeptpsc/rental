@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { CanonicalRoleAdministrationService } from "../services/CanonicalRoleAdministrationService";
+import { PersistenceMode } from "@/app/composition";
+import { RemoteRolesPage } from "./RemoteRolesPage";
 
 type DetailTab="overview"|"assigned"|"edit"|"impact";
 const words=(value:string)=>value.replace(/([a-z])([A-Z])/g,"$1 $2").split(/[. _-]/).filter(Boolean).map(x=>x[0].toUpperCase()+x.slice(1)).join(" ");
@@ -9,6 +11,13 @@ const actions:Record<string,string>={read:"View",create:"Create",update:"Update"
 const friendly=(permission:{code:string;resource:string;action:string;description:string})=>permission.code.split(".").length===2?`${actions[permission.action]??words(permission.action)} ${words(permission.resource)}`:permission.description||words(permission.code);
 
 export default function RolesPage(){
+ const deps=useApplicationDependenciesCompatibility();
+ return deps.configuration.persistenceMode===PersistenceMode.Remote&&deps.authentication.remoteUserAdministration
+  ?<RemoteRolesPage administration={deps.authentication.remoteUserAdministration}/>
+  :<LocalRolesPage/>;
+}
+
+function LocalRolesPage(){
  const {user}=useAuth(),deps=useApplicationDependenciesCompatibility();
  const service=useMemo(()=>new CanonicalRoleAdministrationService(undefined,deps.authentication.userRepository),[deps.authentication.userRepository]);
  const [version,setVersion]=useState(0),[selected,setSelected]=useState("system-administrator"),[compare,setCompare]=useState("operations-manager"),[tab,setTab]=useState<DetailTab>("overview"),[code,setCode]=useState(""),[name,setName]=useState(""),[message,setMessage]=useState("");

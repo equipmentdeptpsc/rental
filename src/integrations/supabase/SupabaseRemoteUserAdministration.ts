@@ -13,9 +13,13 @@ export class SupabaseRemoteUserAdministration implements RemoteUserAdministratio
     return (data ?? []).map((row: any) => ({ id:row.id,username:row.username,displayName:row.display_name,email:row.email??undefined,companyId:row.company_id,status:row.status,operatorId:row.operator_id??undefined,createdAt:row.created_at,updatedAt:row.updated_at,systemRoles:(row.user_roles??[]).flatMap((x:any)=>x.app_roles?.code?[x.app_roles.code]:[]) }));
   }
   async listRoles(): Promise<readonly RemoteAssignableRole[]> {
-    const { data, error } = await this.client.schema("erp").from("app_roles").select("code,name").order("name");
+    const { data, error } = await this.client.schema("erp").from("app_roles").select("code,name,active,deprecated_at,catalog_version,role_permissions(app_permissions(code,active))").order("name");
     if (error) throw new Error("Unable to load canonical roles.");
-    return (data ?? []).map(row=>({code:String(row.code),name:String(row.name)}));
+    return (data ?? []).map((row:any)=>({
+      code:String(row.code),name:String(row.name),active:row.active===true,
+      deprecatedAt:row.deprecated_at??undefined,catalogVersion:row.catalog_version??undefined,
+      permissions:[...new Set<string>((row.role_permissions??[]).flatMap((mapping:any)=>mapping.app_permissions?.active&&mapping.app_permissions?.code?[String(mapping.app_permissions.code)]:[]))].sort(),
+    }));
   }
   async listOperators(): Promise<readonly Operator[]> {
     const { data, error } = await this.client.schema("erp").from("operators").select("id,name,email,license_number,certification_type,status,joined_date").eq("status","Active").order("name");

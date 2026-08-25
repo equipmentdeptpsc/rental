@@ -2,7 +2,14 @@ import type { User } from "@/features/auth/domain/user";
 import type { Operator } from "@/features/operators/types";
 import type { CreateUserInput } from "./UserManagementService";
 
-export interface RemoteAssignableRole { readonly code: string; readonly name: string }
+export interface RemoteAssignableRole {
+  readonly code: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly deprecatedAt?: string;
+  readonly catalogVersion?: string;
+  readonly permissions: readonly string[];
+}
 export interface RemoteUserAdministration {
   listUsers(): Promise<readonly User[]>;
   listRoles(): Promise<readonly RemoteAssignableRole[]>;
