@@ -25,7 +25,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"] }, core),
     deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", searchColumns: ["deur_number", "operational_remarks"] }, core),
-    rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines" }, core),
+    rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
   };
 }
@@ -57,8 +57,24 @@ export function mapRental(row: Record<string, unknown>): RepositoryResult<Rental
   const base = mapCanonicalRow<Record<string, unknown>>(row);
   if (!base.success) return base;
   const approvalRequester = base.value.approvalRequestedBy;
+  const frequency = base.value.deurExpectationFrequency;
+  const effectiveFrom = base.value.deurExpectationEffectiveFrom;
+  const capturedAt = base.value.deurExpectationCapturedAt;
+  const deurExpectationPolicy = typeof frequency === "string" && typeof effectiveFrom === "string" && typeof capturedAt === "string"
+    ? {
+        frequency,
+        effectiveFrom,
+        ...(typeof base.value.deurExpectationEffectiveUntil === "string" ? { effectiveUntil: base.value.deurExpectationEffectiveUntil } : {}),
+        ...(Array.isArray(base.value.expectedShiftCodes) ? { expectedShiftCodes: base.value.expectedShiftCodes } : {}),
+        ...(Array.isArray(base.value.excludedDates) ? { excludeDates: base.value.excludedDates } : {}),
+        ...(typeof base.value.timezone === "string" ? { timezone: base.value.timezone } : {}),
+        capturedAt,
+      }
+    : undefined;
   return repositorySuccess({
     ...base.value,
+    ...(deurExpectationPolicy ? { deurExpectationPolicy } : {}),
+    ...(typeof base.value.deurExpectationFrozenAt === "string" ? { deurExpectationPolicyFrozenAt: base.value.deurExpectationFrozenAt } : {}),
     ...(typeof approvalRequester === "string"
       ? { approvalRequestedBy: undefined, approvalRequestedById: approvalRequester }
       : approvalRequester && typeof approvalRequester === "object" && typeof (approvalRequester as Record<string, unknown>).id === "string"
@@ -67,6 +83,20 @@ export function mapRental(row: Record<string, unknown>): RepositoryResult<Rental
     customer: base.value.customer ?? base.value.customerSnapshot ?? "",
     project: base.value.project ?? base.value.projectSnapshot ?? "",
   } as unknown as RentalRecord);
+}
+export function mapRentalEquipmentLine(row: Record<string, unknown>): RepositoryResult<RentalEquipmentLine> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row);
+  if (!base.success) return base;
+  const metadata = base.value.operationalMetadata;
+  const deurExpectationSnapshot = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+    ? (metadata as Record<string, unknown>).deurExpectationSnapshot
+    : undefined;
+  return repositorySuccess({
+    ...base.value,
+    ...(deurExpectationSnapshot && typeof deurExpectationSnapshot === "object" && !Array.isArray(deurExpectationSnapshot)
+      ? { deurExpectationSnapshot }
+      : {}),
+  } as unknown as RentalEquipmentLine);
 }
 function mapUser(row: Record<string, unknown>): RepositoryResult<User> {
   const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;

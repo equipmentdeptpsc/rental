@@ -32,6 +32,7 @@ import { PersistenceMode } from "@/app/composition";
 import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
 import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
+import { projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -99,7 +100,12 @@ export default function RentalWorkspaceProvider({
       return undefined;
     }
 
-    const lines = rentalEquipmentLines.filter((item) => item.rentalId === rental.id);
+    const rawLines = rentalEquipmentLines.filter((item) => item.rentalId === rental.id);
+    const projection = remote && workspace.status === "loaded"
+      ? projectCanonicalRentalWorkspace(rental, rawLines, workspace.data.commercialSnapshots)
+      : { rental, lines: rawLines };
+    const projectedRental = projection.rental;
+    const lines = projection.lines;
     const lineResolution = resolveRentalWorkspaceEquipmentLines(lines);
     const soleLine = lineResolution.kind === "sole" ? lineResolution.line : undefined;
     const deurs = deurRepository.getByRentalId(rental.id);
@@ -143,7 +149,7 @@ export default function RentalWorkspaceProvider({
     );
 
     return buildRentalAggregate({
-      rental,
+      rental: projectedRental,
       rentalEquipmentLines: lines,
       contract,
       equipment,
@@ -163,7 +169,7 @@ export default function RentalWorkspaceProvider({
         collectionStatus: collection.status,
       },
     });
-  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository]);
+  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository, remote, workspace]);
 
   if (remote && (list.status === "loading" || workspace.status === "loading" || workDescriptionsStatus === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
   if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
