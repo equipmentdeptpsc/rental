@@ -60,6 +60,7 @@ import RolesPage from "@/features/administration/pages/RolesPage";
 import PermissionsPage from "@/features/administration/pages/PermissionsPage";
 import AuditTrailPage from "@/features/administration/pages/AuditTrailPage";
 import DataMigrationPage from "@/pages/DataMigration";
+import { CANONICAL_NAVIGATION_PERMISSIONS } from "./navigation/navigationConfig";
 
 const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
 const CostCodePage = lazy(() => import("@/features/masters/cost-code/pages"));
@@ -132,14 +133,14 @@ export const router = createBrowserRouter([
       { path: "daily-logs", element: permitted("dailyLog.read", <DailyLogs />) },
       { path: "daily-logs/new", element: permitted("dailyLog.manage", <NewDailyLog />) },
       { path: "billing", element: permitted("billing.read", <Billing />) },
-      { path: "reports", element: permitted("reports.view", <Reports />) },
-      { path: "reports/preview", element: permitted("reports.view", <ReportPreview />) },
-      { path: "settings", element: permitted("settings.manage", <Settings />) },
-      { path: "users", element: permitted("users.manage", <UsersPage />) },
-      { path: "roles", element: permitted("users.manage", <RolesPage />) },
-      { path: "permissions", element: permitted("users.manage", <PermissionsPage />) },
-      { path: "audit-trail", element: permitted("users.manage", <AuditTrailPage />) },
-      { path: "data-migration", element: permitted("masterData.manage", <DataMigrationPage />) },
+      { path: "reports", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.reports, <Reports />) },
+      { path: "reports/preview", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.reports, <ReportPreview />) },
+      { path: "settings", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.settings, <Settings />) },
+      { path: "users", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.users, <UsersPage />) },
+      { path: "roles", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.roles, <RolesPage />) },
+      { path: "permissions", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.permissions, <PermissionsPage />) },
+      { path: "audit-trail", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.auditTrail, <AuditTrailPage />) },
+      { path: "data-migration", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.dataMigration, <DataMigrationPage />) },
       { path: "development-email-outbox", element: permitted("settings.manage", <DevelopmentEmailOutboxPage />) },
       { path: "development-email-outbox/:id", element: permitted("settings.manage", <DevelopmentEmailPreviewPage />) },
       { path: "development-customer-review-outbox", element: permitted("settings.manage", <DevelopmentCustomerReviewOutboxPage />) },

@@ -61,7 +61,7 @@ export const SYSTEM_ROLE_DEFINITIONS: Readonly<
       "dailyLog.manage",
       "billing.read",
       "collections.read",
-      "reports.view",
+      "reports.read",
     ]),
   }),
   operator: Object.freeze({
@@ -83,7 +83,7 @@ export const SYSTEM_ROLE_DEFINITIONS: Readonly<
       "billing.update",
       "collections.read",
       "collections.manage",
-      "reports.view",
+      "reports.read",
     ]),
   }),
   management: Object.freeze({
@@ -97,7 +97,7 @@ export const SYSTEM_ROLE_DEFINITIONS: Readonly<
       "dailyLog.read",
       "billing.read",
       "collections.read",
-      "reports.view",
+      "reports.read",
     ]),
   }),
 });

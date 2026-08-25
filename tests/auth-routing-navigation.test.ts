@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   APP_NAVIGATION_GROUPS,
+  CANONICAL_NAVIGATION_PERMISSIONS,
   getAuthorizedLandingPage,
   getVisibleNavigation,
 } from "@/app/navigation/navigationConfig";
@@ -65,6 +66,23 @@ describe("public route inventory", () => {
 });
 
 describe("permission-aware navigation", () => {
+  it("uses the canonical Catalog 2.0 vocabulary for sidebar and direct route guards", () => {
+    expect(CANONICAL_NAVIGATION_PERMISSIONS).toEqual({
+      reports: "reports.read",
+      users: "users.read",
+      roles: "roles.read",
+      permissions: "permissions.catalog.read",
+      settings: "settings.read",
+      auditTrail: "users.auditHistory.read",
+      dataMigration: "masterData.read",
+    });
+    const requirements = new Map(APP_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => [item.path, item.permission])));
+    expect(requirements.get("/reports")).toBe(CANONICAL_NAVIGATION_PERMISSIONS.reports);
+    expect(requirements.get("/users")).toBe(CANONICAL_NAVIGATION_PERMISSIONS.users);
+    expect(requirements.get("/roles")).toBe(CANONICAL_NAVIGATION_PERMISSIONS.roles);
+    expect(requirements.get("/permissions")).toBe(CANONICAL_NAVIGATION_PERMISSIONS.permissions);
+    expect(requirements.get("/settings")).toBe(CANONICAL_NAVIGATION_PERMISSIONS.settings);
+  });
   it("keeps metadata ordering stable and removes empty groups", () => {
     const visible = getVisibleNavigation(user("finance"), authorization);
     const sourceOrder = APP_NAVIGATION_GROUPS.flatMap((group) => group.items.map((item) => item.label));

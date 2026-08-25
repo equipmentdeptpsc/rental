@@ -26,11 +26,17 @@ export const PERMISSIONS = {
   dailyLog: ["dailyLog.read", "dailyLog.manage"],
   billing: ["billing.read", "billing.create", "billing.update"],
   collections: ["collections.read", "collections.manage"],
-  reports: ["reports.view"],
+  reports: ["reports.read", "reports.view"],
   administration: [
+    "users.read",
+    "users.auditHistory.read",
     "users.manage",
+    "roles.read",
     "roles.manage",
+    "permissions.catalog.read",
+    "settings.read",
     "settings.manage",
+    "masterData.read",
     "masterData.manage",
   ],
 } as const;

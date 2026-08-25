@@ -27,6 +27,16 @@ export interface NavigationGroup {
   readonly items: readonly NavigationItem[];
 }
 
+export const CANONICAL_NAVIGATION_PERMISSIONS = Object.freeze({
+  reports: "reports.read",
+  users: "users.read",
+  roles: "roles.read",
+  permissions: "permissions.catalog.read",
+  settings: "settings.read",
+  auditTrail: "users.auditHistory.read",
+  dataMigration: "masterData.read",
+} as const satisfies Readonly<Record<string, Permission>>);
+
 export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
   { title: "GENERAL", items: [{ icon: "dashboard", label: "Dashboard", path: "/dashboard", permission: "dashboard.read" }] },
   {
@@ -43,14 +53,14 @@ export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
     ],
   },
   { title: "FINANCE", items: [{ icon: "billing", label: "Billing", path: "/billing", permission: "billing.read" }] },
-  { title: "ANALYTICS", items: [{ icon: "reports", label: "Reports", path: "/reports", permission: "reports.view" }] },
+  { title: "ANALYTICS", items: [{ icon: "reports", label: "Reports", path: "/reports", permission: CANONICAL_NAVIGATION_PERMISSIONS.reports }] },
   { title: "SYSTEM", items: [
-    { icon: "users", label: "Users", path: "/users", permission: "users.manage" },
-    { icon: "users", label: "Roles", path: "/roles", permission: "users.manage" },
-    { icon: "users", label: "Permissions", path: "/permissions", permission: "users.manage" },
-    { icon: "settings", label: "Settings", path: "/settings", permission: "settings.manage" },
-    { icon: "users", label: "Audit Trail", path: "/audit-trail", permission: "users.manage" },
-    { icon: "settings", label: "Data Migration", path: "/data-migration", permission: "masterData.manage" },
+    { icon: "users", label: "Users", path: "/users", permission: CANONICAL_NAVIGATION_PERMISSIONS.users },
+    { icon: "users", label: "Roles", path: "/roles", permission: CANONICAL_NAVIGATION_PERMISSIONS.roles },
+    { icon: "users", label: "Permissions", path: "/permissions", permission: CANONICAL_NAVIGATION_PERMISSIONS.permissions },
+    { icon: "settings", label: "Settings", path: "/settings", permission: CANONICAL_NAVIGATION_PERMISSIONS.settings },
+    { icon: "users", label: "Audit Trail", path: "/audit-trail", permission: CANONICAL_NAVIGATION_PERMISSIONS.auditTrail },
+    { icon: "settings", label: "Data Migration", path: "/data-migration", permission: CANONICAL_NAVIGATION_PERMISSIONS.dataMigration },
   ] },
 ]);
 

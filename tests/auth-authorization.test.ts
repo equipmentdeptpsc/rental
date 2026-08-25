@@ -93,7 +93,7 @@ describe("system role permission mappings", () => {
 
     expect(permissions).toContain("equipment.read");
     expect(permissions).toContain("billing.read");
-    expect(permissions).toContain("reports.view");
+    expect(permissions).toContain("reports.read");
     expect(permissions).toContain("maintenance.read");
     expect(permissions).toContain("rental.approval.decide");
     expect(permissions).not.toContain("rental.approval.submit");
