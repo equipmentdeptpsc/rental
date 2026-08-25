@@ -221,6 +221,8 @@ export interface RentalRecord {
   approvalStatus?: RentalApprovalStatus;
   approvalRequestedAt?: string;
   approvalRequestedBy?: RentalApprovalActor;
+  /** Canonical remote requester identity used for approval separation of duties. */
+  approvalRequestedById?: string;
   approvalApprovedAt?: string;
   approvalApprovedBy?: RentalApprovalActor;
   approvalRejectedAt?: string;

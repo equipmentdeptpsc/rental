@@ -53,11 +53,17 @@ function mapAssignment(row: Record<string, unknown>): RepositoryResult<Assignmen
     ...(typeof expectedReturn === "string" && expectedReturn ? { expectedReturn } : {}),
   } as unknown as AssignmentRecord);
 }
-function mapRental(row: Record<string, unknown>): RepositoryResult<RentalRecord> {
+export function mapRental(row: Record<string, unknown>): RepositoryResult<RentalRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row);
   if (!base.success) return base;
+  const approvalRequester = base.value.approvalRequestedBy;
   return repositorySuccess({
     ...base.value,
+    ...(typeof approvalRequester === "string"
+      ? { approvalRequestedBy: undefined, approvalRequestedById: approvalRequester }
+      : approvalRequester && typeof approvalRequester === "object" && typeof (approvalRequester as Record<string, unknown>).id === "string"
+        ? { approvalRequestedById: (approvalRequester as Record<string, unknown>).id as string }
+        : {}),
     customer: base.value.customer ?? base.value.customerSnapshot ?? "",
     project: base.value.project ?? base.value.projectSnapshot ?? "",
   } as unknown as RentalRecord);

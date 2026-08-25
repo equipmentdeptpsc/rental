@@ -23,6 +23,18 @@ describe("canonical Rental front-half migration", () => {
     expect(sql).not.toMatch(/2026080300(?:77|78|79|80|81|82|83)00/);
     expect(sql).not.toContain("command_prepare_reserved_rental");
   });
+  it("keeps approval separate from reservation and enforces a different decision actor", () => {
+    const decide = sql.slice(sql.indexOf("CREATE FUNCTION erp.command_decide_rental_approval"), sql.indexOf("CREATE FUNCTION erp.command_reserve_rental"));
+    expect(decide).toContain("target.status<>'Draft'");
+    expect(decide).toContain("target.approval_status<>'Pending'");
+    expect(decide).toContain("actor=target.approval_requested_by");
+    expect(decide).toContain("UPDATE erp.rentals SET approval_status=decision");
+    expect(decide).not.toMatch(/status='Reserved'|commercial_snapshots|deur_expectation_frequency/);
+    const reserve = sql.slice(sql.indexOf("CREATE FUNCTION erp.command_reserve_rental"), sql.indexOf("CREATE FUNCTION erp.command_release_rental"));
+    expect(reserve).toContain("target.status<>'Draft' OR target.approval_status<>'Approved'");
+    expect(reserve).toContain("SET status='Reserved'");
+    expect(reserve).toContain("INSERT INTO erp.commercial_snapshots");
+  });
   it("enforces tenant-scoped normalized Rental numbers and classifies unique conflicts truthfully", () => {
     expect(sql).toMatch(/DROP INDEX IF EXISTS erp\.uq_rentals_number;\s*CREATE UNIQUE INDEX uq_rentals_number\s*ON erp\.rentals\(company_id,lower\(rental_number\)\)/);
     expect(sql).not.toMatch(/ON erp\.rentals\(lower\(rental_number\)\)/);
