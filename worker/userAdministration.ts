@@ -17,12 +17,14 @@ export class TrustedUserAdministration {
     const actorId=identity.data.user.id;
     const actor=await this.service.schema("erp").from("users").select("id,company_id,status").eq("id",actorId).maybeSingle();
     if(actor.error||!actor.data||actor.data.status!=="active")return result(403,{success:false,message:"Active application-user access is required."});
-    const permission=await this.service.schema("erp").from("effective_user_permissions").select("permission_code").eq("user_id",actorId).eq("permission_code","users.manage").maybeSingle();
-    if(permission.error||!permission.data)return result(403,{success:false,message:"You do not have permission to manage users."});
+    const reset=request.url.match(/\/api\/admin\/users\/([^/]+)\/reset-password$/);
+    const requiredPermissions=reset?["users.password.reset"]:["users.create","roles.assign"];
+    const permission=await this.service.schema("erp").from("effective_user_permissions").select("permission_code").eq("user_id",actorId).in("permission_code",requiredPermissions);
+    const granted=new Set((permission.data??[]).map(row=>String(row.permission_code)));
+    if(permission.error||requiredPermissions.some(code=>!granted.has(code)))return result(403,{success:false,message:"You do not have permission to perform this user-administration action."});
     const payload=await request.json().catch(()=>null);
     if(!payload||typeof payload!=="object"||Array.isArray(payload))return result(400,{success:false,message:"Invalid request."});
     const command=payload as Json;
-    const reset=request.url.match(/\/api\/admin\/users\/([^/]+)\/reset-password$/);
     return reset?this.reset(actorId,String(actor.data.company_id),decodeURIComponent(reset[1]),command):this.create(actorId,String(actor.data.company_id),command);
   }
 
@@ -31,7 +33,7 @@ export class TrustedUserAdministration {
     const commandId=text(command.commandId),idempotencyKey=text(command.idempotencyKey),roleCodes=Array.isArray(command.systemRoles)?[...new Set(command.systemRoles.filter((x):x is string=>typeof x==="string").map(x=>x.trim()).filter(Boolean))]:[];
     const operatorId=text(command.operatorId)||undefined;
     if(!displayName||!username||!/^\S+@\S+\.\S+$/.test(email)||password.length<8||!commandId||!idempotencyKey||roleCodes.length===0)return result(400,{success:false,message:"Complete all required user fields with a valid email, password, and role."});
-    const roles=await this.service.schema("erp").from("app_roles").select("code").in("code",roleCodes);
+    const roles=await this.service.schema("erp").from("app_roles").select("code,active,deprecated_at").in("code",roleCodes).eq("active",true).is("deprecated_at",null);
     if(roles.error||roles.data?.length!==roleCodes.length)return result(400,{success:false,message:"One or more selected roles are not available."});
     if(operatorId){const operator=await this.service.schema("erp").from("operators").select("id").eq("id",operatorId).eq("company_id",companyId).eq("status","Active").maybeSingle();if(operator.error||!operator.data)return result(404,{success:false,message:"The selected Operator is not available."});}
     const replay=await this.service.schema("erp").rpc("lookup_application_user_provisioning_command",{command:{actorId,companyId,idempotencyKey,displayName,username,email,roleCodes,...(operatorId?{operatorId}:{})}});
