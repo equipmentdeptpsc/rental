@@ -109,3 +109,19 @@ export function getSystemRoleDefinition(
     ? SYSTEM_ROLE_DEFINITIONS[role as SystemRole]
     : undefined;
 }
+
+const CATALOG_ROLE_DISPLAY_NAMES: Readonly<Record<string, string>> = Object.freeze({
+  "system-administrator": "System Administrator",
+  "operations-manager": "Operations Manager",
+  dispatcher: "Dispatcher",
+  "equipment-coordinator": "Equipment Coordinator",
+  operator: "Operator",
+  "billing-staff": "Billing Officer",
+  "management-viewer": "Management Viewer",
+  "maintenance-staff": "Maintenance Staff",
+  "read-only-auditor": "Auditor",
+});
+
+export function getSystemRoleDisplayName(role: string): string | undefined {
+  return getSystemRoleDefinition(role)?.displayName ?? CATALOG_ROLE_DISPLAY_NAMES[role];
+}

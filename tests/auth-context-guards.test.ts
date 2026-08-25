@@ -106,6 +106,27 @@ function Location() {
 }
 
 describe("AuthContext integration", () => {
+  it.each([
+    ["operations-manager", "Operations Manager"],
+    ["system-administrator", "System Administrator"],
+    ["operator", "Operator"],
+    ["billing-staff", "Billing Officer"],
+    ["read-only-auditor", "Auditor"],
+    ["custom-unavailable", "Assigned User"],
+  ])("renders canonical header label %s as %s", async (role, label) => {
+    const service = new FakeAuthenticationService();
+    service.state = {
+      session,
+      user: { ...administrator, displayName: "Role Label User", systemRoles: [role] },
+    };
+    const { container } = await render(
+      service,
+      createElement(Header, { onMenu: () => undefined }),
+    );
+    expect(container.textContent).toContain(`Role Label User (${label})`);
+    if (role === "operations-manager") expect(container.textContent).not.toContain("Role Label User (Operator)");
+  });
+
   it("restores authenticated state and exposes compatibility fields", async () => {
     const service = new FakeAuthenticationService();
     service.state = { session, user: administrator };

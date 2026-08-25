@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Bell, ChevronDown, Menu, Moon, Sun } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
-import { getSystemRoleDefinition } from "@/features/auth/domain/rolePermissions";
+import { getSystemRoleDisplayName } from "@/features/auth/domain/rolePermissions";
 
 const pageMeta: Readonly<Record<string, { title: string; subtitle: string }>> = {
   "/dashboard": { title: "Dashboard", subtitle: "Overview of operations, equipment, rentals, DEUR, and billing." },
@@ -26,7 +26,7 @@ export default function Header({ onMenu, search }: { onMenu(): void; search?: Re
   }, [dark]);
 
   function signOut() { navigate("/login", { replace: true }); logout(); }
-  const role = user ? getSystemRoleDefinition(user.systemRoles[0])?.displayName ?? user.role : "";
+  const role = user ? getSystemRoleDisplayName(user.systemRoles[0]) ?? "Assigned User" : "";
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:px-5">
