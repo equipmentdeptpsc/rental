@@ -25,6 +25,7 @@ function dependencies(list: ReturnType<typeof vi.fn>, references: CanonicalRenta
     decideApproval: vi.fn(async () => unusedCanonicalFailure),
     reserve: vi.fn(async () => unusedCanonicalFailure),
     release: vi.fn(async () => unusedCanonicalFailure),
+    activate: vi.fn(async () => unusedCanonicalFailure),
   };
   return {
     ...local,

@@ -76,7 +76,7 @@ function repository(decideApproval: CanonicalRentalRemoteRepository["decideAppro
   return {
     decideApproval,
     readWorkspace: vi.fn(), readReferenceData: vi.fn(), createDraft: vi.fn(), updateTerms: vi.fn(),
-    submitApproval: vi.fn(), reserve: vi.fn(), release: vi.fn(),
+    submitApproval: vi.fn(), reserve: vi.fn(), release: vi.fn(), activate: vi.fn(),
   } as CanonicalRentalRemoteRepository;
 }
 

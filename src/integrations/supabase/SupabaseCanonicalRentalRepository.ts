@@ -21,6 +21,7 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
   decideApproval(input: DecideCanonicalApprovalInput) { return this.command("command_decide_rental_approval", input); }
   reserve(input: CanonicalVersionedInput) { return this.command("command_reserve_rental", input); }
   release(input: CanonicalVersionedInput) { return this.command("command_release_rental", input); }
+  activate(input: CanonicalVersionedInput) { return this.command("command_activate_rental", input); }
   private async read<T>(name: string, args: Record<string, unknown>, map: (value: Record<string, unknown>) => T): Promise<CanonicalReadResult<T>> {
     try { const { data, error } = await this.client.schema("erp").rpc(name, args); if (error) return failure("TRANSPORT_FAILURE"); const value = object(data); if (!value || value.success !== true) return failure(code(value?.code)); return { success: true, value: map(value) }; } catch { return failure("TRANSPORT_FAILURE"); }
   }

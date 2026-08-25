@@ -37,4 +37,5 @@ export interface CanonicalRentalRemoteRepository {
   decideApproval(input: DecideCanonicalApprovalInput): Promise<CanonicalCommandResult>;
   reserve(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
   release(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
+  activate(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
 }

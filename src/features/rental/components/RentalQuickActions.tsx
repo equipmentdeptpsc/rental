@@ -20,8 +20,9 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
   const mutationsAvailable = legacyMutations || canonicalMutations;
   const { transitionRental, returnRental, releaseRental, submitForApproval, approveRental, rejectRental, getReleaseReadiness } = useRental();
   const { showToast } = useToast(); const [pending, setPending] = useState<RentalQuickActionId>();
+  const submissionPending = useRef(false);
   const commandIdentity = useRef<Partial<Record<RentalQuickActionId, { commandId: string; idempotencyKey: string }>>>({});
-  const permissions = { reserve: hasPermission("rental.update"), manage: hasPermission("rental.manage"), approve: hasPermission("rental.approval.decide"), submit: hasPermission("rental.approval.submit"), release: hasPermission("rental.release"), return: hasPermission("rental.return") };
+  const permissions = { reserve: hasPermission("rental.update"), manage: hasPermission("rental.manage"), activate: hasPermission("rental.activate"), approve: hasPermission("rental.approval.decide"), submit: hasPermission("rental.approval.submit"), release: hasPermission("rental.release"), return: hasPermission("rental.return") };
   const approval = getRentalApprovalStatus(rental);
   const decisionEligibility = evaluateCanonicalApprovalDecisionEligibility(rental, user?.id, permissions.approve);
   const model = canonicalMutations
@@ -30,10 +31,11 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
         : approval === "Approved" ? { actions: permissions.reserve ? [{ id: "reserve" as const, label: "Reserve Rental" }] : [], message: "Approved" }
           : { actions: permissions.submit ? [{ id: "submit" as const, label: approval === "Rejected" ? "Resubmit for Approval" : "Submit for Approval" }] : [], message: approval === "Rejected" ? rental.approvalDecisionRemarks ? `Rejected: ${rental.approvalDecisionRemarks}` : "Rejected" : undefined }
       : rental.status === "Reserved" ? { actions: permissions.release ? [{ id: "release" as const, label: "Release Equipment" }] : [], message: "Approved and reserved" }
+        : rental.status === "Released" ? { actions: permissions.activate ? [{ id: "activate" as const, label: "Activate Rental" }] : [], message: "Released" }
         : { actions: [], message: undefined }
     : deriveRentalQuickActions(rental, permissions);
   async function run(id: RentalQuickActionId) {
-    if (pending) return;
+    if (submissionPending.current) return;
     if (canonicalMutations) {
       const expectedVersion = rental.rowVersion;
       if (typeof expectedVersion !== "number") { showToast("Canonical Rental version is unavailable. Refresh and try again.", "error"); return; }
@@ -42,6 +44,7 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
       const identity = commandIdentity.current[id] ??= { commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() };
       const input = { ...identity, rentalId: rental.id, expectedVersion };
       const repository = commandRepositories.canonicalRental!;
+      submissionPending.current = true;
       setPending(id);
       try {
         let result;
@@ -50,16 +53,19 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
         else if (id === "reject") result = await repository.decideApproval({ ...input, decision: "Rejected", remarks: rejectionRemarks });
         else if (id === "reserve") result = await repository.reserve(input);
         else if (id === "release") result = await repository.release(input);
+        else if (id === "activate") result = await repository.activate(input);
         else { showToast("This Rental action is not yet certified for remote use.", "error"); return; }
         if (result.success) { delete commandIdentity.current[id]; requestCanonicalRentalRefresh(); }
         showToast(result.success ? `${model.actions.find((item) => item.id === id)?.label ?? "Rental action"} completed.` : result.message, result.success ? "success" : "error");
       } catch {
         showToast("Confirmation was not received from the remote service. Refresh before retrying.", "error");
       } finally {
+        submissionPending.current = false;
         setPending(undefined);
       }
       return;
     }
+    submissionPending.current = true;
     setPending(id);
     let result;
     if (id === "reserve") {
@@ -73,10 +79,10 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
     else if (id === "activate") result = transitionRental(rental.id, "Active");
     else if (id === "return") result = returnRental(rental.id);
     else result = transitionRental(rental.id, "Closed");
-    showToast(result.success ? `${model.actions.find((item) => item.id === id)?.label ?? "Rental action"} completed.` : result.message ?? "Rental action failed.", result.success ? "success" : "error"); setPending(undefined);
+    showToast(result.success ? `${model.actions.find((item) => item.id === id)?.label ?? "Rental action"} completed.` : result.message ?? "Rental action failed.", result.success ? "success" : "error"); submissionPending.current = false; setPending(undefined);
   }
   const canEditTerms = hasPermission("rental.commercialTerms.manage") && (legacyMutations ? ["Draft", "Assigned", "Reserved"].includes(rental.status) : rental.status === "Draft");
-  const actions = visibleRentalQuickActions(model, hideClose).filter((action) => legacyMutations || ["submit", "approve", "reject", "reserve", "release"].includes(action.id));
+  const actions = visibleRentalQuickActions(model, hideClose).filter((action) => legacyMutations || ["submit", "approve", "reject", "reserve", "release", "activate"].includes(action.id));
   const releaseReady = canonicalMutations ? true : rental.status === "Reserved" ? getReleaseReadiness(rental.id).eligible : true;
   if (!mutationsAvailable) return null;
   return <div className="flex flex-wrap items-center gap-2">{model.message && <span className="text-sm text-slate-600">{model.message}</span>}{canEditTerms && <Link className="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700" to={`/rentals/${rental.id}/commercial-terms`}>Edit Commercial Terms</Link>}{actions.map((action) => <Button key={action.id} variant="secondary" disabled={Boolean(pending) || (action.id === "release" && !releaseReady)} title={action.id === "release" && !releaseReady ? "Complete every DEUR release-readiness requirement first." : undefined} onClick={() => run(action.id)}>{pending === action.id ? "Working…" : action.label}</Button>)}</div>;
