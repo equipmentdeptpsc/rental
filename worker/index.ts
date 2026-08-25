@@ -13,7 +13,7 @@ export default{
    if(request.method!=="POST")return Response.json({success:false,message:"Method not allowed."},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
    try{return usernameLoginJson(await createTrustedUsernameAuthentication(environment).handle(request));}catch{return Response.json({success:false,message:"Invalid username/email or password."},{status:401,headers:{"cache-control":"no-store"}});}
   }
-  if(path==="/api/admin/users"||/^\/api\/admin\/users\/[^/]+\/reset-password$/.test(path)){
+  if(path==="/api/admin/users"||/^\/api\/admin\/users\/[^/]+\/(?:reset-password|deactivate)$/.test(path)){
    if(request.method!=="POST")return Response.json({success:false,message:"Method not allowed."},{status:405,headers:{allow:"POST"}});
    try{return safeJson(await createTrustedUserAdministration(environment).handle(request));}catch{return Response.json({success:false,message:"Remote user administration is unavailable."},{status:503});}
   }

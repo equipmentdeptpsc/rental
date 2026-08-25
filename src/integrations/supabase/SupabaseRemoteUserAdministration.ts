@@ -27,6 +27,7 @@ export class SupabaseRemoteUserAdministration implements RemoteUserAdministratio
     return (data ?? []).map((row:any)=>({id:row.id,name:row.name,email:row.email??"",licenseNumber:row.license_number??"",certificationType:row.certification_type,status:row.status,joinedDate:row.joined_date??""}));
   }
   create(input: CreateUserInput & { commandId:string;idempotencyKey:string }): Promise<User> { return this.request<User>(this.endpoint,input); }
+  deactivate(userId:string,commandId:string,idempotencyKey:string):Promise<User>{return this.request<User>(`${this.endpoint}/${encodeURIComponent(userId)}/deactivate`,{commandId,idempotencyKey});}
   resetPassword(userId:string,newPassword:string):Promise<void>{return this.request<void>(`${this.endpoint}/${encodeURIComponent(userId)}/reset-password`,{newPassword});}
   private async request<T>(url:string,body:unknown):Promise<T>{
     const session=await this.client.auth.getSession();const token=session.data.session?.access_token;

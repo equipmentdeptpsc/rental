@@ -32,6 +32,7 @@ export const PERMISSIONS = {
   administration: [
     "users.read",
     "users.auditHistory.read",
+    "users.deactivate",
     "users.manage",
     "roles.read",
     "roles.manage",

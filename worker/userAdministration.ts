@@ -18,7 +18,8 @@ export class TrustedUserAdministration {
     const actor=await this.service.schema("erp").from("users").select("id,company_id,status").eq("id",actorId).maybeSingle();
     if(actor.error||!actor.data||actor.data.status!=="active")return result(403,{success:false,message:"Active application-user access is required."});
     const reset=request.url.match(/\/api\/admin\/users\/([^/]+)\/reset-password$/);
-    const requiredPermissions=reset?["users.password.reset"]:["users.create","roles.assign"];
+    const deactivate=request.url.match(/\/api\/admin\/users\/([^/]+)\/deactivate$/);
+    const requiredPermissions=reset?["users.password.reset"]:deactivate?["users.deactivate"]:["users.create","roles.assign"];
     const permission=await this.service.schema("erp").from("effective_user_permissions").select("permission_code").eq("user_id",actorId).in("permission_code",requiredPermissions);
     if(permission.error)return result(503,{success:false,message:"User authorization is temporarily unavailable."});
     const granted=new Set((permission.data??[]).map(row=>String(row.permission_code)));
@@ -26,7 +27,7 @@ export class TrustedUserAdministration {
     const payload=await request.json().catch(()=>null);
     if(!payload||typeof payload!=="object"||Array.isArray(payload))return result(400,{success:false,message:"Invalid request."});
     const command=payload as Json;
-    return reset?this.reset(actorId,String(actor.data.company_id),decodeURIComponent(reset[1]),command):this.create(actorId,String(actor.data.company_id),command);
+    return reset?this.reset(actorId,String(actor.data.company_id),decodeURIComponent(reset[1]),command):deactivate?this.deactivate(actorId,String(actor.data.company_id),decodeURIComponent(deactivate[1]),command):this.create(actorId,String(actor.data.company_id),command);
   }
 
   private async create(actorId:string,companyId:string,command:Json):Promise<SafeResult>{
@@ -58,6 +59,16 @@ export class TrustedUserAdministration {
     const audit=await this.service.schema("erp").rpc("record_application_user_password_reset",{command:{actorId,companyId,targetUserId:targetId,commandId:crypto.randomUUID()}});
     if(audit.error||(audit.data as {success?:boolean}|null)?.success!==true)return result(500,{success:false,message:"Password changed, but audit completion requires administrator support.",code:"AUDIT_COMPLETION_FAILED"});
     return result(200,{success:true});
+  }
+
+  private async deactivate(actorId:string,companyId:string,targetId:string,command:Json):Promise<SafeResult>{
+    const commandId=text(command.commandId),idempotencyKey=text(command.idempotencyKey);
+    if(!commandId||!idempotencyKey)return result(400,{success:false,message:"A command identity is required."});
+    const deactivated=await this.service.schema("erp").rpc("command_deactivate_application_user",{command:{actorId,companyId,targetUserId:targetId,commandId,idempotencyKey}});
+    const response=deactivated.data as {success?:boolean;value?:Json;message?:string;code?:string}|null;
+    if(deactivated.error)return result(503,{success:false,message:"User deactivation is temporarily unavailable."});
+    if(!response?.success){const status=response?.code==="FORBIDDEN"?403:response?.code==="NOT_FOUND"?404:response?.code==="IDEMPOTENCY_MISMATCH"?409:400;return result(status,{success:false,message:response?.message??"User deactivation was rejected.",code:response?.code});}
+    return result(200,{success:true,value:response.value??{}});
   }
 }
 
