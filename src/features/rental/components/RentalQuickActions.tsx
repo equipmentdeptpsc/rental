@@ -33,23 +33,34 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
         : { actions: [], message: undefined }
     : deriveRentalQuickActions(rental, permissions);
   async function run(id: RentalQuickActionId) {
-    if (pending) return; setPending(id);
+    if (pending) return;
     if (canonicalMutations) {
       const expectedVersion = rental.rowVersion;
-      if (typeof expectedVersion !== "number") { showToast("Canonical Rental version is unavailable. Refresh and try again.", "error"); setPending(undefined); return; }
+      if (typeof expectedVersion !== "number") { showToast("Canonical Rental version is unavailable. Refresh and try again.", "error"); return; }
+      const rejectionRemarks = id === "reject" ? window.prompt("Rejection reason") ?? "" : undefined;
+      if (id === "reject" && !rejectionRemarks?.trim()) { showToast("A rejection reason is required.", "error"); return; }
       const identity = commandIdentity.current[id] ??= { commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() };
       const input = { ...identity, rentalId: rental.id, expectedVersion };
       const repository = commandRepositories.canonicalRental!;
-      let result;
-      if (id === "submit") result = await repository.submitApproval(input);
-      else if (id === "approve") result = await repository.decideApproval({ ...input, decision: "Approved", remarks: window.prompt("Approval remarks (optional)") ?? undefined });
-      else if (id === "reject") { const remarks = window.prompt("Rejection reason") ?? ""; result = remarks.trim() ? await repository.decideApproval({ ...input, decision: "Rejected", remarks }) : { success: false as const, code: "VALIDATION_REJECTED" as const, message: "A rejection reason is required." }; }
-      else if (id === "reserve") result = await repository.reserve(input);
-      else if (id === "release") result = await repository.release(input);
-      else { showToast("This Rental action is not yet certified for remote use.", "error"); setPending(undefined); return; }
-      if (result.success) { delete commandIdentity.current[id]; requestCanonicalRentalRefresh(); }
-      showToast(result.success ? `${model.actions.find((item) => item.id === id)?.label ?? "Rental action"} completed.` : result.message, result.success ? "success" : "error"); setPending(undefined); return;
+      setPending(id);
+      try {
+        let result;
+        if (id === "submit") result = await repository.submitApproval(input);
+        else if (id === "approve") result = await repository.decideApproval({ ...input, decision: "Approved" });
+        else if (id === "reject") result = await repository.decideApproval({ ...input, decision: "Rejected", remarks: rejectionRemarks });
+        else if (id === "reserve") result = await repository.reserve(input);
+        else if (id === "release") result = await repository.release(input);
+        else { showToast("This Rental action is not yet certified for remote use.", "error"); return; }
+        if (result.success) { delete commandIdentity.current[id]; requestCanonicalRentalRefresh(); }
+        showToast(result.success ? `${model.actions.find((item) => item.id === id)?.label ?? "Rental action"} completed.` : result.message, result.success ? "success" : "error");
+      } catch {
+        showToast("Confirmation was not received from the remote service. Refresh before retrying.", "error");
+      } finally {
+        setPending(undefined);
+      }
+      return;
     }
+    setPending(id);
     let result;
     if (id === "reserve") {
       const assigned = rental.status === "Draft" ? transitionRental(rental.id, "Assigned") : { success: true };
