@@ -34,7 +34,7 @@ export function resolveRentalWorkflowStatus(input: Input) {
   else if (rental.approvalStatus === "Rejected") { stage = "ManagerRejected"; label = "Manager Rejected"; explanation = rental.approvalDecisionRemarks ?? "Manager rejected the Rental."; nextAction = "Revise and resubmit"; }
   else if (rental.approvalStatus === "Approved") { stage = "ApprovedForRelease"; label = "Approved for Release"; explanation = "Manager approval authorizes release eligibility."; nextAction = "Release Equipment"; }
   else if (rental.status === "Reserved") { stage = "Reserved"; label = "Reserved"; explanation = "Rental preparation is complete."; nextAction = "Send to Approver"; }
-  else { stage = "Draft"; label = "Draft"; explanation = "Rental preparation is incomplete."; nextAction = "Complete and reserve Rental"; }
+  else { stage = "Draft"; label = "Draft"; explanation = "Rental is in draft preparation."; nextAction = "Submit for approval when preparation is complete"; }
 
   if (allAcknowledged && !input.commercialTermsAvailable) blockingReasons.push("Commercial Terms are unavailable for one or more effective Rental Equipment Lines.");
   if (allAcknowledged && !input.billableEvidence) blockingReasons.push("One or more acknowledged DEURs have no calculable billable evidence.");

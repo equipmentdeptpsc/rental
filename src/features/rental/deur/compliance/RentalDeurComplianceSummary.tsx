@@ -5,12 +5,12 @@ export function expectationPolicyLabel(policy?: RentalDeurExpectationPolicy) {
   return policy?.frequency === "PER_WORKDAY" ? "Per Workday" : policy?.frequency === "PER_SHIFT" ? `Per Shift — ${policy.expectedShiftCodes?.join(", ")}` : policy?.frequency === "ON_DEMAND" ? "On Demand" : "Legacy Rental Fallback";
 }
 
-export default function RentalDeurComplianceSummary({ result, policy }: { result: RentalDeurComplianceResult; policy?: RentalDeurExpectationPolicy }) {
+export default function RentalDeurComplianceSummary({ result, policy, policyStaged = false }: { result: RentalDeurComplianceResult; policy?: RentalDeurExpectationPolicy; policyStaged?: boolean }) {
   return <>
     <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-slate-600">
       <span>Expected: <strong>{result.expectedCount}</strong></span><span>Acknowledged: <strong>{result.compliantCount}</strong></span>
       <span>Incomplete: <strong>{result.incompleteCount}</strong></span><span>Missing: <strong>{result.missingCount}</strong></span>
-      <span>Pending Correction: <strong>{result.pendingCorrectionCount}</strong></span><span>Policy: <strong>{expectationPolicyLabel(policy)}</strong></span>
+      <span>Pending Correction: <strong>{result.pendingCorrectionCount}</strong></span><span>Policy: <strong>{expectationPolicyLabel(policy)}{policyStaged ? " (Draft; activates at reservation)" : ""}</strong></span>
       {result.shiftWindowSource && <span>Windows: <strong>{result.shiftWindowSource === "IMMUTABLE_RENTAL_SNAPSHOT" ? "Immutable Rental Shift Window" : "Legacy Live Shift Window"}</strong></span>}
     </div>
     {result.expectations.length > 0 && <div className="mt-4 overflow-x-auto border-t pt-4"><table className="min-w-full text-xs">

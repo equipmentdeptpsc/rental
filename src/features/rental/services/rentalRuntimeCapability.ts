@@ -12,3 +12,8 @@ export function canUseLegacyRentalMutations(configuration: RentalRuntimeConfigur
 export function canUseCanonicalRemoteRentalMutations(configuration: RentalRuntimeConfiguration): boolean {
   return configuration.persistenceMode === PersistenceMode.Remote && configuration.remoteOperationalWritesEnabled;
 }
+
+export function canUseAnyRentalMutations(configuration: RentalRuntimeConfiguration, canonicalRepositoryAvailable: boolean): boolean {
+  return canUseLegacyRentalMutations(configuration)
+    || (canUseCanonicalRemoteRentalMutations(configuration) && canonicalRepositoryAvailable);
+}

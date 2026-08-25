@@ -87,6 +87,10 @@ export interface OperationalCodeSnapshot {
 export interface RentalOperationalMetadataSnapshot {
   costCode?: OperationalCodeSnapshot;
   activityCode?: OperationalCodeSnapshot;
+  /** Canonical remote preparation staged while the Rental remains Draft. */
+  draftPreparation?: {
+    deurPolicy?: RentalDeurExpectationPolicy;
+  };
 }
 
 export interface RentalLineDeurExpectationSnapshot {

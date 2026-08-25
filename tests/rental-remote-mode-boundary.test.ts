@@ -6,7 +6,7 @@ import { ApplicationDependencyProvider, createLocalApplicationDependencies, Pers
 import { repositoryFailure, repositorySuccess } from "@/core/persistence";
 import { useRentalListData, type RentalListData } from "@/features/rental/hooks/useRentalListData";
 import type { CanonicalRentalReferenceData, CanonicalRentalRemoteRepository } from "@/features/rental/remote/contracts";
-import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseAnyRentalMutations, canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } from "@/features/rental/services/rentalRuntimeCapability";
 
 const empty: RentalListData = { rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [], customers: [], costCodes: [], activityCodes: [] };
 const fallback: RentalListData = { ...empty, rentals: [{ id: "local-rental", status: "Draft" } as RentalListData["rentals"][number]] };
@@ -61,6 +61,8 @@ describe("Rental remote-mode boundary", () => {
     expect(canUseCanonicalRemoteRentalMutations(local)).toBe(false);
     expect(canUseCanonicalRemoteRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: false })).toBe(false);
     expect(canUseCanonicalRemoteRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: true })).toBe(true);
+    expect(canUseAnyRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: true }, true)).toBe(true);
+    expect(canUseAnyRentalMutations({ ...local, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: true }, false)).toBe(false);
   });
 
   it("never exposes local fallback while canonical remote Rental data is loading or fails", async () => {
