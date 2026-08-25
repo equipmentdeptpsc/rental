@@ -20,8 +20,9 @@ export class TrustedUserAdministration {
     const reset=request.url.match(/\/api\/admin\/users\/([^/]+)\/reset-password$/);
     const requiredPermissions=reset?["users.password.reset"]:["users.create","roles.assign"];
     const permission=await this.service.schema("erp").from("effective_user_permissions").select("permission_code").eq("user_id",actorId).in("permission_code",requiredPermissions);
+    if(permission.error)return result(503,{success:false,message:"User authorization is temporarily unavailable."});
     const granted=new Set((permission.data??[]).map(row=>String(row.permission_code)));
-    if(permission.error||requiredPermissions.some(code=>!granted.has(code)))return result(403,{success:false,message:"You do not have permission to perform this user-administration action."});
+    if(requiredPermissions.some(code=>!granted.has(code)))return result(403,{success:false,message:"You do not have permission to perform this user-administration action."});
     const payload=await request.json().catch(()=>null);
     if(!payload||typeof payload!=="object"||Array.isArray(payload))return result(400,{success:false,message:"Invalid request."});
     const command=payload as Json;

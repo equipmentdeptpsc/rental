@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import canonicalMatrix from "../docs/rbac/role-permission-matrix.json";
 
 const migration = readFileSync("supabase/migrations/20260825000200_trusted_user_provisioning_permission_alignment.sql", "utf8");
+const viewAccessMigration = readFileSync("supabase/migrations/20260825000300_trusted_user_provisioning_service_role_view_access.sql", "utf8");
 const worker = readFileSync("worker/userAdministration.ts", "utf8");
 const historical = readFileSync("supabase/migrations/20260822000100_trusted_remote_user_administration.sql", "utf8");
 
@@ -50,5 +51,12 @@ describe("trusted user provisioning Catalog 2.0 alignment", () => {
   it("leaves applied history and Rental approval separation untouched", () => {
     expect(historical).toContain("permission_code='users.manage'");
     expect(migration).not.toMatch(/rental\.approval|command_decide_rental_approval|rentals/);
+  });
+
+  it("grants only the missing security-invoker view dependency to service_role",()=>{
+    expect(viewAccessMigration).toMatch(/GRANT SELECT \(active\)\s+ON erp\.app_permissions\s+TO service_role/i);
+    expect(viewAccessMigration).not.toMatch(/GRANT SELECT ON erp\.app_permissions/i);
+    expect(viewAccessMigration).not.toMatch(/\bTO\s+(?:PUBLIC|anon|authenticated)\b/i);
+    expect(viewAccessMigration).not.toMatch(/role_permissions|users\.manage|rental\.approval|rentals/i);
   });
 });
