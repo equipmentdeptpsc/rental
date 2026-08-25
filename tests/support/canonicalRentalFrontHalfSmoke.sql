@@ -11,14 +11,15 @@ INSERT INTO erp.users(id,username,display_name,status,company_id) VALUES
  ('22222222-2222-2222-2222-222222222222','rental.approver','Rental Approver','active','TENANT-LOCAL-001'),
  ('33333333-3333-3333-3333-333333333333','rental.unprivileged','Rental Unprivileged','active','TENANT-LOCAL-001'),
  ('44444444-4444-4444-4444-444444444444','rental.foreign','Rental Foreign','active','TENANT-FOREIGN-001');
-INSERT INTO erp.app_permissions(id,code,name) VALUES
- ('CERT-PERM-RENTAL-MANAGE','rental.manage','Manage Rentals'),
- ('CERT-PERM-RENTAL-COMMERCIAL','rental.commercialTerms.manage','Manage Rental Commercial Terms'),
- ('CERT-PERM-RENTAL-RELEASE','rental.release','Release Rentals')
-ON CONFLICT(code) DO NOTHING;
+-- Draft creation and commercial preparation still use legacy permissions outside
+-- the scoped Reserve remediation. Grant only those prerequisites transactionally;
+-- Reserve itself must resolve through the Catalog 2.0 rental.update mapping.
 INSERT INTO erp.role_permissions(role_id,permission_id)
-SELECT r.id,p.id FROM erp.app_roles r CROSS JOIN erp.app_permissions p
-WHERE r.code='system-administrator' ON CONFLICT DO NOTHING;
+SELECT r.id,p.id
+FROM erp.app_roles r
+JOIN erp.app_permissions p ON p.code IN('rental.manage','rental.commercialTerms.manage')
+WHERE r.code='system-administrator'
+ON CONFLICT DO NOTHING;
 INSERT INTO erp.user_roles(user_id,role_id) SELECT '11111111-1111-1111-1111-111111111111',id FROM erp.app_roles WHERE code='system-administrator';
 INSERT INTO erp.user_roles(user_id,role_id) SELECT '22222222-2222-2222-2222-222222222222',id FROM erp.app_roles WHERE code='system-administrator';
 INSERT INTO erp.user_roles(user_id,role_id) SELECT '44444444-4444-4444-4444-444444444444',id FROM erp.app_roles WHERE code='system-administrator';

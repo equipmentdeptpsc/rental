@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   assignment: ["assignment.read", "assignment.manage"],
   rental: [
     "rental.read",
+    "rental.update",
     "rental.manage",
     "rental.release",
     "rental.return",
