@@ -9,17 +9,29 @@ import { resolveRentalOverviewPreparation } from "@/features/rental/workspace/ov
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
 import type { RentalRecord } from "@/features/rental/types";
 import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
+import { mapCanonicalRow } from "@/integrations/supabase/SupabaseReadRepository";
 
-const rental = { id: "rental-1", status: "Draft", billingMethod: undefined } as RentalRecord;
-const line = {
-  id: "line-1", rentalId: rental.id, status: "Draft",
-  operationalMetadata: { draftPreparation: { costCodeId: "cost-1", activityCodeId: "activity-1", workDescriptionId: "work-1" } },
-} as RentalEquipmentLine;
+const mappedRental = mapCanonicalRow<RentalRecord>({ id: "0ac5c327-2d47-46e9-b94f-2b77deb27427", status: "Draft", operational_metadata: {} });
+if (!mappedRental.success) throw new Error("Rental fixture mapping failed");
+const rental = mappedRental.value;
+const mappedLine = mapCanonicalRow<RentalEquipmentLine>({
+  id: "52ea3624-e8f1-44aa-a89d-02caadf2fe51", rental_id: rental.id, status: "Draft",
+  operational_metadata: { draftPreparation: {
+    lineId: "52ea3624-e8f1-44aa-a89d-02caadf2fe51",
+    costCodeId: "f881947b-9848-438d-a1e1-6a1ae06bc5e8",
+    activityCodeId: "dc9d8f40-d595-4315-b418-7a67820075fe",
+    workDescriptionId: "6f0ba567-1c2a-42c4-a5be-6c7d9dbd7005",
+    operationalRemarks: "Test UAT",
+    meterRequirement: "none",
+  } },
+});
+if (!mappedLine.success) throw new Error("Rental line fixture mapping failed");
+const line = mappedLine.value;
 const contract = { id: "contract-1", rentalId: rental.id, rentalEquipmentLineId: line.id, billingMethod: "Per Hour", status: "Draft" } as RentalContractRecord;
 const references = {
-  costCodes: [{ id: "cost-1", code: "UAT-CC-001", name: "UAT Equipment Cost Code", active: true, sortOrder: 1 }],
-  activityCodes: [{ id: "activity-1", code: "UAT-ACT-001", name: "UAT Equipment Rental Activity", active: true, sortOrder: 1 }],
-  workDescriptions: [{ id: "work-1", code: "UAT-WD-001", name: "UAT Equipment Rental Work", active: true }],
+  costCodes: [{ id: "f881947b-9848-438d-a1e1-6a1ae06bc5e8", code: "UAT-CC-001", name: "UAT Equipment Cost Code", active: true, sortOrder: 0 }],
+  activityCodes: [{ id: "dc9d8f40-d595-4315-b418-7a67820075fe", code: "UAT-ACT-001", name: "UAT Equipment Rental Activity", active: true, sortOrder: 1 }],
+  workDescriptions: [{ id: "6f0ba567-1c2a-42c4-a5be-6c7d9dbd7005", code: "UAT-WD-001", name: "UAT Equipment Rental Work", active: true }],
 };
 
 function aggregate(targetRental = rental, targetLine = line) {
@@ -33,11 +45,12 @@ describe("Rental Overview canonical Draft preparation", () => {
     expect(result).toMatchObject({
       billingMethod: "Per Hour", draftCommercialPrepared: true,
       rentalMetadata: { costCode: { code: "UAT-CC-001", name: "UAT Equipment Cost Code" }, activityCode: { code: "UAT-ACT-001", name: "UAT Equipment Rental Activity" } },
-      lines: [{ lineId: "line-1", draftPrepared: true, workDescription: { code: "UAT-WD-001", name: "UAT Equipment Rental Work" } }],
+      lines: [{ lineId: "52ea3624-e8f1-44aa-a89d-02caadf2fe51", draftPrepared: true, workDescription: { code: "UAT-WD-001", name: "UAT Equipment Rental Work" } }],
     });
     expect(source).toEqual(before);
     expect(source.rental.commercialSnapshot).toBeUndefined();
     expect(source.rental.billingMethod).toBeUndefined();
+    expect(source.rental.operationalMetadata).toEqual({});
   });
 
   it("fails safely for genuinely missing preparation", () => {

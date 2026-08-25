@@ -38,9 +38,12 @@ export function resolveRentalOverviewPreparation(
     && lines.every((line) => line.draftPrepared)
     && lineContracts.every(Boolean);
   const commonMetadata = commonLineMetadata(lines);
+  const finalizedRentalMetadata = aggregate.rental.operationalMetadata;
   return {
     billingMethod: aggregate.rental.billingMethod ?? (billingMethods.length === 1 ? billingMethods[0] : aggregate.contract?.billingMethod),
-    rentalMetadata: aggregate.rental.operationalMetadata ?? commonMetadata,
+    rentalMetadata: finalizedRentalMetadata?.costCode || finalizedRentalMetadata?.activityCode
+      ? finalizedRentalMetadata
+      : commonMetadata,
     lines,
     draftCommercialPrepared,
   };
