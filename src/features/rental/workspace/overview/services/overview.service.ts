@@ -11,9 +11,11 @@ import {
 } from "../mapper/RentalOverviewMapper";
 
 export function buildRentalOverview(
-  aggregate: RentalAggregate
+  aggregate: RentalAggregate,
+  billingMethod?: string,
 ): RentalOverviewModel {
   return RentalOverviewMapper.map(
-    aggregate
+    aggregate,
+    billingMethod,
   );
 }

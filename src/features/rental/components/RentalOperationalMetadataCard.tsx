@@ -5,6 +5,7 @@ interface Props {
   title?: string;
   costCodeMissingLabel?: string;
   activityCodeMissingLabel?: string;
+  workDescription?: { code?: string; name: string };
 }
 
 export default function RentalOperationalMetadataCard({
@@ -12,6 +13,7 @@ export default function RentalOperationalMetadataCard({
   title = "Operational Metadata at Rental Creation",
   costCodeMissingLabel = "Cost Code not captured",
   activityCodeMissingLabel = "Activity Code not captured",
+  workDescription,
 }: Props) {
   return (
     <div className="rounded-xl border bg-white p-5 shadow-sm">
@@ -22,6 +24,7 @@ export default function RentalOperationalMetadataCard({
         <div className="grid gap-4 sm:grid-cols-2">
           <Snapshot label="Cost Code" snapshot={metadata.costCode} missing={costCodeMissingLabel} />
           <Snapshot label="Activity Code" snapshot={metadata.activityCode} missing={activityCodeMissingLabel} />
+          {workDescription && <Snapshot label="Work Description" snapshot={workDescription} missing="Work Description not captured" />}
         </div>
       )}
     </div>
@@ -30,13 +33,13 @@ export default function RentalOperationalMetadataCard({
 
 function Snapshot({ label, snapshot, missing }: {
   label: string;
-  snapshot?: { code: string; name: string };
+  snapshot?: { code?: string; name: string };
   missing: string;
 }) {
   return (
     <div>
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      {snapshot ? <><div className="mt-1 font-medium">{snapshot.code}</div><div className="text-sm text-slate-500">{snapshot.name}</div></>
+      {snapshot ? <>{snapshot.code && <div className="mt-1 font-medium">{snapshot.code}</div>}<div className="text-sm text-slate-500">{snapshot.name}</div></>
         : <div className="mt-1 text-sm text-amber-700">{missing}</div>}
     </div>
   );

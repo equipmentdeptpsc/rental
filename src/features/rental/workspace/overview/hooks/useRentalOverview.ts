@@ -7,10 +7,11 @@ import type {
 import { buildRentalOverview } from "../services/overview.service";
 
 export function useRentalOverview(
-  aggregate: RentalAggregate
+  aggregate: RentalAggregate,
+  billingMethod?: string,
 ) {
   return useMemo(
-    () => buildRentalOverview(aggregate),
-    [aggregate]
+    () => buildRentalOverview(aggregate, billingMethod),
+    [aggregate, billingMethod]
   );
 }

@@ -14,6 +14,9 @@ interface Props {
   equipmentLabel: string;
   hasCommercialTerms: boolean;
   showRentalSnapshots?: boolean;
+  billingMethod?: string;
+  operationalMetadata?: RentalRecord["operationalMetadata"];
+  draftCommercialPrepared?: boolean;
 }
 
 export default function ContractSection({
@@ -21,6 +24,9 @@ export default function ContractSection({
   equipmentLabel,
   hasCommercialTerms,
   showRentalSnapshots = true,
+  billingMethod,
+  operationalMetadata,
+  draftCommercialPrepared = false,
 }: Props) {
   const { configuration } = useApplicationDependenciesCompatibility();
   const mutationsAvailable = canUseLegacyRentalMutations(configuration);
@@ -34,6 +40,7 @@ export default function ContractSection({
 
       <ContractSummaryCard
         rental={rental}
+        billingMethod={billingMethod}
       />
 
       {mutationsAvailable && canEditRentalCommercialTerms(rental) && <section className={`rounded-xl border p-5 ${hasCommercialTerms ? "bg-white" : "border-amber-300 bg-amber-50"}`}>
@@ -42,8 +49,8 @@ export default function ContractSection({
         <Link className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 font-medium text-white" to={`/rentals/${rental.id}/commercial-terms`}>{hasCommercialTerms ? "Edit Commercial Terms" : "Configure Commercial Terms"}</Link>
       </section>}
 
-      {showRentalSnapshots && <RentalOperationalMetadataCard metadata={rental.operationalMetadata} />}
-      {showRentalSnapshots && <CommercialSnapshotCard snapshot={rental.commercialSnapshot} required={rental.commercialSnapshotRequired} scope="Rental" />}
+      {showRentalSnapshots && <RentalOperationalMetadataCard metadata={operationalMetadata ?? rental.operationalMetadata} title={draftCommercialPrepared ? "Operational Metadata in Draft Preparation" : undefined} />}
+      {showRentalSnapshots && <CommercialSnapshotCard snapshot={rental.commercialSnapshot} required={rental.commercialSnapshotRequired} scope="Rental" draftPrepared={draftCommercialPrepared} />}
 
     </div>
   );

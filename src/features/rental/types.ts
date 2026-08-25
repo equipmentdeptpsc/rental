@@ -89,6 +89,11 @@ export interface RentalOperationalMetadataSnapshot {
   activityCode?: OperationalCodeSnapshot;
   /** Canonical remote preparation staged while the Rental remains Draft. */
   draftPreparation?: {
+    costCodeId?: string;
+    activityCodeId?: string;
+    workDescriptionId?: string;
+    operationalRemarks?: string;
+    meterRequirement?: "none" | "odometer" | "hourMeter" | "both";
     deurPolicy?: RentalDeurExpectationPolicy;
   };
 }

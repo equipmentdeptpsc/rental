@@ -1,8 +1,9 @@
 import type { RentalCommercialSnapshot } from "../types";
 import { resolveCommercialSummary } from "../commercial/resolveCommercialSummary";
-interface Props{snapshot?:RentalCommercialSnapshot;scope:"Rental"|"Equipment Line"|"DEUR";required?:boolean}
+interface Props{snapshot?:RentalCommercialSnapshot;scope:"Rental"|"Equipment Line"|"DEUR";required?:boolean;draftPrepared?:boolean}
 const units:Record<string,string>={"Per Hour":"hour","Per Day":"day","Per Week":"week","Per Month":"month","Per Kilometer":"km","Per Trip":"trip","Per Cubic Meter":"m³"};
-export default function CommercialSnapshotCard({snapshot,scope,required}:Props){
+export default function CommercialSnapshotCard({snapshot,scope,required,draftPrepared=false}:Props){
+ if(!snapshot&&draftPrepared)return <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">Commercial terms prepared in Draft. Immutable commercial snapshot will be created at reservation.</section>;
  if(!snapshot)return <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{required?"Commercial snapshot not captured":"Commercial snapshot not captured for this legacy record"}</section>;
  const money=(value:number)=>new Intl.NumberFormat("en-PH",{style:"currency",currency:snapshot.currency}).format(value);
  const rows:Array<[string,string|undefined]>=[["Billing Method",snapshot.billingMethod],...resolveCommercialSummary(snapshot).map(row=>[row.label,row.kind==="hours"?`${row.value} hours`:`${money(row.value)}${["unitRate","standbyRate","overtimeRate"].includes(row.key)?` / ${units[snapshot.billingMethod]??"unit"}`:""}`] as [string,string]),["VAT",snapshot.taxRate!==undefined?`${snapshot.taxRate}%`:undefined],["Withholding Tax",snapshot.withholdingTax!==undefined?`${snapshot.withholdingTax}%`:undefined],["Commercial Terms Captured",new Date(snapshot.capturedAt).toLocaleString()]];

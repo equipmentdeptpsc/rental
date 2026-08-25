@@ -4,7 +4,8 @@ import type { RentalOverviewModel } from "../types";
 
 export class RentalOverviewMapper {
   static map(
-    aggregate: RentalAggregate
+    aggregate: RentalAggregate,
+    billingMethod?: string,
   ): RentalOverviewModel {
     return {
       contract: {
@@ -21,7 +22,7 @@ export class RentalOverviewMapper {
 
         rentalType: aggregate.rental.rentalType ?? "Not specified",
 
-        billingMethod: aggregate.rental.billingMethod ?? "Not specified",
+        billingMethod: billingMethod ?? aggregate.rental.billingMethod ?? "Not specified",
 
         contractStatus: aggregate.rental.status,
 

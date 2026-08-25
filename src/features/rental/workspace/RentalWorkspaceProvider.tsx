@@ -30,6 +30,8 @@ import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 import { useCanonicalRentalWorkspace } from "@/features/rental/remote/useCanonicalRentalRemoteData";
 import { PersistenceMode } from "@/app/composition";
 import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
+import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
+import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -39,6 +41,12 @@ interface RentalWorkspaceProviderProps {
 
 interface RentalWorkspaceContextValue {
   aggregate: RentalAggregate;
+  presentation: {
+    contracts: RentalContractRecord[];
+    costCodes: CanonicalReferenceCode[];
+    activityCodes: CanonicalReferenceCode[];
+    workDescriptions: WorkDescriptionRecord[];
+  };
 }
 
 const RentalWorkspaceContext =
@@ -64,7 +72,20 @@ export default function RentalWorkspaceProvider({
   const rentals = list.data.rentals, rentalEquipmentLines = list.data.rentalEquipmentLines, assignments = list.data.assignments;
   const equipmentRecords = list.data.equipment, operators = list.data.operators, projects = list.data.projects;
   const contracts = remote && workspace.status === "loaded" ? workspace.data.contracts as unknown as RentalContractRecord[] : localRental.contracts;
+  const [workDescriptions, setWorkDescriptions] = useState<WorkDescriptionRecord[]>([]);
+  const [workDescriptionsStatus, setWorkDescriptionsStatus] = useState<"loading" | "loaded" | "error">(remote ? "loading" : "loaded");
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
+
+  useEffect(() => {
+    if (!remote) { setWorkDescriptions([]); setWorkDescriptionsStatus("loaded"); return; }
+    let active = true; setWorkDescriptionsStatus("loading");
+    void Promise.resolve(dependencies.readRepositories.workDescriptions.list()).then((result) => {
+      if (!active) return;
+      if (result.success) { setWorkDescriptions(result.value.items); setWorkDescriptionsStatus("loaded"); }
+      else setWorkDescriptionsStatus("error");
+    }).catch(() => { if (active) setWorkDescriptionsStatus("error"); });
+    return () => { active = false; };
+  }, [dependencies.readRepositories.workDescriptions, remote, workspaceVersion]);
 
   useEffect(
     () => subscribeRentalWorkspaceChange(rentalId, () => setWorkspaceVersion(value => value + 1)),
@@ -144,8 +165,8 @@ export default function RentalWorkspaceProvider({
     });
   }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository]);
 
-  if (remote && (list.status === "loading" || workspace.status === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
-  if (remote && (list.status === "error" || workspace.status === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); }}>Retry</button></div>;
+  if (remote && (list.status === "loading" || workspace.status === "loading" || workDescriptionsStatus === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
+  if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
   if (!aggregate) {
     return (
       <div className="rounded-xl border bg-white p-8">
@@ -158,6 +179,7 @@ export default function RentalWorkspaceProvider({
     <RentalWorkspaceContext.Provider
       value={{
         aggregate,
+        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions },
       }}
     >
       {children}
@@ -178,4 +200,10 @@ export function useRentalWorkspaceAggregate() {
   }
 
   return context.aggregate;
+}
+
+export function useRentalWorkspacePresentationData() {
+  const context = useContext(RentalWorkspaceContext);
+  if (!context) throw new Error("useRentalWorkspacePresentationData must be used inside RentalWorkspaceProvider.");
+  return context.presentation;
 }

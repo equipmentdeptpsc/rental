@@ -2,6 +2,7 @@ import type { RentalRecord } from "@/features/rental/types";
 
 interface Props {
   rental: RentalRecord;
+  billingMethod?: string;
 }
 
 function Row({
@@ -26,6 +27,7 @@ function Row({
 
 export default function ContractSummaryCard({
   rental,
+  billingMethod,
 }: Props) {
   return (
     <div className="rounded-xl border bg-white p-5 shadow-sm">
@@ -52,7 +54,7 @@ export default function ContractSummaryCard({
 
         <Row
           label="Billing Method"
-          value={rental.billingMethod ?? "Not specified"}
+          value={billingMethod ?? rental.billingMethod ?? "Not specified"}
         />
 
         <Row

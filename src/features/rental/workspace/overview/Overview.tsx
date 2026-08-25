@@ -13,22 +13,22 @@ import TodayOperationsSection from "./sections/TodayOperationsSection";
 import FinancialSection from "./sections/FinancialSection";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
-import { useRental } from "@/features/rental/context/RentalContext";
 import CommercialSnapshotCard from "@/features/rental/components/CommercialSnapshotCard";
 import RentalOperationalMetadataCard from "@/features/rental/components/RentalOperationalMetadataCard";
 import { hasDistinctLineCommercialTerms } from "./commercialTermsPresentation";
+import { useRentalWorkspacePresentationData } from "..";
+import { resolveRentalOverviewPreparation } from "./resolveRentalOverviewPreparation";
 
 export default function Overview() {
   const aggregate =
     useRentalWorkspaceAggregate();
 
-  const overview =
-    useRentalOverview(
-      aggregate
-    );
+  const presentationData = useRentalWorkspacePresentationData();
+  const preparation = resolveRentalOverviewPreparation(aggregate, presentationData.contracts, presentationData);
+  const overview = useRentalOverview(aggregate, preparation.billingMethod);
   const { equipment } = useEquipment();
   const { operators } = useOperator();
-  const { contracts } = useRental();
+  const contracts = presentationData.contracts;
   const lines = aggregate.rentalEquipmentLines;
   const allTermsComplete = lines.length > 0 && lines.every((line) => line.commercialSnapshot || contracts.some((contract) => contract.rentalEquipmentLineId === line.id));
 
@@ -39,6 +39,9 @@ export default function Overview() {
         rental={aggregate.rental}
         hasCommercialTerms={allTermsComplete}
         showRentalSnapshots
+        billingMethod={preparation.billingMethod}
+        operationalMetadata={preparation.rentalMetadata}
+        draftCommercialPrepared={preparation.draftCommercialPrepared}
         equipmentLabel={
           lines.length > 1 ? `${lines.length} equipment lines` : overview.equipment.assetNo === "-"
             ? "Unknown equipment"
@@ -51,7 +54,7 @@ export default function Overview() {
             {equipment.find((item) => item.id === line.equipmentId)?.assetNo ?? "Equipment line"}
           </p>
           {hasDistinctLineCommercialTerms(line.commercialSnapshot, aggregate.rental.commercialSnapshot) && <CommercialSnapshotCard snapshot={line.commercialSnapshot} required={line.commercialSnapshotRequired} scope="Equipment Line" />}
-          <div className="mt-3"><RentalOperationalMetadataCard metadata={line.operationalMetadata} title="Operational Metadata for Equipment Line" /></div>
+          <div className="mt-3"><RentalOperationalMetadataCard metadata={preparation.lines.find((item) => item.lineId === line.id)?.metadata} workDescription={preparation.lines.find((item) => item.lineId === line.id)?.workDescription} title="Operational Metadata for Equipment Line" /></div>
         </div>
       ))}
 
