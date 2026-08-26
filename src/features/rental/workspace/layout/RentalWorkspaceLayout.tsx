@@ -6,9 +6,8 @@ import {
   RentalWorkspaceTabs,
 } from "../components";
 import type { WorkspaceTab } from "../types";
-import { useRentalWorkspaceAggregate } from "..";
+import { useRentalWorkspaceAggregate, useRentalWorkspacePresentationData } from "..";
 import { parseWorkspaceTab } from "../routing";
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { buildWorkspaceTabBadges } from "../presentation/workspaceTabBadges";
 
 interface Props {
@@ -19,7 +18,7 @@ export default function RentalWorkspaceLayout({
   children,
 }: Props) {
   const aggregate = useRentalWorkspaceAggregate();
-  const { equipment } = useEquipment();
+  const { equipment } = useRentalWorkspacePresentationData();
   const { rental } = aggregate;
   const tabBadges = buildWorkspaceTabBadges(aggregate, equipment);
   const closed = rental.status === "Closed";

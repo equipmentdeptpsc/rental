@@ -32,7 +32,11 @@ import { PersistenceMode } from "@/app/composition";
 import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
 import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
+import type { DeurRecord } from "@/features/rental/deur/types";
+import type { EquipmentRecord } from "@/features/equipment/types";
+import type { Operator } from "@/features/operators/types";
 import { projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
+import { resolveRentalWorkspaceDeurs } from "./resolveRentalWorkspaceDeurs";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -47,6 +51,8 @@ interface RentalWorkspaceContextValue {
     costCodes: CanonicalReferenceCode[];
     activityCodes: CanonicalReferenceCode[];
     workDescriptions: WorkDescriptionRecord[];
+    equipment: EquipmentRecord[];
+    operators: Operator[];
   };
 }
 
@@ -76,6 +82,8 @@ export default function RentalWorkspaceProvider({
   const [workDescriptions, setWorkDescriptions] = useState<WorkDescriptionRecord[]>([]);
   const [workDescriptionsStatus, setWorkDescriptionsStatus] = useState<"loading" | "loaded" | "error">(remote ? "loading" : "loaded");
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
+  const [remoteDeurs, setRemoteDeurs] = useState<DeurRecord[]>([]);
+  const [remoteDeursStatus, setRemoteDeursStatus] = useState<"loading" | "loaded" | "error">(remote ? "loading" : "loaded");
 
   useEffect(() => {
     if (!remote) { setWorkDescriptions([]); setWorkDescriptionsStatus("loaded"); return; }
@@ -87,6 +95,17 @@ export default function RentalWorkspaceProvider({
     }).catch(() => { if (active) setWorkDescriptionsStatus("error"); });
     return () => { active = false; };
   }, [dependencies.readRepositories.workDescriptions, remote, workspaceVersion]);
+
+  useEffect(() => {
+    if (!remote) { setRemoteDeurs([]); setRemoteDeursStatus("loaded"); return; }
+    let active = true; setRemoteDeursStatus("loading");
+    void Promise.resolve(dependencies.readRepositories.deurs.list({ filters: { rental_id: rentalId } })).then((result) => {
+      if (!active) return;
+      if (result.success) { setRemoteDeurs(result.value.items); setRemoteDeursStatus("loaded"); }
+      else setRemoteDeursStatus("error");
+    }).catch(() => { if (active) setRemoteDeursStatus("error"); });
+    return () => { active = false; };
+  }, [dependencies.readRepositories.deurs, remote, rentalId, workspaceVersion]);
 
   useEffect(
     () => subscribeRentalWorkspaceChange(rentalId, () => setWorkspaceVersion(value => value + 1)),
@@ -108,7 +127,12 @@ export default function RentalWorkspaceProvider({
     const lines = projection.lines;
     const lineResolution = resolveRentalWorkspaceEquipmentLines(lines);
     const soleLine = lineResolution.kind === "sole" ? lineResolution.line : undefined;
-    const deurs = deurRepository.getByRentalId(rental.id);
+    const deurs = resolveRentalWorkspaceDeurs({
+      rentalId: rental.id,
+      remote,
+      remoteDeurs,
+      localDeurs: remote ? [] : deurRepository.getByRentalId(rental.id),
+    });
     const activeDeur = deurs.find(
       (d) =>
         !d.endOfDay &&
@@ -169,10 +193,10 @@ export default function RentalWorkspaceProvider({
         collectionStatus: collection.status,
       },
     });
-  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository, remote, workspace]);
+  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository, remote, remoteDeurs, workspace]);
 
-  if (remote && (list.status === "loading" || workspace.status === "loading" || workDescriptionsStatus === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
-  if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
+  if (remote && (list.status === "loading" || workspace.status === "loading" || workDescriptionsStatus === "loading" || remoteDeursStatus === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
+  if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error" || remoteDeursStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
   if (!aggregate) {
     return (
       <div className="rounded-xl border bg-white p-8">
@@ -185,7 +209,7 @@ export default function RentalWorkspaceProvider({
     <RentalWorkspaceContext.Provider
       value={{
         aggregate,
-        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions },
+        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, equipment: equipmentRecords, operators },
       }}
     >
       {children}

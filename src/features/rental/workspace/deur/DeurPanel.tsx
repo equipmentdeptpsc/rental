@@ -10,7 +10,7 @@ import {
   import CreateDeurAction from "./CreateDeurAction";
   import CurrentActivityCard from "@/features/rental/deur/components/CurrentActivityCard";
   import { useEffect, useMemo, useState } from "react";
-  import { useRentalWorkspaceAggregate } from "..";
+  import { useRentalWorkspaceAggregate, useRentalWorkspacePresentationData } from "..";
   import { mapRentalContractToBillingCalculationTerms } from "@/features/rental/billing/engine";
   import { createDeurBillingPreview } from "@/features/rental/deur/billing/createDeurBillingPreview";
   import { deriveDeurEventState } from "@/features/rental/deur/services/deriveDeurEventState";
@@ -25,8 +25,6 @@ import {
   import DeurRevisionCard from "@/features/rental/deur/components/DeurRevisionCard";
   import { projectDigitalDeurRunningState } from "@/features/rental/deur/operator/projectDigitalDeurRunningState";
   import { Link } from "react-router-dom";
-  import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-  import { useOperator } from "@/features/operators/context/OperatorContext";
   import { resolveDeurPresentation } from "@/features/rental/deur/presentation/resolveDeurPresentation";
   import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
   import { createCustomerReviewRequestForSubmittedDeur } from "@/features/rental/customer-review/createCustomerReviewRequestForSubmittedDeur";
@@ -36,7 +34,7 @@ import {
   
   export default function DeurPanel() {
     const aggregate = useRentalWorkspaceAggregate();
-    const {equipment}=useEquipment(); const {operators}=useOperator(); const {user}=useAuth(); const [reviewMessage,setReviewMessage]=useState("");
+    const {equipment,operators}=useRentalWorkspacePresentationData(); const {user}=useAuth(); const [reviewMessage,setReviewMessage]=useState("");
     const summary =
       useDailyOperations();
 

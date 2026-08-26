@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 import {
   useRentalWorkspaceAggregate,
+  useRentalWorkspacePresentationData,
 } from "..";
 
 import { getCompletedDeursForBillingPeriod } from "./BillingPreviewBuilder";
@@ -9,8 +10,6 @@ import { getCompletedDeursForBillingPeriod } from "./BillingPreviewBuilder";
 import { buildRentalLineAwareBillingPreview, createRentalLineAwareBillingStatement } from "@/features/rental/billingstatement/services/buildRentalLineAwareBilling";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useAuth } from "@/features/auth/AuthContext";
 
 export function useBillingWizard() {
@@ -19,7 +18,7 @@ export function useBillingWizard() {
 
   const { showToast } = useToast();
   const { billingStatement, deur } = useApplicationDependenciesCompatibility().repositories;
-  const {equipment}=useEquipment();const{operators}=useOperator();
+  const {equipment,operators}=useRentalWorkspacePresentationData();
   const { user } = useAuth();
 
   const today =

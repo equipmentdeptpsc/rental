@@ -11,8 +11,6 @@ import EquipmentSection from "./sections/EquipmentSection";
 import OperatorSection from "./sections/OperatorSection";
 import TodayOperationsSection from "./sections/TodayOperationsSection";
 import FinancialSection from "./sections/FinancialSection";
-import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useOperator } from "@/features/operators/context/OperatorContext";
 import CommercialSnapshotCard from "@/features/rental/components/CommercialSnapshotCard";
 import RentalOperationalMetadataCard from "@/features/rental/components/RentalOperationalMetadataCard";
 import { hasDistinctLineCommercialTerms } from "./commercialTermsPresentation";
@@ -26,8 +24,7 @@ export default function Overview() {
   const presentationData = useRentalWorkspacePresentationData();
   const preparation = resolveRentalOverviewPreparation(aggregate, presentationData.contracts, presentationData);
   const overview = useRentalOverview(aggregate, preparation.billingMethod);
-  const { equipment } = useEquipment();
-  const { operators } = useOperator();
+  const { equipment, operators } = presentationData;
   const contracts = presentationData.contracts;
   const lines = aggregate.rentalEquipmentLines;
   const allTermsComplete = lines.length > 0 && lines.every((line) => line.commercialSnapshot || contracts.some((contract) => contract.rentalEquipmentLineId === line.id));
