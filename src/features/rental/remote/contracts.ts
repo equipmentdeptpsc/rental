@@ -27,6 +27,7 @@ export interface CanonicalTermsInput { billingMethod: RentalBillingMethod; curre
 export interface UpdateCanonicalTermsInput { commandId: string; idempotencyKey: string; rentalId: string; expectedVersion: number; lines: { lineId: string; commercialTerms: CanonicalTermsInput; costCodeId: string; activityCodeId: string; workDescriptionId: string; deurPolicy: Record<string, unknown>; operationalRemarks?: string; shiftWindows?: unknown[]; workDate?: string; meterRequirement?: string }[] }
 export interface CanonicalVersionedInput { commandId: string; idempotencyKey: string; rentalId: string; expectedVersion: number }
 export interface DecideCanonicalApprovalInput extends CanonicalVersionedInput { decision: "Approved" | "Rejected"; remarks?: string }
+export interface ConfigureCanonicalCustomerReviewInput extends CanonicalVersionedInput { customerId: string; representativeName: string; representativeEmail: string }
 
 export interface CanonicalRentalRemoteRepository {
   readWorkspace(rentalId: string): Promise<CanonicalReadResult<CanonicalRentalWorkspace>>;
@@ -38,4 +39,5 @@ export interface CanonicalRentalRemoteRepository {
   reserve(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
   release(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
   activate(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
+  configureCustomerReview?(input: ConfigureCanonicalCustomerReviewInput): Promise<CanonicalCommandResult>;
 }

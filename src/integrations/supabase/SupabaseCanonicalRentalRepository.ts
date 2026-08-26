@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CanonicalCommandResult, CanonicalCommandValue, CanonicalReadResult, CanonicalRentalReferenceData, CanonicalRentalRemoteRepository, CanonicalRentalWorkspace, CanonicalVersionedInput, CreateCanonicalDraftInput, DecideCanonicalApprovalInput, UpdateCanonicalTermsInput } from "@/features/rental/remote/contracts";
+import type { CanonicalCommandResult, CanonicalCommandValue, CanonicalReadResult, CanonicalRentalReferenceData, CanonicalRentalRemoteRepository, CanonicalRentalWorkspace, CanonicalVersionedInput, ConfigureCanonicalCustomerReviewInput, CreateCanonicalDraftInput, DecideCanonicalApprovalInput, UpdateCanonicalTermsInput } from "@/features/rental/remote/contracts";
 
 const messages: Record<string, string> = {
   UNAUTHENTICATED: "Your session has expired. Sign in and try again.", FORBIDDEN: "You do not have permission to perform this action.",
@@ -22,6 +22,7 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
   reserve(input: CanonicalVersionedInput) { return this.command("command_reserve_rental", input); }
   release(input: CanonicalVersionedInput) { return this.command("command_release_rental", input); }
   activate(input: CanonicalVersionedInput) { return this.command("command_activate_rental", input); }
+  configureCustomerReview(input: ConfigureCanonicalCustomerReviewInput) { return this.command("command_configure_rental_customer_review", input); }
   private async read<T>(name: string, args: Record<string, unknown>, map: (value: Record<string, unknown>) => T): Promise<CanonicalReadResult<T>> {
     try { const { data, error } = await this.client.schema("erp").rpc(name, args); if (error) return failure("TRANSPORT_FAILURE"); const value = object(data); if (!value || value.success !== true) return failure(code(value?.code)); return { success: true, value: map(value) }; } catch { return failure("TRANSPORT_FAILURE"); }
   }

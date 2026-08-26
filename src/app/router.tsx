@@ -123,7 +123,7 @@ export const router = createBrowserRouter([
       { path: "rentals/new", element: permitted("rental.manage", <NewRental />) },
       { path: "rentals/:rentalId/workspace", element: permitted("rental.read", <RentalWorkspacePage />) },
       { path: "rentals/:rentalId/commercial-terms", element: permitted("rental.commercialTerms.manage", <RentalCommercialTermsPage />) },
-      { path: "rentals/:rentalId/customer-contact", element: permitted("rental.manage", <RentalCustomerContactPage />) },
+      { path: "rentals/:rentalId/customer-contact", element: permitted("rental.customerContact.update", <RentalCustomerContactPage />) },
       { path: "rentals/:rentalId/operator-deur", element: permitted("deur.read", <OperatorDeurPage />) },
       { path: "operator", element: permitted("deur.read", <OperatorLandingPage />) },
       { path: "rentals/return/:id", element: permitted("rental.return", <ReturnRental />) },

@@ -69,7 +69,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       {!mutationsAvailable && aggregate.rental.status !== "Closed" && <p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p>}
       {legacyMutationsAvailable&&["Draft","Assigned","Reserved"].includes(aggregate.rental.status)&&<DeurReleaseReadinessPanel rentalId={aggregate.rental.id} />}
       {aggregate.rental.status!=="Closed"&&<div className="mt-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} hideClose={activeTab==="closing"} /></div>}
-      {mutationsAvailable&&aggregate.rental.status!=="Closed"&&hasPermission("rental.manage")&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
+      {mutationsAvailable&&aggregate.rental.status!=="Closed"&&hasPermission("rental.customerContact.update")&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
       <ApprovalInvalidationNotice rental={aggregate.rental} />
       {workflow.blockingReasons.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
