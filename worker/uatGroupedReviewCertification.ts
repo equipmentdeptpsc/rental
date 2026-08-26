@@ -14,11 +14,7 @@ export async function runUatGroupedReviewCertification(request:Request,environme
  const body=await request.json().catch(()=>null) as Record<string,unknown>|null;const rentalId=String(body?.rentalId??""),deurId=String(body?.deurId??""),workDate=String(body?.workDate??""),timezone=String(body?.timezone??"");
  if(body?.confirmation!=="CONFIRM-ONE-ISOLATED-UAT-GROUPED-REVIEW"||!/^[0-9a-f-]{36}$/i.test(rentalId)||!/^[0-9a-f-]{36}$/i.test(deurId)||!/^\d{4}-\d{2}-\d{2}$/.test(workDate)||timezone!=="Asia/Manila")return safe(400,{success:false,code:"VALIDATION_REJECTED"});
  if(!await matchesUatRecipientOverride(body?.candidateEmail,environment.EMAIL_UAT_RECIPIENT_OVERRIDE))return safe(409,{success:false,code:"RECIPIENT_OVERRIDE_NO_MATCH"});
- const rental=await service.schema("erp").from("rentals").select("id,company_id,status,timezone").eq("id",rentalId).eq("company_id","TENANT-LOCAL-001").eq("status","Active").eq("timezone",timezone).maybeSingle();
- const deur=await service.schema("erp").from("deurs").select("id,status,work_date,rental_equipment_line_id").eq("id",deurId).eq("company_id","TENANT-LOCAL-001").eq("status","Submitted").eq("work_date",workDate).maybeSingle();
- if(rental.error||!rental.data)return safe(409,{success:false,code:"RENTAL_TARGET_NOT_ELIGIBLE"});
- if(deur.error||!deur.data)return safe(409,{success:false,code:"DEUR_TARGET_NOT_ELIGIBLE"});
- const line=await service.schema("erp").from("rental_equipment_lines").select("id").eq("id",deur.data.rental_equipment_line_id).eq("rental_id",rentalId).eq("company_id","TENANT-LOCAL-001").maybeSingle();if(line.error||!line.data)return safe(409,{success:false,code:"LINE_TARGET_NOT_ELIGIBLE"});
+ const eligibility=await service.schema("erp").rpc("certify_isolated_uat_grouped_review_target",{command:{rentalId,deurId,workDate,timezone}});const eligibilityValue=eligibility.data as{success?:boolean;code?:string}|null;if(eligibility.error||!eligibilityValue?.success)return safe(409,{success:false,code:eligibilityValue?.code??"TARGET_NOT_ELIGIBLE"});
  const dependencies=createProductionDependencies(environment,"DAILY_GROUPED_REVIEW_SCHEDULER");const commandId=randomUUID();
  const scheduler=await dependencies.runScheduler({commandId,idempotencyKey:`uat-certification:${rentalId}:${workDate}`,runAt:`${workDate}T19:00:00+08:00`,batchLimit:1});
  if(scheduler.groupsPrepared!==1||scheduler.notificationsPrepared!==1||scheduler.groupsFailed!==0)return safe(409,{success:false,code:"SCHEDULER_PREPARATION_NOT_EXACT",scheduler});
