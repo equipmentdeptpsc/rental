@@ -9,6 +9,28 @@ export interface ResendProviderConfiguration {
   uatRecipientOverride?: string;
 }
 
+export type ResendAuthenticationResult = "VALID" | "INVALID" | "UNAVAILABLE";
+
+/** Performs a read-only authentication probe. A send-only key is valid even though
+ * Resend intentionally rejects the domains endpoint with restricted_api_key. */
+export async function verifyResendAuthentication(
+  apiKey: string,
+  fetcher: typeof fetch = globalThis.fetch,
+): Promise<ResendAuthenticationResult> {
+  try {
+    const response = await fetcher("https://api.resend.com/domains?limit=1", {
+      method: "GET",
+      headers: { authorization: `Bearer ${apiKey}`, "user-agent": "equipment-rental-notifications/1.0" },
+    });
+    if (response.ok) return "VALID";
+    let code: unknown;
+    try { code = ((await response.json()) as { name?: unknown }).name; } catch { return "UNAVAILABLE"; }
+    if (response.status === 401 && code === "restricted_api_key") return "VALID";
+    if ((response.status === 401 || response.status === 403) && code === "invalid_api_key") return "INVALID";
+    return "UNAVAILABLE";
+  } catch { return "UNAVAILABLE"; }
+}
+
 export class ResendEmailDeliveryProvider implements EmailDeliveryProvider {
   readonly name = "resend";
   private readonly fetcher: typeof fetch;

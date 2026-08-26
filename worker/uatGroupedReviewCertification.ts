@@ -20,5 +20,7 @@ export async function runUatGroupedReviewCertification(request:Request,environme
  if(scheduler.groupsPrepared!==1||scheduler.notificationsPrepared!==1||scheduler.groupsFailed!==0)return safe(409,{success:false,code:"SCHEDULER_PREPARATION_NOT_EXACT",scheduler});
  const deliveryDependencies=createProductionDependencies(environment,"NOTIFICATION_RETRY_WORKER");const delivery=await deliveryDependencies.runNotificationWorker(randomUUID());
  if(delivery.claimed!==1||delivery.providerCalls!==1)return safe(502,{success:false,code:"DELIVERY_NOT_EXACT",delivery});
+ const accepted=await service.schema("erp").from("notification_outbox").select("id,status,provider_message_id,last_failure_category").eq("company_id","TENANT-LOCAL-001").eq("notification_type","CUSTOMER_GROUPED_REVIEW_REQUESTED").eq("status","ProviderAccepted").not("provider_message_id","is",null);
+ if(accepted.error||accepted.data?.length!==1)return safe(502,{success:false,code:"PROVIDER_NOT_ACCEPTED",delivery:{claimed:1,providerCalls:1}});
  return safe(200,{success:true,result:"DELIVERED",scheduler:{groupsPrepared:1,notificationsPrepared:1},delivery:{claimed:1,providerCalls:1}});
 }

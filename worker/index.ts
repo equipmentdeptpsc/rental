@@ -4,6 +4,7 @@ import{createTrustedUserAdministration,safeJson}from"./userAdministration";
 import{createTrustedUsernameAuthentication,usernameLoginJson}from"./usernameAuthentication";
 import{createUatRecipientOverrideVerification}from"./uatRecipientOverrideVerification";
 import{runUatGroupedReviewCertification}from"./uatGroupedReviewCertification";
+import{createUatProviderAuthentication}from"./uatProviderAuthentication";
 
 interface ScheduledController{cron:string;scheduledTime:number}
 interface ExecutionContext{waitUntil(promise:Promise<unknown>):void}
@@ -23,6 +24,11 @@ export default{
    if(request.method!=="POST")return Response.json({result:"NO_MATCH"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
    try{const verified=await createUatRecipientOverrideVerification(environment).handle(request);return Response.json(verified.body,{status:verified.status,headers:{"cache-control":"no-store"}});}
    catch{return Response.json({result:"NO_MATCH"},{status:503,headers:{"cache-control":"no-store"}});}
+  }
+  if(path==="/api/admin/uat/verify-provider-authentication"){
+   if(request.method!=="POST")return Response.json({result:"UNAVAILABLE"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
+   try{const verified=await createUatProviderAuthentication(environment).handle(request);return Response.json(verified.body,{status:verified.status,headers:{"cache-control":"no-store"}});}
+   catch{return Response.json({result:"UNAVAILABLE"},{status:503,headers:{"cache-control":"no-store"}});}
   }
   if(path==="/api/admin/uat/run-grouped-review-certification"){
    if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
