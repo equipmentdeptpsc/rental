@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { PersistenceMode } from "@/app/composition/ApplicationDependencies";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
@@ -10,6 +12,7 @@ import { deurRepository } from "@/features/rental/deur/repository/deurRepository
 import { resolveAuthenticatedOperator } from "@/features/rental/deur/operator/resolveAuthenticatedOperator";
 import { resolveOperatorLandingState } from "@/features/rental/deur/operator/resolveOperatorLandingState";
 import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
+import { useOperatorLandingData } from "@/features/rental/deur/operator/useOperatorLandingData";
 
 const labels = {
   START_SHIFT: "Start Shift",
@@ -19,16 +22,26 @@ const labels = {
 
 export default function OperatorLandingPage() {
   const { user, hasPermission } = useAuth();
-  const { assignments } = useAssignment();
-  const { equipment } = useEquipment();
-  const { operators } = useOperator();
-  const { projects } = useProject();
-  const { rentals, rentalEquipmentLines } = useRental();
+  const dependencies = useApplicationDependenciesCompatibility();
+  const remote = dependencies.configuration.persistenceMode === PersistenceMode.Remote;
+  const localAssignments = useAssignment().assignments;
+  const localEquipment = useEquipment().equipment;
+  const localOperators = useOperator().operators;
+  const localProjects = useProject().projects;
+  const localRental = useRental();
+  const canonical = useOperatorLandingData(remote);
+  const assignments = remote ? canonical.assignments : localAssignments;
+  const equipment = remote ? canonical.equipment : localEquipment;
+  const operators = remote ? canonical.operators : localOperators;
+  const projects = remote ? canonical.projects : localProjects;
+  const rentals = remote ? canonical.rentals : localRental.rentals;
+  const rentalEquipmentLines = remote ? canonical.rentalEquipmentLines : localRental.rentalEquipmentLines;
+  const deurs = remote ? canonical.deurs : deurRepository.getAll();
   const [version, setVersion] = useState(0);
 
   useEffect(
-    () => subscribeDeurChanges(() => setVersion((current) => current + 1)),
-    [],
+    () => subscribeDeurChanges(() => { setVersion((current) => current + 1); if (remote) void canonical.refresh(); }),
+    [canonical.refresh, remote],
   );
 
   const identity = resolveAuthenticatedOperator(user ?? undefined, operators);
@@ -40,16 +53,18 @@ export default function OperatorLandingPage() {
             assignments,
             rentals,
             lines: rentalEquipmentLines,
-            deurs: deurRepository.getAll(),
+            deurs,
             evaluationTimestamp: new Date().toISOString(),
           })
         : undefined,
-    [assignments, identity, rentalEquipmentLines, rentals, version],
+    [assignments, deurs, identity, rentalEquipmentLines, rentals, version],
   );
 
   if (!user || user.status !== "active" || !hasPermission("deur.read")) {
     return <main className="p-5">Operator interface access is not authorized.</main>;
   }
+  if (remote && canonical.loading) return <main className="p-5">Loading your equipment shift...</main>;
+  if (remote && canonical.error) return <main className="p-5">Canonical Operator work data could not be loaded. Refresh and try again.</main>;
   if (identity.status !== "RESOLVED") {
     return <main className="p-5"><h1 className="text-2xl font-bold">My Equipment Shift</h1><p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">{identity.message}</p></main>;
   }
