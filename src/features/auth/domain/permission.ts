@@ -39,6 +39,7 @@ export const PERMISSIONS = {
     "roles.manage",
     "permissions.catalog.read",
     "settings.read",
+    "settings.update",
     "settings.manage",
     "masterData.read",
     "masterData.manage",

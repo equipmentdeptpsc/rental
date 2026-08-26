@@ -60,6 +60,7 @@ import RolesPage from "@/features/administration/pages/RolesPage";
 import PermissionsPage from "@/features/administration/pages/PermissionsPage";
 import AuditTrailPage from "@/features/administration/pages/AuditTrailPage";
 import DataMigrationPage from "@/pages/DataMigration";
+import UatGroupedReviewCertification from "@/pages/UatGroupedReviewCertification";
 import { CANONICAL_NAVIGATION_PERMISSIONS } from "./navigation/navigationConfig";
 
 const ActivityCodePage = lazy(() => import("@/features/masters/activity-code/pages"));
@@ -141,6 +142,7 @@ export const router = createBrowserRouter([
       { path: "permissions", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.permissions, <PermissionsPage />) },
       { path: "audit-trail", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.auditTrail, <AuditTrailPage />) },
       { path: "data-migration", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.dataMigration, <DataMigrationPage />) },
+      { path: "uat/grouped-review-certification", element: permitted("settings.update", <UatGroupedReviewCertification />) },
       { path: "development-email-outbox", element: permitted("settings.manage", <DevelopmentEmailOutboxPage />) },
       { path: "development-email-outbox/:id", element: permitted("settings.manage", <DevelopmentEmailPreviewPage />) },
       { path: "development-customer-review-outbox", element: permitted("settings.manage", <DevelopmentCustomerReviewOutboxPage />) },
