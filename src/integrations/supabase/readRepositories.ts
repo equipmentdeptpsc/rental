@@ -38,7 +38,8 @@ export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurReco
     if (typeof event.id !== "string" || typeof event.activity_type !== "string" || typeof event.action !== "string" || typeof event.occurred_at !== "string" || typeof event.sequence !== "number") return [];
     return [{ id:event.id, activityType:event.activity_type as CanonicalDeurEvent["activityType"], action:event.action as CanonicalDeurEvent["action"], timestamp:event.occurred_at, sequence:event.sequence, source:event.source === "legacy" ? "legacy" : event.source === "automatic" ? "automatic" : "user", actorId:typeof event.actor_id === "string" ? event.actor_id : undefined, deurId:typeof event.deur_id === "string" ? event.deur_id : undefined, idleReasonId:typeof event.idle_reason_id === "string" ? event.idle_reason_id : undefined, idleReasonLabelSnapshot:typeof event.idle_reason_label_snapshot === "string" ? event.idle_reason_label_snapshot : undefined, idleReasonRemarks:typeof event.idle_reason_remarks === "string" ? event.idle_reason_remarks : undefined }];
   }).sort((left,right)=>left.sequence-right.sequence);
-  return repositorySuccess({ ...base.value, events } as unknown as DeurRecord);
+  const logs = Array.isArray(base.value.logs) ? base.value.logs : [];
+  return repositorySuccess({ ...base.value, events, logs } as unknown as DeurRecord);
 }
 export function mapCustomer(row: Record<string, unknown>): RepositoryResult<CustomerRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row);

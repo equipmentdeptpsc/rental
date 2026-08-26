@@ -5,8 +5,9 @@ import { resolveEffectiveDeurRevision } from "../services/correction/resolveEffe
 import { generateRentalDeurExpectations } from "../expectation/generateRentalDeurExpectations";
 import { matchDeursToExpectations, type RentalDeurExpectationResult } from "../expectation/matchDeursToExpectations";
 import type { RentalEquipmentLine } from "../../equipment-line";
+import type { DeurExpectationDisposition } from "../../remote/contracts";
 
-export type RentalDeurComplianceStatus = "COMPLIANT" | "MISSING_DEUR" | "PENDING_CORRECTION" | "DEUR_INCOMPLETE";
+export type RentalDeurComplianceStatus = "COMPLIANT" | "COMPLIANT_WITH_WAIVERS" | "MISSING_DEUR" | "PENDING_CORRECTION" | "DEUR_INCOMPLETE";
 export interface RentalDeurComplianceIssue { code: string; message: string }
 export interface RentalDeurComplianceResult {
   rentalId: string;
@@ -19,6 +20,7 @@ export interface RentalDeurComplianceResult {
   shiftWindowCapturedAt?: string;
   expectedCount: number;
   compliantCount: number;
+  waivedCount: number;
   missingCount: number;
   incompleteCount: number;
   pendingCorrectionCount: number;
@@ -26,7 +28,7 @@ export interface RentalDeurComplianceResult {
   counts: { total: number; effective: number; incomplete: number; pendingCorrections: number; superseded: number };
   issues: RentalDeurComplianceIssue[];
 }
-export interface EvaluateRentalDeurComplianceInput { rental: RentalRecord; assignment?: AssignmentRecord; rentalEquipmentLineId?: string; deurs: DeurRecord[]; evaluationTimestamp?: string; liveShiftWindows?: DeurShiftWindowDefinition[] }
+export interface EvaluateRentalDeurComplianceInput { rental: RentalRecord; assignment?: AssignmentRecord; rentalEquipmentLineId?: string; expectationFingerprint?:string; deurs: DeurRecord[]; dispositions?:DeurExpectationDisposition[]; evaluationTimestamp?: string; liveShiftWindows?: DeurShiftWindowDefinition[] }
 
 export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalDeurComplianceInput & { lines: RentalEquipmentLine[] }) {
   return input.lines.filter((line) => line.rentalId === input.rental.id).map((line) => {
@@ -35,6 +37,8 @@ export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalD
       rental: { ...input.rental, equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId },
       assignment: undefined,
       rentalEquipmentLineId: line.id,
+      expectationFingerprint:line.deurExpectationSnapshot?.sourceFingerprint,
+      dispositions:input.dispositions?.filter(item=>item.rentalEquipmentLineId===line.id),
       deurs: input.deurs.filter((record) => record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId),
     });
     return {
@@ -49,18 +53,18 @@ export function aggregateRentalEquipmentLineDeurCompliance(
   rentalId: string,
   lineResults: ReturnType<typeof evaluateRentalEquipmentLineDeurCompliance>,
 ): RentalDeurComplianceResult {
-  if (lineResults.length === 0) return { rentalId, required: false, status: "COMPLIANT", reason: "The rental has no equipment-line DEUR expectations.", source: "LEGACY_RENTAL_FALLBACK", expectedCount: 0, compliantCount: 0, missingCount: 0, incompleteCount: 0, pendingCorrectionCount: 0, expectations: [], counts: { total: 0, effective: 0, incomplete: 0, pendingCorrections: 0, superseded: 0 }, issues: [] };
+  if (lineResults.length === 0) return { rentalId, required: false, status: "COMPLIANT", reason: "The rental has no equipment-line DEUR expectations.", source: "LEGACY_RENTAL_FALLBACK", expectedCount: 0, compliantCount: 0, waivedCount:0, missingCount: 0, incompleteCount: 0, pendingCorrectionCount: 0, expectations: [], counts: { total: 0, effective: 0, incomplete: 0, pendingCorrections: 0, superseded: 0 }, issues: [] };
   const results = lineResults.map((item) => item.result);
   const status = results.some((item) => item.status === "PENDING_CORRECTION") ? "PENDING_CORRECTION"
     : results.some((item) => item.status === "MISSING_DEUR") ? "MISSING_DEUR"
     : results.some((item) => item.status === "DEUR_INCOMPLETE") ? "DEUR_INCOMPLETE"
-    : "COMPLIANT";
+    : results.some((item)=>item.status==="COMPLIANT_WITH_WAIVERS") ? "COMPLIANT_WITH_WAIVERS" : "COMPLIANT";
   const sum = (read: (result: RentalDeurComplianceResult) => number) => results.reduce((total, result) => total + read(result), 0);
   return {
     rentalId, required: results.some((item) => item.required), status,
-    reason: status === "COMPLIANT" ? "All equipment-line DEUR expectations are satisfied." : status === "PENDING_CORRECTION" ? "One or more equipment lines have a pending correction." : status === "MISSING_DEUR" ? "One or more equipment lines are missing a required DEUR." : "One or more equipment lines have an incomplete customer review.",
+    reason: status === "COMPLIANT" ? "All equipment-line DEUR expectations are satisfied." : status==="COMPLIANT_WITH_WAIVERS" ? "No unresolved DEUR expectations remain; historical waivers are recorded." : status === "PENDING_CORRECTION" ? "One or more equipment lines have a pending correction." : status === "MISSING_DEUR" ? "One or more equipment lines are missing a required DEUR." : "One or more equipment lines have an incomplete customer review.",
     source: results[0].source,
-    expectedCount: sum((item) => item.expectedCount), compliantCount: sum((item) => item.compliantCount),
+    expectedCount: sum((item) => item.expectedCount), compliantCount: sum((item) => item.compliantCount), waivedCount:sum(item=>item.waivedCount),
     missingCount: sum((item) => item.missingCount), incompleteCount: sum((item) => item.incompleteCount),
     pendingCorrectionCount: sum((item) => item.pendingCorrectionCount), expectations: results.flatMap((item) => item.expectations),
     counts: {
@@ -85,7 +89,7 @@ function groupRevisionChains(records: DeurRecord[]) {
 }
 
 /** Read-only operational compliance. It deliberately does not inspect billing calculations or infer dates. */
-export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipmentLineId, deurs, evaluationTimestamp, liveShiftWindows }: EvaluateRentalDeurComplianceInput): RentalDeurComplianceResult {
+export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipmentLineId, expectationFingerprint, deurs, dispositions=[], evaluationTimestamp, liveShiftWindows }: EvaluateRentalDeurComplianceInput): RentalDeurComplianceResult {
   const records = structuredClone(deurs.filter((record) => record.rentalId === rental.id));
   const required = requiringStatuses.has(rental.status);
   let effective = 0, pendingCorrections = 0, superseded = 0;
@@ -104,22 +108,23 @@ export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipme
 
   const incomplete = records.filter((record) => incompleteStatuses.has(record.status) && !record.revision?.previousRevisionId).length;
   const counts = { total: records.length, effective, incomplete, pendingCorrections, superseded };
-  const legacyBase = { source: "LEGACY_RENTAL_FALLBACK" as const, expectedCount: required ? 1 : 0, compliantCount: effective > 0 ? 1 : 0, missingCount: 0, incompleteCount: incomplete > 0 ? 1 : 0, pendingCorrectionCount: pendingCorrections, expectations: [] as RentalDeurExpectationResult[] };
+  const legacyBase = { source: "LEGACY_RENTAL_FALLBACK" as const, expectedCount: required ? 1 : 0, compliantCount: effective > 0 ? 1 : 0, waivedCount:0, missingCount: 0, incompleteCount: incomplete > 0 ? 1 : 0, pendingCorrectionCount: pendingCorrections, expectations: [] as RentalDeurExpectationResult[] };
   const base = { rentalId: rental.id, ...(assignment?.id ? { assignmentId: assignment.id } : {}), required, counts, issues, ...legacyBase };
 
   if (rental.deurExpectationPolicy || rental.deurExpectationPolicyRequired) {
     const generated = generateRentalDeurExpectations({ rental, evaluationTimestamp: evaluationTimestamp ?? "", liveShiftWindows });
-    const scopedExpectations = rentalEquipmentLineId ? generated.expectations.map((expectation) => ({ ...expectation, expectationId: `${rentalEquipmentLineId}:${expectation.expectationId}`, rentalEquipmentLineId, equipmentId: rental.equipmentId, operatorId: rental.operatorId })) : generated.expectations;
-    const matched = matchDeursToExpectations({ expectations: scopedExpectations, deurs: records });
+    const scopedExpectations = rentalEquipmentLineId ? generated.expectations.map((expectation) => ({ ...expectation, expectationId: `${rentalEquipmentLineId}:${expectation.expectationId}`, rentalEquipmentLineId, equipmentId: rental.equipmentId, operatorId: rental.operatorId, expectationFingerprint })) : generated.expectations;
+    const matched = matchDeursToExpectations({ expectations: scopedExpectations, deurs: records, dispositions });
     const explicitIssues = [...generated.issues, ...matched.issues];
     const expectedCount = matched.results.length;
     const compliantCount = matched.results.filter((item) => item.status === "COMPLIANT").length;
+    const waivedCount = matched.results.filter((item) => item.status === "WAIVED").length;
     const missingCount = matched.results.filter((item) => item.status === "MISSING").length;
     const incompleteCount = matched.results.filter((item) => item.status === "INCOMPLETE").length;
     const pendingCorrectionCount = matched.results.filter((item) => item.status === "PENDING_CORRECTION").length;
     const explicitBase = {
       rentalId: rental.id, ...(assignment?.id ? { assignmentId: assignment.id } : {}), required,
-      source: generated.source, expectedCount, compliantCount, missingCount, incompleteCount, pendingCorrectionCount,
+      source: generated.source, expectedCount, compliantCount, waivedCount, missingCount, incompleteCount, pendingCorrectionCount,
       ...(generated.shiftWindowSource ? { shiftWindowSource: generated.shiftWindowSource } : {}),
       ...(generated.shiftWindowCapturedAt ? { shiftWindowCapturedAt: generated.shiftWindowCapturedAt } : {}),
       expectations: matched.results, issues: explicitIssues,
@@ -136,7 +141,7 @@ export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipme
     if (pendingCorrectionCount > 0) return { ...explicitBase, status: "PENDING_CORRECTION", reason: "A required expectation has a pending correction." };
     if (missingCount > 0) return { ...explicitBase, status: "MISSING_DEUR", reason: "One or more required DEUR expectations are missing." };
     if (incompleteCount > 0) return { ...explicitBase, status: "DEUR_INCOMPLETE", reason: "One or more required DEUR expectations are incomplete." };
-    return { ...explicitBase, status: "COMPLIANT", reason: expectedCount ? "All due DEUR expectations are satisfied." : "No date-based DEUR expectation is due." };
+    return { ...explicitBase, status: waivedCount>0 ? "COMPLIANT_WITH_WAIVERS" : "COMPLIANT", reason: waivedCount>0 ? "No unresolved DEUR expectations remain; historical waivers are recorded." : expectedCount ? "All due DEUR expectations are satisfied." : "No date-based DEUR expectation is due." };
   }
 
   if (!required) return { ...base, status: "COMPLIANT", reason: "The rental lifecycle does not currently require a DEUR." };

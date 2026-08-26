@@ -14,10 +14,11 @@ export interface CanonicalCommercialSnapshot extends Omit<CanonicalRentalContrac
   sourceContractId: string; capturedAt: string;
 }
 export interface CanonicalReferenceCode { id: string; code: string; name: string; active: boolean; sortOrder: number }
-export interface CanonicalRentalWorkspace { rentalId: string; contracts: CanonicalRentalContract[]; commercialSnapshots: CanonicalCommercialSnapshot[] }
+export interface DeurExpectationDisposition { id:string; rentalId:string; rentalEquipmentLineId:string; workDate:string; expectationFingerprint:string; disposition:"WAIVED"; reason:string; createdAt:string; createdBy:string }
+export interface CanonicalRentalWorkspace { rentalId: string; contracts: CanonicalRentalContract[]; commercialSnapshots: CanonicalCommercialSnapshot[]; expectationDispositions?: DeurExpectationDisposition[] }
 export interface CanonicalRentalReferenceData { costCodes: CanonicalReferenceCode[]; activityCodes: CanonicalReferenceCode[] }
 
-export type CanonicalRentalFailureCode = "UNAUTHENTICATED" | "FORBIDDEN" | "VALIDATION_REJECTED" | "NOT_FOUND" | "MISSING_RELATIONSHIP" | "EQUIPMENT_UNAVAILABLE" | "RENTAL_NUMBER_CONFLICT" | "RENTAL_CONFLICT" | "CONFLICT" | "LINE_SET_MISMATCH" | "INVALID_TRANSITION" | "RELEASE_NOT_READY" | "IDEMPOTENCY_MISMATCH" | "PERSISTENCE_FAILURE" | "TRANSPORT_FAILURE" | "INVALID_RESPONSE";
+export type CanonicalRentalFailureCode = "UNAUTHENTICATED" | "FORBIDDEN" | "VALIDATION_REJECTED" | "NOT_FOUND" | "MISSING_RELATIONSHIP" | "EQUIPMENT_UNAVAILABLE" | "RENTAL_NUMBER_CONFLICT" | "RENTAL_CONFLICT" | "CONFLICT" | "LINE_SET_MISMATCH" | "INVALID_TRANSITION" | "RELEASE_NOT_READY" | "IDEMPOTENCY_MISMATCH" | "EXPECTATION_NOT_WAIVABLE" | "EXPECTATION_HAS_DEUR" | "ALREADY_WAIVED" | "PERSISTENCE_FAILURE" | "TRANSPORT_FAILURE" | "INVALID_RESPONSE";
 export type CanonicalReadResult<T> = { success: true; value: T } | { success: false; code: CanonicalRentalFailureCode; message: string };
 export interface CanonicalCommandValue { rentalId: string; rentalNumber?: string; status: string; approvalStatus?: string; version: number; lineIds?: string[] }
 export type CanonicalCommandResult = { success: true; disposition: "ACCEPTED" | "REPLAYED"; value: CanonicalCommandValue } | { success: false; code: CanonicalRentalFailureCode; message: string; details?: unknown; currentVersion?: number };
@@ -28,6 +29,7 @@ export interface UpdateCanonicalTermsInput { commandId: string; idempotencyKey: 
 export interface CanonicalVersionedInput { commandId: string; idempotencyKey: string; rentalId: string; expectedVersion: number }
 export interface DecideCanonicalApprovalInput extends CanonicalVersionedInput { decision: "Approved" | "Rejected"; remarks?: string }
 export interface ConfigureCanonicalCustomerReviewInput extends CanonicalVersionedInput { customerId: string; representativeName: string; representativeEmail: string }
+export interface WaiveDeurExpectationInput { commandId:string; idempotencyKey:string; rentalId:string; rentalEquipmentLineId:string; workDate:string; expectationFingerprint:string; reason:string }
 
 export interface CanonicalRentalRemoteRepository {
   readWorkspace(rentalId: string): Promise<CanonicalReadResult<CanonicalRentalWorkspace>>;
@@ -40,4 +42,5 @@ export interface CanonicalRentalRemoteRepository {
   release(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
   activate(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
   configureCustomerReview?(input: ConfigureCanonicalCustomerReviewInput): Promise<CanonicalCommandResult>;
+  waiveDeurExpectation?(input: WaiveDeurExpectationInput): Promise<CanonicalCommandResult>;
 }

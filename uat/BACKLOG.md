@@ -10,7 +10,8 @@
 | Digital DEUR end-to-end | VERIFIED | DEUR-2026-000001 corrected audibly to `2026-08-26`, exercised through activity transitions, completed, and submitted exactly once. |
 | Grouped customer acknowledgement | VERIFIED | One trusted grouped review was delivered through the isolated-UAT override and manually acknowledged; the canonical DEUR is Acknowledged at row version 9 with one consumed request and no duplicate outcome. |
 | Post-acknowledgement workspace projection | VERIFIED | Commit `1059949` deployed as UAT Worker `45874c26-0d88-4fc8-9354-686168e832f2`; canonical Equipment and Acknowledged DEUR now project into the workspace and Billing readiness. |
-| Missing 2026-08-25 DEUR expectation | OPEN | Per Workday compliance reports one due missing expectation for 2026-08-25 and one compliant Acknowledged DEUR for 2026-08-26. Read-first contract diagnosis is required before billing creation. |
+| Missing 2026-08-25 DEUR expectation | REMEDIATION READY | Business-approved `WAIVED` disposition implemented as immutable, audited, action-authorized evidence. Local reset and all regressions pass; isolated-UAT migration/deploy and exact-target command certification remain. |
+| Daily Operations remote logs projection | REMEDIATION READY | Remote mapper now guarantees `logs: []` when the compatibility collection is absent while preserving canonical events and any existing logs. Deployment and browser route/deep-link certification remain. |
 | Remote Operator commercial evidence | CLOSED | Operators remain unable to read financial snapshots; remote preparation now delegates immutable commercial binding to the canonical server command. |
 | Remote DEUR event projection | CLOSED | `deur_events` are hydrated and ordered; the active view now shows Operation instead of offering a duplicate Start Operation. |
 | UX/UI modernization | OPEN | Begin with Rental Workspace only after its workflow is green. |

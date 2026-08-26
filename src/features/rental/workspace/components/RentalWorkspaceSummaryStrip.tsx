@@ -1,18 +1,21 @@
 import KpiCard from "@/components/ui/KpiCard";
 import { useRentalWorkspaceAggregate } from "..";
 import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
-import { evaluateRentalDeurCompliance } from "@/features/rental/deur/compliance/evaluateRentalDeurCompliance";
+import { aggregateRentalEquipmentLineDeurCompliance, evaluateRentalDeurCompliance, evaluateRentalEquipmentLineDeurCompliance } from "@/features/rental/deur/compliance/evaluateRentalDeurCompliance";
 import { deurShiftWindowRepository } from "@/features/rental/deur/shift-window/repository";
 
 export default function RentalWorkspaceSummaryStrip() {
   const aggregate = useRentalWorkspaceAggregate();
-  const compliance = evaluateRentalDeurCompliance({
+  const rentalCompliance = evaluateRentalDeurCompliance({
     rental: aggregate.rental,
     assignment: aggregate.assignment,
     deurs: aggregate.deurs,
+    dispositions:aggregate.expectationDispositions??[],
     evaluationTimestamp: new Date().toISOString(),
     liveShiftWindows: deurShiftWindowRepository.getAll(),
   });
+  const lineCompliance=evaluateRentalEquipmentLineDeurCompliance({rental:aggregate.rental,lines:aggregate.rentalEquipmentLines,deurs:aggregate.deurs,dispositions:aggregate.expectationDispositions??[],evaluationTimestamp:new Date().toISOString(),liveShiftWindows:deurShiftWindowRepository.getAll()});
+  const compliance=lineCompliance.length?aggregateRentalEquipmentLineDeurCompliance(aggregate.rental.id,lineCompliance):rentalCompliance;
   const lineCount = aggregate.rentalEquipmentLines.length;
   const equipmentLabel =
     lineCount > 1
@@ -28,7 +31,7 @@ export default function RentalWorkspaceSummaryStrip() {
         label="DEUR Compliance"
         value={<RentalDeurComplianceIndicator result={compliance} />}
         caption={compliance.reason}
-        tone={compliance.status === "COMPLIANT" ? "green" : "orange"}
+        tone={["COMPLIANT","COMPLIANT_WITH_WAIVERS"].includes(compliance.status) ? "green" : "orange"}
       />
     </div>
   );

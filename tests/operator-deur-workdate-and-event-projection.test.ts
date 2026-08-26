@@ -18,4 +18,15 @@ describe("remote Operator DEUR work-date and event projection", () => {
     ]});
     expect(result).toMatchObject({success:true,value:{events:[{activityType:"shift",action:"start",sequence:1},{activityType:"operation",action:"start",sequence:2}]}});
   });
+  it("normalizes absent compatibility logs without changing canonical events", () => {
+    const result=mapDeur({id:"deur-1",rental_id:"rental-1",equipment_id:"eq",operator_id:"op",work_date:"2026-08-26",status:"Acknowledged",created_at:"2026-08-26T01:00:00Z",updated_at:"2026-08-26T01:00:00Z",deur_events:[
+      {id:"event-1",deur_id:"deur-1",activity_type:"operation",action:"start",occurred_at:"2026-08-26T01:00:00Z",sequence:1,source:"user"},
+    ]});
+    expect(result).toMatchObject({success:true,value:{logs:[],events:[{id:"event-1"}]}});
+  });
+  it("preserves existing compatibility logs", () => {
+    const logs=[{id:"log-1",type:"Operation",timestamp:"2026-08-26T01:00:00Z"}];
+    const result=mapDeur({id:"deur-1",rental_id:"rental-1",equipment_id:"eq",operator_id:"op",work_date:"2026-08-26",status:"Acknowledged",logs,created_at:"2026-08-26T01:00:00Z",updated_at:"2026-08-26T01:00:00Z",deur_events:[]});
+    expect(result).toMatchObject({success:true,value:{logs}});
+  });
 });

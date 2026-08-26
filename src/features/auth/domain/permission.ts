@@ -21,7 +21,7 @@ export const PERMISSIONS = {
     "rental.commercialTerms.manage",
     "rental.customerContact.update",
   ],
-  deur: ["deur.read", "deur.create", "deur.review", "deur.correct"],
+  deur: ["deur.read", "deur.create", "deur.review", "deur.correct", "deur.expectation.waive"],
   customer: ["customer.read", "customer.create", "customer.manage"],
   project: ["project.read", "project.manage"],
   operator: ["operator.read", "operator.manage"],

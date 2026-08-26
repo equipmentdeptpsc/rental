@@ -182,6 +182,7 @@ export default function RentalWorkspaceProvider({
       project,
       activeDeur,
       deurs,
+      expectationDispositions: remote && workspace.status === "loaded" ? workspace.data.expectationDispositions ?? [] : [],
       billing: {
         hasStatement: statements.length > 0,
         invoiceStatus: latestStatement?.invoiceStatus,

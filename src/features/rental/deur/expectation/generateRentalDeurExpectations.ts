@@ -5,7 +5,7 @@ import { normalizeDeurShiftWindow } from "../shift-window/normalizeDeurShiftWind
 import { resolveDeurShiftWindowBoundary } from "../shift-window/resolveDeurShiftWindowBoundary";
 
 export type DeurExpectationPeriodStatus = "DUE" | "CURRENT" | "NOT_YET_DUE";
-export interface DeurExpectation { expectationId: string; rentalId: string; rentalEquipmentLineId?: string; equipmentId?: string; operatorId?: string; workDate: string; shiftCode?: DeurExpectationShiftCode; status: DeurExpectationPeriodStatus; source: DeurExpectationSource; windowLabel?: string; startTime?: string; endTime?: string; crossesMidnight?: boolean }
+export interface DeurExpectation { expectationId: string; rentalId: string; rentalEquipmentLineId?: string; equipmentId?: string; operatorId?: string; expectationFingerprint?:string; workDate: string; shiftCode?: DeurExpectationShiftCode; status: DeurExpectationPeriodStatus; source: DeurExpectationSource; windowLabel?: string; startTime?: string; endTime?: string; crossesMidnight?: boolean }
 export interface GenerateRentalDeurExpectationsResult { source: DeurExpectationSource; shiftWindowSource?: DeurShiftWindowSource; shiftWindowCapturedAt?: string; policy?: RentalRecord["deurExpectationPolicy"]; expectations: DeurExpectation[]; issues: Array<{ code: string; message: string }> }
 const operational = new Set<RentalRecord["status"]>(["Released", "Active", "Returned", "Closed"]);
 export const createDeurExpectationId = ({ rentalId, workDate, shiftCode }: { rentalId: string; workDate: string; shiftCode?: string }) => [rentalId, workDate, shiftCode].filter(Boolean).join(":");

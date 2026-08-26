@@ -2,12 +2,13 @@ import type { RentalDeurComplianceResult } from "./evaluateRentalDeurCompliance"
 
 const styles: Record<RentalDeurComplianceResult["status"], string> = {
   COMPLIANT: "bg-green-100 text-green-800",
+  COMPLIANT_WITH_WAIVERS: "bg-blue-100 text-blue-800",
   PENDING_CORRECTION: "bg-yellow-100 text-yellow-800",
   DEUR_INCOMPLETE: "bg-orange-100 text-orange-800",
   MISSING_DEUR: "bg-red-100 text-red-800",
 };
 const labels: Record<RentalDeurComplianceResult["status"], string> = {
-  COMPLIANT: "Compliant", PENDING_CORRECTION: "Pending Correction", DEUR_INCOMPLETE: "Draft DEUR", MISSING_DEUR: "Missing DEUR",
+  COMPLIANT: "Compliant", COMPLIANT_WITH_WAIVERS:"Resolved with Waiver", PENDING_CORRECTION: "Pending Correction", DEUR_INCOMPLETE: "Draft DEUR", MISSING_DEUR: "Missing DEUR",
 };
 
 export default function RentalDeurComplianceIndicator({ result }: { result: RentalDeurComplianceResult }) {

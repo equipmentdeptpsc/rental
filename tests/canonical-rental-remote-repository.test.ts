@@ -10,13 +10,15 @@ describe("canonical remote Rental repository", () => {
   it("uses the protected workspace and reference RPCs and maps legitimate empty results", async () => {
     const remote = client([
       { data: { success: true, rentalId: "r-1", contracts: [], commercialSnapshots: [] }, error: null },
+      { data: { success: true, dispositions: [] }, error: null },
       { data: { success: true, costCodes: [], activityCodes: [] }, error: null },
     ]);
     const repository = new SupabaseCanonicalRentalRepository(remote.value as never);
-    expect(await repository.readWorkspace("r-1")).toEqual({ success: true, value: { rentalId: "r-1", contracts: [], commercialSnapshots: [] } });
+    expect(await repository.readWorkspace("r-1")).toEqual({ success: true, value: { rentalId: "r-1", contracts: [], commercialSnapshots: [], expectationDispositions: [] } });
     expect(await repository.readReferenceData()).toEqual({ success: true, value: { costCodes: [], activityCodes: [] } });
     expect(remote.rpc).toHaveBeenNthCalledWith(1, "read_canonical_rental_workspace", { target_rental_id: "r-1" });
-    expect(remote.rpc).toHaveBeenNthCalledWith(2, "read_canonical_rental_reference_data", {});
+    expect(remote.rpc).toHaveBeenNthCalledWith(2, "read_deur_expectation_dispositions", { target_rental_id: "r-1" });
+    expect(remote.rpc).toHaveBeenNthCalledWith(3, "read_canonical_rental_reference_data", {});
   });
 
   it("uses command RPCs, preserves idempotency input, and accepts replayed outcomes", async () => {

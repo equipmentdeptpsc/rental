@@ -22,6 +22,8 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { canUseAnyRentalMutations, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 import { resolveRentalWorkspaceDeurPolicy } from "@/features/rental/services/resolveRentalWorkspaceDeurPolicy";
+import { useState } from "react";
+import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 
 export default function RentalWorkspaceHeader({ activeTab }: { activeTab: WorkspaceTab }) {
   const dependencies = useApplicationDependenciesCompatibility();
@@ -32,9 +34,10 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
     useRentalWorkspaceAggregate();
   const {equipment}=useEquipment();
   const {hasPermission}=useAuth();
-  const compliance = evaluateRentalDeurCompliance({ rental: aggregate.rental, assignment: aggregate.assignment, deurs: aggregate.deurs, evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
-  const lineCompliance = evaluateRentalEquipmentLineDeurCompliance({ rental: aggregate.rental, lines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
-  const displayedCompliance = aggregate.rentalEquipmentLines.length > 1 ? aggregateRentalEquipmentLineDeurCompliance(aggregate.rental.id, lineCompliance) : compliance;
+  const [waiverMessage,setWaiverMessage]=useState("");
+  const compliance = evaluateRentalDeurCompliance({ rental: aggregate.rental, assignment: aggregate.assignment, deurs: aggregate.deurs, dispositions:aggregate.expectationDispositions??[], evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
+  const lineCompliance = evaluateRentalEquipmentLineDeurCompliance({ rental: aggregate.rental, lines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, dispositions:aggregate.expectationDispositions??[], evaluationTimestamp: new Date().toISOString(), liveShiftWindows: deurShiftWindowRepository.getAll() });
+  const displayedCompliance = aggregate.rentalEquipmentLines.length > 0 ? aggregateRentalEquipmentLineDeurCompliance(aggregate.rental.id, lineCompliance) : compliance;
   const effectiveDeurs = aggregate.rentalEquipmentLines.map((line) => [...aggregate.deurs]
     .filter((record) => (record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId) && !record.revision?.supersededByRevisionId)
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]).filter((record): record is NonNullable<typeof record> => Boolean(record));
@@ -62,7 +65,12 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       <RentalWorkspaceSummaryStrip />
       <RentalWorkspaceWorkflowPanel />
 
-      <RentalDeurComplianceSummary result={displayedCompliance} policy={displayedPolicy.policy} policyStaged={displayedPolicy.staged} />
+      <RentalDeurComplianceSummary result={displayedCompliance} policy={displayedPolicy.policy} policyStaged={displayedPolicy.staged} onWaive={hasPermission("deur.expectation.waive")&&dependencies.commandRepositories.canonicalRental?.waiveDeurExpectation ? async expectation=>{
+        const reason=window.prompt("Enter the required audit reason for this historical DEUR expectation waiver:","")?.trim();if(!reason)return;
+        const commandId=crypto.randomUUID(),result=await dependencies.commandRepositories.canonicalRental!.waiveDeurExpectation!({commandId,idempotencyKey:crypto.randomUUID(),rentalId:aggregate.rental.id,rentalEquipmentLineId:expectation.rentalEquipmentLineId!,workDate:expectation.workDate,expectationFingerprint:expectation.expectationFingerprint!,reason});
+        setWaiverMessage(result.success?"Historical DEUR expectation waived with canonical audit evidence.":result.message);if(result.success)requestCanonicalRentalRefresh();
+      }:undefined} />
+      {waiverMessage&&<p className="text-sm text-slate-700" role="status">{waiverMessage}</p>}
       {historicalIntegrityViolations.length > 0 && <div className="mt-4 rounded border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950"><b>Historical integrity violation</b><p>This Closed rental predates the current closure gate: {historicalIntegrityViolations.join(", ")}. It remains readable and was not automatically changed.</p></div>}
       {aggregate.rentalEquipmentLines.length > 1 && <div className="mt-4 space-y-2"><h3 className="text-sm font-semibold">Equipment Line DEUR Compliance</h3>{lineCompliance.map((item) => {const line=aggregate.rentalEquipmentLines.find(candidate=>candidate.id===item.rentalEquipmentLineId);const label=line?resolveRentalLinePresentation(line,aggregate.rentalEquipmentLines,equipment).label:"Equipment record unavailable";return <p key={item.rentalEquipmentLineId} className={`rounded border p-2 text-sm ${item.result.status === "COMPLIANT" ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>{label}: {item.result.reason}</p>})}</div>}
       {legacyMutationsAvailable&&aggregate.rental.status!=="Closed"&&<RentalDeurExpectationPolicyCard rental={aggregate.rental} />}
