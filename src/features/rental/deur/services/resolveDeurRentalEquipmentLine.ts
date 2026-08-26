@@ -12,6 +12,7 @@ export function resolveDeurRentalEquipmentLine(input: {
   equipmentId?: string;
   assignmentId?: string;
   operatorId?: string;
+  rentalEquipmentLine?: RentalEquipmentLine;
   requireOperationalSnapshot?: boolean;
   allowLegacyEquipmentResolution?: boolean;
 }): DeurLineResolution {
@@ -21,7 +22,9 @@ export function resolveDeurRentalEquipmentLine(input: {
     operatorId: input.rental.operatorId || input.operatorId,
     assignmentId: input.rental.assignmentId ?? input.assignmentId,
   };
-  const lines = materializeRentalEquipmentLineCompatibility([compatibilityRental], rentalEquipmentLineRepository.getAll()).lines.filter((line) => line.rentalId === input.rental.id);
+  const lines = input.rentalEquipmentLine
+    ? [structuredClone(input.rentalEquipmentLine)]
+    : materializeRentalEquipmentLineCompatibility([compatibilityRental], rentalEquipmentLineRepository.getAll()).lines.filter((line) => line.rentalId === input.rental.id);
   if (!input.rentalEquipmentLineId && lines.length > 1 && !input.allowLegacyEquipmentResolution) return { success: false, issue: { code: "DEUR_LINE_AMBIGUOUS", message: "Select a specific Rental Equipment Line before creating this DEUR." } };
   let candidates: RentalEquipmentLine[];
   if (input.rentalEquipmentLineId) candidates = lines.filter((line) => line.id === input.rentalEquipmentLineId);

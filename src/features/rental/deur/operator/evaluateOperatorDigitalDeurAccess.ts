@@ -11,7 +11,7 @@ import { resolveDeurRentalEquipmentLine } from "../services/resolveDeurRentalEqu
 import { getDeurStartEligibility } from "../services/DeurValidationService";
 
 const issue = (code: string, message: string): OperatorDigitalDeurAccessIssue => ({ code, message });
-export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string; name?: string; role?: string }; authenticatedOperatorId?: string; operator?: Operator; assignment?: AssignmentRecord; rental?: RentalRecord; rentalEquipmentLine?: RentalEquipmentLine; deurs: DeurRecord[]; evaluationTimestamp: string; shift?: DeurRecord["shift"] }): OperatorDigitalDeurAccessResult {
+export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string; name?: string; role?: string }; authenticatedOperatorId?: string; operator?: Operator; assignment?: AssignmentRecord; rental?: RentalRecord; rentalEquipmentLine?: RentalEquipmentLine; deurs: DeurRecord[]; evaluationTimestamp: string; shift?: DeurRecord["shift"]; serverAuthoritativeCommercialEvidence?: boolean }): OperatorDigitalDeurAccessResult {
   const { actor, operator, assignment, rental, deurs, shift } = input;
   const base = { allowed: false, allowedActions: [] as DeurOperatorAction[], issues: [] as OperatorDigitalDeurAccessIssue[] };
   if (!operator) return { ...base, issues: [issue("OPERATOR_NOT_FOUND", "Operator was not found.")] };
@@ -37,7 +37,7 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
   const operationalMetadata = line.deurExpectationSnapshot?.operationalMetadata
     ?? (input.rentalEquipmentLine ? undefined : rental.operationalMetadata);
   if (!operationalMetadata?.costCode || !operationalMetadata.activityCode) return { ...base, issues: [issue("OPERATIONAL_SNAPSHOT_REQUIRED", "Rental operational metadata snapshot is required.")] };
-  if (line.commercialSnapshotRequired && !line.commercialSnapshot) return { ...base, issues: [issue("COMMERCIAL_SNAPSHOT_REQUIRED", "Rental Equipment Line commercial snapshot is required.")] };
+  if (line.commercialSnapshotRequired && !line.commercialSnapshot && !input.serverAuthoritativeCommercialEvidence) return { ...base, issues: [issue("COMMERCIAL_SNAPSHOT_REQUIRED", "Rental Equipment Line commercial snapshot is required.")] };
   if (rental.deurExpectationPolicyRequired && !rental.deurExpectationPolicy) return { ...base, issues: [issue("DEUR_EXPECTATION_POLICY_REQUIRED", "Rental expectation policy is required.")] };
   if (rental.deurExpectationPolicy?.frequency === "PER_SHIFT") {
     const code = shift === "Day" ? "DAY" : shift === "Night" ? "NIGHT" : undefined;

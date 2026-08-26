@@ -1,4 +1,5 @@
 import type { RentalLifecycleStatus, RentalRecord } from "@/features/rental/types";
+import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
 import type { DeurCompletionEvidence, DeurCreationSource, DeurOdometerCheckpoint, DeurQuantityEvidence, DeurRecord, ManualDeurMetadata, ManualDeurReason } from "../types";
 import { deurRepository } from "../repository/deurRepository";
@@ -21,8 +22,11 @@ export const MANUAL_DEUR_REASONS: readonly ManualDeurReason[] = ["POWER_NOT_AVAI
 export interface CreateDeurRequest {
   authenticatedUser?: User | null;
   enforceOperatorOwnership?: boolean;
+  /** Remote commands bind immutable commercial evidence server-side without exposing financial terms to Operators. */
+  serverAuthoritativeCommercialEvidence?: boolean;
   rentalId: string;
   rentalEquipmentLineId?: string;
+  rentalEquipmentLine?: RentalEquipmentLine;
   rentalStatus: RentalLifecycleStatus;
   equipmentId: string;
   operatorId: string;
@@ -71,7 +75,7 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
   if (missing) {
     return `Missing required ${missing[0]} relationship.`;
   }
-  const lineResolution = request.rental ? resolveDeurRentalEquipmentLine({ rental: request.rental, rentalEquipmentLineId: request.rentalEquipmentLineId, equipmentId: request.equipmentId, assignmentId: request.assignmentId, operatorId: request.operatorId }) : undefined;
+  const lineResolution = request.rental ? resolveDeurRentalEquipmentLine({ rental: request.rental, rentalEquipmentLine: request.rentalEquipmentLine, rentalEquipmentLineId: request.rentalEquipmentLineId, equipmentId: request.equipmentId, assignmentId: request.assignmentId, operatorId: request.operatorId, requireOperationalSnapshot: request.serverAuthoritativeCommercialEvidence ? false : undefined }) : undefined;
   if (lineResolution && !lineResolution.success) return lineResolution.issue.message;
   if (lineResolution?.success && !lineResolution.line.deurExpectationSnapshot) return "The Rental Equipment Line does not have a frozen DEUR release snapshot.";
 
@@ -103,13 +107,18 @@ export function prepareDeur(request: CreateDeurRequest): CreateDeurResult {
   const error = getDeurCreationError(request);
   if (error) return { success: false, message: error };
   if (!request.rental) return { success: false, message: "Rental operational metadata is required to create a DEUR." };
-  const lineResolution=resolveDeurRentalEquipmentLine({rental:request.rental,rentalEquipmentLineId:request.rentalEquipmentLineId,equipmentId:request.equipmentId,assignmentId:request.assignmentId,operatorId:request.operatorId});if(!lineResolution.success)return{success:false,message:lineResolution.issue.message};
+  const lineResolution=resolveDeurRentalEquipmentLine({rental:request.rental,rentalEquipmentLine:request.rentalEquipmentLine,rentalEquipmentLineId:request.rentalEquipmentLineId,equipmentId:request.equipmentId,assignmentId:request.assignmentId,operatorId:request.operatorId,requireOperationalSnapshot:request.serverAuthoritativeCommercialEvidence?false:undefined});if(!lineResolution.success)return{success:false,message:lineResolution.issue.message};
   const line=lineResolution.line;
   const releaseSnapshot=line.deurExpectationSnapshot;
   if(!releaseSnapshot)return{success:false,message:"The Rental Equipment Line does not have a frozen DEUR release snapshot."};
-  const commercial=line.commercialSnapshot?{success:true as const,snapshot:structuredClone(line.commercialSnapshot)}:createDeurCommercialSnapshot(request.rental);if(!commercial.success)return{success:false,message:commercial.message};
+  const commercial=line.commercialSnapshot
+    ? {success:true as const,snapshot:structuredClone(line.commercialSnapshot)}
+    : request.serverAuthoritativeCommercialEvidence
+      ? {success:true as const,snapshot:undefined}
+      : createDeurCommercialSnapshot(request.rental);
+  if(!commercial.success)return{success:false,message:commercial.message};
   const meterRequirement = getDeurMeterRequirement({
-    billingMethod: commercial.snapshot?.billingMethod ?? request.billingMethod ?? request.rental.billingMethod,
+    billingMethod: commercial.snapshot?.billingMethod ?? releaseSnapshot.billingMethod ?? request.billingMethod ?? request.rental.billingMethod,
     commercialTerms: commercial.snapshot,
   });
   const requiredReadingType = meterRequirement.kind === "odometer"
@@ -130,7 +139,7 @@ export function prepareDeur(request: CreateDeurRequest): CreateDeurResult {
 
   const timestamp = new Date().toISOString();
   const workDate = request.workDate ?? calendarDateAt(timestamp, request.rental.deurExpectationPolicy?.timezone) ?? timestamp.split("T")[0];
-  const billingMethod=commercial.snapshot?.billingMethod??request.billingMethod??request.rental.billingMethod;
+  const billingMethod=commercial.snapshot?.billingMethod??releaseSnapshot.billingMethod??request.billingMethod??request.rental.billingMethod;
   const resolved=resolveDeurEvidenceMode(billingMethod);
   const evidenceMode=resolved.supported?resolved.mode:undefined;
   const odometerTripEvidence=evidenceMode==="ODOMETER_TRIP"?normalizeOdometerTripEvidence({checkpoints:request.odometerCheckpoints}):undefined;
