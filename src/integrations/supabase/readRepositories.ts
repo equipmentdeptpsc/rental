@@ -7,7 +7,7 @@ import type { Operator } from "@/features/operators/types";
 import type { CustomerRecord } from "@/features/customer/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
-import type { DeurRecord } from "@/features/rental/deur/types";
+import type { CanonicalDeurEvent, DeurRecord } from "@/features/rental/deur/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
 import type { RemoteCore } from "@/core/remote";
@@ -24,10 +24,21 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"] }, core),
-    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", searchColumns: ["deur_number", "operational_remarks"] }, core),
+    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*)", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
   };
+}
+export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurRecord> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
+  const eventRows = Array.isArray(row.deur_events) ? row.deur_events : [];
+  const events = eventRows.flatMap((value): CanonicalDeurEvent[] => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const event = value as Record<string, unknown>;
+    if (typeof event.id !== "string" || typeof event.activity_type !== "string" || typeof event.action !== "string" || typeof event.occurred_at !== "string" || typeof event.sequence !== "number") return [];
+    return [{ id:event.id, activityType:event.activity_type as CanonicalDeurEvent["activityType"], action:event.action as CanonicalDeurEvent["action"], timestamp:event.occurred_at, sequence:event.sequence, source:event.source === "legacy" ? "legacy" : event.source === "automatic" ? "automatic" : "user", actorId:typeof event.actor_id === "string" ? event.actor_id : undefined, deurId:typeof event.deur_id === "string" ? event.deur_id : undefined, idleReasonId:typeof event.idle_reason_id === "string" ? event.idle_reason_id : undefined, idleReasonLabelSnapshot:typeof event.idle_reason_label_snapshot === "string" ? event.idle_reason_label_snapshot : undefined, idleReasonRemarks:typeof event.idle_reason_remarks === "string" ? event.idle_reason_remarks : undefined }];
+  }).sort((left,right)=>left.sequence-right.sequence);
+  return repositorySuccess({ ...base.value, events } as unknown as DeurRecord);
 }
 export function mapCustomer(row: Record<string, unknown>): RepositoryResult<CustomerRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row);
