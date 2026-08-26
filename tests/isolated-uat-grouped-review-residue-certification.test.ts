@@ -1,0 +1,3 @@
+import{readFileSync}from"node:fs";import{describe,expect,it}from"vitest";
+const sql=readFileSync("supabase/migrations/20260826000600_isolated_uat_grouped_review_residue_certification.sql","utf8");
+describe("isolated UAT grouped review residue certification",()=>{it("is read-only, service-only, exact-target and safe",()=>{for(const marker of["auth.role()<>'service_role'","TENANT-LOCAL-001","providerMessageIdPresent","TO service_role"])expect(sql).toContain(marker);expect(sql).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\b|GRANT SELECT|recipient_destination|template_payload|credential|ciphertext/i);});});
