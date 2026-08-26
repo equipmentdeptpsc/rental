@@ -11,7 +11,7 @@ describe("isolated UAT grouped-review scheduler provisioning",()=>{
 });
 
 describe("one-shot grouped-review certification boundary",()=>{
- it("is UAT-only, authenticated, exact-target, override-gated and bounded to one",()=>{const source=readFileSync("worker/uatGroupedReviewCertification.ts","utf8");for(const marker of["ENABLE_UAT_RECIPIENT_OVERRIDE_VERIFIER","settings.update","TENANT-LOCAL-001","CONFIRM-ONE-ISOLATED-UAT-GROUPED-REVIEW","matchesUatRecipientOverride","batchLimit:1","groupsPrepared!==1","notificationsPrepared!==1","delivery.claimed!==1","delivery.providerCalls!==1"])expect(source).toContain(marker);expect(source).not.toMatch(/console\.|reviewPath|credential|ciphertext|serviceRoleKey/);});
+ it("is UAT-only, authenticated, exact-target, override-gated and bounded to one",()=>{const source=readFileSync("worker/uatGroupedReviewCertification.ts","utf8");for(const marker of["ENABLE_UAT_RECIPIENT_OVERRIDE_VERIFIER","settings.update","TENANT-LOCAL-001","CONFIRM-ONE-ISOLATED-UAT-GROUPED-REVIEW","matchesUatRecipientOverride","RENTAL_TARGET_NOT_ELIGIBLE","DEUR_TARGET_NOT_ELIGIBLE","LINE_TARGET_NOT_ELIGIBLE","batchLimit:1","groupsPrepared!==1","notificationsPrepared!==1","delivery.claimed!==1","delivery.providerCalls!==1"])expect(source).toContain(marker);expect(source).not.toMatch(/console\.|reviewPath|credential|ciphertext|serviceRoleKey/);});
 });
 
 const client=(permission=true)=>({auth:{getUser:vi.fn(async()=>({data:{user:{id:"actor"}},error:null}))},schema:()=>({from:(table:string)=>({select:()=>({eq:()=>({eq:()=>({maybeSingle:vi.fn(async()=>({data:table==="users"?{id:"actor",status:"active"}:permission?{permission_code:"settings.update"}:null,error:null}))})})})})})} as any);
