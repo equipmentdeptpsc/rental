@@ -83,7 +83,7 @@ export class TrustedNotificationWorker {
           deliveryOutcome: "KNOWN_PROVIDER_RESPONSE", retryable: false, attempt: intent.attempt });
         await this.repository.complete({
           id: intent.id, workerId, status: "ProviderAccepted",
-          providerName: result.provider, providerMessageId: result.providerMessageId,
+          providerName: result.provider, providerMessageId: result.providerMessageId,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied,
         });
       } else {
         const decision = decideNotificationFailure(
@@ -96,7 +96,7 @@ export class TrustedNotificationWorker {
           ...(result.diagnostic?.httpStatus ? { httpStatus: result.diagnostic.httpStatus } : {}) });
         await this.repository.complete({
           id: intent.id, workerId, status: decision.status,
-          failureCategory: result.category, retryAfterSeconds: decision.delaySeconds,
+          failureCategory: result.category, retryAfterSeconds: decision.delaySeconds,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied,
         });
       }
     }

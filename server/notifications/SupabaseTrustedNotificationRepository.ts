@@ -101,12 +101,13 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
   }
 
   async complete(input: Parameters<TrustedNotificationWorkerRepository["complete"]>[0]): Promise<void> {
-    const result = await this.rpc<RpcResult<unknown>>(this.service, input.notificationType === "BILLING_STATEMENT_EMAIL" ? "complete_billing_statement_email_delivery" : "complete_notification_delivery", {
+    const completion=input.notificationType === "BILLING_STATEMENT_EMAIL" ? "complete_billing_statement_email_delivery" : input.notificationType === "CUSTOMER_GROUPED_REVIEW_REQUESTED" ? "complete_grouped_review_notification_delivery" : "complete_notification_delivery";
+    const result = await this.rpc<RpcResult<unknown>>(this.service, completion, {
       command: {
         id: input.id, workerId: input.workerId, status: input.status,
         providerName: input.providerName, providerMessageId: input.providerMessageId,
         failureCategory: input.failureCategory, retryAfterSeconds: input.retryAfterSeconds,
-        ...(input.notificationType === "BILLING_STATEMENT_EMAIL" ? { uatOverrideApplied: input.uatOverrideApplied === true } : {}),
+        ...(["BILLING_STATEMENT_EMAIL","CUSTOMER_GROUPED_REVIEW_REQUESTED"].includes(input.notificationType??"") ? { uatOverrideApplied: input.uatOverrideApplied === true } : {}),
       },
     });
     if (!result.success) throw new Error(`Notification completion rejected (${result.code ?? "unknown"}).`);
