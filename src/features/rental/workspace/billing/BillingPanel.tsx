@@ -20,10 +20,12 @@ import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveR
 import { resolveRentalBillingBlockers } from "@/features/rental/billing/resolveRentalBillingBlockers";
 import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
 import { useSearchParams } from "react-router-dom";
+import { PersistenceMode, useApplicationDependencies } from "@/app/composition";
 
 export default function BillingPanel() {
 
   const aggregate = useRentalWorkspaceAggregate();
+  const dependencies = useApplicationDependencies();
   const [searchParams] = useSearchParams();
   const selectedBillingStatementId = searchParams.get("billingStatementId") ?? undefined;
   const { equipment } = useRentalWorkspacePresentationData();
@@ -158,6 +160,7 @@ export default function BillingPanel() {
         <BillingDraftTable
   drafts={drafts.drafts}
   selectedId={selectedBillingStatementId}
+  allowLegacyActions={dependencies.configuration.persistenceMode !== PersistenceMode.Remote}
   onDelete={
     drafts.deleteDraft
   }

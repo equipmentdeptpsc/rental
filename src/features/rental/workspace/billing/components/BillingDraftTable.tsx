@@ -7,6 +7,7 @@ import { useState } from "react";
 
 interface Props {
   drafts: BillingStatement[];
+  allowLegacyActions?: boolean;
   onDelete(id: string): void;
   onInvoiceStatus(id: string, status: BillingInvoiceStatus): void;
   onCollect(id: string, input: { mode: "partial" | "full"; amount?: number; paymentDate: string; referenceNumber: string; paymentMethod?: string; remarks?: string }): unknown;
@@ -19,6 +20,7 @@ export default function BillingDraftTable({
   onInvoiceStatus,
   onCollect,
   selectedId,
+  allowLegacyActions = true,
 }: Props) {
   const [collecting,setCollecting]=useState<{id:string;mode:"partial"|"full"}>();
   const [amount,setAmount]=useState("");const [paymentDate,setPaymentDate]=useState(new Date().toISOString().slice(0,10));const [referenceNumber,setReferenceNumber]=useState("");const [paymentMethod,setPaymentMethod]=useState("");const [remarks,setRemarks]=useState("");
@@ -40,7 +42,7 @@ export default function BillingDraftTable({
             <th className="px-4 py-3 text-center">Equipment / DEUR rows</th>
             <th className="px-4 py-3 text-center">Approval</th>
             <th className="px-4 py-3 text-center">Invoice</th>
-            <th className="px-4 py-3 text-center">Actions</th>
+            {allowLegacyActions && <th className="px-4 py-3 text-center">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -54,7 +56,7 @@ export default function BillingDraftTable({
               <td className="px-4 py-3 text-center">{draft.lines.length}</td>
               <td className="px-4 py-3 text-center">{draft.approvalStatus}</td>
               <td className="px-4 py-3 text-center">{draft.invoiceStatus}</td>
-              <td className="px-4 py-3 text-center">
+              {allowLegacyActions && <td className="px-4 py-3 text-center">
                 <div className="flex flex-wrap justify-center gap-2">
                   {draft.invoiceStatus === "Not Invoiced" && (
                     <button onClick={() => onInvoiceStatus(draft.id, "Invoiced")} className="rounded border px-2 py-1 text-xs">Mark Invoiced</button>
@@ -70,7 +72,7 @@ export default function BillingDraftTable({
                   )}
                   <button onClick={() => onDelete(draft.id)} className="rounded border border-red-300 px-3 py-1 text-xs text-red-600 hover:bg-red-50">Delete</button>
                 </div>
-              </td>
+              </td>}
             </tr>
           ))}
         </tbody>
