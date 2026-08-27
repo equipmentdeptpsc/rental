@@ -24,6 +24,7 @@ export class UnavailableOperationalCommandRepository implements AllRepositories 
   record = () => this.unavailable<never>();
   returnLine = () => this.unavailable<never>();
   returnAll = () => this.unavailable<never>();
+  getReturnReadiness = () => this.unavailable<never>();
   getReadiness = () => this.unavailable<never>();
   close = () => this.unavailable<never>();
   createReserved = () => this.unavailable<never>();

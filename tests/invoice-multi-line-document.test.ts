@@ -42,7 +42,7 @@ describe("multi-equipment invoice document", () => {
     })]);
     const document = buildInvoiceDocument(source,
       [{ id: "equipment-1", prefixId: "", assetNo: "EX-RENAMED", equipmentName: "Renamed Excavator", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "", operatorId: "", status: "Rented" }],
-      [{ id: "operator-1", name: "Renamed Operator", status: "Active" }]);
+      [{ id: "operator-1", name: "Renamed Operator", email: "operator@example.test", licenseNumber: "LIC-1", certificationType: "Heavy Machinery", status: "Active", joinedDate: "2026-01-01" }]);
     expect(document).toMatchObject({ rentalNumber: "RNT-FROZEN" });
     expect(document.lines[0]).toMatchObject({ equipmentLabel: "Original Excavator (EX-ORIGINAL)", equipmentDescription: "Original Excavator", operatorLabel: "Original Operator" });
   });

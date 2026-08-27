@@ -10,6 +10,7 @@ import { evaluateRentalEquipmentLineDeurCompliance } from "@/features/rental/deu
 import { getDeurRentalEligibility } from "@/features/rental/deur/services/deurRentalEligibility";
 import { createApplicationBackup, restoreApplicationBackup, validateApplicationBackup } from "@/features/settings/services/applicationBackupService";
 import { frozenDeurLine } from "./helpers/deurReleaseFixture";
+import type { DeurRecord } from "@/features/rental/deur/types";
 
 const snapshot = (rate: number, billingMethod: "Per Hour" | "Per Day" = "Per Hour") => ({ billingMethod, unitRate: rate, operatorIncluded: true, currency: "PHP", capturedAt: "2026-07-20T00:00:00.000Z" } as const);
 const metadata = { costCode: { code: "C", name: "Cost" }, activityCode: { code: "A", name: "Activity" } };
@@ -76,7 +77,7 @@ describe("Rental Equipment Line-aware DEUR", () => {
       workDate: "2026-07-20", status: "Acknowledged", legacy: false, logs: [], totalOperatingMinutes: 60,
       totalIdleMinutes: 0, totalMaintenanceMinutes: 0, totalMealBreakMinutes: 0, totalMobilizationMinutes: 0,
       totalDemobilizationMinutes: 0, createdAt: "2026-07-20T00:00:00Z", updatedAt: "2026-07-20T01:00:00Z",
-    } as const;
+    } as DeurRecord;
     const results = evaluateRentalEquipmentLineDeurCompliance({ rental: canonicalRental, lines: [first, second], deurs: [compatibilityDeur], evaluationTimestamp: "2026-07-21T00:00:00Z" });
     expect(results).toHaveLength(2);
     expect(results.every((item) => item.result.compliantCount === 0)).toBe(true);

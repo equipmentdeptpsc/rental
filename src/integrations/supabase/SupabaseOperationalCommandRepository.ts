@@ -5,7 +5,7 @@ import type {
   OperationalCommandRepositories, OperationalCommandResult, PublicReviewConfirmation,
   PublicReviewDecisionInput, RecordMeterCheckpointInput, RentalClosureCommandRepository,
   RentalClosureProjection, RentalClosureReadiness, RentalClosureReadinessInput,
-  RentalLineReturnProjection, RentalReturnCommandRepository, ReturnAllProjection,
+  RentalLineReturnProjection, RentalReturnCommandRepository, RentalReturnReadiness, ReturnAllProjection,
   ReturnAllRentalLinesInput, ReturnRentalLineInput,
   CreateReservedRentalInput, RentalLifecycleCommandRepository, RentalLifecycleProjection,
   RentalLifecycleTransitionInput,
@@ -40,6 +40,7 @@ export class SupabaseOperationalCommandRepository implements Repository {
   record = (input: RecordMeterCheckpointInput) => this.rpc<MeterCheckpointResult>("command_record_meter_checkpoint", input);
   returnLine = (input: ReturnRentalLineInput) => this.rpc<RentalLineReturnProjection>("command_return_rental_line", input);
   returnAll = (input: ReturnAllRentalLinesInput) => this.rpc<ReturnAllProjection>("command_return_all_rental_lines", input);
+  getReturnReadiness = (input: { rentalId: string }) => this.rpc<RentalReturnReadiness>("get_rental_return_readiness", input);
   getReadiness = (input: RentalClosureReadinessInput) => this.rpc<RentalClosureReadiness>("get_rental_closure_readiness", input);
   close = (input: CloseRentalInput) => this.rpc<RentalClosureProjection>("command_close_rental", input);
   createReserved = (input: CreateReservedRentalInput) => this.rpc<RentalLifecycleProjection>("command_create_reserved_rental", input);

@@ -65,9 +65,11 @@ export interface ReturnRentalLineInput extends OperationalCommandMetadata {
 export interface ReturnAllRentalLinesInput extends OperationalCommandMetadata { rentalId: string }
 export interface RentalLineReturnProjection { rentalId: string; rentalLineId: string; status: string; version: number }
 export interface ReturnAllProjection { rentalId: string; lines: readonly RentalLineReturnProjection[]; version: number }
+export interface RentalReturnReadiness { rentalId: string; ready: boolean; historicalBoundary: string; blockers: readonly { code: string; message: string; rentalLineId: string; workDate: string; shiftCode?: string }[] }
 export interface RentalReturnCommandRepository {
   returnLine(input: ReturnRentalLineInput): Promise<OperationalCommandResult<RentalLineReturnProjection>>;
   returnAll(input: ReturnAllRentalLinesInput): Promise<OperationalCommandResult<ReturnAllProjection>>;
+  getReturnReadiness(input: { rentalId: string }): Promise<OperationalCommandResult<RentalReturnReadiness>>;
 }
 
 export interface RentalClosureReadinessInput { rentalId: string }
