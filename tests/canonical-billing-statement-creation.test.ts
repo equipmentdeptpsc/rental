@@ -43,6 +43,13 @@ describe("canonical billing statement creation", () => {
     expect(calls).toEqual(["evidence", "statement", "consume"]);
   });
 
+  it("uses the canonical hourly-rate preview field when optional unitRate is absent", async () => {
+    const repo = repository();
+    const withoutOptionalUnitRate = { ...line, unitRate: undefined };
+    await expect(createCanonicalBillingStatement({ rentalId: "rental-1", from: "2026-08-26", to: "2026-08-26", currency: "PHP", preview: [withoutOptionalUnitRate], identity, repository: repo })).resolves.toEqual({ success: true, statementId: "statement-1" });
+    expect(repo.createStatement).toHaveBeenCalledTimes(1);
+  });
+
   it("does not create canonical records when server evidence differs from the reviewed preview", async () => {
     const repo = repository({ generateEvidence: vi.fn().mockResolvedValue(accepted({ ...evidence, grandTotal: 4000 })) });
     const result = await createCanonicalBillingStatement({ rentalId: "rental-1", from: "2026-08-26", to: "2026-08-26", currency: "PHP", preview: [line], identity, repository: repo });

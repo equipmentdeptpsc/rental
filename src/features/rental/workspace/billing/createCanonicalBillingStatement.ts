@@ -18,9 +18,10 @@ function sameMoney(left: number, right: number): boolean {
 
 function evidenceMismatches(evidence: BillingEvidenceProjection, preview: BillingPreviewLine): string[] {
   const mismatches: string[] = [];
+  const previewUnitRate = preview.unitRate ?? preview.hourlyRate;
   if (evidence.deurId !== preview.deurId) mismatches.push("DEUR identity");
   if (evidence.billingMethod !== preview.billingMethod) mismatches.push(`billing method (${evidence.billingMethod} / ${preview.billingMethod})`);
-  if (!sameMoney(evidence.unitRate, preview.unitRate ?? 0)) mismatches.push(`unit rate (${evidence.unitRate} / ${preview.unitRate ?? 0})`);
+  if (!sameMoney(evidence.unitRate, previewUnitRate)) mismatches.push(`unit rate (${evidence.unitRate} / ${previewUnitRate})`);
   if (!sameMoney(evidence.subtotal, preview.amount)) mismatches.push(`subtotal (${evidence.subtotal} / ${preview.amount})`);
   if (!sameMoney(evidence.vat, preview.vat ?? 0)) mismatches.push(`VAT (${evidence.vat} / ${preview.vat ?? 0})`);
   if (!sameMoney(evidence.withholdingTax, preview.withholdingTax ?? 0)) mismatches.push(`withholding (${evidence.withholdingTax} / ${preview.withholdingTax ?? 0})`);
