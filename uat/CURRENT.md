@@ -15,4 +15,8 @@
 - Forward-only correction `20260827000100` replaces only the command and uses the canonical current-revision predicate `superseded_by_revision_id IS NULL`; local runtime certification returned ACCEPTED then REPLAYED with one waiver, one audit, and zero DEURs.
 - Correction commit `f800cd9` was pushed to the UAT branch and only `20260827000100` was applied to isolated UAT; the post-apply dry run is up to date.
 - The single approved retry succeeded. Hard-refresh certification shows Expected 3, Acknowledged 1, Waived 1, Missing 0; 2026-08-25 is distinctly WAIVED with the approved reason, DEUR-2026-000001 remains Acknowledged, and Billing Eligible remains projected.
-- Next safe action: resolve the separate Billing Preview optional-term validation defect before executing any billing calculation or mutation.
+- Billing Preview root cause: the remote DEUR reader omitted its `commercial_snapshot_id` relationship, forcing a legacy Contract fallback, while canonical RPC optionals were represented as JSON null and cast without normalization. The validator correctly rejected those nulls.
+- Local correction: the authenticated DEUR read now embeds the exact referenced immutable commercial snapshot; the persistence normalizer treats database null only as omission for optional fields while retaining strict required/NaN/negative validation.
+- Read-only expected UAT calculation: canonical interval rounding produces 233 operating minutes (3.8833 hours); at PHP 1,000/hour with all optional adjustments absent and operator included, subtotal and total are PHP 3,883.33, VAT and withholding zero.
+- Local gates: focused billing matrix 132/132; full suite 2024 passed and 139 skipped; application, Worker, and test TypeScript green; build and diff check green.
+- Next safe action: commit/push, deploy isolated UAT, hard-refresh the DEUR/Billing preview, and certify the read-only amount with zero financial records.

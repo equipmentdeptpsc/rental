@@ -13,6 +13,7 @@ import type { WorkDescriptionRecord } from "@/features/masters/work-description/
 import type { RemoteCore } from "@/core/remote";
 import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
 import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepository";
+import { normalizeRentalCommercialSnapshot } from "@/features/rental/services/createRentalCommercialSnapshot";
 
 export function createSupabaseReadRepositories(client: SupabaseClient, core: RemoteCore) {
   return {
@@ -24,13 +25,18 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"] }, core),
-    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*)", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
+    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*),commercial_snapshots(*)", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
   };
 }
 export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
+  const snapshotRow = row.commercial_snapshots;
+  const mappedSnapshot = snapshotRow && typeof snapshotRow === "object" && !Array.isArray(snapshotRow)
+    ? mapCanonicalRow<Record<string, unknown>>(snapshotRow)
+    : undefined;
+  const commercialSnapshot = mappedSnapshot?.success ? normalizeRentalCommercialSnapshot(mappedSnapshot.value) : undefined;
   const eventRows = Array.isArray(row.deur_events) ? row.deur_events : [];
   const events = eventRows.flatMap((value): CanonicalDeurEvent[] => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -39,7 +45,7 @@ export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurReco
     return [{ id:event.id, activityType:event.activity_type as CanonicalDeurEvent["activityType"], action:event.action as CanonicalDeurEvent["action"], timestamp:event.occurred_at, sequence:event.sequence, source:event.source === "legacy" ? "legacy" : event.source === "automatic" ? "automatic" : "user", actorId:typeof event.actor_id === "string" ? event.actor_id : undefined, deurId:typeof event.deur_id === "string" ? event.deur_id : undefined, idleReasonId:typeof event.idle_reason_id === "string" ? event.idle_reason_id : undefined, idleReasonLabelSnapshot:typeof event.idle_reason_label_snapshot === "string" ? event.idle_reason_label_snapshot : undefined, idleReasonRemarks:typeof event.idle_reason_remarks === "string" ? event.idle_reason_remarks : undefined }];
   }).sort((left,right)=>left.sequence-right.sequence);
   const logs = Array.isArray(base.value.logs) ? base.value.logs : [];
-  return repositorySuccess({ ...base.value, events, logs } as unknown as DeurRecord);
+  return repositorySuccess({ ...base.value, events, logs, ...(commercialSnapshot ? { commercialSnapshot } : {}) } as unknown as DeurRecord);
 }
 export function mapCustomer(row: Record<string, unknown>): RepositoryResult<CustomerRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row);

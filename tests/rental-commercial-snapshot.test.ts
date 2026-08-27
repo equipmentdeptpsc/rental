@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { storage } from "@/core/storage";
-import { createRentalCommercialSnapshot } from "@/features/rental/services/createRentalCommercialSnapshot";
+import { createRentalCommercialSnapshot, normalizeRentalCommercialSnapshot } from "@/features/rental/services/createRentalCommercialSnapshot";
 import { LocalRentalRepository } from "@/features/rental/repository/LocalRentalRepository";
 import type { RentalCommercialSnapshot, RentalRecord } from "@/features/rental/types";
 import type { RentalContractRecord } from "@/features/rental/types/RentalContract";
@@ -17,6 +17,11 @@ describe("Rental commercial snapshot",()=>{
  it("rejects invalid method and timestamp",()=>{expect(createRentalCommercialSnapshot({...contract,billingMethod:"Other" as never},"2026-02-27T08:15:00.000Z")).toMatchObject({success:false});expect(createRentalCommercialSnapshot(contract,"bad")).toMatchObject({success:false})});
  it("preserves an existing repository snapshot against replacement, removal, and nested mutation",()=>{const made=createRentalCommercialSnapshot(contract,"2026-02-27T08:15:00.000Z");if(!made.success)throw Error();const repo=new LocalRentalRepository();repo.create(rental(made.snapshot));const changed={...rental({...made.snapshot,unitRate:42}),commercialSnapshot:undefined};repo.update(changed);expect(repo.getById("r")?.commercialSnapshot?.unitRate).toBe(35);const read=repo.getById("r")!;read.commercialSnapshot!.unitRate=88;expect(repo.getById("r")?.commercialSnapshot?.unitRate).toBe(35)});
  it("keeps legacy records without a snapshot loadable",()=>{storage.set("equipment-rental-records",[{...rental(),commercialSnapshotRequired:undefined}]);expect(new LocalRentalRepository().getById("r")?.commercialSnapshot).toBeUndefined()});
+ it("normalizes database null optional values as absent without weakening required validation",()=>{
+  const normalized=normalizeRentalCommercialSnapshot({...contract,billingMethod:"Per Hour",unitRate:1000,operatorIncluded:true,currency:"PHP",capturedAt:"2026-08-25T01:00:00Z",minimumBillableHours:null,overtimeRate:null,standbyRate:null,mobilizationFee:null,demobilizationFee:null,fuelCharge:null,operatorRate:null,taxRate:null,withholdingTax:null,contractAmount:null});
+  expect(normalized).toEqual({billingMethod:"Per Hour",unitRate:1000,operatorIncluded:true,currency:"PHP",capturedAt:"2026-08-25T01:00:00.000Z"});
+  expect(normalizeRentalCommercialSnapshot({...contract,unitRate:Number.NaN,capturedAt:"2026-08-25T01:00:00Z"})).toBeUndefined();
+ });
 });
 
 describe("historical commercial calculation",()=>{

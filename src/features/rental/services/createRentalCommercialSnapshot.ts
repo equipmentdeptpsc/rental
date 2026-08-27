@@ -22,6 +22,7 @@ export function createRentalCommercialSnapshot(source:Source,capturedAt:string):
 
 export function normalizeRentalCommercialSnapshot(value:unknown):RentalCommercialSnapshot|undefined{
  if(!value||typeof value!=="object")return;const item=value as Record<string,unknown>;
- const result=createRentalCommercialSnapshot(item as unknown as Source,String(item.capturedAt??""));
+ const normalized={...item};optional.forEach(field=>{if(normalized[field]===null)delete normalized[field]});
+ const result=createRentalCommercialSnapshot(normalized as unknown as Source,String(item.capturedAt??""));
  return result.success?result.snapshot:undefined;
 }
