@@ -2,8 +2,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { mapDeur } from "@/integrations/supabase/readRepositories";
 import { createDeurBillingPreview } from "@/features/rental/deur/billing/createDeurBillingPreview";
+import { readFileSync as readSource } from "node:fs";
 
 describe("remote Operator DEUR work-date and event projection", () => {
+  it("uses the DEUR commercial-snapshot foreign key explicitly in the remote embed",()=>{
+    expect(readSource("src/integrations/supabase/readRepositories.ts","utf8")).toContain("commercial_snapshots!deurs_commercial_snapshot_id_fkey(*)");
+  });
   it("hydrates the exact immutable commercial snapshot and omits database null optionals", () => {
     const result=mapDeur({id:"deur-1",rental_id:"rental-1",commercial_snapshot_id:"snapshot-1",commercial_snapshot_required:true,equipment_id:"eq",operator_id:"op",work_date:"2026-08-26",status:"Acknowledged",created_at:"2026-08-26T01:00:00Z",updated_at:"2026-08-26T01:00:00Z",deur_events:[],commercial_snapshots:{id:"snapshot-1",rental_id:"rental-1",rental_equipment_line_id:"line-1",billing_method:"Per Hour",currency:"PHP",unit_rate:1000,minimum_billable_hours:null,overtime_rate:null,standby_rate:null,mobilization_fee:null,demobilization_fee:null,fuel_charge:null,operator_included:true,operator_rate:null,tax_rate:null,withholding_tax:null,contract_amount:null,captured_at:"2026-08-25T01:00:00Z"}});
     expect(result).toMatchObject({success:true,value:{commercialSnapshot:{billingMethod:"Per Hour",currency:"PHP",unitRate:1000,operatorIncluded:true,capturedAt:"2026-08-25T01:00:00.000Z"}}});
