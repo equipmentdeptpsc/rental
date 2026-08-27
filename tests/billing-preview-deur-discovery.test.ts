@@ -5,6 +5,7 @@ import { saveDeurHours } from "@/features/rental/deur/services/saveDeurHours";
 import {
   getCompletedDeursForBillingPeriod,
   getDeurPreviewReference,
+  resolveDefaultBillingPeriodDate,
 } from "@/features/rental/workspace/billing/BillingPreviewBuilder";
 
 const record = () => ({
@@ -93,5 +94,15 @@ describe("completed DEUR billing preview discovery", () => {
       "2026-07-01",
       "2026-07-31"
     )).toHaveLength(1);
+  });
+
+  it("defaults the period to the latest unconsumed acknowledged DEUR date", () => {
+    const acknowledged = { ...record(), status: "Acknowledged" as const, reportDate: "2026-08-26" };
+    expect(resolveDefaultBillingPeriodDate([
+      { ...acknowledged, id: "older", reportDate: "2026-08-25" },
+      acknowledged,
+      { ...acknowledged, id: "consumed", reportDate: "2026-08-27", billingLocked: true },
+    ], "2026-08-27")).toBe("2026-08-26");
+    expect(resolveDefaultBillingPeriodDate([], "2026-08-27")).toBe("2026-08-27");
   });
 });

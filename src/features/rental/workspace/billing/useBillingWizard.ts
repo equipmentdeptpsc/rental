@@ -5,7 +5,7 @@ import {
   useRentalWorkspacePresentationData,
 } from "..";
 
-import { getCompletedDeursForBillingPeriod } from "./BillingPreviewBuilder";
+import { getCompletedDeursForBillingPeriod, resolveDefaultBillingPeriodDate } from "./BillingPreviewBuilder";
 
 import { buildRentalLineAwareBillingPreview, createRentalLineAwareBillingStatement } from "@/features/rental/billingstatement/services/buildRentalLineAwareBilling";
 import { useToast } from "@/components/ui/toast/ToastContext";
@@ -30,11 +30,13 @@ export function useBillingWizard() {
       .toISOString()
       .split("T")[0];
 
+  const latestBillableDate = resolveDefaultBillingPeriodDate(aggregate.deurs, today);
+
   const [from, setFrom] =
-    useState(today);
+    useState(latestBillableDate);
 
   const [to, setTo] =
-    useState(today);
+    useState(latestBillableDate);
 
   const [generated, setGenerated] =
     useState(false);

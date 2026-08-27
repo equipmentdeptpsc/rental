@@ -100,3 +100,11 @@ export function getCompletedDeursForBillingPeriod(
 export function getDeurPreviewReference(deur: DeurRecord): string {
   return deur.deurNumber?.trim() || "DEUR number unavailable";
 }
+
+export function resolveDefaultBillingPeriodDate(deurs: readonly DeurRecord[], today: string): string {
+  return deurs
+    .filter((record) => record.status === "Acknowledged" && !record.billingLocked)
+    .map((record) => record.reportDate ?? record.workDate)
+    .sort()
+    .at(-1) ?? today;
+}
