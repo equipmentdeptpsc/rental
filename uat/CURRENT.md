@@ -30,3 +30,8 @@
 - Forward correction `20260827000200` retains rounded hours only as presentation quantity and prices Per Hour evidence from exact billable hours. It preserves eligibility, duplicate-consumption, immutable-snapshot, tenant, and privilege guards.
 - Precision gates: focused 19/19; clean reset through `20260827000200`; full suite 2030 passed and 139 skipped; application, Worker, and test TypeScript green; build/diff check green. Linked dry run shows exactly `20260827000200` pending.
 - Next safe action: commit/push the precision correction, apply only `20260827000200` to isolated UAT, verify server evidence at PHP 3,883.33, then retry the same single authorized Draft creation once.
+- Authorized financial action completed exactly once: `BS-2026-000001` is Draft/Not Invoiced for 2026-08-26 with one DEUR row and persisted subtotal PHP 3,883.33; Rental remains Active and DEUR-2026-000001 remains Acknowledged.
+- Remote Billing projection correction is deployed at commits `e4eaeb7` and `5668d47`, Worker `16706eb8-4c13-413f-81ec-4f137fce4d60`. Canonical joined statement lines now project; local-only Mark Invoiced/Delete/Collection controls fail closed in remote mode.
+- Gates: focused 13/13; full suite 2048 passed, 139 skipped; application, Worker, and test TypeScript green; build and diff check green.
+- Relationship investigation remains P1/YELLOW: current core line/DEUR/revision model is canonical, but remote FK validation state, Operator/provenance composite enforcement, five unprojected UUIDs, Audit Trail projection, and multi-equipment cross-surface runtime certification remain open.
+- Return/Close remains blocked because 2026-08-27 now projects as a missing PER_WORKDAY expectation and the lineage investigation is not fully GREEN.
