@@ -13,4 +13,6 @@
 - Local gates: clean reset through `20260826000700`; focused 39/39; relevant Rental/DEUR/billing/RBAC 68/68; full suite 2019 passed and 139 skipped; application, Worker, and test TypeScript green; build and diff check green.
 - Remote waiver attempt made no business mutation because the command referenced nonexistent `erp.deurs.deleted_at` and failed when PostgreSQL executed the evidence guard.
 - Forward-only correction `20260827000100` replaces only the command and uses the canonical current-revision predicate `superseded_by_revision_id IS NULL`; local runtime certification returned ACCEPTED then REPLAYED with one waiver, one audit, and zero DEURs.
-- Next safe action: commit/push the correction, verify/apply only `20260827000100` to isolated UAT, then retry the already-approved exact waiver once and certify cardinality before any billing work.
+- Correction commit `f800cd9` was pushed to the UAT branch and only `20260827000100` was applied to isolated UAT; the post-apply dry run is up to date.
+- The single approved retry succeeded. Hard-refresh certification shows Expected 3, Acknowledged 1, Waived 1, Missing 0; 2026-08-25 is distinctly WAIVED with the approved reason, DEUR-2026-000001 remains Acknowledged, and Billing Eligible remains projected.
+- Next safe action: resolve the separate Billing Preview optional-term validation defect before executing any billing calculation or mutation.
