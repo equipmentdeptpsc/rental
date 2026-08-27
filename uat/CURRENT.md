@@ -1,6 +1,6 @@
 # Current UAT state
 
-- Current milestone: canonical historical DEUR-expectation waiver and Daily Operations projection correction for RNT-2026-000001.
+- Current milestone: canonical remote billing-statement creation for RNT-2026-000001.
 - Canonical state: DEUR-2026-000001 is Acknowledged at row version 9 with its event history retained; the grouped review request is consumed exactly once and billing lines remain zero.
 - Certified defect: remote Rental workspace assembled DEURs from the local compatibility repository and Billing presentation used local Equipment context, despite canonical authenticated readers already returning the records.
 - Local correction: hydrate remote workspace DEURs through the authenticated read repository and use canonical workspace Equipment/Operator presentation data. No migration or business-data mutation is required.
@@ -22,4 +22,7 @@
 - Deployed commits: `9a8a3d2`, `0df75f8`, and least-privilege correction `28795bb`; final isolated-UAT Worker version `7886816e-cc1c-42cc-8866-1efad7386752`.
 - Post-deploy certification: hard refresh shows the DEUR immutable snapshot, Per Hour at PHP 1,000, 3.88 displayed hours, and a Final Preview with PHP 3,883.33 operating charge/subtotal/grand total and no optional-term errors.
 - Financial safety: Billing tab reports no billing statement and PHP 0.00 persisted subtotal; Invoices tab reports zero invoices. Generate Billing was not clicked and no financial command was executed.
-- Next safe action: authorize exactly one canonical billing-generation mutation only after accepting the independently certified PHP 3,883.33 amount and the current billing-period selection requirements.
+- Billing creation defect: the remote Billing wizard previewed canonical data but `Save Draft` still invoked the legacy synchronous repository workflow. The correction routes remote creation through `command_generate_billing_evidence`, `command_create_billing_statement`, and `command_consume_deur`, revalidating server evidence before the first write and retaining stable per-stage idempotency identities across retries.
+- Pre-mutation remote baseline: Rental Active and Billing Eligible; Expected 3, Acknowledged 1, Waived 1, Missing 0; zero invoices, PHP 0.00 invoiced/outstanding, and no Billing Statement available. No financial command was executed during baseline certification.
+- Local gates for canonical creation: focused billing 33/33; full suite 2027 passed and 139 skipped; application, Worker, and test TypeScript green; build and diff check green. No migration required.
+- Next safe action: deploy the scoped UI correction, hard-refresh the Billing tab, select 2026-08-26 through 2026-08-26, certify PHP 3,883.33 again, and execute exactly one canonical Billing Statement creation.
