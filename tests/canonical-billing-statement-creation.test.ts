@@ -46,7 +46,7 @@ describe("canonical billing statement creation", () => {
   it("does not create canonical records when server evidence differs from the reviewed preview", async () => {
     const repo = repository({ generateEvidence: vi.fn().mockResolvedValue(accepted({ ...evidence, grandTotal: 4000 })) });
     const result = await createCanonicalBillingStatement({ rentalId: "rental-1", from: "2026-08-26", to: "2026-08-26", currency: "PHP", preview: [line], identity, repository: repo });
-    expect(result).toEqual({ success: false, message: expect.stringContaining("evidence changed") });
+    expect(result).toEqual({ success: false, message: expect.stringContaining("grand total (4000 / 3883.33)") });
     expect(repo.createStatement).not.toHaveBeenCalled();
     expect(repo.consumeDeur).not.toHaveBeenCalled();
   });

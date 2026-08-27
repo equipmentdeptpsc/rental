@@ -16,14 +16,16 @@ function sameMoney(left: number, right: number): boolean {
   return Math.round(left * 100) === Math.round(right * 100);
 }
 
-function evidenceMatchesPreview(evidence: BillingEvidenceProjection, preview: BillingPreviewLine): boolean {
-  return evidence.deurId === preview.deurId
-    && evidence.billingMethod === preview.billingMethod
-    && sameMoney(evidence.unitRate, preview.unitRate ?? 0)
-    && sameMoney(evidence.subtotal, preview.amount)
-    && sameMoney(evidence.vat, preview.vat ?? 0)
-    && sameMoney(evidence.withholdingTax, preview.withholdingTax ?? 0)
-    && sameMoney(evidence.grandTotal, preview.grandTotal ?? preview.amount);
+function evidenceMismatches(evidence: BillingEvidenceProjection, preview: BillingPreviewLine): string[] {
+  const mismatches: string[] = [];
+  if (evidence.deurId !== preview.deurId) mismatches.push("DEUR identity");
+  if (evidence.billingMethod !== preview.billingMethod) mismatches.push(`billing method (${evidence.billingMethod} / ${preview.billingMethod})`);
+  if (!sameMoney(evidence.unitRate, preview.unitRate ?? 0)) mismatches.push(`unit rate (${evidence.unitRate} / ${preview.unitRate ?? 0})`);
+  if (!sameMoney(evidence.subtotal, preview.amount)) mismatches.push(`subtotal (${evidence.subtotal} / ${preview.amount})`);
+  if (!sameMoney(evidence.vat, preview.vat ?? 0)) mismatches.push(`VAT (${evidence.vat} / ${preview.vat ?? 0})`);
+  if (!sameMoney(evidence.withholdingTax, preview.withholdingTax ?? 0)) mismatches.push(`withholding (${evidence.withholdingTax} / ${preview.withholdingTax ?? 0})`);
+  if (!sameMoney(evidence.grandTotal, preview.grandTotal ?? preview.amount)) mismatches.push(`grand total (${evidence.grandTotal} / ${preview.grandTotal ?? preview.amount})`);
+  return mismatches;
 }
 
 export async function createCanonicalBillingStatement(input: {
@@ -38,8 +40,9 @@ export async function createCanonicalBillingStatement(input: {
   for (const line of input.preview) {
     const result = await input.repository.generateEvidence({ ...input.identity.evidence[line.deurId], deurId: line.deurId });
     if (!result.success) return { success: false, message: result.message };
-    if (!evidenceMatchesPreview(result.value, line)) {
-      return { success: false, message: "Canonical billing evidence changed. Refresh and review the billing preview before creating a statement." };
+    const mismatches = evidenceMismatches(result.value, line);
+    if (mismatches.length) {
+      return { success: false, message: `Canonical billing evidence changed: ${mismatches.join(", ")}. Refresh and review before creating a statement.` };
     }
   }
 
