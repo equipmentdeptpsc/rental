@@ -19,4 +19,7 @@
 - Local correction: the authenticated DEUR read now embeds the exact referenced immutable commercial snapshot; the persistence normalizer treats database null only as omission for optional fields while retaining strict required/NaN/negative validation.
 - Read-only expected UAT calculation: canonical interval rounding produces 233 operating minutes (3.8833 hours); at PHP 1,000/hour with all optional adjustments absent and operator included, subtotal and total are PHP 3,883.33, VAT and withholding zero.
 - Local gates: focused billing matrix 132/132; full suite 2024 passed and 139 skipped; application, Worker, and test TypeScript green; build and diff check green.
-- Next safe action: commit/push, deploy isolated UAT, hard-refresh the DEUR/Billing preview, and certify the read-only amount with zero financial records.
+- Deployed commits: `9a8a3d2`, `0df75f8`, and least-privilege correction `28795bb`; final isolated-UAT Worker version `7886816e-cc1c-42cc-8866-1efad7386752`.
+- Post-deploy certification: hard refresh shows the DEUR immutable snapshot, Per Hour at PHP 1,000, 3.88 displayed hours, and a Final Preview with PHP 3,883.33 operating charge/subtotal/grand total and no optional-term errors.
+- Financial safety: Billing tab reports no billing statement and PHP 0.00 persisted subtotal; Invoices tab reports zero invoices. Generate Billing was not clicked and no financial command was executed.
+- Next safe action: authorize exactly one canonical billing-generation mutation only after accepting the independently certified PHP 3,883.33 amount and the current billing-period selection requirements.
