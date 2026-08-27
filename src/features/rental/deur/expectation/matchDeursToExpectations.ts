@@ -36,7 +36,7 @@ export function matchDeursToExpectations({ expectations, deurs, dispositions=[] 
     const waiver=dispositions.find(item=>item.disposition==="WAIVED"&&item.rentalId===expectation.rentalId&&item.rentalEquipmentLineId===expectation.rentalEquipmentLineId&&item.workDate===expectation.workDate&&item.expectationFingerprint===expectation.expectationFingerprint);
     if(waiver)return{...base,status:"WAIVED",reason:waiver.reason};
     if (expectation.status !== "DUE") return { ...base, status: expectation.status, reason: expectation.status === "CURRENT" ? "Reporting period is still in progress." : "Reporting period has not started." };
-    return { ...base, status: "MISSING", reason: "Shift completed; no DEUR was recorded.", issueCode: "DEUR_EXPECTATION_MISSING" };
+    return { ...base, status: "MISSING", reason: "Reporting period completed; no DEUR was recorded.", issueCode: "DEUR_EXPECTATION_MISSING" };
   });
   return { results: structuredClone(results), issues: structuredClone(issues) };
 }

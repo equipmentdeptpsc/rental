@@ -34,6 +34,19 @@ describe("multi-equipment invoice document", () => {
     expect(document.lines).toEqual([]); expect(document.subtotal).toBe(500); expect(document.warnings).toContainEqual(expect.objectContaining({ code: "LEGACY_HEADER_ONLY" }));
   });
 
+  it("prefers immutable Billing lineage labels over renamed master records", () => {
+    const source = statement([line("1", "equipment-1", 200, 100, "Per Hour", {
+      rentalNumberSnapshot: "RNT-FROZEN",
+      equipmentSnapshot: { id: "equipment-1", assetNo: "EX-ORIGINAL", name: "Original Excavator" },
+      operatorSnapshot: { id: "operator-1", name: "Original Operator" },
+    })]);
+    const document = buildInvoiceDocument(source,
+      [{ id: "equipment-1", prefixId: "", assetNo: "EX-RENAMED", equipmentName: "Renamed Excavator", category: "Moving Equipment", maintenanceType: "Engine Hours", currentReading: 0, projectId: "", operatorId: "", status: "Rented" }],
+      [{ id: "operator-1", name: "Renamed Operator", status: "Active" }]);
+    expect(document).toMatchObject({ rentalNumber: "RNT-FROZEN" });
+    expect(document.lines[0]).toMatchObject({ equipmentLabel: "Original Excavator (EX-ORIGINAL)", equipmentDescription: "Original Excavator", operatorLabel: "Original Operator" });
+  });
+
   it("surfaces structured identity and reconciliation warnings without modifying totals", () => {
     const inconsistent = statement([line("1", "equipment-1", 200, 100)]); inconsistent.subtotal = 201; inconsistent.vat = 99; inconsistent.withholdingTax = 88; inconsistent.grandTotal = 777; inconsistent.lines[0].rentalEquipmentLineId = undefined;
     const document = buildInvoiceDocument(inconsistent);

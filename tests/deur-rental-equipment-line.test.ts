@@ -62,6 +62,27 @@ describe("Rental Equipment Line-aware DEUR", () => {
     expect(results).toHaveLength(2); expect(results[1]).toMatchObject({ rentalEquipmentLineId: second.id, equipmentId: second.equipmentId, result: { status: "MISSING_DEUR" } });
   });
 
+  it("never lets a line-less compatibility DEUR satisfy a required canonical line expectation", () => {
+    const first = line("line-1", "equipment-shared", "operator-1", 100);
+    const second = line("line-2", "equipment-other", "operator-2", 100);
+    const canonicalRental: RentalRecord = {
+      ...rental,
+      releasedAt: "2026-07-20T00:00:00Z",
+      deurExpectationPolicyRequired: true,
+      deurExpectationPolicy: { frequency: "PER_WORKDAY", effectiveFrom: "2026-07-20", timezone: "Asia/Manila", capturedAt: "2026-07-20T00:00:00Z" },
+    };
+    const compatibilityDeur = {
+      id: "legacy-without-line", rentalId: rental.id, equipmentId: first.equipmentId, operatorId: first.operatorId,
+      workDate: "2026-07-20", status: "Acknowledged", legacy: false, logs: [], totalOperatingMinutes: 60,
+      totalIdleMinutes: 0, totalMaintenanceMinutes: 0, totalMealBreakMinutes: 0, totalMobilizationMinutes: 0,
+      totalDemobilizationMinutes: 0, createdAt: "2026-07-20T00:00:00Z", updatedAt: "2026-07-20T01:00:00Z",
+    } as const;
+    const results = evaluateRentalEquipmentLineDeurCompliance({ rental: canonicalRental, lines: [first, second], deurs: [compatibilityDeur], evaluationTimestamp: "2026-07-21T00:00:00Z" });
+    expect(results).toHaveLength(2);
+    expect(results.every((item) => item.result.compliantCount === 0)).toBe(true);
+    expect(results.every((item) => item.result.status === "MISSING_DEUR")).toBe(true);
+  });
+
   it("preserves the line identity and embedded snapshot through backup and restore", () => {
     const sole = line("line-1", "equipment-1", "operator-1", 100); rentalEquipmentLineRepository.create(sole); const created = createDeur(request(sole)); if (!created.success) throw new Error(created.message);
     const backup = createApplicationBackup(new Date("2026-07-21T00:00:00.000Z")); storage.clear(); restoreApplicationBackup(validateApplicationBackup(backup));

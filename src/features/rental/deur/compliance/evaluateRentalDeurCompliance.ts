@@ -39,7 +39,11 @@ export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalD
       rentalEquipmentLineId: line.id,
       expectationFingerprint:line.deurExpectationSnapshot?.sourceFingerprint,
       dispositions:input.dispositions?.filter(item=>item.rentalEquipmentLineId===line.id),
-      deurs: input.deurs.filter((record) => record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId),
+      deurs: input.deurs.filter((record) => record.rentalEquipmentLineId === line.id || (
+        !input.rental.deurExpectationPolicyRequired
+        && !record.rentalEquipmentLineId
+        && record.equipmentId === line.equipmentId
+      )),
     });
     return {
       rentalEquipmentLineId: line.id,

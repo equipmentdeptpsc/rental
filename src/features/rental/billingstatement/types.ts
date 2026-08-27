@@ -28,6 +28,13 @@ export interface BillingStatementLine {
   deurReference?: string;
   equipmentLabel?: string;
   operatorLabel?: string;
+  commercialSnapshotId?: string;
+  commercialSnapshotHash?: string;
+  rentalNumberSnapshot?: string;
+  rentalEquipmentLineSnapshot?: { id: string; rentalId: string; equipmentId: string; assignmentId?: string; operatorId?: string };
+  equipmentSnapshot?: { id: string; assetNo?: string; name?: string };
+  assignmentSnapshot?: { id: string; equipmentId: string; operatorId: string; projectId?: string };
+  operatorSnapshot?: { id: string; name?: string };
 
   workDate: string;
 
