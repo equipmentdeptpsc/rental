@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   useRentalWorkspaceAggregate,
@@ -40,6 +40,14 @@ export function useBillingWizard() {
 
   const [generated, setGenerated] =
     useState(false);
+
+  useEffect(() => {
+    if (!generated && from === today && to === today && latestBillableDate !== today) {
+      setFrom(latestBillableDate);
+      setTo(latestBillableDate);
+    }
+  }, [from, generated, latestBillableDate, to, today]);
+
   const [saving, setSaving] = useState(false);
   const canonicalIdentity = useRef<CanonicalBillingIdentity | undefined>(undefined);
 
