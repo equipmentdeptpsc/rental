@@ -3,13 +3,13 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { updateBillingInvoiceStatus } from "@/features/rental/billingstatement/services/BillingStatementWorkflow";
 import type { BillingInvoiceStatus } from "@/features/rental/billingstatement/types";
-import { useRentalWorkspaceAggregate } from "..";
+import { useRentalWorkspaceBillingStatements } from "..";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { recordCollection } from "@/features/rental/collections/collectionService";
 import { useAuth } from "@/features/auth/AuthContext";
 
 export function useBillingDrafts() {
-  const aggregate = useRentalWorkspaceAggregate();
+  const workspaceStatements = useRentalWorkspaceBillingStatements();
   const { billingStatement: billingStatementRepository, deur: deurRepository } = useApplicationDependenciesCompatibility().repositories;
   const { showToast } = useToast();
   const { user, hasPermission } = useAuth();
@@ -19,8 +19,7 @@ export function useBillingDrafts() {
   const drafts = useMemo(() => {
     const value = keyword.trim().toLowerCase();
 
-    return billingStatementRepository
-      .getByRentalId(aggregate.rental.id)
+    return workspaceStatements
       .filter((statement) => !value || [
         statement.statementNo,
         statement.customer,
@@ -28,7 +27,7 @@ export function useBillingDrafts() {
         statement.approvalStatus,
         statement.invoiceStatus,
       ].some((field) => field.toLowerCase().includes(value)));
-  }, [aggregate, keyword, version, billingStatementRepository]);
+  }, [keyword, version, workspaceStatements]);
 
   function refresh() {
     setVersion((value) => value + 1);

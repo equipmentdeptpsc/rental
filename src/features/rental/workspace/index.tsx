@@ -3,7 +3,7 @@ import DeurWorkspace from "./deur/DeurWorkspace";
 
 export { default as RentalWorkspaceProvider } from "./RentalWorkspaceProvider";
 
-export { useRentalWorkspaceAggregate, useRentalWorkspacePresentationData } from "./RentalWorkspaceProvider";
+export { useRentalWorkspaceAggregate, useRentalWorkspaceBillingStatements, useRentalWorkspacePresentationData } from "./RentalWorkspaceProvider";
 
 export { default as RentalWorkspaceLayout } from "./layout/RentalWorkspaceLayout";
 

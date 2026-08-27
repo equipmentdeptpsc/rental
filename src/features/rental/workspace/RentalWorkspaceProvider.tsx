@@ -35,6 +35,7 @@ import type { WorkDescriptionRecord } from "@/features/masters/work-description/
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
+import type { BillingStatement } from "@/features/rental/billingstatement/types";
 import { projectCanonicalDeurCommercialSnapshots, projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
 import { resolveRentalWorkspaceDeurs } from "./resolveRentalWorkspaceDeurs";
 
@@ -46,6 +47,7 @@ interface RentalWorkspaceProviderProps {
 
 interface RentalWorkspaceContextValue {
   aggregate: RentalAggregate;
+  billingStatements: BillingStatement[];
   presentation: {
     contracts: RentalContractRecord[];
     costCodes: CanonicalReferenceCode[];
@@ -84,6 +86,8 @@ export default function RentalWorkspaceProvider({
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const [remoteDeurs, setRemoteDeurs] = useState<DeurRecord[]>([]);
   const [remoteDeursStatus, setRemoteDeursStatus] = useState<"loading" | "loaded" | "error">(remote ? "loading" : "loaded");
+  const [remoteStatements, setRemoteStatements] = useState<BillingStatement[]>([]);
+  const [remoteStatementsStatus, setRemoteStatementsStatus] = useState<"loading" | "loaded" | "error">(remote ? "loading" : "loaded");
 
   useEffect(() => {
     if (!remote) { setWorkDescriptions([]); setWorkDescriptionsStatus("loaded"); return; }
@@ -106,6 +110,17 @@ export default function RentalWorkspaceProvider({
     }).catch(() => { if (active) setRemoteDeursStatus("error"); });
     return () => { active = false; };
   }, [dependencies.readRepositories.deurs, remote, rentalId, workspaceVersion]);
+
+  useEffect(() => {
+    if (!remote) { setRemoteStatements([]); setRemoteStatementsStatus("loaded"); return; }
+    let active = true; setRemoteStatementsStatus("loading");
+    void Promise.resolve(dependencies.readRepositories.billing.list({ filters: { rental_id: rentalId } })).then((result) => {
+      if (!active) return;
+      if (result.success) { setRemoteStatements(result.value.items); setRemoteStatementsStatus("loaded"); }
+      else setRemoteStatementsStatus("error");
+    }).catch(() => { if (active) setRemoteStatementsStatus("error"); });
+    return () => { active = false; };
+  }, [dependencies.readRepositories.billing, remote, rentalId, workspaceVersion]);
 
   useEffect(
     () => subscribeRentalWorkspaceChange(rentalId, () => setWorkspaceVersion(value => value + 1)),
@@ -160,7 +175,7 @@ export default function RentalWorkspaceProvider({
     const project =
       projects.find((item) => item.id === rental.projectId);
 
-    const statements = billingStatementRepository.getByRentalId(rental.id);
+    const statements = remote ? remoteStatements : billingStatementRepository.getByRentalId(rental.id);
     const latestStatement = statements.at(-1);
     const collectionTotals = statements.map((statement) => reconcileStatementCollections(statement, collectionRepository.getByStatementId(statement.id)));
     const financialTotals = {
@@ -195,10 +210,10 @@ export default function RentalWorkspaceProvider({
         collectionStatus: collection.status,
       },
     });
-  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository, remote, remoteDeurs, workspace]);
+  }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository, remote, remoteDeurs, remoteStatements, workspace]);
 
-  if (remote && (list.status === "loading" || workspace.status === "loading" || workDescriptionsStatus === "loading" || remoteDeursStatus === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
-  if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error" || remoteDeursStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
+  if (remote && (list.status === "loading" || workspace.status === "loading" || workDescriptionsStatus === "loading" || remoteDeursStatus === "loading" || remoteStatementsStatus === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
+  if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error" || remoteDeursStatus === "error" || remoteStatementsStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
   if (!aggregate) {
     return (
       <div className="rounded-xl border bg-white p-8">
@@ -211,6 +226,7 @@ export default function RentalWorkspaceProvider({
     <RentalWorkspaceContext.Provider
       value={{
         aggregate,
+        billingStatements: remote ? remoteStatements : billingStatementRepository.getByRentalId(rentalId),
         presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, equipment: equipmentRecords, operators },
       }}
     >
@@ -238,4 +254,10 @@ export function useRentalWorkspacePresentationData() {
   const context = useContext(RentalWorkspaceContext);
   if (!context) throw new Error("useRentalWorkspacePresentationData must be used inside RentalWorkspaceProvider.");
   return context.presentation;
+}
+
+export function useRentalWorkspaceBillingStatements() {
+  const context = useContext(RentalWorkspaceContext);
+  if (!context) throw new Error("useRentalWorkspaceBillingStatements must be used inside RentalWorkspaceProvider.");
+  return context.billingStatements;
 }

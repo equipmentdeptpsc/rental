@@ -23,7 +23,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     operators: new SupabaseReadRepository<Operator>(client, { repositoryName: "Operator", table: "operators", searchColumns: ["name", "email", "license_number"] }, core),
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
-    billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"] }, core),
+    billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", columns: "*,billing_statement_lines(*)", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"], mapRow: mapBillingStatement }, core),
     deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*)", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
@@ -40,6 +40,32 @@ export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurReco
   }).sort((left,right)=>left.sequence-right.sequence);
   const logs = Array.isArray(base.value.logs) ? base.value.logs : [];
   return repositorySuccess({ ...base.value, events, logs } as unknown as DeurRecord);
+}
+export function mapBillingStatement(row: Record<string, unknown>): RepositoryResult<BillingStatement> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
+  const lineRows = Array.isArray(row.billing_statement_lines) ? row.billing_statement_lines : [];
+  const lines = lineRows.flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const mapped = mapCanonicalRow<Record<string, unknown>>(value);
+    if (!mapped.success) return [];
+    const line = mapped.value;
+    return [{
+      ...line,
+      costCode: line.costCodeSnapshot ?? "",
+      activityCode: line.activityCodeSnapshot,
+      amount: line.amount,
+    } as unknown as BillingStatement["lines"][number]];
+  });
+  const value = base.value;
+  return repositorySuccess({
+    ...value,
+    version: value.rowVersion ?? value.statementVersion,
+    equipmentId: value.legacyEquipmentId ?? lines[0]?.equipmentId ?? "",
+    operatorId: value.legacyOperatorId ?? lines[0]?.operatorId ?? "",
+    customer: value.customerSnapshot ?? "",
+    project: value.projectSnapshot ?? "",
+    lines,
+  } as unknown as BillingStatement);
 }
 export function mapCustomer(row: Record<string, unknown>): RepositoryResult<CustomerRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row);
