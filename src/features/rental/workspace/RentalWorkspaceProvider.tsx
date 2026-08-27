@@ -35,7 +35,7 @@ import type { WorkDescriptionRecord } from "@/features/masters/work-description/
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
-import { projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
+import { projectCanonicalDeurCommercialSnapshots, projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
 import { resolveRentalWorkspaceDeurs } from "./resolveRentalWorkspaceDeurs";
 
 interface RentalWorkspaceProviderProps {
@@ -127,12 +127,13 @@ export default function RentalWorkspaceProvider({
     const lines = projection.lines;
     const lineResolution = resolveRentalWorkspaceEquipmentLines(lines);
     const soleLine = lineResolution.kind === "sole" ? lineResolution.line : undefined;
-    const deurs = resolveRentalWorkspaceDeurs({
+    const resolvedDeurs = resolveRentalWorkspaceDeurs({
       rentalId: rental.id,
       remote,
       remoteDeurs,
       localDeurs: remote ? [] : deurRepository.getByRentalId(rental.id),
     });
+    const deurs=remote&&workspace.status==="loaded"?projectCanonicalDeurCommercialSnapshots(resolvedDeurs,workspace.data.commercialSnapshots):resolvedDeurs;
     const activeDeur = deurs.find(
       (d) =>
         !d.endOfDay &&
