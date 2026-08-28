@@ -62,7 +62,8 @@ describe("operator Digital DEUR access", () => {
     [{ actor: { ...actor, role: "Viewer" } }, "DEUR_ACCESS_NOT_AUTHORIZED"],
   ])("defaults denied with a structured issue", (overrides, code) => expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: rental(), deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Day", ...overrides } as never)).toMatchObject({ allowed: false, issues: [expect.objectContaining({ code })] }));
   it("treats a structurally valid shift label as descriptive metadata", () => {
-    expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: rental(), deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Crew A / Late Entry" })).toMatchObject({ allowed: true, issues: [] });
+    const descriptiveShift = "Crew A / Late Entry" as DeurRecord["shift"];
+    expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: rental(), deurs: [], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: descriptiveShift })).toMatchObject({ allowed: true, issues: [] });
   });
   it.each([{ billingLocked: true }, { billId: "bill" }, { revision: { chainId: "c", revisionNumber: 1, originalDeurId: "deur-1", supersededByRevisionId: "d2" } }])("denies locked, consumed, or superseded records", (overrides) => expect(evaluateOperatorDigitalDeurAccess({ actor, operator, assignment, rental: rental(), deurs: [deur(overrides)], evaluationTimestamp: "2026-07-20T01:00:00.000Z", shift: "Day" }).allowed).toBe(false));
 });

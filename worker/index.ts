@@ -1,7 +1,7 @@
 import{runScheduledJob}from"./runtime";
 import{selectScheduledJob,type GroupedReviewWorkerEnvironment}from"./configuration";
 import{createTrustedUserAdministration,safeJson}from"./userAdministration";
-import{createTrustedUsernameAuthentication,usernameLoginJson}from"./usernameAuthentication";
+import{createTrustedUsernameAuthentication,usernameLoginCorsHeaders}from"./usernameAuthentication";
 import{createUatRecipientOverrideVerification}from"./uatRecipientOverrideVerification";
 import{runUatGroupedReviewCertification}from"./uatGroupedReviewCertification";
 import{createUatProviderAuthentication}from"./uatProviderAuthentication";
@@ -13,8 +13,11 @@ export default{
  async fetch(request:Request,environment:GroupedReviewWorkerEnvironment):Promise<Response>{
   const path=new URL(request.url).pathname;
   if(path==="/api/auth/username-login"){
-   if(request.method!=="POST")return Response.json({success:false,message:"Method not allowed."},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
-   try{return usernameLoginJson(await createTrustedUsernameAuthentication(environment).handle(request));}catch{return Response.json({success:false,message:"Invalid username/email or password."},{status:401,headers:{"cache-control":"no-store"}});}
+   const cors=usernameLoginCorsHeaders(request,environment);
+   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
+   if(request.method!=="POST")return Response.json({success:false,message:"Method not allowed."},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
+   try{const result=await createTrustedUsernameAuthentication(environment).handle(request);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}
+   catch{return Response.json({success:false,message:"Invalid username/email or password."},{status:401,headers:{...cors,"cache-control":"no-store"}});}
   }
   if(path==="/api/admin/users"||/^\/api\/admin\/users\/[^/]+\/(?:reset-password|deactivate)$/.test(path)){
    if(request.method!=="POST")return Response.json({success:false,message:"Method not allowed."},{status:405,headers:{allow:"POST"}});
