@@ -5,6 +5,7 @@ import{createTrustedUsernameAuthentication,usernameLoginCorsHeaders}from"./usern
 import{createUatRecipientOverrideVerification}from"./uatRecipientOverrideVerification";
 import{runUatGroupedReviewCertification}from"./uatGroupedReviewCertification";
 import{createUatProviderAuthentication}from"./uatProviderAuthentication";
+import{dispatchExistingUatNotification}from"./uatNotificationDispatch";
 
 interface ScheduledController{cron:string;scheduledTime:number}
 interface ExecutionContext{waitUntil(promise:Promise<unknown>):void}
@@ -42,6 +43,10 @@ export default{
    if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
    try{const result=await runUatGroupedReviewCertification(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}
    catch{return Response.json({success:false,code:"UAT_CERTIFICATION_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
+  }
+  if(path==="/api/admin/uat/dispatch-existing-notification"){
+   if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
+   try{const result=await dispatchExistingUatNotification(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_NOTIFICATION_DISPATCH_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
   }
   return environment.ASSETS.fetch(request);
  },

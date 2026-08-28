@@ -12,6 +12,8 @@ export type GroupedReviewDeliveryResolution =
   | { status: "EXPIRED" | "SUPERSEDED" | "MISSING" };
 export interface TrustedNotificationWorkerRepository {
   claimBatch(workerId: string, limit: number): Promise<ClaimedNotification[]>;
+  claim?(id: string, workerId: string): Promise<boolean>;
+  getIntent?(id: string): Promise<ClaimedNotification>;
   complete(input: {
     id: string; workerId: string; status: DeliveryStatus; providerName?: string;
     providerMessageId?: string; failureCategory?: string; retryAfterSeconds?: number;
@@ -36,6 +38,15 @@ export class TrustedNotificationWorker {
 
   async runOnce(workerId = randomUUID()): Promise<{ claimed: number; providerCalls: number }> {
     const claimed = await this.repository.claimBatch(workerId, Math.max(1, Math.min(this.batchSize, 50)));
+    return this.deliverClaimed(claimed, workerId);
+  }
+
+  async runExistingNotification(id: string, workerId = randomUUID()): Promise<{ claimed: number; providerCalls: number }> {
+    if (!this.repository.claim || !this.repository.getIntent || !await this.repository.claim(id, workerId)) return { claimed: 0, providerCalls: 0 };
+    return this.deliverClaimed([await this.repository.getIntent(id)], workerId);
+  }
+
+  private async deliverClaimed(claimed: ClaimedNotification[], workerId: string): Promise<{ claimed: number; providerCalls: number }> {
     let providerCalls = 0;
     for (const intent of claimed) {
       if (intent.type === "BILLING_STATEMENT_EMAIL") {

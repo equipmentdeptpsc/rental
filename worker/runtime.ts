@@ -11,6 +11,7 @@ export interface SafeRuntimeLogger{log(event:Record<string,unknown>):void}
 export interface ScheduledRuntimeDependencies{
  runScheduler(command:{commandId:string;idempotencyKey:string;runAt:string;batchLimit:number}):Promise<DailyGroupedReviewRunResult>;
  runNotificationWorker(workerId:ReturnType<typeof randomUUID>):Promise<{claimed:number;providerCalls:number}>;
+ dispatchExistingNotification?(notificationId:string,workerId:ReturnType<typeof randomUUID>):Promise<{claimed:number;providerCalls:number}>;
 }
 export interface ScheduledRuntimeResult{job:ScheduledJob;invocationId:string;durationMs:number;result:Record<string,unknown>}
 
@@ -24,7 +25,7 @@ export function createProductionDependencies(environment:GroupedReviewWorkerEnvi
  const scheduler=new DailyGroupedCustomerReviewService(new SupabaseDailyGroupedReviewRepository(service),config.encryptionKey);
  const notifications=new TrustedNotificationWorker(new SupabaseTrustedNotificationRepository(service,service,config.encryptionKey,publicReview),
   new ResendEmailDeliveryProvider({apiKey:config.resendApiKey,uatRecipientOverride:config.uatRecipientOverride}),config.fromAddress,config.notificationBatchLimit,config.publicBaseUrl,providerLogger,Boolean(config.uatRecipientOverride));
- return{runScheduler:command=>scheduler.run(command),runNotificationWorker:workerId=>notifications.runOnce(workerId)};
+ return{runScheduler:command=>scheduler.run(command),runNotificationWorker:workerId=>notifications.runOnce(workerId),dispatchExistingNotification:(notificationId,workerId)=>notifications.runExistingNotification(notificationId,workerId)};
 }
 
 export async function runScheduledJob(job:ScheduledJob,scheduledTime:number,environment:GroupedReviewWorkerEnvironment,
