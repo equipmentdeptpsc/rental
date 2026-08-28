@@ -33,5 +33,6 @@ describe("isolated UAT grouped-review target selection", () => {
     expect(page).toContain("Verify canonical target eligibility");
     expect(page).toContain('eligibilityResult!=="ELIGIBLE"');
     expect(worker).toContain("certify_isolated_uat_grouped_review_residue");
+    expect(worker).toContain('residueResult?.code!=="NOT_FOUND"');
   });
 });
