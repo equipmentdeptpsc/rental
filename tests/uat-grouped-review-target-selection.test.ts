@@ -19,6 +19,8 @@ describe("isolated UAT grouped-review target selection", () => {
     expect(page).toContain("confirmation");
     expect(worker).toContain("certify_isolated_uat_grouped_review_target");
     expect(worker).toContain("TARGET_NOT_ELIGIBLE");
+    expect(worker).toContain("TARGET_RESOLUTION_UNAVAILABLE");
+    expect(worker).toContain("TARGET_RESOLUTION_NOT_UNIQUE");
     expect(worker).toContain('.eq("deur_number",deurNumber)');
     expect(worker).toContain("resolved.data?.length!==1");
     expect(worker).toContain('mode==="PREFLIGHT"');
