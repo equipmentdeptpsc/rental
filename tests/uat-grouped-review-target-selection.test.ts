@@ -1,0 +1,31 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const page = readFileSync("src/pages/UatGroupedReviewCertification.tsx", "utf8");
+const worker = readFileSync("worker/uatGroupedReviewCertification.ts", "utf8");
+
+describe("isolated UAT grouped-review target selection", () => {
+  it("does not retain the obsolete hardcoded DEUR fixture", () => {
+    expect(page).not.toContain("DEUR-2026-000001");
+    expect(page).not.toContain("2026-08-26");
+    expect(page).toContain("params.get(\"deurId\")");
+    expect(page).toContain("params.get(\"deurNumber\")");
+    expect(page).toContain("params.get(\"workDate\")");
+  });
+
+  it("requires an explicit target and preserves server validation", () => {
+    expect(page).toContain("rentalId");
+    expect(page).toContain("deurNumber");
+    expect(page).toContain("confirmation");
+    expect(worker).toContain("certify_isolated_uat_grouped_review_target");
+    expect(worker).toContain("TARGET_NOT_ELIGIBLE");
+    expect(worker).toContain('.eq("deur_number",deurNumber)');
+    expect(worker).toContain("resolved.data?.length!==1");
+  });
+
+  it("keeps recipient and provider preflight results independent", () => {
+    expect(page).toContain("recipientResult===\"MATCH\"");
+    expect(page).toContain("providerResult===\"VALID\"");
+    expect(page).toContain("!ready");
+  });
+});
