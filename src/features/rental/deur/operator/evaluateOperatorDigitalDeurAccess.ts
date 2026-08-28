@@ -12,7 +12,7 @@ import { getDeurStartEligibility } from "../services/DeurValidationService";
 
 const issue = (code: string, message: string): OperatorDigitalDeurAccessIssue => ({ code, message });
 export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string; name?: string; role?: string }; authenticatedOperatorId?: string; operator?: Operator; assignment?: AssignmentRecord; rental?: RentalRecord; rentalEquipmentLine?: RentalEquipmentLine; deurs: DeurRecord[]; evaluationTimestamp: string; shift?: DeurRecord["shift"]; serverAuthoritativeCommercialEvidence?: boolean }): OperatorDigitalDeurAccessResult {
-  const { actor, operator, assignment, rental, deurs, shift } = input;
+  const { actor, operator, assignment, rental, deurs } = input;
   const base = { allowed: false, allowedActions: [] as DeurOperatorAction[], issues: [] as OperatorDigitalDeurAccessIssue[] };
   if (!operator) return { ...base, issues: [issue("OPERATOR_NOT_FOUND", "Operator was not found.")] };
   if (!rental) return { ...base, issues: [issue("RENTAL_NOT_FOUND", "Rental was not found.")] };
@@ -39,14 +39,10 @@ export function evaluateOperatorDigitalDeurAccess(input: { actor?: { id?: string
   if (!operationalMetadata?.costCode || !operationalMetadata.activityCode) return { ...base, issues: [issue("OPERATIONAL_SNAPSHOT_REQUIRED", "Rental operational metadata snapshot is required.")] };
   if (line.commercialSnapshotRequired && !line.commercialSnapshot && !input.serverAuthoritativeCommercialEvidence) return { ...base, issues: [issue("COMMERCIAL_SNAPSHOT_REQUIRED", "Rental Equipment Line commercial snapshot is required.")] };
   if (rental.deurExpectationPolicyRequired && !rental.deurExpectationPolicy) return { ...base, issues: [issue("DEUR_EXPECTATION_POLICY_REQUIRED", "Rental expectation policy is required.")] };
-  if (rental.deurExpectationPolicy?.frequency === "PER_SHIFT") {
-    const code = shift === "Day" ? "DAY" : shift === "Night" ? "NIGHT" : undefined;
-    if (!code || !rental.deurExpectationPolicy.expectedShiftCodes?.includes(code) || !rental.deurShiftWindowSnapshots?.some((window) => window.code === code)) return { ...base, issues: [issue("SHIFT_NOT_ALLOWED", "Selected shift is not configured for this Rental.")] };
-  }
   const active = resolveActiveOperatorDeur({ rentalId: rental.id, rentalEquipmentLineId: line.id, equipmentId: line.equipmentId, operatorId: operator.id, deurs });
   if (active.status === "AMBIGUOUS") return { ...base, issues: [active.issue] };
   const evaluationWorkDate = calendarDateAt(input.evaluationTimestamp, rental.deurExpectationPolicy?.timezone);
-  const related = deurs.filter((record) => record.rentalId === rental.id && (record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId) && record.operatorId === operator.id && (!evaluationWorkDate || record.workDate === evaluationWorkDate) && (!shift || record.shift === shift));
+  const related = deurs.filter((record) => record.rentalId === rental.id && (record.rentalEquipmentLineId ? record.rentalEquipmentLineId === line.id : record.equipmentId === line.equipmentId) && (!evaluationWorkDate || record.workDate === evaluationWorkDate));
   const blocked = related.find((record) => record.billingLocked || record.billId || record.billingStatementId || record.status === "Billed" || record.revision?.supersededByRevisionId || (record.revision?.previousRevisionId && ["Draft", "In Progress", "Submitted"].includes(record.status)));
   if (blocked) return { ...base, issues: [issue(blocked.revision?.supersededByRevisionId ? "DEUR_SUPERSEDED" : blocked.revision?.previousRevisionId ? "DEUR_CORRECTION_PENDING" : blocked.billingLocked || blocked.billId || blocked.billingStatementId || blocked.status === "Billed" ? "DEUR_CONSUMED" : "DEUR_LOCKED", "Digital DEUR is locked by its current lifecycle state.")] };
   const allowedActions: DeurOperatorAction[] = [];

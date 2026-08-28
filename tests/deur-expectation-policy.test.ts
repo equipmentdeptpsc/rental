@@ -62,10 +62,10 @@ describe("deterministic expectation generation", () => {
     const result = generateRentalDeurExpectations({ rental: rental({ returnedAt: "2026-07-21T02:00:00.000Z", expectedReturn: "2026-08-30", status: "Returned", deurExpectationPolicy: policy({ excludeDates: ["2026-07-20"] }) }), evaluationTimestamp: "2026-07-25T00:00:00.000Z" });
     expect(result.expectations.map((item) => item.workDate)).toEqual(["2026-07-21"]);
   });
-  it("generates configured shifts only with stable identities and no guessed schedule", () => {
+  it("generates one stable workday identity even when legacy policy metadata lists shifts", () => {
     const result = generateRentalDeurExpectations({ rental: rental({ deurExpectationPolicy: policy({ frequency: "PER_SHIFT", expectedShiftCodes: ["DAY", "NIGHT"] }) }), evaluationTimestamp: "2026-07-20T04:00:00.000Z" });
-    expect(result.expectations.map((item) => item.expectationId)).toEqual(["rental:2026-07-20:DAY", "rental:2026-07-20:NIGHT"]);
-    expect(result.expectations.map((item) => item.status)).toEqual(["CURRENT", "NOT_YET_DUE"]);
+    expect(result.expectations.map((item) => item.expectationId)).toEqual(["rental:2026-07-20"]);
+    expect(result.expectations.map((item) => item.status)).toEqual(["CURRENT"]);
   });
   it.each(["Draft", "Reserved", "Cancelled"] as const)("generates nothing for %s rentals", (status) => expect(generateRentalDeurExpectations({ rental: rental({ status }), evaluationTimestamp: "2026-07-22T00:00:00.000Z" }).expectations).toEqual([]));
   it("uses explicit ON_DEMAND and labeled legacy fallback without generating persisted rows", () => {
@@ -105,10 +105,10 @@ describe("policy-aware compliance aggregation", () => {
 });
 
 describe("expectation matching", () => {
-  it("matches effective acknowledged manual or digital DEURs by rental, work date, and configured shift", () => {
+  it("rejects multiple same-day chains instead of treating shifts as separate expectations", () => {
     const generated = generateRentalDeurExpectations({ rental: rental({ deurExpectationPolicy: policy({ frequency: "PER_SHIFT", expectedShiftCodes: ["DAY", "NIGHT"] }) }), evaluationTimestamp: "2026-07-20T04:00:00.000Z" });
     const matched = matchDeursToExpectations({ expectations: generated.expectations, deurs: [deur({ shift: "Day" }), deur({ id: "manual", shift: "Night", creationSource: "RENTAL_COMPANY_MANUAL" })] });
-    expect(matched.results.map((item) => item.status)).toEqual(["COMPLIANT", "COMPLIANT"]);
+    expect(matched.results).toMatchObject([{ status:"MISSING",issueCode:"DEUR_EXPECTATION_DUPLICATE_MATCH" }]);
   });
   it("reports draft/submitted as incomplete, unrelated records as missing, and billed records as compliant", () => {
     const expectations = generateRentalDeurExpectations({ rental: rental(), evaluationTimestamp: "2026-07-20T04:00:00.000Z" }).expectations;
@@ -123,12 +123,12 @@ describe("expectation matching", () => {
     expect(matchDeursToExpectations({ expectations, deurs: [original, draft] }).results[0].status).toBe("PENDING_CORRECTION");
     expect(matchDeursToExpectations({ expectations, deurs: [original, { ...draft, status: "Rejected" }] }).results[0].status).toBe("COMPLIANT");
   });
-  it("moves compliance when an acknowledged correction changes work date or shift", () => {
+  it("moves compliance when an acknowledged correction changes work date while ignoring descriptive shift", () => {
     const generated = generateRentalDeurExpectations({ rental: rental({ deurExpectationPolicy: policy({ frequency: "PER_SHIFT", expectedShiftCodes: ["DAY", "NIGHT"] }) }), evaluationTimestamp: "2026-07-21T04:00:00.000Z" });
     const original = deur({ shift: "Day", revision: { chainId: "deur", revisionNumber: 1, originalDeurId: "deur", supersededByRevisionId: "corrected" } });
     const corrected = deur({ id: "corrected", workDate: "2026-07-21", shift: "Night", revision: { chainId: "deur", revisionNumber: 2, originalDeurId: "deur", previousRevisionId: "deur", supersedesRevisionId: "deur" } });
     const matched = matchDeursToExpectations({ expectations: generated.expectations, deurs: [original, corrected] });
-    expect(matched.results.find((item) => item.workDate === "2026-07-20" && item.shiftCode === "DAY")?.status).toBe("MISSING");
-    expect(matched.results.find((item) => item.workDate === "2026-07-21" && item.shiftCode === "NIGHT")?.status).toBe("COMPLIANT");
+    expect(matched.results.find((item) => item.workDate === "2026-07-20")?.status).toBe("MISSING");
+    expect(matched.results.find((item) => item.workDate === "2026-07-21")?.status).toBe("COMPLIANT");
   });
 });

@@ -10,19 +10,19 @@ const record = (overrides: Partial<DeurRecord> = {}): DeurRecord => ({ id: "d", 
 
 describe("DEUR expectation identity", () => {
   beforeEach(() => { storage.remove(KEY); storage.remove("equipment-rental-deur-sync-queue"); const source=rental("PER_SHIFT"); storage.set("equipment-rental-equipment-lines",{schemaVersion:1,records:[frozenDeurLine({rental:source,equipmentId:"e",operatorId:"o"})]}); vi.resetModules(); });
-  it("blocks unrelated PER_WORKDAY duplicates but allows configured distinct PER_SHIFT identities", async () => {
+  it("blocks every second same-workday DEUR regardless of shift or policy label", async () => {
     storage.set(KEY, [record()]);
     const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
     const request = { rentalId: "r", rentalStatus: "Active" as const, equipmentId: "e", operatorId: "o", workDate: "2026-07-20", shift: "Night" as const, rental: rental("PER_SHIFT") };
-    expect(getDeurCreationError(request)).toBeUndefined();
+    expect(getDeurCreationError(request)).toContain("already exists");
     expect(getDeurCreationError({ ...request, shift: "Day" })).toContain("already exists");
     expect(getDeurCreationError({ ...request, rental: rental("PER_WORKDAY") })).toContain("already exists");
   });
-  it("requires a configured shift and rejects invalid calendar dates", async () => {
+  it("does not require shift metadata and rejects invalid calendar dates", async () => {
     const { getDeurCreationError } = await import("@/features/rental/deur/services/CreateDeurService");
     const request = { rentalId: "r", rentalStatus: "Active" as const, equipmentId: "e", operatorId: "o", workDate: "2026-02-30", rental: rental("PER_SHIFT") };
     expect(getDeurCreationError(request)).toContain("valid DEUR work date");
-    expect(getDeurCreationError({ ...request, workDate: "2026-07-20" })).toContain("Select the DEUR shift");
+    expect(getDeurCreationError({ ...request, workDate: "2026-07-20" })).toBeUndefined();
   });
   it("keeps canonical work date and shift immutable after submission, including inbound stale updates", async () => {
     const { deurRepository } = await import("@/features/rental/deur/repository/deurRepository");

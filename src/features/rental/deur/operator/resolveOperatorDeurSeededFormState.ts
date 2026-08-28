@@ -16,5 +16,5 @@ export function resolveOperatorDeurSeededFormState(input: {
     .filter((item) => !policyCodes.length || policyCodes.includes(item.code));
   const firstCode = policyCodes[0] ?? windows[0]?.code;
   const shift: DeurRecord["shift"] = firstCode === "NIGHT" ? "Night" : firstCode === "DAY" ? "Day" : undefined;
-  return { workDescriptionId, shift, windows, valid: Boolean(workDescriptionId && shift && windows.some((item) => item.code === (shift === "Night" ? "NIGHT" : "DAY"))) };
+  return { workDescriptionId, shift, windows, valid: Boolean(workDescriptionId) };
 }

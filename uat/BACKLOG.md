@@ -21,3 +21,7 @@
 | Remote Operator commercial evidence | CLOSED | Operators remain unable to read financial snapshots; remote preparation now delegates immutable commercial binding to the canonical server command. |
 | Remote DEUR event projection | CLOSED | `deur_events` are hydrated and ordered; the active view now shows Operation instead of offering a duplicate Start Operation. |
 | UX/UI modernization | OPEN | Begin with Rental Workspace only after its workflow is green. |
+| Configurable DEUR shift metadata | OPEN | System Administrator configuration for enabled/disabled state, label, allowed descriptive values, display order, and active state. Shift remains optional metadata and never changes daily DEUR, expectation, customer-review, or billing identity. |
+| Authorized Operator turnover / reliever continuation | P1 DESIGN REQUIRED | One daily Equipment-line DEUR must retain its identity while authenticated relievers append actor-attributed turnover/continuation events. Current ownership checks admit only the assigned Operator; design an explicit accept/continue state transition without overwriting prior participation. |
+| eDEUR Mobile canonical integration | P1B LOCAL GREEN | Isolated-UAT configuration and canonical operational UX are locally certified. Deploy and perform non-mutating runtime checks before the separately authorized real Operator DEUR milestone. |
+| Configurable DEUR activity reasons | OPEN | Allow System Administrators to manage enabled reasons, labels, sort order, applicability to Idle/Standby, active state, and whether a reason is required. |

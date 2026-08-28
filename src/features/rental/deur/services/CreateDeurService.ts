@@ -83,13 +83,9 @@ export function getDeurCreationError(request: CreateDeurRequest): string | undef
   const now = new Date().toISOString();
   const workDate=request.workDate??calendarDateAt(now,policy?.timezone)??now.split("T")[0];
   if (!isCalendarDate(workDate)) return "Enter a valid DEUR work date.";
-  if (policy?.frequency === "PER_SHIFT" && !request.shift) return "Select the DEUR shift required by this Rental policy.";
-  if (policy?.frequency === "PER_SHIFT" && request.shift && !policy.expectedShiftCodes?.includes(request.shift === "Day" ? "DAY" : "NIGHT")) return "The selected DEUR shift is not configured on this Rental.";
   const resolvedLineId = lineResolution?.success ? lineResolution.line.id : request.rentalEquipmentLineId;
   const hasActiveDeur = (request.existingDeurs ?? deurRepository.getByRentalId(request.rentalId)).some(
-    (record) => (record.rentalEquipmentLineId ? record.rentalEquipmentLineId === resolvedLineId : record.equipmentId === request.equipmentId) && record.workDate === workDate && record.status !== "Rejected" && (
-      policy?.frequency !== "PER_SHIFT" || record.shift === request.shift
-    )
+    (record) => (record.rentalEquipmentLineId ? record.rentalEquipmentLineId === resolvedLineId : record.equipmentId === request.equipmentId) && record.workDate === workDate && record.status !== "Rejected"
   );
 
   if (hasActiveDeur) {

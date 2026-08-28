@@ -62,21 +62,21 @@ describe("configuration and immutable release snapshots", () => {
   it("fails without partial state when a selected window is missing", () => expect(freezeRentalDeurExpectationPolicy(rental(), capturedAt, windows.slice(0, 1))).toMatchObject({ success: false }));
 });
 
-describe("PER_SHIFT due state and compliance", () => {
+describe("descriptive shift metadata and daily compliance", () => {
   const released = () => {
     const result = freezeRentalDeurExpectationPolicy(rental(), capturedAt, windows);
     if (!result.success) throw new Error(result.message);
     return { ...result.rental, status: "Active" as const, releasedAt: "2026-07-20T00:00:00.000Z" };
   };
-  it("generates independent current-date states from immutable windows", () => {
+  it("generates one current workday expectation without shift identity", () => {
     const result = generateRentalDeurExpectations({ rental: released(), evaluationTimestamp: "2026-07-20T10:00:00.000Z" });
-    expect(result.expectations.map((item) => [item.shiftCode, item.status])).toEqual([["DAY", "DUE"], ["NIGHT", "NOT_YET_DUE"]]);
+    expect(result.expectations.map((item) => [item.shiftCode, item.status])).toEqual([[undefined, "CURRENT"]]);
   });
   it("does not count CURRENT or NOT_YET_DUE as missing", () => expect(evaluateRentalDeurCompliance({ rental: released(), deurs: [], evaluationTimestamp: "2026-07-20T04:00:00.000Z" })).toMatchObject({ status: "COMPLIANT", missingCount: 0 }));
-  it("counts only a completed shift as missing", () => expect(evaluateRentalDeurCompliance({ rental: released(), deurs: [], evaluationTimestamp: "2026-07-20T10:00:00.000Z" })).toMatchObject({ status: "MISSING_DEUR", missingCount: 1 }));
-  it("labels legacy live fallback and forbids it for new required rentals", () => {
+  it("does not mark the current daily period missing based on a shift boundary", () => expect(evaluateRentalDeurCompliance({ rental: released(), deurs: [], evaluationTimestamp: "2026-07-20T10:00:00.000Z" })).toMatchObject({ status: "COMPLIANT", missingCount: 0 }));
+  it("ignores live shift windows when computing daily expectation identity", () => {
     const legacy = generateRentalDeurExpectations({ rental: rental({ status: "Active", releasedAt: capturedAt, deurExpectationPolicyRequired: undefined }), evaluationTimestamp: "2026-07-20T10:00:00.000Z", liveShiftWindows: windows });
-    expect(legacy).toMatchObject({ shiftWindowSource: "LEGACY_LIVE_WINDOW_FALLBACK" });
-    expect(generateRentalDeurExpectations({ rental: rental({ status: "Active", releasedAt: capturedAt }), evaluationTimestamp: "2026-07-20T10:00:00.000Z", liveShiftWindows: windows }).issues).toContainEqual(expect.objectContaining({ code: "SHIFT_WINDOW_NOT_CONFIGURED" }));
+    expect(legacy.expectations.map((item)=>[item.expectationId,item.shiftCode])).toEqual([["rental:2026-07-20",undefined]]);
+    expect(generateRentalDeurExpectations({ rental: rental({ status: "Active", releasedAt: capturedAt }), evaluationTimestamp: "2026-07-20T10:00:00.000Z", liveShiftWindows: windows }).issues).toEqual([]);
   });
 });
