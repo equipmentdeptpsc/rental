@@ -21,11 +21,16 @@ describe("isolated UAT grouped-review target selection", () => {
     expect(worker).toContain("TARGET_NOT_ELIGIBLE");
     expect(worker).toContain('.eq("deur_number",deurNumber)');
     expect(worker).toContain("resolved.data?.length!==1");
+    expect(worker).toContain('mode==="PREFLIGHT"');
+    expect(worker).toContain('result:"ELIGIBLE"');
   });
 
   it("keeps recipient and provider preflight results independent", () => {
     expect(page).toContain("recipientResult===\"MATCH\"");
     expect(page).toContain("providerResult===\"VALID\"");
     expect(page).toContain("!ready");
+    expect(page).toContain("Verify canonical target eligibility");
+    expect(page).toContain('eligibilityResult!=="ELIGIBLE"');
+    expect(worker).toContain("certify_isolated_uat_grouped_review_residue");
   });
 });
