@@ -51,12 +51,20 @@ export class TrustedUserAdministration {
   }
 
   private async reset(actorId:string,companyId:string,targetId:string,command:Json):Promise<SafeResult>{
-    const newPassword=text(command.newPassword);if(newPassword.length<8)return result(400,{success:false,message:"Password must contain at least 8 characters."});
-    const target=await this.service.schema("erp").from("users").select("id,company_id,operator_id").eq("id",targetId).eq("company_id",companyId).maybeSingle();
+    const newPassword=text(command.newPassword),commandId=text(command.commandId),idempotencyKey=text(command.idempotencyKey);
+    if(newPassword.length<8)return result(400,{success:false,message:"Password must contain at least 8 characters."});
+    if(!commandId||!idempotencyKey)return result(400,{success:false,message:"A command identity is required."});
+    const target=await this.service.schema("erp").from("users").select("id,company_id,operator_id,status").eq("id",targetId).eq("company_id",companyId).eq("status","active").maybeSingle();
     if(target.error||!target.data)return result(404,{success:false,message:"User is not available."});
-    if(target.data.operator_id)return result(400,{success:false,message:"Operator access uses PIN reset, not web-password reset."});
-    const changed=await this.service.auth.admin.updateUserById(targetId,{password:newPassword});if(changed.error)return result(400,{success:false,message:"The remote password could not be reset."});
-    const audit=await this.service.schema("erp").rpc("record_application_user_password_reset",{command:{actorId,companyId,targetUserId:targetId,commandId:crypto.randomUUID()}});
+    const prepared=await this.service.schema("erp").rpc("prepare_application_user_password_reset",{command:{actorId,companyId,targetUserId:targetId,commandId,idempotencyKey}});
+    const preparation=prepared.data as {success?:boolean;state?:string;code?:string;message?:string}|null;
+    if(prepared.error)return result(503,{success:false,message:"Password reset preparation is temporarily unavailable."});
+    if(!preparation?.success){const status=preparation?.code==="FORBIDDEN"?403:preparation?.code==="NOT_FOUND"?404:preparation?.code==="IDEMPOTENCY_MISMATCH"?409:400;return result(status,{success:false,message:preparation?.message??"Password reset was rejected.",code:preparation?.code});}
+    if(preparation.state==="COMPLETED")return result(200,{success:true});
+    if(preparation.state!=="NEW")return result(409,{success:false,message:"This password reset is already being processed.",code:"COMMAND_IN_PROGRESS"});
+    const changed=await this.service.auth.admin.updateUserById(targetId,{password:newPassword});
+    if(changed.error){await this.service.schema("erp").rpc("fail_application_user_password_reset",{command:{actorId,companyId,targetUserId:targetId,commandId,idempotencyKey}});return result(400,{success:false,message:"The remote password could not be reset."});}
+    const audit=await this.service.schema("erp").rpc("complete_application_user_password_reset",{command:{actorId,companyId,targetUserId:targetId,commandId,idempotencyKey}});
     if(audit.error||(audit.data as {success?:boolean}|null)?.success!==true)return result(500,{success:false,message:"Password changed, but audit completion requires administrator support.",code:"AUDIT_COMPLETION_FAILED"});
     return result(200,{success:true});
   }

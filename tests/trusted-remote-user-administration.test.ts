@@ -60,7 +60,7 @@ describe("trusted remote user administration",()=>{
     expect(serviceRoleReads).not.toMatch(/\bTO\s+(?:PUBLIC|anon|authenticated)\b/i);
     expect(serviceRoleReads).not.toMatch(/GRANT\s+SELECT\s+ON\s+erp\.user_provisioning_commands/i);
     expect(worker).toContain('.from("users").select("id,company_id,status")');
-    expect(worker).toContain('.from("users").select("id,company_id,operator_id")');
+    expect(worker).toContain('.from("users").select("id,company_id,operator_id,status")');
     expect(worker).toContain('.from("effective_user_permissions").select("permission_code")');
     expect(worker).toContain('.from("app_roles").select("code,active,deprecated_at")');
     expect(worker).toContain('.eq("active",true).is("deprecated_at",null)');
