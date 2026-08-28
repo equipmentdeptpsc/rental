@@ -24,12 +24,12 @@ export function useOperatorDeurData(rentalId: string, user?: User | null) {
   const refresh = useCallback(async () => {
     const request = ++requestSequence.current;
     setState((current) => ({ ...current, loading: true, error: undefined }));
-    const [rental, lines, assignments, operators, equipment, projects, deurs, workDescriptions] = await Promise.all([
-      readRepositories.rentals.getById(rentalId), readRepositories.rentalEquipmentLines.list(),
+    const [rentals, lines, assignments, operators, equipment, projects, deurs, workDescriptions] = await Promise.all([
+      readRepositories.rentals.list({ filters: { id: rentalId }, paging: { limit: 2 } }), readRepositories.rentalEquipmentLines.list(),
       readRepositories.assignments.list(), readRepositories.operators.list(), readRepositories.equipment.list(),
       readRepositories.projects.list(), readRepositories.deurs.list(), readRepositories.workDescriptions.list(),
     ]);
-    const results = [rental, lines, assignments, operators, equipment, projects, deurs, workDescriptions];
+    const results = [rentals, lines, assignments, operators, equipment, projects, deurs, workDescriptions];
     const failed = results.find((result) => !result.success);
     if (!mounted.current || request !== requestSequence.current) return;
     if (failed && !failed.success) { setState((current) => ({ ...current, loading: false, error: failed.error.message })); return; }
@@ -38,7 +38,7 @@ export function useOperatorDeurData(rentalId: string, user?: User | null) {
     const lineIds = new Set(rentalLines.map((line) => line.id));
     const operatorIds = new Set([...rentalLines.map((line) => line.operatorId), ...(user?.operatorId ? [user.operatorId] : [])]);
     setState({
-      rental: rental.success ? rental.value ?? undefined : undefined,
+      rental: rentals.success ? rentals.value.items.find((item) => item.id === rentalId) : undefined,
       lines: rentalLines,
       assignments: assignments.success ? assignments.value.items.filter((item) => rentalLines.some((line) => line.assignmentId === item.id)) : [],
       operators: operators.success ? operators.value.items.filter((item) => operatorIds.has(item.id)) : [],
