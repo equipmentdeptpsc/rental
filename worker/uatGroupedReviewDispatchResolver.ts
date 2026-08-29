@@ -18,7 +18,8 @@ export async function resolveUatGroupedReviewDispatch(request: Request, environm
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body || typeof body.rentalId !== "string" || typeof body.workDate !== "string" || (body.deurId !== undefined && typeof body.deurId !== "string") || (body.deurNumber !== undefined && typeof body.deurNumber !== "string")) return safe(400, { success: false, code: "VALIDATION_REJECTED" });
   if ("notificationId" in body || "reviewRequestId" in body) return safe(400, { success: false, code: "VALIDATION_REJECTED" });
-  const result = await service.schema("erp").rpc("resolve_isolated_uat_grouped_review_dispatch", { command: body });
+  const command = { rentalId: body.rentalId, workDate: body.workDate, ...(body.deurNumber ? { deurNumber: body.deurNumber } : {}) };
+  const result = await service.schema("erp").rpc("resolve_isolated_uat_grouped_review_dispatch", { command });
   const value = result.data as Record<string, unknown> | null;
   if (result.error || !value || typeof value.success !== "boolean") return safe(409, { success: false, code: "RESOLUTION_FAILED" });
   if (!value.success) return safe(409, { success: false, code: typeof value.code === "string" ? value.code : "RESOLUTION_FAILED" });

@@ -15,6 +15,7 @@ describe("isolated UAT grouped-review resolver boundary", () => {
     expect(source).toContain('"notificationId" in body');
     expect(source).toContain('"reviewRequestId" in body');
     expect(source).not.toContain("dispatchExistingNotification");
+    expect(source).toContain("const command = { rentalId: body.rentalId, workDate: body.workDate");
   });
   it("registers a read-only POST route and preserves safe serialization", () => {
     expect(index).toContain("/api/admin/uat/resolve-grouped-review-dispatch");
