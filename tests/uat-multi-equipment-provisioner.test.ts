@@ -8,7 +8,7 @@ describe("isolated UAT multi-equipment provisioner",()=>{
   expect(worker).toContain('ENABLE_UAT_SYNTHETIC_PROVISIONER!=="true"');
   expect(worker).toContain('app_roles.code","system-administrator"');
   expect(worker).toContain('permission_code","settings.update');
-  expect(worker).toContain('userRecord.data.company_id!==tenant');
+  expect(worker).toContain('const companyId=userRecord.data.company_id');
   expect(worker).toContain('environment_class","compatibility');
   expect(worker).toContain('scenarioKey="MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29"');
   expect(worker).toContain('profile="UAT_MULTI_EQUIPMENT_PER_WORKDAY_V1"');

@@ -4,7 +4,7 @@ import type { GroupedReviewWorkerEnvironment } from "./configuration";
 
 type SafeResult={status:number;body:Record<string,unknown>};
 const safe=(status:number,body:Record<string,unknown>):SafeResult=>({status,body});
-const tenant="TENANT-LOCAL-001",scenarioKey="MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29",profile="UAT_MULTI_EQUIPMENT_PER_WORKDAY_V1",workDate="2026-08-29";
+const scenarioKey="MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29",profile="UAT_MULTI_EQUIPMENT_PER_WORKDAY_V1",workDate="2026-08-29";
 const bad=(code:string)=>safe(409,{success:false,code});
 
 type Scenario={customerId:string;projectId:string;workDescriptionId:string;operatorIds:string[];equipmentIds:string[];assignmentIds:string[];rentalAId:string;rentalBId:string;rentalALineIds:string[];rentalBLineId:string;costCodeId:string;activityCodeId:string;createCustomer:boolean;createProject:boolean;createWorkDescription:boolean};
@@ -28,21 +28,22 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
   service.schema("erp").from("users").select("company_id").eq("id",actorId).eq("status","active").maybeSingle()
  ]);
  if(permission.error||!permission.data||administrator.error||!administrator.data)return safe(403,{success:false,code:"FORBIDDEN"});
- if(userRecord.error||!userRecord.data||userRecord.data.company_id!==tenant)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
- const company=await service.schema("erp").from("companies").select("id,active,environment_class").eq("id",tenant).eq("active",true).eq("environment_class","compatibility").maybeSingle();
+ if(userRecord.error||!userRecord.data)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
+ const companyId=userRecord.data.company_id;
+ const company=await service.schema("erp").from("companies").select("id,active,environment_class").eq("id",companyId).eq("active",true).eq("environment_class","compatibility").maybeSingle();
  if(company.error||!company.data)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
  const body=await request.json().catch(()=>null) as Record<string,unknown>|null;
  if(!body||Object.keys(body).some(key=>key!=="scenarioKey"&&key!=="profile")||body.scenarioKey!==scenarioKey||(body.profile!==undefined&&body.profile!==profile))return safe(400,{success:false,code:"VALIDATION_REJECTED"});
  const [costs,activities,customers,projects,workDescriptions]=await Promise.all([
   service.schema("erp").from("cost_codes").select("id,code,sort_order").eq("active",true).is("deleted_at",null).order("sort_order").order("code").limit(2),
   service.schema("erp").from("activity_codes").select("id,code,sort_order").eq("active",true).is("deleted_at",null).order("sort_order").order("code").limit(2),
-  service.schema("erp").from("customers").select("id").eq("company_id",tenant).eq("active",true).is("deleted_at",null).eq("customer_code","UAT-ME-CERT-20260829").maybeSingle(),
-  service.schema("erp").from("projects").select("id").eq("company_id",tenant).eq("active",true).is("deleted_at",null).eq("project_code","UAT-ME-CERT-20260829").maybeSingle(),
+   service.schema("erp").from("customers").select("id").eq("company_id",companyId).eq("active",true).is("deleted_at",null).eq("customer_code","UAT-ME-CERT-20260829").maybeSingle(),
+   service.schema("erp").from("projects").select("id").eq("company_id",companyId).eq("active",true).is("deleted_at",null).eq("project_code","UAT-ME-CERT-20260829").maybeSingle(),
   service.schema("erp").from("work_descriptions").select("id").eq("active",true).is("deleted_at",null).eq("code","UAT-ME-RUNTIME-CERT").maybeSingle()
  ]);
  if(costs.error||activities.error||!costs.data?.[0]||!activities.data?.[0])return bad("UAT_REFERENCE_UNAVAILABLE");
  const draft:Scenario={customerId:customers.data?.id??uuid(),projectId:projects.data?.id??uuid(),workDescriptionId:workDescriptions.data?.id??uuid(),operatorIds:[uuid(),uuid(),uuid()],equipmentIds:[uuid(),uuid(),uuid()],assignmentIds:[uuid(),uuid(),uuid()],rentalAId:uuid(),rentalBId:uuid(),rentalALineIds:[uuid(),uuid()],rentalBLineId:uuid(),costCodeId:costs.data[0].id,activityCodeId:activities.data[0].id,createCustomer:!customers.data,createProject:!projects.data,createWorkDescription:!workDescriptions.data};
- const claim:Record<string,unknown>=await rpc(service,"claim_isolated_uat_multi_equipment_provisioning",{command:{companyId:tenant,actorId,scenarioKey,profileVersion:profile,scenario:draft}}).catch(error=>({success:false,code:error instanceof Error?error.message:"SCENARIO_CLAIM_FAILED"}));
+ const claim:Record<string,unknown>=await rpc(service,"claim_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey,profileVersion:profile,scenario:draft}}).catch(error=>({success:false,code:error instanceof Error?error.message:"SCENARIO_CLAIM_FAILED"}));
  if(!claim.success)return bad(String(claim.code));
  const scenario=(claim.scenario??draft) as Scenario;
  if(!scenario||!Array.isArray(scenario.equipmentIds)||scenario.equipmentIds.length!==3)return bad("SCENARIO_INCONSISTENT");
@@ -57,7 +58,7 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
   for(let i=0;i<3;i++)await rpc(user,"command_create_assignment",{command:{...command(scenario.assignmentIds[i],`ASSIGNMENT-${i+1}`),assignmentId:scenario.assignmentIds[i],equipmentId:scenario.equipmentIds[i],operatorId:scenario.operatorIds[i],projectId:scenario.projectId,activityCodeId:scenario.activityCodeId,assignedDate:workDate,expectedReturn:workDate,remarks:"Synthetic isolated-UAT certification assignment."}});
   await reservePrepareReleaseActivate(user,scenario,"A",scenario.rentalAId,scenario.rentalALineIds,[0,1]);
   await reservePrepareReleaseActivate(user,scenario,"B",scenario.rentalBId,[scenario.rentalBLineId],[2]);
-  const complete=await rpc(service,"complete_isolated_uat_multi_equipment_provisioning",{command:{companyId:tenant,actorId,scenarioKey}});if(!complete.success)return bad(String(complete.code));
+  const complete=await rpc(service,"complete_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey}});if(!complete.success)return bad(String(complete.code));
   return safe(200,{success:true,result:"PROVISIONED",scenario:projection(scenario)});
  }catch(error){return bad(error instanceof Error?error.message:"PROVISIONING_FAILED");}
 }
