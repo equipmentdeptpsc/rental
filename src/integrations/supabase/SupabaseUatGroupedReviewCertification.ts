@@ -10,4 +10,5 @@ export class SupabaseUatGroupedReviewCertification{
  resolveGroupedReviewDispatch(input:{rentalId:string;workDate:string;deurId?:string;deurNumber?:string}){const{rentalId,workDate,deurNumber}=input;return this.post<{success:true;value:UatGroupedReviewDispatchResolution}>("/api/admin/uat/resolve-grouped-review-dispatch",{rentalId,workDate,...(deurNumber?{deurNumber}:{})});}
  dispatchExistingNotification(notificationId:string){return this.post<{success:true;result:"DISPATCHED"|"ALREADY_PROCESSED"}>("/api/admin/uat/dispatch-existing-notification",{notificationId});}
  provisionMultiEquipmentCertification(){return this.post<{success:true;result:"PROVISIONED"|"REUSED";scenario:unknown}>("/api/admin/uat/provision-multi-equipment-certification",{scenarioKey:"MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29"});}
+ inspectMultiEquipmentCertification(){return this.post<{success:true;state:string;scenario?:unknown;related?:unknown;counts:Record<string,number>}>("/api/admin/uat/inspect-multi-equipment-certification",{scenarioKey:"MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29"});}
 }
