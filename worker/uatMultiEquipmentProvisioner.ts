@@ -13,7 +13,7 @@ const command=(id:string,action:string)=>({commandId:`UAT-ME-${action}-${id}`,id
 
 async function rpc(client:any,name:string,payload:Record<string,unknown>):Promise<Record<string,unknown>>{
  const result=await client.schema("erp").rpc(name,payload);const value=result.data as Record<string,unknown>|null;
- if(result.error||!value?.success)throw new Error(typeof value?.code==="string"?value.code:"CANONICAL_COMMAND_FAILED");return value;
+ if(result.error||!value?.success)throw new Error(typeof value?.code==="string"?value.code:(result.error?`${name}_RPC_FAILED`:"CANONICAL_COMMAND_FAILED"));return value;
 }
 
 export async function provisionUatMultiEquipmentCertification(request:Request,environment:GroupedReviewWorkerEnvironment):Promise<SafeResult>{
