@@ -30,7 +30,7 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
  if(permission.error||!permission.data||administrator.error||!administrator.data)return safe(403,{success:false,code:"FORBIDDEN"});
  if(userRecord.error||!userRecord.data)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
  const companyId=userRecord.data.company_id;
- const company=await service.schema("erp").from("companies").select("id,active,environment_class").eq("id",companyId).eq("active",true).eq("environment_class","compatibility").maybeSingle();
+  const company=await service.schema("erp").from("companies").select("id,active,environment_class").eq("id",companyId).eq("active",true).in("environment_class",["compatibility","test"]).maybeSingle();
  if(company.error||!company.data)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
  const body=await request.json().catch(()=>null) as Record<string,unknown>|null;
  if(!body||Object.keys(body).some(key=>key!=="scenarioKey"&&key!=="profile")||body.scenarioKey!==scenarioKey||(body.profile!==undefined&&body.profile!==profile))return safe(400,{success:false,code:"VALIDATION_REJECTED"});
