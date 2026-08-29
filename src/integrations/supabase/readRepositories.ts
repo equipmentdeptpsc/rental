@@ -10,6 +10,7 @@ import type { BillingStatement } from "@/features/rental/billingstatement/types"
 import type { CanonicalDeurEvent, DeurRecord } from "@/features/rental/deur/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
+import type { CanonicalAuditEvent } from "@/features/administration/domain/canonicalAudit";
 import type { RemoteCore } from "@/core/remote";
 import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
 import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepository";
@@ -27,7 +28,14 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*)", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
+    canonicalAudit: new SupabaseReadRepository<CanonicalAuditEvent>(client, { repositoryName: "CanonicalAudit", table: "audit_log", columns: "id,company_id,aggregate_type,aggregate_id,action,actor_id,actor_name,occurred_at,correlation_id", searchColumns: ["aggregate_type", "aggregate_id", "action", "actor_id", "actor_name"], mapRow: mapCanonicalAudit }, core),
   };
+}
+export function mapCanonicalAudit(row: Record<string, unknown>): RepositoryResult<CanonicalAuditEvent> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
+  const value = base.value;
+  if (typeof value.aggregateType !== "string" || typeof value.aggregateId !== "string" || typeof value.action !== "string" || typeof value.occurredAt !== "string") return repositoryFailure("REMOTE_ROW_MALFORMED", "Remote audit event is missing canonical identity fields.", { context: { repository: "CanonicalAudit" }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Repair the canonical audit row." });
+  return repositorySuccess({ id: String(value.id), companyId: typeof value.companyId === "string" ? value.companyId : undefined, aggregateType: value.aggregateType, aggregateId: value.aggregateId, action: value.action, actorId: typeof value.actorId === "string" ? value.actorId : undefined, actorName: typeof value.actorName === "string" ? value.actorName : undefined, occurredAt: value.occurredAt, correlationId: typeof value.correlationId === "string" ? value.correlationId : undefined });
 }
 export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;

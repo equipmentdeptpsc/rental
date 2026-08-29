@@ -33,6 +33,7 @@ import type { WorkDescriptionRecord } from "@/features/masters/work-description/
 import type { RemoteAuthenticationProvider } from "@/features/auth/providers/RemoteAuthenticationProvider";
 import type { OperatorPinCredentialService } from "@/features/auth/services/OperatorPinCredentialService";
 import type { RemoteUserAdministration } from "@/features/users/services/RemoteUserAdministration";
+import type { CanonicalAuditEvent } from "@/features/administration/domain/canonicalAudit";
 import type { DeurCommandRepository } from "@/features/rental/deur/commands/contracts";
 import type { OperationalCommandRepositories } from "@/features/rental/operations/commands/contracts";
 import type { CanonicalRentalRemoteRepository } from "@/features/rental/remote/contracts";
@@ -66,6 +67,7 @@ export interface ApplicationReadRepositories {
   projects: ReadOnlyRepository<ProjectRecord>; billing: ReadOnlyRepository<BillingStatement>; deurs: ReadOnlyRepository<DeurRecord>;
   rentalEquipmentLines: ReadOnlyRepository<RentalEquipmentLine>;
   workDescriptions: ReadOnlyRepository<WorkDescriptionRecord>;
+  canonicalAudit: ReadOnlyRepository<CanonicalAuditEvent>;
 }
 export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository }
 export interface ApplicationChangeNotifications { subscribeDeur(listener: (record: DeurRecord) => void): () => void }
