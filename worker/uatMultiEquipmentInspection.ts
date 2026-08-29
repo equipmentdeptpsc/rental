@@ -1,7 +1,7 @@
 import{createClient}from"@supabase/supabase-js";
 import type{GroupedReviewWorkerEnvironment}from"./configuration";
 type SafeResult={status:number;body:Record<string,unknown>};const safe=(status:number,body:Record<string,unknown>):SafeResult=>({status,body});
-const scenarioKey="MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29",profile="UAT_MULTI_EQUIPMENT_PER_WORKDAY_V1";
+const scenarioKey="MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29";
 export async function inspectUatMultiEquipmentProvisioning(request:Request,environment:GroupedReviewWorkerEnvironment):Promise<SafeResult>{
  if(environment.ENABLE_UAT_SYNTHETIC_PROVISIONER!=="true"||!environment.SUPABASE_URL||!environment.SUPABASE_SERVICE_ROLE_KEY)return safe(503,{success:false,code:"UAT_PROVISIONER_DISABLED"});
  const token=request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];if(!token)return safe(401,{success:false,code:"UNAUTHENTICATED"});
