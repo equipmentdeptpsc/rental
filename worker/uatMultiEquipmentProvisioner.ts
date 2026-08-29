@@ -62,7 +62,7 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
   await reservePrepareReleaseActivate(user,scenario,"B",scenario.rentalBId,[scenario.rentalBLineId],[2]);
   const complete=await rpc(service,"complete_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey}});if(!complete.success)return bad(String(complete.code));
   return safe(200,{success:true,result:"PROVISIONED",scenario:projection(scenario)});
- }catch(error){const raw=error instanceof Error?error.message:"PROVISIONING_FAILED";const [commandName,resultCode]=raw.split("::");return safe(409,{success:false,code:resultCode||"PROVISIONING_FAILED",diagnostic:{phase:"canonical-entity-provisioning",command:commandName||"unknown",actorPresent:true,tenantMatch:true}});}
+ }catch(error){const raw=error instanceof Error?error.message:"PROVISIONING_FAILED";const [commandName,resultCode]=raw.split("::");const diagnostic={phase:"canonical-entity-provisioning",command:commandName||"unknown",resultCode:resultCode||"PROVISIONING_FAILED",actorPresent:true,tenantMatch:true};await service.schema("erp").rpc("record_isolated_uat_provisioning_diagnostic",{command:{companyId,actorId,scenarioKey,diagnostic}});return safe(409,{success:false,code:resultCode||"PROVISIONING_FAILED",diagnostic});}
 }
 
 async function reservePrepareReleaseActivate(client:any,scenario:Scenario,label:string,rentalId:string,lineIds:string[],indices:number[]){
