@@ -22,13 +22,15 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
  const service=createClient(environment.SUPABASE_URL,environment.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
  const identity=await service.auth.getUser(token);if(identity.error||!identity.data.user)return safe(401,{success:false,code:"UNAUTHENTICATED"});
  const actorId=identity.data.user.id;
- const [permission,administrator,company]=await Promise.all([
+ const [permission,administrator,userRecord]=await Promise.all([
   service.schema("erp").from("effective_user_permissions").select("permission_code").eq("user_id",actorId).eq("permission_code","settings.update").maybeSingle(),
   service.schema("erp").from("user_roles").select("role_id,app_roles!inner(code,active,deprecated_at)").eq("user_id",actorId).eq("app_roles.code","system-administrator").eq("app_roles.active",true).is("app_roles.deprecated_at",null).maybeSingle(),
-  service.schema("erp").from("users").select("company_id,companies!inner(active,environment_class)").eq("id",actorId).eq("status","active").maybeSingle()
+  service.schema("erp").from("users").select("company_id").eq("id",actorId).eq("status","active").maybeSingle()
  ]);
  if(permission.error||!permission.data||administrator.error||!administrator.data)return safe(403,{success:false,code:"FORBIDDEN"});
- if(company.error||!company.data||company.data.company_id!==tenant)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
+ if(userRecord.error||!userRecord.data||userRecord.data.company_id!==tenant)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
+ const company=await service.schema("erp").from("companies").select("id,active,environment_class").eq("id",tenant).eq("active",true).eq("environment_class","compatibility").maybeSingle();
+ if(company.error||!company.data)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
  const body=await request.json().catch(()=>null) as Record<string,unknown>|null;
  if(!body||Object.keys(body).some(key=>key!=="scenarioKey"&&key!=="profile")||body.scenarioKey!==scenarioKey||(body.profile!==undefined&&body.profile!==profile))return safe(400,{success:false,code:"VALIDATION_REJECTED"});
  const [costs,activities,customers,projects,workDescriptions]=await Promise.all([
