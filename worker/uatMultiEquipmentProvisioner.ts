@@ -6,6 +6,9 @@ type SafeResult={status:number;body:Record<string,unknown>};
 const safe=(status:number,body:Record<string,unknown>):SafeResult=>({status,body});
 const scenarioKey="MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29",profile="UAT_MULTI_EQUIPMENT_PER_WORKDAY_V1",workDate="2026-08-29";
 const bad=(code:string)=>safe(409,{success:false,code});
+async function persistDiagnostic(service:any,companyId:string,actorId:string,scenarioKey:string,phase:string,commandName:string,resultCode:string){
+ try{await service.schema("erp").rpc("record_isolated_uat_provisioning_diagnostic",{command:{companyId,actorId,scenarioKey,diagnostic:{phase,command:commandName,resultCode,success:false,actorPresent:true,tenantMatch:true}}});}catch{/* diagnostics must never alter the public failure */}
+}
 
 type Scenario={customerId:string;projectId:string;workDescriptionId:string;operatorIds:string[];equipmentIds:string[];assignmentIds:string[];rentalAId:string;rentalBId:string;rentalALineIds:string[];rentalBLineId:string;costCodeId:string;activityCodeId:string;createCustomer:boolean;createProject:boolean;createWorkDescription:boolean};
 const uuid=()=>randomUUID();
@@ -37,18 +40,18 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
  const body=await request.json().catch(()=>null) as Record<string,unknown>|null;
  if(!body||Object.keys(body).some(key=>key!=="scenarioKey"&&key!=="profile")||body.scenarioKey!==scenarioKey||(body.profile!==undefined&&body.profile!==profile))return safe(400,{success:false,code:"VALIDATION_REJECTED"});
  const preDraft:any={customerId:uuid(),projectId:uuid(),workDescriptionId:uuid(),operatorIds:[uuid(),uuid(),uuid()],equipmentIds:[uuid(),uuid(),uuid()],assignmentIds:[uuid(),uuid(),uuid()],rentalAId:uuid(),rentalBId:uuid(),rentalALineIds:[uuid(),uuid()],rentalBLineId:uuid(),costCodeId:"",activityCodeId:"",createCustomer:true,createProject:true,createWorkDescription:true};
- const preClaim=await rpc(service,"claim_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey,profileVersion:profile,scenario:preDraft}}).catch(error=>({success:false,code:error instanceof Error?error.message:"SCENARIO_CLAIM_FAILED"}));
+ const preClaim=await rpc(service,"claim_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey,profileVersion:profile,scenario:preDraft}}).catch(async error=>{const raw=error instanceof Error?error.message:"SCENARIO_CLAIM_FAILED";const [cmd,code]=raw.split("::");await persistDiagnostic(service,companyId,actorId,scenarioKey,"RESIDUE_CLAIM_OR_REUSE",cmd||"claim_isolated_uat_multi_equipment_provisioning",code||"SCENARIO_CLAIM_FAILED");return {success:false,code:raw};});
  if(!preClaim.success)return bad(String(preClaim.code));
- const reread=await rpc(service,"read_isolated_uat_multi_equipment_residue",{command:{companyId,actorId,scenarioKey}});
+ const reread=await rpc(service,"read_isolated_uat_multi_equipment_residue",{command:{companyId,actorId,scenarioKey}}).catch(async error=>{const raw=error instanceof Error?error.message:"RESIDUE_READ_FAILED";const [cmd,code]=raw.split("::");await persistDiagnostic(service,companyId,actorId,scenarioKey,"RESIDUE_READ",cmd||"read_isolated_uat_multi_equipment_residue",code||"RESIDUE_READ_FAILED");throw error;});
  const claimedScenario=(reread.scenario??(preClaim as Record<string,unknown>).scenario) as Scenario;
- if(!claimedScenario||!Array.isArray(claimedScenario.equipmentIds)||claimedScenario.equipmentIds.length!==3)return bad("SCENARIO_INCONSISTENT");
- const refs=await rpc(service,"resolve_isolated_uat_multi_equipment_references",{command:{companyId,scenarioKey,profileVersion:profile}});
+ if(!claimedScenario||!Array.isArray(claimedScenario.equipmentIds)||claimedScenario.equipmentIds.length!==3){await persistDiagnostic(service,companyId,actorId,scenarioKey,"RESIDUE_IDENTITY_VALIDATION","read_isolated_uat_multi_equipment_residue","SCENARIO_INCONSISTENT");return bad("SCENARIO_INCONSISTENT");}
+ const refs=await rpc(service,"resolve_isolated_uat_multi_equipment_references",{command:{companyId,scenarioKey,profileVersion:profile}}).catch(async error=>{const raw=error instanceof Error?error.message:"REFERENCE_RESOLVE_FAILED";const [cmd,code]=raw.split("::");await persistDiagnostic(service,companyId,actorId,scenarioKey,"REFERENCE_RESOLUTION",cmd||"resolve_isolated_uat_multi_equipment_references",code||"REFERENCE_RESOLVE_FAILED");throw error;});
  const draft:Scenario={...claimedScenario,costCodeId:claimedScenario.costCodeId||String(refs.costCodeId||""),activityCodeId:claimedScenario.activityCodeId||String(refs.activityCodeId||"")};
- if(!draft.costCodeId||!draft.activityCodeId)return bad(String(refs.code||"UAT_REFERENCE_UNAVAILABLE"));
- await rpc(service,"update_isolated_uat_multi_equipment_references",{command:{companyId,actorId,scenarioKey,references:{customerId:draft.customerId,projectId:draft.projectId,workDescriptionId:draft.workDescriptionId,costCodeId:draft.costCodeId,activityCodeId:draft.activityCodeId}}});
- const persisted=await rpc(service,"read_isolated_uat_multi_equipment_residue",{command:{companyId,actorId,scenarioKey}});
+ if(!draft.costCodeId||!draft.activityCodeId){await persistDiagnostic(service,companyId,actorId,scenarioKey,"REFERENCE_VALIDATION","resolve_isolated_uat_multi_equipment_references","UAT_REFERENCE_UNAVAILABLE");return bad(String(refs.code||"UAT_REFERENCE_UNAVAILABLE"));}
+ await rpc(service,"update_isolated_uat_multi_equipment_references",{command:{companyId,actorId,scenarioKey,references:{customerId:draft.customerId,projectId:draft.projectId,workDescriptionId:draft.workDescriptionId,costCodeId:draft.costCodeId,activityCodeId:draft.activityCodeId}}}).catch(async error=>{const raw=error instanceof Error?error.message:"REFERENCE_PERSIST_FAILED";const [cmd,code]=raw.split("::");await persistDiagnostic(service,companyId,actorId,scenarioKey,"REFERENCE_PERSIST",cmd||"update_isolated_uat_multi_equipment_references",code||"REFERENCE_PERSIST_FAILED");throw error;});
+ const persisted=await rpc(service,"read_isolated_uat_multi_equipment_residue",{command:{companyId,actorId,scenarioKey}}).catch(async error=>{const raw=error instanceof Error?error.message:"RESIDUE_REREAD_FAILED";const [cmd,code]=raw.split("::");await persistDiagnostic(service,companyId,actorId,scenarioKey,"RESIDUE_REREAD",cmd||"read_isolated_uat_multi_equipment_residue",code||"RESIDUE_REREAD_FAILED");throw error;});
  const scenario=persisted.scenario as Scenario;
- if(!scenario||!Array.isArray(scenario.equipmentIds)||scenario.equipmentIds.length!==3)return bad("SCENARIO_INCONSISTENT");
+ if(!scenario||!Array.isArray(scenario.equipmentIds)||scenario.equipmentIds.length!==3){await persistDiagnostic(service,companyId,actorId,scenarioKey,"REFERENCE_VALIDATION","read_isolated_uat_multi_equipment_residue","SCENARIO_INCONSISTENT");return bad("SCENARIO_INCONSISTENT");}
  if(reread.state==="READY")return safe(200,{success:true,result:"REUSED",scenario:projection(scenario)});
  const user=createClient(environment.SUPABASE_URL,environment.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:`Bearer ${token}`}}});
  try{
