@@ -12,4 +12,13 @@ describe("UAT provisioning attempt lifecycle", () => {
     expect(migration).toContain("next_state NOT IN ('COMPLETED','FAILED')");
     expect(migration).toContain("UAT_EXECUTION_ALREADY_ACTIVE");
   });
+  it("terminalizes structured reference validation failures", () => {
+    const worker = readFileSync("worker/uatMultiEquipmentProvisioner.ts", "utf8");
+    const start = worker.indexOf("if(!draft.costCodeId||!draft.activityCodeId)");
+    const end = worker.indexOf("await rpc(service,\"update_isolated_uat_multi_equipment_references\"", start);
+    const branch = worker.slice(start, end);
+    expect(branch).toContain("finish_isolated_uat_provisioning_attempt");
+    expect(branch).toContain('state:"FAILED"');
+    expect(branch).toContain("UAT_REFERENCE_UNAVAILABLE");
+  });
 });
