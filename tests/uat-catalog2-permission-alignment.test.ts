@@ -8,7 +8,7 @@ describe("UAT provisioning Catalog 2.0 permission alignment", () => {
     expect(sql).toContain("operator.manage', 'operator.create");
     expect(sql).toContain("assignment.manage', 'assignment.create");
     expect(sql).toContain("rental.manage', 'rental.create");
-    expect(sql).toContain("rental.manage', 'rental.activate");
+    expect(sql).not.toContain("rental.manage', 'rental.activate");
     expect(sql).not.toContain("INSERT INTO erp.role_permissions");
   });
 });

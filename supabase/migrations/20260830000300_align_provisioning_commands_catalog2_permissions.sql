@@ -12,8 +12,7 @@ BEGIN
       ('erp.command_create_project(jsonb)'::regprocedure, 'project.manage', 'project.create'),
       ('erp.command_create_operator(jsonb)'::regprocedure, 'operator.manage', 'operator.create'),
       ('erp.command_create_assignment(jsonb)'::regprocedure, 'assignment.manage', 'assignment.create'),
-      ('erp.command_create_reserved_rental(jsonb)'::regprocedure, 'rental.manage', 'rental.create'),
-      ('erp.command_activate_rental(jsonb)'::regprocedure, 'rental.manage', 'rental.activate')
+      ('erp.command_create_reserved_rental(jsonb)'::regprocedure, 'rental.manage', 'rental.create')
     ) AS mappings(function_name regprocedure, old_permission text, new_permission text)
   LOOP
     SELECT pg_get_functiondef(replacement.function_name) INTO definition;
