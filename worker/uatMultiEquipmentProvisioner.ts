@@ -35,6 +35,9 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
   if(company.error||!company.data)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
  const body=await request.json().catch(()=>null) as Record<string,unknown>|null;
  if(!body||Object.keys(body).some(key=>key!=="scenarioKey"&&key!=="profile")||body.scenarioKey!==scenarioKey||(body.profile!==undefined&&body.profile!==profile))return safe(400,{success:false,code:"VALIDATION_REJECTED"});
+ const preDraft:any={customerId:uuid(),projectId:uuid(),workDescriptionId:uuid(),operatorIds:[uuid(),uuid(),uuid()],equipmentIds:[uuid(),uuid(),uuid()],assignmentIds:[uuid(),uuid(),uuid()],rentalAId:uuid(),rentalBId:uuid(),rentalALineIds:[uuid(),uuid()],rentalBLineId:uuid(),costCodeId:"",activityCodeId:"",createCustomer:true,createProject:true,createWorkDescription:true};
+ const preClaim=await rpc(service,"claim_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey,profileVersion:profile,scenario:preDraft}}).catch(error=>({success:false,code:error instanceof Error?error.message:"SCENARIO_CLAIM_FAILED"}));
+ if(!preClaim.success)return bad(String(preClaim.code));
  const [costs,activities,customers,projects,workDescriptions]=await Promise.all([
   service.schema("erp").from("cost_codes").select("id,code,sort_order").eq("active",true).is("deleted_at",null).order("sort_order").order("code").limit(2),
   service.schema("erp").from("activity_codes").select("id,code,sort_order").eq("active",true).is("deleted_at",null).order("sort_order").order("code").limit(2),
@@ -43,8 +46,9 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
   service.schema("erp").from("work_descriptions").select("id").eq("active",true).is("deleted_at",null).eq("code","UAT-ME-RUNTIME-CERT").maybeSingle()
  ]);
  if(costs.error||activities.error||!costs.data?.[0]||!activities.data?.[0])return bad("UAT_REFERENCE_UNAVAILABLE");
- const draft:Scenario={customerId:customers.data?.id??uuid(),projectId:projects.data?.id??uuid(),workDescriptionId:workDescriptions.data?.id??uuid(),operatorIds:[uuid(),uuid(),uuid()],equipmentIds:[uuid(),uuid(),uuid()],assignmentIds:[uuid(),uuid(),uuid()],rentalAId:uuid(),rentalBId:uuid(),rentalALineIds:[uuid(),uuid()],rentalBLineId:uuid(),costCodeId:costs.data[0].id,activityCodeId:activities.data[0].id,createCustomer:!customers.data,createProject:!projects.data,createWorkDescription:!workDescriptions.data};
- const claim:Record<string,unknown>=await rpc(service,"claim_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey,profileVersion:profile,scenario:draft}}).catch(error=>({success:false,code:error instanceof Error?error.message:"SCENARIO_CLAIM_FAILED"}));
+ const draft:Scenario={...preDraft,customerId:customers.data?.id??preDraft.customerId,projectId:projects.data?.id??preDraft.projectId,workDescriptionId:workDescriptions.data?.id??preDraft.workDescriptionId,costCodeId:costs.data[0].id,activityCodeId:activities.data[0].id,createCustomer:!customers.data,createProject:!projects.data,createWorkDescription:!workDescriptions.data};
+ await rpc(service,"update_isolated_uat_multi_equipment_references",{command:{companyId,actorId,scenarioKey,references:{customerId:draft.customerId,projectId:draft.projectId,workDescriptionId:draft.workDescriptionId,costCodeId:draft.costCodeId,activityCodeId:draft.activityCodeId}}});
+ const claim:Record<string,unknown>=preClaim as Record<string,unknown>;
  if(!claim.success)return bad(String(claim.code));
  const scenario=(claim.scenario??draft) as Scenario;
  if(!scenario||!Array.isArray(scenario.equipmentIds)||scenario.equipmentIds.length!==3)return bad("SCENARIO_INCONSISTENT");
