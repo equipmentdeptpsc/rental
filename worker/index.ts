@@ -57,7 +57,7 @@ export default{
     }
     if(path==="/api/admin/uat/provision-multi-equipment-certification"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
-     try{const result=await provisionUatMultiEquipmentCertification(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_PROVISIONING_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
+     try{const result=await provisionUatMultiEquipmentCertification(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch(error){const code=error instanceof Error&&/^[A-Z0-9_]+$/.test(error.message)?error.message:"UAT_PROVISIONING_FAILED";return Response.json({success:false,code},{status:503,headers:{"cache-control":"no-store"}});}
     }
     if(path==="/api/admin/uat/inspect-multi-equipment-certification"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
