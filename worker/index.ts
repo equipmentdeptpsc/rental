@@ -9,6 +9,7 @@ import{createUatProviderAuthentication}from"./uatProviderAuthentication";
 import{resolveUatGroupedReviewDispatch}from"./uatGroupedReviewDispatchResolver";
 import{provisionUatMultiEquipmentCertification}from"./uatMultiEquipmentProvisioner";
 import{inspectUatMultiEquipmentProvisioning}from"./uatMultiEquipmentInspection";
+import{recoverUatLegacyProvisioning}from"./uatLegacyRecovery";
 
 interface ScheduledController{cron:string;scheduledTime:number}
 interface ExecutionContext{waitUntil(promise:Promise<unknown>):void}
@@ -62,6 +63,10 @@ export default{
     if(path==="/api/admin/uat/inspect-multi-equipment-certification"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
      try{const result=await inspectUatMultiEquipmentProvisioning(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_INSPECTION_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
+    }
+  if(path==="/api/admin/uat/recover-legacy-provisioning"){
+     if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
+     try{const result=await recoverUatLegacyProvisioning(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_RECOVERY_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
     }
   return environment.ASSETS.fetch(request);
  },

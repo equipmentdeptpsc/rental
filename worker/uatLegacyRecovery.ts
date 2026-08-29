@@ -1,0 +1,14 @@
+import { createClient } from "@supabase/supabase-js";
+import type { GroupedReviewWorkerEnvironment } from "./configuration";
+type SafeResult={status:number;body:Record<string,unknown>};
+const safe=(status:number,body:Record<string,unknown>):SafeResult=>({status,body});
+const scenarioKey="MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29",profileVersion="UAT_MULTI_EQUIPMENT_PER_WORKDAY_V1";
+export async function recoverUatLegacyProvisioning(request:Request,environment:GroupedReviewWorkerEnvironment):Promise<SafeResult>{
+ if(environment.ENABLE_UAT_SYNTHETIC_PROVISIONER!=="true"||!environment.SUPABASE_URL||!environment.SUPABASE_SERVICE_ROLE_KEY)return safe(503,{success:false,code:"UAT_PROVISIONER_DISABLED"});
+ const token=request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];if(!token)return safe(401,{success:false,code:"UNAUTHENTICATED"});
+ const service=createClient(environment.SUPABASE_URL,environment.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});const identity=await service.auth.getUser(token);if(identity.error||!identity.data.user)return safe(401,{success:false,code:"UNAUTHENTICATED"});const actorId=identity.data.user.id;
+ const [permission,admin,user]=await Promise.all([service.schema("erp").from("effective_user_permissions").select("permission_code").eq("user_id",actorId).eq("permission_code","settings.update").maybeSingle(),service.schema("erp").from("user_roles").select("role_id,app_roles!inner(code,active,deprecated_at)").eq("user_id",actorId).eq("app_roles.code","system-administrator").eq("app_roles.active",true).is("app_roles.deprecated_at",null).maybeSingle(),service.schema("erp").from("users").select("company_id").eq("id",actorId).eq("status","active").maybeSingle()]);
+ if(permission.error||!permission.data||admin.error||!admin.data||user.error||!user.data)return safe(403,{success:false,code:"FORBIDDEN"});const companyId=user.data.company_id;const meta=await service.schema("erp").rpc("get_isolated_uat_tenant_metadata",{target_tenant:companyId});if(meta.error||!meta.data?.length)return safe(403,{success:false,code:"UAT_TENANT_REQUIRED"});
+ const body=await request.json().catch(()=>null) as Record<string,unknown>|null;if(!body||Object.keys(body).length!==2||body.scenarioKey!==scenarioKey||body.profileVersion!==profileVersion)return safe(400,{success:false,code:"VALIDATION_REJECTED"});
+ const result=await service.schema("erp").rpc("recover_isolated_uat_legacy_provisioning",{command:{companyId,actorId,scenarioKey,profileVersion}});if(result.error)return safe(409,{success:false,code:"RECOVERY_UNAVAILABLE"});return safe(result.data?.success===true?200:409,result.data as Record<string,unknown>);
+}
