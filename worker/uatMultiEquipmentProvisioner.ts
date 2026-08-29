@@ -42,12 +42,9 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
  const reread=await rpc(service,"read_isolated_uat_multi_equipment_residue",{command:{companyId,actorId,scenarioKey}});
  const claimedScenario=(reread.scenario??(preClaim as Record<string,unknown>).scenario) as Scenario;
  if(!claimedScenario||!Array.isArray(claimedScenario.equipmentIds)||claimedScenario.equipmentIds.length!==3)return bad("SCENARIO_INCONSISTENT");
- const [costs,activities]=await Promise.all([
-  service.schema("erp").from("cost_codes").select("id,code,sort_order").eq("active",true).is("deleted_at",null).order("sort_order").order("code").limit(2),
-  service.schema("erp").from("activity_codes").select("id,code,sort_order").eq("active",true).is("deleted_at",null).order("sort_order").order("code").limit(2),
- ]);
- if(costs.error||activities.error||!costs.data?.[0]||!activities.data?.[0])return bad("UAT_REFERENCE_UNAVAILABLE");
- const draft:Scenario={...claimedScenario,costCodeId:claimedScenario.costCodeId||costs.data[0].id,activityCodeId:claimedScenario.activityCodeId||activities.data[0].id};
+ const refs=await rpc(service,"resolve_isolated_uat_multi_equipment_references",{command:{companyId,scenarioKey,profileVersion:profile}});
+ const draft:Scenario={...claimedScenario,costCodeId:claimedScenario.costCodeId||String(refs.costCodeId||""),activityCodeId:claimedScenario.activityCodeId||String(refs.activityCodeId||"")};
+ if(!draft.costCodeId||!draft.activityCodeId)return bad(String(refs.code||"UAT_REFERENCE_UNAVAILABLE"));
  await rpc(service,"update_isolated_uat_multi_equipment_references",{command:{companyId,actorId,scenarioKey,references:{customerId:draft.customerId,projectId:draft.projectId,workDescriptionId:draft.workDescriptionId,costCodeId:draft.costCodeId,activityCodeId:draft.activityCodeId}}});
  const persisted=await rpc(service,"read_isolated_uat_multi_equipment_residue",{command:{companyId,actorId,scenarioKey}});
  const scenario=persisted.scenario as Scenario;
