@@ -7,6 +7,6 @@ export class SupabaseUatGroupedReviewCertification{
  verifyProvider(){return this.post<{result:"VALID"|"INVALID"|"UNAVAILABLE"}>("/api/admin/uat/verify-provider-authentication",{});}
  preflight(input:Record<string,unknown>){return this.post<{success:true;result:"ELIGIBLE"}>("/api/admin/uat/preflight-grouped-review-certification",{...input,mode:"PREFLIGHT"});}
  deliver(input:Record<string,unknown>){return this.post<{success:true;result:"DELIVERED"}>("/api/admin/uat/run-grouped-review-certification",input);}
- resolveGroupedReviewDispatch(input:Pick<UatGroupedReviewDispatchResolution,"rentalId"|"workDate"|"deurId"|"deurNumber">){return this.post<{success:true;value:UatGroupedReviewDispatchResolution}>("/api/admin/uat/resolve-grouped-review-dispatch",input);}
+ resolveGroupedReviewDispatch(input:{rentalId:string;workDate:string;deurId?:string;deurNumber?:string}){return this.post<{success:true;value:UatGroupedReviewDispatchResolution}>("/api/admin/uat/resolve-grouped-review-dispatch",input);}
  dispatchExistingNotification(notificationId:string){return this.post<{success:true;result:"DISPATCHED"|"ALREADY_PROCESSED"}>("/api/admin/uat/dispatch-existing-notification",{notificationId});}
 }
