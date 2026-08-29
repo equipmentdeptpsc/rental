@@ -6,7 +6,8 @@ import{createUatRecipientOverrideVerification}from"./uatRecipientOverrideVerific
 import{runUatGroupedReviewCertification}from"./uatGroupedReviewCertification";
 import{createUatProviderAuthentication}from"./uatProviderAuthentication";
   import{dispatchExistingUatNotification}from"./uatNotificationDispatch";
-  import{resolveUatGroupedReviewDispatch}from"./uatGroupedReviewDispatchResolver";
+import{resolveUatGroupedReviewDispatch}from"./uatGroupedReviewDispatchResolver";
+import{provisionUatMultiEquipmentCertification}from"./uatMultiEquipmentProvisioner";
 
 interface ScheduledController{cron:string;scheduledTime:number}
 interface ExecutionContext{waitUntil(promise:Promise<unknown>):void}
@@ -52,6 +53,10 @@ export default{
     if(path==="/api/admin/uat/resolve-grouped-review-dispatch"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
      try{const result=await resolveUatGroupedReviewDispatch(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_RESOLVER_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
+    }
+    if(path==="/api/admin/uat/provision-multi-equipment-certification"){
+     if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
+     try{const result=await provisionUatMultiEquipmentCertification(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_PROVISIONING_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
     }
   return environment.ASSETS.fetch(request);
  },
