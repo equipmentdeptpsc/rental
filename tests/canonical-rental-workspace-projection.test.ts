@@ -23,6 +23,11 @@ describe("canonical Reserved Rental workspace projection", () => {
     const source = readFileSync("src/features/rental/workspace/billing/BillingPanel.tsx", "utf8");
     expect(source).toContain("allowLegacyActions={dependencies.configuration.persistenceMode !== PersistenceMode.Remote}");
   });
+  it("labels persisted statement totals as rental-level rather than DEUR-level amounts", () => {
+    const source = readFileSync("src/features/rental/workspace/billing/BillingPanel.tsx", "utf8");
+    expect(source).toContain('label="Rental persisted subtotal"');
+    expect(source).toContain("This is the rental-level total of persisted billing statements.");
+  });
   it("maps canonical Billing Statement and DEUR provenance into the remote workspace", () => {
     const result = mapBillingStatement({ id:"statement-1", statement_no:"BS-2026-000001", statement_version:1, row_version:2, rental_id:"rental-1", customer_snapshot:"Customer", project_snapshot:"Project", billing_from:"2026-08-26", billing_to:"2026-08-26", subtotal:3883.3333, vat:0, withholding_tax:0, grand_total:3883.3333, approval_status:"Draft", invoice_status:"Not Invoiced", created_by:"admin", created_at:"2026-08-27T00:00:00Z", billing_statement_lines:[{id:"line-1",billing_statement_id:"statement-1",rental_equipment_line_id:"rental-line-1",equipment_id:"equipment-1",operator_id:"operator-1",deur_id:"deur-1",work_date:"2026-08-26",description:"Equipment rental",cost_code_snapshot:"UAT-CC-001",hours:3.8833,hourly_rate:1000,amount:3883.3333,grand_total:3883.3333}] });
     expect(result).toMatchObject({success:true,value:{id:"statement-1",version:2,rentalId:"rental-1",customer:"Customer",project:"Project",subtotal:3883.3333,lines:[{id:"line-1",rentalEquipmentLineId:"rental-line-1",deurId:"deur-1",equipmentId:"equipment-1",operatorId:"operator-1",costCode:"UAT-CC-001"}]}});

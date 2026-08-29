@@ -113,9 +113,13 @@ export default function BillingPanel() {
       <div className="grid min-w-0 gap-5 md:grid-cols-3">
 
         <BillingMetricCard
-          label="Persisted Subtotal"
+          label="Rental persisted subtotal"
           value={aggregate.billing.subtotal}
         />
+
+        <p className="text-sm text-slate-600 md:col-span-3">
+          This is the rental-level total of persisted billing statements. It is not an amount for an individual DEUR; unbilled DEUR amounts are calculated in the billing preview above.
+        </p>
 
         <div className="rounded-lg border bg-white p-5">
           <div className="text-sm text-slate-500">Invoice Status</div>
