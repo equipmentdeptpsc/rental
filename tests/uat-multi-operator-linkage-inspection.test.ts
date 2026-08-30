@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync("worker/uatMultiOperatorLinkageInspection.ts", "utf8");
 const index = readFileSync("worker/index.ts", "utf8");
+const cors = readFileSync("worker/uatAdminCors.ts", "utf8");
+const wrangler = readFileSync("wrangler.jsonc", "utf8");
 
 describe("isolated UAT multi-operator linkage inspection", () => {
   it("is exposed only through the authenticated scenario-scoped route", () => {
@@ -12,6 +14,17 @@ describe("isolated UAT multi-operator linkage inspection", () => {
     expect(source).toContain('settings.update');
     expect(source).toContain('get_isolated_uat_tenant_metadata');
     expect(source).toContain('VALIDATION_REJECTED');
+  });
+
+  it("allows only the configured UAT web origins and required headers", () => {
+    expect(index).toContain('request.method==="OPTIONS"');
+    expect(index).toContain('uatAdminCorsHeaders(request,environment)');
+    expect(wrangler).toContain('http://localhost:8081,https://uat.pscequipment.online');
+    expect(cors).toContain('allowed.includes(origin)');
+    expect(cors).toContain('access-control-allow-methods');
+    expect(cors).toContain('authorization, content-type');
+    expect(cors).toContain('vary');
+    expect(cors).not.toContain('"*"');
   });
 
   it("uses exact certified operators and lines and never returns credentials", () => {
