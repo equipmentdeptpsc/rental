@@ -40,12 +40,13 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
   if (tenant.error || !tenant.data?.length) return result(403, { success: false, code: "UAT_TENANT_REQUIRED" });
   const scenario = await service.schema("erp").rpc("inspect_isolated_uat_multi_equipment_scenario", { target_tenant: companyId, target_scenario: scenarioKey });
   if (scenario.error || !scenario.data) return result(503, { success: false, code: "INSPECTION_UNAVAILABLE", phase: "SCENARIO_INSPECTION", operation: "inspect_isolated_uat_multi_equipment_scenario", safeResultCode: safeErrorClass(scenario.error) });
-  const [operators, users, lines] = await Promise.all([
-    service.schema("erp").from("operators").select("id,name,status,company_id").eq("company_id", companyId).in("id", operatorIds),
+  const [upstream, users, lines] = await Promise.all([
+    service.schema("erp").rpc("inspect_isolated_uat_upstream_replay_lineage", { command: { companyId, scenarioKey } }),
     service.schema("erp").from("users").select("id,username,email,status,operator_id,company_id").eq("company_id", companyId).in("operator_id", operatorIds),
     service.schema("erp").from("rental_equipment_lines").select("id,rental_id,equipment_id,assignment_id,operator_id,company_id,status").eq("company_id", companyId).in("id", lineIds),
   ]);
-  if (operators.error || users.error || lines.error) return result(503, { success: false, code: "READ_FAILED", phase: "OPERATOR_LINKAGE_READ", operation: operators.error ? "operators" : users.error ? "users" : "rental_equipment_lines", safeResultCode: safeErrorClass(operators.error ?? users.error ?? lines.error) });
+  if (upstream.error || users.error || lines.error) return result(503, { success: false, code: "READ_FAILED", phase: "OPERATOR_LINKAGE_READ", operation: upstream.error ? "inspect_isolated_uat_upstream_replay_lineage" : users.error ? "users" : "rental_equipment_lines", safeResultCode: safeErrorClass(upstream.error ?? users.error ?? lines.error) });
+  const operators = { data: Array.isArray((upstream.data as Row)?.operators) ? (upstream.data as Row).operators.map((row: Row) => ({ id: row.id, name: row.name, status: row.status, company_id: companyId })) : [], error: null };
   const authUsers = new Map<string, Row>();
   for (const user of users.data ?? []) {
     const remote = await service.auth.admin.getUserById(String(user.id));
@@ -54,7 +55,7 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
   const workByOperator = new Map<string, Row[]>();
   for (const line of lines.data ?? []) { const list = workByOperator.get(String(line.operator_id)) ?? []; list.push(line); workByOperator.set(String(line.operator_id), list); }
   const operatorProjection = operatorIds.map((operatorId, index) => {
-    const operator = (operators.data ?? []).find((row) => String(row.id) === operatorId);
+    const operator = (operators.data ?? []).find((row: Row) => String(row.id) === operatorId);
     const linked = (users.data ?? []).filter((row) => String(row.operator_id) === operatorId);
     const authMatches = linked.map((user) => authUsers.get(String(user.id))).filter(Boolean);
     const work = workByOperator.get(operatorId) ?? [];
