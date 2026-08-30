@@ -3,7 +3,7 @@ import type { GroupedReviewWorkerEnvironment } from "./configuration";
 
 type SafeResult = { status: number; body: Record<string, unknown> };
 type Row = Record<string, any>;
-const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body: { inspectionImplementationVersion: "multi-operator-linkage-users-no-email-v1", ...body } });
+const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body: { inspectionImplementationVersion: "multi-operator-linkage-user-rpc-v2", ...body } });
 const safeErrorClass = (error: any): string => {
   const raw = error?.status ?? error?.code;
   const status = typeof raw === "string" && /^[0-9]+$/.test(raw) ? Number(raw) : Number(raw);
@@ -41,13 +41,14 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
   if (tenant.error || !tenant.data?.length) return result(403, { success: false, code: "UAT_TENANT_REQUIRED" });
   const scenario = await service.schema("erp").rpc("inspect_isolated_uat_multi_equipment_scenario", { target_tenant: companyId, target_scenario: scenarioKey });
   if (scenario.error || !scenario.data) return result(503, { success: false, code: "INSPECTION_UNAVAILABLE", phase: "SCENARIO_INSPECTION", operation: "inspect_isolated_uat_multi_equipment_scenario", safeResultCode: safeErrorClass(scenario.error) });
-  const [upstream, users, lines] = await Promise.all([
+  const [upstream, userLinkage, lines] = await Promise.all([
     service.schema("erp").rpc("inspect_isolated_uat_upstream_replay_lineage", { command: { companyId, scenarioKey } }),
-    service.schema("erp").from("users").select("id,username,display_name,status,operator_id,company_id").eq("company_id", companyId).in("operator_id", operatorIds),
+    service.schema("erp").rpc("inspect_isolated_uat_multi_operator_user_linkage", { command: { companyId, scenarioKey, profileVersion, operatorIds } }),
     service.schema("erp").from("rental_equipment_lines").select("id,rental_id,equipment_id,assignment_id,operator_id,company_id,status").eq("company_id", companyId).in("id", lineIds),
   ]);
-  if (upstream.error || users.error || lines.error) return result(503, { success: false, code: "READ_FAILED", phase: "OPERATOR_LINKAGE_READ", operation: upstream.error ? "inspect_isolated_uat_upstream_replay_lineage" : users.error ? "users" : "rental_equipment_lines", safeResultCode: safeErrorClass(upstream.error ?? users.error ?? lines.error) });
+  if (upstream.error || userLinkage.error || lines.error) return result(503, { success: false, code: "READ_FAILED", phase: "OPERATOR_LINKAGE_READ", operation: upstream.error ? "inspect_isolated_uat_upstream_replay_lineage" : userLinkage.error ? "users" : "rental_equipment_lines", safeResultCode: safeErrorClass(upstream.error ?? userLinkage.error ?? lines.error) });
   const operators = { data: Array.isArray((upstream.data as Row)?.operators) ? (upstream.data as Row).operators.map((row: Row) => ({ id: row.id, name: row.name, status: row.status, company_id: companyId })) : [], error: null };
+  const users = { data: Array.isArray((userLinkage.data as Row)?.operators) ? (userLinkage.data as Row).operators.filter((row: Row) => row.linkedApplicationUserCount === 1).map((row: Row) => ({ id: row.applicationUserId, username: row.username, status: row.status, operator_id: row.operatorId, company_id: row.companyId })) : [], error: userLinkage.data?.success === false ? userLinkage.data : null };
   const authUsers = new Map<string, Row>();
   for (const user of users.data ?? []) {
     const remote = await service.auth.admin.getUserById(String(user.id));
@@ -57,8 +58,8 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
   for (const line of lines.data ?? []) { const list = workByOperator.get(String(line.operator_id)) ?? []; list.push(line); workByOperator.set(String(line.operator_id), list); }
   const operatorProjection = operatorIds.map((operatorId, index) => {
     const operator = (operators.data ?? []).find((row: Row) => String(row.id) === operatorId);
-    const linked = (users.data ?? []).filter((row) => String(row.operator_id) === operatorId);
-    const authMatches = linked.map((user) => authUsers.get(String(user.id))).filter(Boolean);
+    const linked = (users.data ?? []).filter((row: Row) => String(row.operator_id) === operatorId);
+    const authMatches = linked.map((user: Row) => authUsers.get(String(user.id))).filter(Boolean);
     const work = workByOperator.get(operatorId) ?? [];
     let classification = "READ_FAILED";
     if (!operator) classification = "READ_FAILED";
@@ -73,5 +74,5 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
     return { operatorId, operatorDisplayName: operator?.name ?? null, operatorStatus: operator?.status ?? null, operatorCompanyId: operator?.company_id ?? null, linkedApplicationUserCount: linked.length, ...(linked.length === 1 ? { applicationUserId: linked[0].id, loginName: linked[0].username, email: null, applicationUserActive: linked[0].status === "active", applicationUserCompanyId: linked[0].company_id } : {}), authIdentityPresent: authMatches.length === 1, linkageClassification: classification, eligibleScenarioWorkCount: work.length, authorizedRentalIds: work.map((row) => row.rental_id), authorizedRentalEquipmentLineIds: work.map((row) => row.id), equipmentIds: work.map((row) => row.equipment_id), assignmentIds: work.map((row) => row.assignment_id), expectedLineId, ownershipMatch: work.length === 1 && String(work[0].id) === expectedLineId && String(work[0].operator_id) === operatorId };
   });
   const crossOperatorExposure = operatorProjection.flatMap((item) => item.authorizedRentalEquipmentLineIds.filter((id: string) => id !== item.expectedLineId));
-  return result(200, { success: true, inspectionImplementationVersion: "multi-operator-linkage-users-no-email-v1", scenarioKey, profileVersion, scenarioState: (scenario.data as Row).scenario?.residueState ?? "COMPLETE_CONSISTENT", tenantId: companyId, operators: operatorProjection, crossOperatorExposure, productionChanged: false, mutationPerformed: false });
+  return result(200, { success: true, scenarioKey, profileVersion, scenarioState: (scenario.data as Row).scenario?.residueState ?? "COMPLETE_CONSISTENT", tenantId: companyId, operators: operatorProjection, crossOperatorExposure, productionChanged: false, mutationPerformed: false });
 }
