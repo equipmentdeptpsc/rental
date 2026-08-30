@@ -24,7 +24,7 @@
         "NOTIFICATION_WORKER_BATCH_LIMIT": "1",
         "ENABLE_UAT_RECIPIENT_OVERRIDE_VERIFIER": "true",
         "ENABLE_UAT_SYNTHETIC_PROVISIONER": "true",
-        "USERNAME_LOGIN_ALLOWED_ORIGIN": "http://localhost:8091"
+        "USERNAME_LOGIN_ALLOWED_ORIGIN": "http://localhost:8081"
       },
       "triggers": {
         "crons": []
