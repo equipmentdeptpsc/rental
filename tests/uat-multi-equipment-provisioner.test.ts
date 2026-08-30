@@ -40,3 +40,5 @@ describe("isolated UAT multi-equipment provisioner",()=>{
   for(const forbidden of["command_create_deur","dispatchExistingNotification","billing_statement","command_return_rental"])expect(worker).not.toContain(forbidden);
  });
 });
+
+ it('qualifies lineage RPC scenario key',()=>{const sql=readFileSync('supabase/migrations/20260830000600_fix_partial_rental_lineage_ambiguity.sql','utf8');expect(sql).toContain('r.scenario_key=v_scenario_key');expect(sql).toContain('l.rental_id=v_rental_id');});
