@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import type { GroupedReviewWorkerEnvironment } from "./configuration";
+import {readUatPartialRentalLineage} from "./uatPartialRentalLineage";
 
 type SafeResult={status:number;body:Record<string,unknown>};
 const safe=(status:number,body:Record<string,unknown>):SafeResult=>({status,body});
@@ -62,29 +63,18 @@ export async function provisionUatMultiEquipmentCertification(request:Request,en
   for(let i=0;i<3;i++)await rpc(user,"command_create_operator",{command:{...command(scenario.operatorIds[i],`OPERATOR-${i+1}`),operatorId:scenario.operatorIds[i],name:`Synthetic UAT Multi-Equipment Operator ${i+1}`,certificationType:"Heavy Machinery",joinedDate:workDate}});
   for(let i=0;i<3;i++)await rpc(user,"command_create_equipment",{command:{...command(scenario.equipmentIds[i],`EQUIPMENT-${i+1}`),equipmentId:scenario.equipmentIds[i],assetNo:`UAT-ME-20260829-${i+1}`,equipmentName:`Synthetic UAT Multi-Equipment ${i+1}`,maintenanceType:"Engine Hours",costCodeId:scenario.costCodeId,currentReading:0,remarks:"Synthetic isolated-UAT certification equipment."}});
   for(let i=0;i<3;i++)await rpc(user,"command_create_assignment",{command:{...command(scenario.assignmentIds[i],`ASSIGNMENT-${i+1}`),assignmentId:scenario.assignmentIds[i],equipmentId:scenario.equipmentIds[i],operatorId:scenario.operatorIds[i],projectId:scenario.projectId,activityCodeId:scenario.activityCodeId,assignedDate:workDate,expectedReturn:workDate,remarks:"Synthetic isolated-UAT certification assignment."}});
-  await reservePrepareReleaseActivate(user,scenario,"A",scenario.rentalAId,scenario.rentalALineIds,[0,1],true);
-  await reservePrepareReleaseActivate(user,scenario,"B",scenario.rentalBId,[scenario.rentalBLineId],[2]);
+  await reservePrepareReleaseActivate(user,companyId,scenario,"A",scenario.rentalAId,scenario.rentalALineIds,[0,1],true);
+  await reservePrepareReleaseActivate(user,companyId,scenario,"B",scenario.rentalBId,[scenario.rentalBLineId],[2]);
   const complete=await rpc(service,"complete_isolated_uat_multi_equipment_provisioning",{command:{companyId,actorId,scenarioKey}});if(!complete.success)return bad(String(complete.code));
   await service.schema("erp").rpc("finish_isolated_uat_provisioning_attempt",{command:{attemptId,actorId,state:"COMPLETED",safeResultCode:"PROVISIONED"}}); return safe(200,{success:true,result:"PROVISIONED",scenario:projection(scenario)});
  }catch(error){const raw=error instanceof Error?error.message:"PROVISIONING_FAILED";const [commandName,resultCode]=raw.split("::");const diagnostic={phase:"canonical-entity-provisioning",command:commandName||"unknown",resultCode:resultCode||"PROVISIONING_FAILED",actorPresent:true,tenantMatch:true};await service.schema("erp").rpc("record_isolated_uat_provisioning_diagnostic",{command:{companyId,actorId,scenarioKey,diagnostic}});await service.schema("erp").rpc("finish_isolated_uat_provisioning_attempt",{command:{attemptId,actorId,state:"FAILED",safeResultCode:resultCode||"PROVISIONING_FAILED"}});return safe(409,{success:false,code:resultCode||"PROVISIONING_FAILED",diagnostic});}
 }
 
-async function reservePrepareReleaseActivate(client:any,scenario:Scenario,label:string,rentalId:string,lineIds:string[],indices:number[],allowReuse=false){
+async function reservePrepareReleaseActivate(client:any,companyId:string,scenario:Scenario,label:string,rentalId:string,lineIds:string[],indices:number[],allowReuse=false){
  const rentalNumber=`UAT-ME-${label}-20260829`;
  const lines=lineIds.map((id,index)=>({id,equipmentId:scenario.equipmentIds[indices[index]],assignmentId:scenario.assignmentIds[indices[index]],operatorId:scenario.operatorIds[indices[index]]}));
  let version=0;
- if(allowReuse){
-  const {data:rental,error:rentalError}=await client.schema("erp").from("rentals").select("id,rental_number,status,company_id,customer_id,project_id,date_out,expected_return,row_version").eq("id",rentalId).maybeSingle();
-  if(rentalError) throw new Error("lineage_read::LINEAGE_READ_FAILED");
-  if(rental){
-   const {data:existingLines,error:lineError}=await client.schema("erp").from("rental_equipment_lines").select("id,equipment_id,assignment_id,operator_id,status,company_id").eq("rental_id",rentalId).is("deleted_at",null);
-   const expected=new Set(lineIds), observed=(existingLines??[]).map((line:any)=>line.id);
-   const exact=String(rental.id)===rentalId && rental.rental_number===rentalNumber && rental.status==="Reserved" && rental.company_id && rental.customer_id===scenario.customerId && rental.project_id===scenario.projectId && String(rental.date_out).slice(0,10)===workDate && String(rental.expected_return).slice(0,10)===workDate && !lineError && observed.length===lineIds.length && observed.every((id:string)=>expected.has(id)) && (existingLines??[]).every((line:any)=>line.status==="Reserved" && line.company_id===rental.company_id && line.equipment_id===scenario.equipmentIds[indices[lineIds.indexOf(line.id)]] && line.assignment_id===scenario.assignmentIds[indices[lineIds.indexOf(line.id)]] && line.operator_id===scenario.operatorIds[indices[lineIds.indexOf(line.id)]]);
-   if(!exact) throw new Error("lineage_read::UAT_PARTIAL_RENTAL_LINEAGE_MISMATCH");
-   version=Number(rental.row_version);
-  }
- }
- if(version===0){
+ if(allowReuse){ const partial=await readUatPartialRentalLineage(client,companyId,scenarioKey,rentalId); if(partial.status!=="SUCCESS"&&partial.status!=="RENTAL_NOT_FOUND") throw new Error("lineage_read::UAT_PARTIAL_RENTAL_LINEAGE_READ_FAILED"); const rental=partial.rental as any; const existingLines=partial.lines as any[]; if(rental){ const expected=new Set(lineIds), observed=existingLines.map((line:any)=>line.id); const exact=String(rental.id)===rentalId&&rental.rental_number===rentalNumber&&rental.status==="Reserved"&&rental.company_id===companyId&&rental.customer_id===scenario.customerId&&rental.project_id===scenario.projectId&&String(rental.date_out).slice(0,10)===workDate&&String(rental.expected_return).slice(0,10)===workDate&&observed.length===lineIds.length&&observed.every((id:string)=>expected.has(id))&&existingLines.every((line:any)=>line.status==="Reserved"&&line.company_id===companyId&&line.equipment_id===scenario.equipmentIds[indices[lineIds.indexOf(line.id)]]&&line.assignment_id===scenario.assignmentIds[indices[lineIds.indexOf(line.id)]]&&line.operator_id===scenario.operatorIds[indices[lineIds.indexOf(line.id)]]); if(!exact)throw new Error("lineage_read::UAT_PARTIAL_RENTAL_LINEAGE_MISMATCH"); version=Number(rental.row_version); }} if(version===0){
   const reserved=await rpc(client,"command_create_reserved_rental",{command:{...command(rentalId,`RENTAL-${label}`),rentalId,rentalNumber,customerId:scenario.customerId,projectId:scenario.projectId,dateOut:workDate,expectedReturn:workDate,rentalType:"Operated Rental",lines}});
   version=Number((reserved.value as Record<string,unknown>)?.version);
  }
