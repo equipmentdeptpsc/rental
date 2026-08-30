@@ -3,7 +3,7 @@ import type { GroupedReviewWorkerEnvironment } from "./configuration";
 
 type SafeResult = { status: number; body: Record<string, unknown> };
 type Row = Record<string, any>;
-const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body: { inspectionImplementationVersion: "multi-operator-linkage-work-rpc-v3", ...body } });
+const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body: { inspectionImplementationVersion: "multi-operator-linkage-work-rpc-v4", ...body } });
 const safeErrorClass = (error: any): string => {
   const raw = error?.status ?? error?.code;
   const status = typeof raw === "string" && /^[0-9]+$/.test(raw) ? Number(raw) : Number(raw);
