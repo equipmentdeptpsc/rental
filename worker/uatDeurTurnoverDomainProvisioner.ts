@@ -42,12 +42,15 @@ export async function provisionUatDeurTurnoverDomain(request: Request, env: Grou
   await canonical(client, "command_create_project", { ...cmd(ids.projectId, "PROJECT"), projectId: ids.projectId, projectCode: "UAT-TURNOVER-SITE-001", name: "Synthetic UAT Turnover Site 001", customerId: ids.customerId, location: "Isolated UAT" });
   await canonical(client, "command_create_operator", { ...cmd(ids.primaryOperatorId, "PRIMARY"), operatorId: ids.primaryOperatorId, name: "Synthetic UAT Turnover Primary 001", certificationType: "Heavy Machinery", joinedDate: WORK_DATE });
   await canonical(client, "command_create_operator", { ...cmd(ids.relieverOperatorId, "RELIEVER"), operatorId: ids.relieverOperatorId, name: "Synthetic UAT Turnover Reliever 001", certificationType: "Heavy Machinery", joinedDate: WORK_DATE });
-  const [costReference, activityReference, workReference] = await Promise.all([
-    service.schema("erp").from("cost_codes").select("id").eq("active", true).is("deleted_at", null).order("sort_order", { ascending: true }).limit(1).maybeSingle(),
-    service.schema("erp").from("activity_codes").select("id").eq("active", true).is("deleted_at", null).order("sort_order", { ascending: true }).limit(1).maybeSingle(),
-    service.schema("erp").from("work_descriptions").select("id").eq("active", true).is("deleted_at", null).order("sort_order", { ascending: true }).limit(1).maybeSingle(),
-  ]);
-  if (costReference.error || activityReference.error || workReference.error || !costReference.data || !activityReference.data || !workReference.data) return out(409, { success: false, code: "UAT_REFERENCE_UNAVAILABLE" });
+  const references: Array<{ name: string; table: string; result: any }> = [];
+  for (const [name, table] of [["COST_CODE", "cost_codes"], ["ACTIVITY_CODE", "activity_codes"], ["WORK_DESCRIPTION", "work_descriptions"]] as const) {
+    const result = await service.schema("erp").from(table).select("id").eq("active", true).is("deleted_at", null).order("sort_order", { ascending: true }).limit(1).maybeSingle();
+    references.push({ name, table, result });
+    if (result.error || !result.data) return out(409, { success: false, code: `UAT_REFERENCE_UNAVAILABLE:${name}`, reference: { name, table, rowFound: false, status: result.error ? "UPSTREAM_UNAVAILABLE" : "NO_ACTIVE_ROW" } });
+  }
+  const costReference = references[0].result;
+  const activityReference = references[1].result;
+  const workReference = references[2].result;
   await canonical(client, "command_create_equipment", { ...cmd(ids.equipmentId, "EQUIPMENT"), equipmentId: ids.equipmentId, assetNo: "UAT-TURNOVER-EQ-001", equipmentName: "Synthetic UAT Turnover Equipment 001", maintenanceType: "Engine Hours", costCodeId: costReference.data.id, currentReading: 0, remarks: "Synthetic isolated-UAT turnover certification equipment." });
   await canonical(client, "command_create_assignment", { ...cmd(ids.assignmentId, "ASSIGNMENT"), assignmentId: ids.assignmentId, equipmentId: ids.equipmentId, operatorId: ids.primaryOperatorId, projectId: ids.projectId, assignedDate: WORK_DATE, expectedReturn: WORK_DATE, remarks: "Synthetic isolated-UAT turnover certification assignment." });
   await canonical(client, "command_create_reserved_rental", { ...cmd(ids.rentalId, "RENTAL"), rentalId: ids.rentalId, rentalNumber: "UAT-TURNOVER-20260831", customerId: ids.customerId, projectId: ids.projectId, dateOut: WORK_DATE, expectedReturn: WORK_DATE, rentalType: "Operated Rental", lines: [{ id: ids.lineId, equipmentId: ids.equipmentId, assignmentId: ids.assignmentId, operatorId: ids.primaryOperatorId }] });
