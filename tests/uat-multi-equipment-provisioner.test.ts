@@ -28,6 +28,12 @@ describe("isolated UAT multi-equipment provisioner",()=>{
   expect(worker).toContain('UAT_PARTIAL_RENTAL_LINEAGE_MISMATCH');
   expect(worker).toContain("scenario.rentalAId,scenario.rentalALineIds,[0,1],true");
  });
+ it("normalizes the sanitized RPC projection and excludes SUCCESS from blockers",()=>{
+  const reader=readFileSync("worker/uatPartialRentalLineage.ts","utf8");
+  expect(reader).toContain("rental_number:r.rentalNumber");
+  expect(reader).toContain("equipment_id:l.equipmentId");
+  expect(readFileSync("worker/uatMultiEquipmentInspection.ts","utf8")).toContain('partialRead.status!=="SUCCESS"');
+ });
  it("persists one tenant-scoped idempotency residue without granting browser access",()=>{
   expect(migration).toContain("PRIMARY KEY(company_id,scenario_key)");
   expect(migration).toContain("environment_class='compatibility'");
