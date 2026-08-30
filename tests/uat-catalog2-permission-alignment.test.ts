@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const sql = readFileSync("supabase/migrations/20260830000300_align_provisioning_commands_catalog2_permissions.sql", "utf8");
+const prepareSql = readFileSync("supabase/migrations/20260830000400_align_rental_prepare_catalog2_permission.sql", "utf8");
 
 function functionBody(name: string): string {
   const start = sql.indexOf(`CREATE OR REPLACE FUNCTION erp.${name}(command jsonb)`);
@@ -38,5 +39,14 @@ describe("UAT provisioning Catalog 2.0 permission alignment", () => {
   it("does not broaden role permissions", () => {
     expect(sql).not.toContain("INSERT INTO erp.role_permissions");
     expect(sql).not.toContain("UPDATE erp.role_permissions");
+  });
+
+  it("aligns aggregate preparation to the established rental.update contract", () => {
+    expect(prepareSql).toContain("CREATE OR REPLACE FUNCTION erp.command_prepare_reserved_rental_aggregate(command jsonb)");
+    expect(prepareSql).toContain("current_user_has_permission('rental.update')");
+    expect(prepareSql).not.toContain("current_user_has_permission('rental.manage')");
+    expect(prepareSql).toContain("'PREPARE_RESERVED_RENTAL_AGGREGATE'");
+    expect(prepareSql).toContain("'RENTAL_PREPARED'");
+    expect(prepareSql).not.toContain("erp.role_permissions");
   });
 });
