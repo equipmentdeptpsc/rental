@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { GroupedReviewWorkerEnvironment } from "./configuration";
 type Row=Record<string,any>; type Safe={status:number;body:Row};
 const username="uat.me.operator.001", expectedOperatorId="e6bf4e8b-8e3a-4c65-a05e-ee4ed281e876";
-const out=(status:number,body:Row):Safe=>({status,body:{inspectionImplementationVersion:"uat-user1-exact-username-rpc-v3",...body}});
+const out=(status:number,body:Row):Safe=>({status,body:{inspectionImplementationVersion:"uat-user1-exact-username-rpc-v4",...body}});
 export async function inspectUatUserLinkage(request:Request,env:GroupedReviewWorkerEnvironment):Promise<Safe>{
  if(env.ENABLE_UAT_SYNTHETIC_PROVISIONER!=="true"||!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY)return out(503,{success:false,code:"UAT_PROVISIONER_DISABLED"});
  const token=request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1]; if(!token)return out(401,{success:false,code:"UNAUTHENTICATED"});
