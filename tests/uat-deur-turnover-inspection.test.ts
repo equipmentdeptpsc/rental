@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 describe("isolated UAT DEUR turnover inspection", () => {
   const migration = readFileSync("supabase/migrations/20260830002400_deur_turnover_uat_read_boundaries.sql", "utf8");
+  const dualPartyProjection = readFileSync("supabase/migrations/20260830002500_deur_turnover_dual_party_projection.sql", "utf8");
   const route = readFileSync("worker/uatDeurTurnoverInspection.ts", "utf8");
   const index = readFileSync("worker/index.ts", "utf8");
   it("uses fixed scenario input, service-only certification, and a sanitized response", () => {
@@ -17,9 +18,9 @@ describe("isolated UAT DEUR turnover inspection", () => {
 
   it("exposes nominated or accepted work only through an actor-derived RPC", () => {
     expect(migration).toContain("read_current_operator_deur_turnover_work");
-    expect(migration).toContain("turnover.to_operator_id=actor.operator_id");
-    expect(migration).toContain("turnover.status='PENDING'");
-    expect(migration).toContain("turnover.status='ACCEPTED'");
+    expect(dualPartyProjection).toContain("turnover.from_operator_id=actor.operator_id OR turnover.to_operator_id=actor.operator_id");
+    expect(dualPartyProjection).toContain("turnover.status IN ('PENDING','ACCEPTED')");
+    expect(dualPartyProjection).toContain("'turnoverToOperatorId',turnover.to_operator_id");
     expect(migration).toContain("REVOKE ALL ON FUNCTION erp.read_current_operator_deur_turnover_work() FROM PUBLIC,anon,service_role");
     expect(migration).not.toContain("GRANT SELECT ON erp.deur_turnovers TO authenticated");
   });
