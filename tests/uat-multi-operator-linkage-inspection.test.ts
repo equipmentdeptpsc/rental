@@ -50,5 +50,6 @@ describe("isolated UAT multi-operator linkage inspection", () => {
     expect(source).toContain('safeResultCode: safeErrorClass');
     expect(source).toContain('phase: "OPERATOR_LINKAGE_READ"');
     expect(source).not.toContain('error.message');
+    expect(source).toContain('inspectionImplementationVersion: "multi-operator-linkage-users-no-email-v1"');
   });
 });
