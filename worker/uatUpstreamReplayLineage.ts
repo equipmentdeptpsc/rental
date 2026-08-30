@@ -1,0 +1,9 @@
+export type ReplayClassification="EXACT_MATCH"|"ABSENT"|"LINEAGE_MISMATCH"|"BUSINESS_DUPLICATE"|"READ_FAILED";
+export type UpstreamReplayLineage={readStatus:string;decision:"SAFE"|"BLOCKED";customer:any;project:any;workDescription:any;operators:any[];equipment:any[];assignments:any[];alternateIdentityConflicts:any[];duplicateRisk:boolean;blockers:string[]};
+export async function readUatUpstreamReplayLineage(client:any,companyId:string,scenarioKey:string):Promise<UpstreamReplayLineage>{
+ const result=await client.schema("erp").rpc("inspect_isolated_uat_upstream_replay_lineage",{command:{companyId,scenarioKey}});
+ if(result.error)return {readStatus:"READ_FAILED",decision:"BLOCKED",customer:null,project:null,workDescription:null,operators:[],equipment:[],assignments:[],alternateIdentityConflicts:[],duplicateRisk:true,blockers:["UAT_UPSTREAM_LINEAGE_READ_FAILED"]};
+ const value=result.data as any;
+ if(!value?.success)return {readStatus:String(value?.readStatus??"READ_FAILED"),decision:"BLOCKED",customer:null,project:null,workDescription:null,operators:[],equipment:[],assignments:[],alternateIdentityConflicts:[],duplicateRisk:true,blockers:[String(value?.code??"UAT_UPSTREAM_LINEAGE_READ_FAILED")]};
+ return {readStatus:String(value.readStatus??"READ_FAILED"),decision:value.decision==="SAFE"?"SAFE":"BLOCKED",customer:value.customer??null,project:value.project??null,workDescription:value.workDescription??null,operators:Array.isArray(value.operators)?value.operators:[],equipment:Array.isArray(value.equipment)?value.equipment:[],assignments:Array.isArray(value.assignments)?value.assignments:[],alternateIdentityConflicts:Array.isArray(value.alternateIdentityConflicts)?value.alternateIdentityConflicts:[],duplicateRisk:Boolean(value.duplicateRisk),blockers:Array.isArray(value.blockers)?value.blockers.map(String):[]};
+}
