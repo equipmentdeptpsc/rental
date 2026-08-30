@@ -5,7 +5,8 @@ type SafeResult = { status: number; body: Record<string, unknown> };
 type Row = Record<string, any>;
 const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body });
 const safeErrorClass = (error: any): string => {
-  const status = Number(error?.status ?? error?.code);
+  const raw = error?.status ?? error?.code;
+  const status = typeof raw === "string" && /^[0-9]+$/.test(raw) ? Number(raw) : Number(raw);
   if (status === 404) return "NOT_FOUND";
   if (status === 401 || status === 403) return "AUTHORIZATION_FAILED";
   if (status === 409) return "CONFLICT";
@@ -72,5 +73,5 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
     return { operatorId, operatorDisplayName: operator?.name ?? null, operatorStatus: operator?.status ?? null, operatorCompanyId: operator?.company_id ?? null, linkedApplicationUserCount: linked.length, ...(linked.length === 1 ? { applicationUserId: linked[0].id, loginName: linked[0].username, email: null, applicationUserActive: linked[0].status === "active", applicationUserCompanyId: linked[0].company_id } : {}), authIdentityPresent: authMatches.length === 1, linkageClassification: classification, eligibleScenarioWorkCount: work.length, authorizedRentalIds: work.map((row) => row.rental_id), authorizedRentalEquipmentLineIds: work.map((row) => row.id), equipmentIds: work.map((row) => row.equipment_id), assignmentIds: work.map((row) => row.assignment_id), expectedLineId, ownershipMatch: work.length === 1 && String(work[0].id) === expectedLineId && String(work[0].operator_id) === operatorId };
   });
   const crossOperatorExposure = operatorProjection.flatMap((item) => item.authorizedRentalEquipmentLineIds.filter((id: string) => id !== item.expectedLineId));
-  return result(200, { success: true, scenarioKey, profileVersion, scenarioState: (scenario.data as Row).scenario?.residueState ?? "COMPLETE_CONSISTENT", tenantId: companyId, operators: operatorProjection, crossOperatorExposure, productionChanged: false, mutationPerformed: false });
+  return result(200, { success: true, inspectionImplementationVersion: "multi-operator-linkage-users-no-email-v1", scenarioKey, profileVersion, scenarioState: (scenario.data as Row).scenario?.residueState ?? "COMPLETE_CONSISTENT", tenantId: companyId, operators: operatorProjection, crossOperatorExposure, productionChanged: false, mutationPerformed: false });
 }
