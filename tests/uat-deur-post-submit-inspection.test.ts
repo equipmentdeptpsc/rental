@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 describe("isolated UAT post-submit certification read boundary", () => {
   const migration = readFileSync("supabase/migrations/20260830001800_isolated_uat_deur_post_submit_read.sql", "utf8");
+  const aggregateFix = readFileSync("supabase/migrations/20260830002200_fix_uat_post_submit_scenario_aggregates.sql", "utf8");
   const route = readFileSync("worker/uatDeurPostSubmitInspection.ts", "utf8");
   const index = readFileSync("worker/index.ts", "utf8");
   it("is fixed scope and read-only", () => {
@@ -20,5 +21,17 @@ describe("isolated UAT post-submit certification read boundary", () => {
     expect(route).toContain("expectedDeurNumber");
     expect(route).toContain("inspect_isolated_uat_deur_post_submit");
     expect(index).toContain("/api/admin/uat/inspect-deur-post-submit");
+  });
+  it("aggregates the complete fixed three-line scenario across both rentals", () => {
+    expect(aggregateFix).toContain("scenarioDeurCount");
+    expect(aggregateFix).toContain("d.rental_id=ANY(scenario_rentals)");
+    expect(aggregateFix).toContain("d.rental_equipment_line_id=ANY(scenario_lines)");
+    expect(aggregateFix).toContain("operator1DeurCount");
+    expect(aggregateFix).toContain("operator2DeurCount");
+    expect(aggregateFix).toContain("operator3DeurCount");
+    expect(aggregateFix).not.toContain("d.rental_id=rid),'lineCounts'");
+    expect(aggregateFix).not.toContain("INSERT INTO");
+    expect(aggregateFix).not.toContain("UPDATE ");
+    expect(aggregateFix).not.toContain("DELETE ");
   });
 });
