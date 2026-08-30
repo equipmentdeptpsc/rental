@@ -4,6 +4,16 @@ import type { GroupedReviewWorkerEnvironment } from "./configuration";
 type SafeResult = { status: number; body: Record<string, unknown> };
 type Row = Record<string, any>;
 const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body });
+const safeErrorClass = (error: any): string => {
+  const status = Number(error?.status ?? error?.code);
+  if (status === 404) return "NOT_FOUND";
+  if (status === 401 || status === 403) return "AUTHORIZATION_FAILED";
+  if (status === 409) return "CONFLICT";
+  if (status === 42702) return "AMBIGUOUS_COLUMN";
+  if (status === 42883) return "FUNCTION_NOT_FOUND";
+  if (status >= 500) return "UPSTREAM_UNAVAILABLE";
+  return "READ_FAILED";
+};
 const scenarioKey = "MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29";
 const profileVersion = "UAT_MULTI_EQUIPMENT_PER_WORKDAY_V1";
 const operatorIds = ["e6bf4e8b-8e3a-4c65-a05e-ee4ed281e876", "cac542f6-2d18-4275-8c26-0728d858c912", "584df24a-c104-4001-b175-c141903f12d5"];
@@ -29,13 +39,13 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
   const tenant = await service.schema("erp").rpc("get_isolated_uat_tenant_metadata", { target_tenant: companyId });
   if (tenant.error || !tenant.data?.length) return result(403, { success: false, code: "UAT_TENANT_REQUIRED" });
   const scenario = await service.schema("erp").rpc("inspect_isolated_uat_multi_equipment_scenario", { target_tenant: companyId, target_scenario: scenarioKey });
-  if (scenario.error || !scenario.data) return result(503, { success: false, code: "INSPECTION_UNAVAILABLE" });
+  if (scenario.error || !scenario.data) return result(503, { success: false, code: "INSPECTION_UNAVAILABLE", phase: "SCENARIO_INSPECTION", operation: "inspect_isolated_uat_multi_equipment_scenario", safeResultCode: safeErrorClass(scenario.error) });
   const [operators, users, lines] = await Promise.all([
     service.schema("erp").from("operators").select("id,name,status,company_id").eq("company_id", companyId).in("id", operatorIds),
     service.schema("erp").from("users").select("id,username,email,status,operator_id,company_id").eq("company_id", companyId).in("operator_id", operatorIds),
     service.schema("erp").from("rental_equipment_lines").select("id,rental_id,equipment_id,assignment_id,operator_id,company_id,status").eq("company_id", companyId).in("id", lineIds),
   ]);
-  if (operators.error || users.error || lines.error) return result(503, { success: false, code: "READ_FAILED" });
+  if (operators.error || users.error || lines.error) return result(503, { success: false, code: "READ_FAILED", phase: "OPERATOR_LINKAGE_READ", operation: operators.error ? "operators" : users.error ? "users" : "rental_equipment_lines", safeResultCode: safeErrorClass(operators.error ?? users.error ?? lines.error) });
   const authUsers = new Map<string, Row>();
   for (const user of users.data ?? []) {
     const remote = await service.auth.admin.getUserById(String(user.id));

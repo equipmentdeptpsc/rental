@@ -44,4 +44,11 @@ describe("isolated UAT multi-operator linkage inspection", () => {
     expect(source).not.toContain("refresh_token");
     expect(source).toContain("mutationPerformed: false");
   });
+
+  it("projects safe diagnostics for upstream 503 boundaries", () => {
+    expect(source).toContain('phase: "SCENARIO_INSPECTION"');
+    expect(source).toContain('safeResultCode: safeErrorClass');
+    expect(source).toContain('phase: "OPERATOR_LINKAGE_READ"');
+    expect(source).not.toContain('error.message');
+  });
 });
