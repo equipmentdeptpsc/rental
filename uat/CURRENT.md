@@ -1,5 +1,11 @@
 # Current UAT state
 
+- Current milestone: canonical DEUR turnover and pilot-safe offline command foundation, pending isolated-UAT deployment and controlled runtime certification.
+- Local implementation: immutable `deurs.operator_id` remains the primary operator; `erp.deur_turnovers` records nominated/accepted custody without changing historical assignment, DEUR identity, or existing event actors. Only the accepted current custodian may transition activity, end shift, or submit.
+- Local implementation: turnover initiation/acceptance are separate authenticated, tenant-derived, idempotent commands with actor-attributed lifecycle/audit events. The reliever work projection is an authenticated, narrow RPC; the fixed UAT inspection is service-only and has no table grants.
+- Local implementation: eDEUR adds durable per-device outbox replay only for activity transitions and End Shift. It preserves idempotency keys and order, stops on transport/conflict/authorization uncertainty, and keeps Start, Submit, and turnover online-only.
+- Local gates: clean local replay through `20260830002400`; turnover/read-boundary tests 6/6; Worker and test TypeScript green; mobile TypeScript green and canonical integration checks 41/41; DB lint shows only pre-existing baseline warnings.
+- Pending safe action: commit/push scoped backend and mobile changes, deploy migrations `20260830002300` and `20260830002400` plus the isolated-UAT Worker, then execute the separately authorized controlled turnover and replay certification. No live turnover or offline queue replay has occurred.
 - Current milestone: canonical remote billing-statement creation for RNT-2026-000001.
 - Canonical state: DEUR-2026-000001 is Acknowledged at row version 9 with its event history retained; the grouped review request is consumed exactly once and billing lines remain zero.
 - Certified defect: remote Rental workspace assembled DEURs from the local compatibility repository and Billing presentation used local Equipment context, despite canonical authenticated readers already returning the records.
