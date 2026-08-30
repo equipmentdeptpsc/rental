@@ -15,6 +15,7 @@ import{inspectUatUserLinkage}from"./uatUserLinkageInspection";
 import{inspectUatScenarioDeur}from"./uatScenarioDeurInspection";
 import{inspectUatDeurPostSubmit}from"./uatDeurPostSubmitInspection";
 import{inspectUatDeurTurnover}from"./uatDeurTurnoverInspection";
+import{inspectUatDeurTurnoverDomain,provisionUatDeurTurnoverDomain}from"./uatDeurTurnoverDomainProvisioner";
 import{uatAdminCorsHeaders}from"./uatAdminCors";
 
 interface ScheduledController{cron:string;scheduledTime:number}
@@ -97,6 +98,10 @@ export default{
      if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
      try{const result=await inspectUatDeurTurnover(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"DEUR_TURNOVER_INSPECTION_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
+   }
+   if(path==="/api/admin/uat/provision-deur-turnover-scenario"||path==="/api/admin/uat/inspect-deur-turnover-scenario"){
+     if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
+     try{const result=path.endsWith("provision-deur-turnover-scenario")?await provisionUatDeurTurnoverDomain(request,environment):await inspectUatDeurTurnoverDomain(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_TURNOVER_SCENARIO_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
    }
   if(path==="/api/admin/uat/recover-legacy-provisioning"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
