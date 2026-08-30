@@ -1,10 +1,11 @@
-param([ValidateSet('Migration','Application')][string]$Kind)
+param([ValidateSet('Migration','Application')][string]$Kind,[string]$ExpectedMigration='')
 . (Join-Path $PSScriptRoot 'common.ps1')
 Set-Location $script:RepositoryRoot
 Assert-UatTarget
 $supabaseCli = Resolve-SupabaseCli
 if ($Kind -eq 'Migration') {
-  & (Join-Path $PSScriptRoot 'uat-preflight.ps1') -ExpectedPendingMigration $script:ExpectedMigration
+  if (-not $ExpectedMigration) { throw 'ExpectedMigration is required for migration deployment.' }
+  & (Join-Path $PSScriptRoot 'uat-preflight.ps1') -ExpectedPendingMigration $ExpectedMigration
 } else {
   & (Join-Path $PSScriptRoot 'uat-preflight.ps1')
 }

@@ -6,7 +6,6 @@ $script:ReportRoot = Join-Path $script:AutomationRoot 'reports'
 $script:ScreenshotRoot = Join-Path $script:AutomationRoot 'screenshots'
 $script:ExpectedBranch = 'uat-remediation-mvp-2026-08-21'
 $script:ExpectedUatProjectRef = 'jtkctarqbwmqdcewthkn'
-$script:ExpectedMigration = '20260825000700'
 $script:BinRoot = Join-Path $script:RepositoryRoot 'node_modules\.bin'
 New-Item -ItemType Directory -Force -Path $script:LogRoot,$script:ReportRoot,$script:ScreenshotRoot | Out-Null
 
