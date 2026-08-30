@@ -3,7 +3,7 @@ import type { GroupedReviewWorkerEnvironment } from "./configuration";
 
 type SafeResult = { status: number; body: Record<string, unknown> };
 type Row = Record<string, any>;
-const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body: { inspectionImplementationVersion: "multi-operator-linkage-user-rpc-v2", ...body } });
+const result = (status: number, body: Record<string, unknown>): SafeResult => ({ status, body: { inspectionImplementationVersion: "multi-operator-linkage-work-rpc-v3", ...body } });
 const safeErrorClass = (error: any): string => {
   const raw = error?.status ?? error?.code;
   const status = typeof raw === "string" && /^[0-9]+$/.test(raw) ? Number(raw) : Number(raw);
@@ -41,14 +41,15 @@ export async function inspectUatMultiOperatorLinkage(request: Request, environme
   if (tenant.error || !tenant.data?.length) return result(403, { success: false, code: "UAT_TENANT_REQUIRED" });
   const scenario = await service.schema("erp").rpc("inspect_isolated_uat_multi_equipment_scenario", { target_tenant: companyId, target_scenario: scenarioKey });
   if (scenario.error || !scenario.data) return result(503, { success: false, code: "INSPECTION_UNAVAILABLE", phase: "SCENARIO_INSPECTION", operation: "inspect_isolated_uat_multi_equipment_scenario", safeResultCode: safeErrorClass(scenario.error) });
-  const [upstream, userLinkage, lines] = await Promise.all([
+  const [upstream, userLinkage, workOwnership] = await Promise.all([
     service.schema("erp").rpc("inspect_isolated_uat_upstream_replay_lineage", { command: { companyId, scenarioKey } }),
     service.schema("erp").rpc("inspect_isolated_uat_multi_operator_user_linkage", { command: { companyId, scenarioKey, profileVersion, operatorIds } }),
-    service.schema("erp").from("rental_equipment_lines").select("id,rental_id,equipment_id,assignment_id,operator_id,company_id,status").eq("company_id", companyId).in("id", lineIds),
+    service.schema("erp").rpc("inspect_isolated_uat_multi_operator_work_ownership", { command: { companyId, scenarioKey, profileVersion, operatorIds, lineIds } }),
   ]);
-  if (upstream.error || userLinkage.error || lines.error) return result(503, { success: false, code: "READ_FAILED", phase: "OPERATOR_LINKAGE_READ", operation: upstream.error ? "inspect_isolated_uat_upstream_replay_lineage" : userLinkage.error ? "users" : "rental_equipment_lines", safeResultCode: safeErrorClass(upstream.error ?? userLinkage.error ?? lines.error) });
+  if (upstream.error || userLinkage.error || workOwnership.error) return result(503, { success: false, code: "READ_FAILED", phase: "OPERATOR_LINKAGE_READ", operation: upstream.error ? "inspect_isolated_uat_upstream_replay_lineage" : userLinkage.error ? "users" : "rental_equipment_lines", safeResultCode: safeErrorClass(upstream.error ?? userLinkage.error ?? workOwnership.error) });
   const operators = { data: Array.isArray((upstream.data as Row)?.operators) ? (upstream.data as Row).operators.map((row: Row) => ({ id: row.id, name: row.name, status: row.status, company_id: companyId })) : [], error: null };
   const users = { data: Array.isArray((userLinkage.data as Row)?.operators) ? (userLinkage.data as Row).operators.filter((row: Row) => row.linkedApplicationUserCount === 1).map((row: Row) => ({ id: row.applicationUserId, username: row.username, status: row.status, operator_id: row.operatorId, company_id: row.companyId })) : [], error: userLinkage.data?.success === false ? userLinkage.data : null };
+  const lines = { data: Array.isArray((workOwnership.data as Row)?.workItems) ? (workOwnership.data as Row).workItems.map((row: Row) => ({ id: row.rentalEquipmentLineId, rental_id: row.rentalId, equipment_id: row.equipmentId, assignment_id: row.assignmentId, operator_id: row.operatorId, company_id: companyId, status: row.lineStatus })) : [], error: workOwnership.data?.success === false ? workOwnership.data : null };
   const authUsers = new Map<string, Row>();
   for (const user of users.data ?? []) {
     const remote = await service.auth.admin.getUserById(String(user.id));
