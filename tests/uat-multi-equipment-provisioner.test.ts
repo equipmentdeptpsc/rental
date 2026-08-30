@@ -22,6 +22,12 @@ describe("isolated UAT multi-equipment provisioner",()=>{
   expect(worker).toContain('billingMethod:"Per Hour"');
   expect(worker).not.toContain('billingMethod:"PER_HOUR"');
  });
+ it("explicitly reuses an exact existing Rental A lineage before preparation",()=>{
+  expect(worker).toContain('from("rentals").select("id,rental_number,status,company_id,customer_id,project_id,date_out,expected_return,row_version")');
+  expect(worker).toContain('from("rental_equipment_lines").select("id,equipment_id,assignment_id,operator_id,status,company_id")');
+  expect(worker).toContain('UAT_PARTIAL_RENTAL_LINEAGE_MISMATCH');
+  expect(worker).toContain('reservePrepareReleaseActivate(user,scenario,"A",scenario.rentalAId,scenario.rentalALineIds,[0,1],true)');
+ });
  it("persists one tenant-scoped idempotency residue without granting browser access",()=>{
   expect(migration).toContain("PRIMARY KEY(company_id,scenario_key)");
   expect(migration).toContain("environment_class='compatibility'");
