@@ -8,6 +8,7 @@
 - Deployed isolated-UAT: backend commits `525eb2fc` and `730011cd`; migrations `20260830002300` through `20260830002500` are applied once. Worker version `0234a652-77a6-4d2e-8258-617aa7485903` serves the new route and rejects unauthenticated requests fail-closed. Supabase catalog-cache timeout occurred only after the successful migration responses and did not alter the applied ledger.
 - Mobile delivery: company mobile PR #6 merged at `86143a517e0e0cd068c2060cbf2ab138255c090b`; UAT-mode TypeScript, 41 canonical integration checks, and Expo web export are green. No live turnover or offline queue replay has occurred.
 - Pending safe action: execute the separately authorized controlled turnover and offline replay certification against the isolated-UAT scenario. No production action is authorized.
+- Turnover UI dependency: isolated-UAT migrations `20260830002900` and `20260830003000` provide a read-only, scenario-scoped eligible-reliever projection for the mobile `TURN OVER DEUR` action; no turnover command has been invoked during this remediation.
 - Current milestone: canonical remote billing-statement creation for RNT-2026-000001.
 - Canonical state: DEUR-2026-000001 is Acknowledged at row version 9 with its event history retained; the grouped review request is consumed exactly once and billing lines remain zero.
 - Certified defect: remote Rental workspace assembled DEURs from the local compatibility repository and Billing presentation used local Equipment context, despite canonical authenticated readers already returning the records.
