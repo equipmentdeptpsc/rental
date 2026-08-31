@@ -105,8 +105,10 @@ export default{
      try{const result=path.endsWith("provision-deur-turnover-scenario")?await provisionUatDeurTurnoverDomain(request,environment):await inspectUatDeurTurnoverDomain(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch(error){const message=error instanceof Error?error.message:"";const code=message.startsWith("UAT_TURNOVER_SCENARIO_FAILED:")?message:"UAT_TURNOVER_SCENARIO_FAILED";return Response.json({success:false,code},{status:503,headers:{"cache-control":"no-store"}});}
    }
    if(path==="/api/admin/uat/provision-deur-offline-scenario"||path==="/api/admin/uat/inspect-deur-offline-scenario"){
-     if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
-     try{const result=path.endsWith("provision-deur-offline-scenario")?await provisionUatDeurOfflineDomain(request,environment):await inspectUatDeurOfflineDomain(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_OFFLINE_SCENARIO_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
+     const cors=uatAdminCorsHeaders(request,environment);
+     if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
+     if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
+     try{const result=path.endsWith("provision-deur-offline-scenario")?await provisionUatDeurOfflineDomain(request,environment):await inspectUatDeurOfflineDomain(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_OFFLINE_SCENARIO_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
    }
   if(path==="/api/admin/uat/recover-legacy-provisioning"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
