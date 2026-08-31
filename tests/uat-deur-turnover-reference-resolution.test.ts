@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 describe("fresh turnover reference resolution", () => {
   const worker = readFileSync("worker/uatDeurTurnoverDomainProvisioner.ts", "utf8");
   const migration = readFileSync("supabase/migrations/20260830002700_uat_turnover_reference_resolver.sql", "utf8");
+  const repairMigration = readFileSync("supabase/migrations/20260830002800_uat_turnover_assignment_repair.sql", "utf8");
   it("resolves all references through a service-only canonical RPC before claiming or mutating", () => {
     expect(worker).toContain('rpc("resolve_uat_deur_turnover_domain_references"');
     expect(worker.indexOf("resolve_uat_deur_turnover_domain_references")).toBeLessThan(worker.indexOf("claim_uat_deur_turnover_domain_scenario"));
@@ -23,5 +24,10 @@ describe("fresh turnover reference resolution", () => {
   });
   it("propagates the resolved activity code into the assignment relationship", () => {
     expect(worker).toContain("activityCodeId: activityReference.data.id");
+  });
+  it("repairs only the proven legacy assignment residue", () => {
+    expect(worker).toContain('repair_uat_deur_turnover_assignment_activity');
+    expect(repairMigration).toContain("a.activity_code_id IS NOT NULL");
+    expect(repairMigration).toContain("UAT_TURNOVER_ASSIGNMENT_REPAIRED");
   });
 });
