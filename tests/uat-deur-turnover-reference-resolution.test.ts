@@ -21,4 +21,7 @@ describe("fresh turnover reference resolution", () => {
     expect(worker).toContain("UAT_TURNOVER_SCENARIO_FAILED:${name}:${code}");
     expect(readFileSync("worker/index.ts", "utf8")).toContain("message.startsWith(\"UAT_TURNOVER_SCENARIO_FAILED:\")");
   });
+  it("propagates the resolved activity code into the assignment relationship", () => {
+    expect(worker).toContain("activityCodeId: activityReference.data.id");
+  });
 });
