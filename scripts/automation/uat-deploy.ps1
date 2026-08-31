@@ -11,7 +11,12 @@ if ($Kind -eq 'Migration') {
 }
 if ($LASTEXITCODE -ne 0) { throw 'UAT preflight failed.' }
 if ($Kind -eq 'Migration') {
-  Invoke-LoggedStep 'uat-migration-push' { & $supabaseCli db push --linked }
+  # Keep stdin/stdout/stderr attached to the host console so Supabase's
+  # confirmation prompt is visible and answerable. Invoke-LoggedStep redirects
+  # all streams to a file, which makes an interactive db push wait indefinitely.
+  & $supabaseCli db push --linked
+  if ($LASTEXITCODE -ne 0) { throw "uat-migration-push exited with $LASTEXITCODE" }
+  Write-Host 'PASS uat-migration-push'
 } else {
   Invoke-LoggedStep 'uat-application-deploy' { & (Join-Path $script:BinRoot 'wrangler.cmd') deploy --env uat }
 }
