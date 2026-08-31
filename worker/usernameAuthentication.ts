@@ -58,7 +58,7 @@ export function usernameLoginJson(result:UsernameLoginResult):Response{return Re
 
 export function usernameLoginCorsHeaders(request:Request,environment:GroupedReviewWorkerEnvironment):HeadersInit{
   const origin=request.headers.get("origin")?.trim();
-  const allowed=environment.USERNAME_LOGIN_ALLOWED_ORIGIN?.trim();
-  if(!origin||!allowed||origin!==allowed)return{};
-  return{"access-control-allow-origin":allowed,"access-control-allow-methods":"POST, OPTIONS","access-control-allow-headers":"content-type","access-control-max-age":"600","vary":"Origin"};
+  const allowedOrigins=(environment.USERNAME_LOGIN_ALLOWED_ORIGIN??'').split(',').map(value=>value.trim()).filter(Boolean);
+  if(!origin||!allowedOrigins.includes(origin))return{};
+  return{"access-control-allow-origin":origin,"access-control-allow-methods":"POST, OPTIONS","access-control-allow-headers":"content-type","access-control-max-age":"600","vary":"Origin"};
 }
