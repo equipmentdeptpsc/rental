@@ -76,6 +76,12 @@ describe("trusted remote user administration",()=>{
     expect(page).toContain("service.create(actor,input)");
     expect(page).toContain("remoteAdmin.resetPassword");
   });
+  it("refreshes canonical operator choices when Create User is opened",()=>{
+    expect(page).toContain("const handleCreateDetailsToggle=");
+    expect(page).toContain("event.currentTarget.open&&remote&&!remoteLoading");
+    expect(page).toContain("onToggle={handleCreateDetailsToggle}");
+    expect(page).toContain('operators.filter(x=>x.status==="Active")');
+  });
   it("sends minimum create input with the caller token and no privileged browser key",async()=>{
     const fetcher=vi.spyOn(globalThis,"fetch").mockResolvedValue(new Response(JSON.stringify({success:true,value:{id:"u"}}),{status:201,headers:{"content-type":"application/json"}}));
     const client={auth:{getSession:async()=>({data:{session:{access_token:"caller-jwt"}}})}};
