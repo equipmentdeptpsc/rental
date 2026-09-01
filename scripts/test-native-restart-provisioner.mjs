@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const migration = readFileSync('supabase/migrations/20260901001000_uat_native_restart_runtime_scenario.sql', 'utf8');
+const worker = readFileSync('worker/uatDeurNativeRestartDomainProvisioner.ts', 'utf8');
+const index = readFileSync('worker/index.ts', 'utf8');
+const cors = readFileSync('worker/uatAdminCors.ts', 'utf8');
+for (const value of ['DEUR-NATIVE-RESTART-RUNTIME-CERT-2026-09-01', 'UAT_DEUR_NATIVE_RESTART_RUNTIME_V1', 'a652ca59-87a6-4f0c-949e-7f380ed4e3ec']) assert.match(migration, new RegExp(value));
+assert.match(migration, /OPERATOR_ACTIVE_ASSIGNMENT_CONFLICT/);
+assert.match(migration, /target_work_date date := DATE '2026-09-01'/);
+assert.match(migration, /rental_equipment_line_id=scenario_data->>'lineId'/);
+assert.match(migration, /REVOKE ALL ON FUNCTION/);
+assert.match(migration, /GRANT EXECUTE ON FUNCTION[\s\S]*TO service_role/);
+for (const stage of ['CUSTOMER','PROJECT','OPERATOR','EQUIPMENT','ASSIGNMENT','RENTAL','PREPARE','RELEASE','ACTIVATE']) assert.match(worker, new RegExp(`canonical\\(client, '${stage}'`));
+assert.match(worker, /frequency: 'PER_WORKDAY'/);
+assert.doesNotMatch(worker, /auth\.admin|\/api\/admin\/users/);
+assert.match(index, /provision-deur-native-restart-scenario/);
+assert.match(index, /inspect-deur-native-restart-scenario/);
+assert.match(cors, /access-control-allow-headers.*authorization, content-type/);
+console.log('PASS native restart provisioner fixed scenario, CORS boundary, and inspector contract');
