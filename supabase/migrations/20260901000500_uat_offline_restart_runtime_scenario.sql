@@ -197,10 +197,10 @@ BEGIN
   );
 END $$;
 
-ALTER FUNCTION erp.resolve_uat_deur_offline_restart_runtime_references(jsonb),
-  erp.claim_uat_deur_offline_restart_runtime_scenario(jsonb),
-  erp.complete_uat_deur_offline_restart_runtime_scenario(jsonb),
-  erp.inspect_uat_deur_offline_restart_runtime_scenario(jsonb) OWNER TO postgres;
+ALTER FUNCTION erp.resolve_uat_deur_offline_restart_runtime_references(jsonb) OWNER TO postgres;
+ALTER FUNCTION erp.claim_uat_deur_offline_restart_runtime_scenario(jsonb) OWNER TO postgres;
+ALTER FUNCTION erp.complete_uat_deur_offline_restart_runtime_scenario(jsonb) OWNER TO postgres;
+ALTER FUNCTION erp.inspect_uat_deur_offline_restart_runtime_scenario(jsonb) OWNER TO postgres;
 REVOKE ALL ON FUNCTION erp.resolve_uat_deur_offline_restart_runtime_references(jsonb),
   erp.claim_uat_deur_offline_restart_runtime_scenario(jsonb),
   erp.complete_uat_deur_offline_restart_runtime_scenario(jsonb),
