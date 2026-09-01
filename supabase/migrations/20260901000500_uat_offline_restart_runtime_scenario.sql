@@ -56,7 +56,7 @@ DECLARE
   tenant text := trim(command->>'companyId');
   skey text := trim(command->>'scenarioKey');
   profile text := trim(command->>'profileVersion');
-  references jsonb := coalesce(command->'references','{}'::jsonb);
+  reference_data jsonb := coalesce(command->'references','{}'::jsonb);
   existing erp.uat_deur_offline_restart_runtime_scenarios;
   baseline jsonb;
   operator_id text;
@@ -65,9 +65,9 @@ BEGIN
   IF tenant <> 'TENANT-LOCAL-001'
      OR skey <> 'DEUR-OFFLINE-RESTART-RUNTIME-CERT-2026-09-01'
      OR profile <> 'UAT_DEUR_OFFLINE_RESTART_RUNTIME_V1'
-     OR nullif(references->>'costCodeId','') IS NULL
-     OR nullif(references->>'activityCodeId','') IS NULL
-     OR nullif(references->>'workDescriptionId','') IS NULL THEN
+     OR nullif(reference_data->>'costCodeId','') IS NULL
+     OR nullif(reference_data->>'activityCodeId','') IS NULL
+     OR nullif(reference_data->>'workDescriptionId','') IS NULL THEN
     RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED');
   END IF;
 
