@@ -54,7 +54,7 @@ BEGIN
  SELECT count(*) INTO d FROM erp.deurs x WHERE x.company_id=tenant AND x.rental_equipment_line_id IN(s->>'line1Id',s->>'line2Id',s->>'line3Id');
  RETURN jsonb_build_object('success',true,'state',old.state,'scenarioKey',k,'profileVersion',p,'customerId',s->>'customerId','projectId',s->>'projectId',
   'rental1Id',s->>'rental1Id','rental2Id',s->>'rental2Id','operator1Id',s->>'operator1Id','operator2Id',s->>'operator2Id','operator3Id',s->>'operator3Id',
-  'equipment1Id',s->>'equipment1Id','equipment2Id',s->>'equipment2Id','equipment3Id',s->>'equipment3Id','assignment1Id',s->>'assignment1Id','assignment2Id',s->>'assignment2Id','assignment3Id',s->>'assignment3Id','line1Id',s->>'line1Id','line2Id',s->>'line2Id','line3Id',s->>'line3Id,
+  'equipment1Id',s->>'equipment1Id','equipment2Id',s->>'equipment2Id','equipment3Id',s->>'equipment3Id','assignment1Id',s->>'assignment1Id','assignment2Id',s->>'assignment2Id','assignment3Id',s->>'assignment3Id','line1Id',s->>'line1Id','line2Id',s->>'line2Id','line3Id',s->>'line3Id',
   'operatorActiveCount',(SELECT count(*) FROM erp.operators x WHERE x.company_id=tenant AND x.status='Active' AND x.id IN(s->>'operator1Id',s->>'operator2Id',s->>'operator3Id')),
   'assignmentCount',(SELECT count(*) FROM erp.assignments x WHERE x.company_id=tenant AND x.id IN(s->>'assignment1Id',s->>'assignment2Id',s->>'assignment3Id') AND x.status='Active'),
   'eligibleWorkCount',(SELECT count(*) FROM erp.rental_equipment_lines x WHERE x.company_id=tenant AND x.id IN(s->>'line1Id',s->>'line2Id',s->>'line3Id') AND x.status IN('Released','Active')),
