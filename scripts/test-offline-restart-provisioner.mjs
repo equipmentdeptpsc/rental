@@ -5,6 +5,7 @@ const migration = readFileSync('supabase/migrations/20260901000500_uat_offline_r
 const claimFix = readFileSync('supabase/migrations/20260901000600_fix_uat_offline_restart_claim_operator_reference.sql', 'utf8');
 const scenarioFix = readFileSync('supabase/migrations/20260901000700_fix_uat_offline_restart_claim_scenario_reference.sql', 'utf8');
 const operatorFix = readFileSync('supabase/migrations/20260901000800_use_fresh_uat_offline_restart_operator.sql', 'utf8');
+const inspectorFix = readFileSync('supabase/migrations/20260901000900_fix_uat_offline_restart_inspector_work_date_reference.sql', 'utf8');
 const worker = readFileSync('worker/uatDeurOfflineRestartDomainProvisioner.ts', 'utf8');
 const index = readFileSync('worker/index.ts', 'utf8');
 const cors = readFileSync('worker/uatAdminCors.ts', 'utf8');
@@ -43,4 +44,9 @@ assert.match(operatorFix, /b49ab5f5-0ca0-4c9f-b43a-dc6e9c524a68/);
 assert.match(operatorFix, /ASSIGNMENT_RESIDUE_CONFLICT/);
 assert.match(worker, /command_create_operator/);
 assert.doesNotMatch(worker, /\/api\/admin\/users|auth\.admin/);
+assert.match(inspectorFix, /target_work_date date := DATE '2026-09-01'/);
+assert.match(inspectorFix, /d\.work_date=target_work_date/);
+assert.doesNotMatch(inspectorFix, /d\.work_date=work_date/);
+assert.match(inspectorFix, /REVOKE ALL ON FUNCTION/);
+assert.match(inspectorFix, /GRANT EXECUTE ON FUNCTION[\s\S]*TO service_role/);
 console.log('PASS offline restart provisioner fixed scenario and read boundary');
