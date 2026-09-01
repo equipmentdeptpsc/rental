@@ -1,6 +1,6 @@
 import{runScheduledJob}from"./runtime";
 import{selectScheduledJob,type GroupedReviewWorkerEnvironment}from"./configuration";
-import{createTrustedUserAdministration,safeJson}from"./userAdministration";
+import{createTrustedUserAdministration}from"./userAdministration";
 import{createTrustedUsernameAuthentication,usernameLoginCorsHeaders}from"./usernameAuthentication";
 import{createUatRecipientOverrideVerification}from"./uatRecipientOverrideVerification";
 import{runUatGroupedReviewCertification}from"./uatGroupedReviewCertification";
@@ -17,6 +17,7 @@ import{inspectUatDeurPostSubmit}from"./uatDeurPostSubmitInspection";
 import{inspectUatDeurTurnover}from"./uatDeurTurnoverInspection";
 import{inspectUatDeurTurnoverDomain,provisionUatDeurTurnoverDomain}from"./uatDeurTurnoverDomainProvisioner";
 import{inspectUatDeurOfflineDomain,provisionUatDeurOfflineDomain}from"./uatDeurOfflineDomainProvisioner";
+import{inspectUatDeurOfflineRestartDomain,provisionUatDeurOfflineRestartDomain}from"./uatDeurOfflineRestartDomainProvisioner";
 import{uatAdminCorsHeaders}from"./uatAdminCors";
 
 interface ScheduledController{cron:string;scheduledTime:number}
@@ -111,6 +112,12 @@ export default{
      if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
      try{const result=path.endsWith("provision-deur-offline-scenario")?await provisionUatDeurOfflineDomain(request,environment):await inspectUatDeurOfflineDomain(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_OFFLINE_SCENARIO_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
+   }
+   if(path==="/api/admin/uat/provision-deur-offline-restart-scenario"||path==="/api/admin/uat/inspect-deur-offline-restart-scenario"){
+     const cors=uatAdminCorsHeaders(request,environment);
+     if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
+     if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
+     try{const result=path.endsWith("provision-deur-offline-restart-scenario")?await provisionUatDeurOfflineRestartDomain(request,environment):await inspectUatDeurOfflineRestartDomain(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_OFFLINE_RESTART_SCENARIO_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
    }
   if(path==="/api/admin/uat/recover-legacy-provisioning"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
