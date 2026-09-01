@@ -19,7 +19,7 @@ import{inspectUatDeurTurnoverDomain,provisionUatDeurTurnoverDomain}from"./uatDeu
 import{inspectUatDeurOfflineDomain,provisionUatDeurOfflineDomain}from"./uatDeurOfflineDomainProvisioner";
 import{inspectUatDeurOfflineRestartDomain,provisionUatDeurOfflineRestartDomain}from"./uatDeurOfflineRestartDomainProvisioner";
 import{inspectUatDeurNativeRestartDomain,provisionUatDeurNativeRestartDomain}from"./uatDeurNativeRestartDomainProvisioner";
-import{inspectUatLimitedOperationalPilot,inspectUatLimitedOperationalPilotIdentities,inspectUatLimitedPilotScenario1,inspectUatLimitedPilotScenarios,provisionUatLimitedOperationalPilot}from"./uatLimitedOperationalPilotProvisioner";
+import{advanceUatLimitedPilotBusinessDate,inspectUatLimitedOperationalPilot,inspectUatLimitedOperationalPilotIdentities,inspectUatLimitedPilotBusinessDate,inspectUatLimitedPilotScenario1,inspectUatLimitedPilotScenarios,provisionUatLimitedOperationalPilot}from"./uatLimitedOperationalPilotProvisioner";
 import{uatAdminCorsHeaders}from"./uatAdminCors";
 
 interface ScheduledController{cron:string;scheduledTime:number}
@@ -140,8 +140,12 @@ export default{
    if(path==="/api/admin/uat/inspect-limited-pilot-scenario1"){
      const cors=uatAdminCorsHeaders(request,environment); if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}}); if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}}); try{const result=await inspectUatLimitedPilotScenario1(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_SCENARIO1_READ_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
    }
-   if(path==="/api/admin/uat/inspect-limited-pilot-scenarios"){
+  if(path==="/api/admin/uat/inspect-limited-pilot-scenarios"){
      const cors=uatAdminCorsHeaders(request,environment); if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}}); if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}}); try{const result=await inspectUatLimitedPilotScenarios(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_MULTI_READ_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
+  }
+  if(path==="/api/admin/uat/advance-limited-pilot-business-date"||path==="/api/admin/uat/inspect-limited-pilot-business-date"){
+     const cors=uatAdminCorsHeaders(request,environment); if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}}); if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
+     try{const result=path.endsWith("advance-limited-pilot-business-date")?await advanceUatLimitedPilotBusinessDate(request,environment):await inspectUatLimitedPilotBusinessDate(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_BUSINESS_DATE_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
    }
   if(path==="/api/admin/uat/recover-legacy-provisioning"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
