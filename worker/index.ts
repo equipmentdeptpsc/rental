@@ -19,7 +19,7 @@ import{inspectUatDeurTurnoverDomain,provisionUatDeurTurnoverDomain}from"./uatDeu
 import{inspectUatDeurOfflineDomain,provisionUatDeurOfflineDomain}from"./uatDeurOfflineDomainProvisioner";
 import{inspectUatDeurOfflineRestartDomain,provisionUatDeurOfflineRestartDomain}from"./uatDeurOfflineRestartDomainProvisioner";
 import{inspectUatDeurNativeRestartDomain,provisionUatDeurNativeRestartDomain}from"./uatDeurNativeRestartDomainProvisioner";
-import{inspectUatLimitedOperationalPilot,provisionUatLimitedOperationalPilot}from"./uatLimitedOperationalPilotProvisioner";
+import{inspectUatLimitedOperationalPilot,inspectUatLimitedOperationalPilotIdentities,provisionUatLimitedOperationalPilot}from"./uatLimitedOperationalPilotProvisioner";
 import{uatAdminCorsHeaders}from"./uatAdminCors";
 
 interface ScheduledController{cron:string;scheduledTime:number}
@@ -132,6 +132,10 @@ export default{
      if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
      try{const result=path.endsWith("provision-limited-operational-pilot")?await provisionUatLimitedOperationalPilot(request,environment):await inspectUatLimitedOperationalPilot(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_SCENARIO_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
+   }
+   if(path==="/api/admin/uat/inspect-limited-operational-pilot-identities"){
+     const cors=uatAdminCorsHeaders(request,environment); if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}}); if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
+     try{const result=await inspectUatLimitedOperationalPilotIdentities(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_IDENTITY_READ_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
    }
   if(path==="/api/admin/uat/recover-legacy-provisioning"){
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
