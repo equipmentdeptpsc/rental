@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const migration = readFileSync('supabase/migrations/20260901000500_uat_offline_restart_runtime_scenario.sql', 'utf8');
+const claimFix = readFileSync('supabase/migrations/20260901000600_fix_uat_offline_restart_claim_operator_reference.sql', 'utf8');
 const worker = readFileSync('worker/uatDeurOfflineRestartDomainProvisioner.ts', 'utf8');
 const index = readFileSync('worker/index.ts', 'utf8');
 const cors = readFileSync('worker/uatAdminCors.ts', 'utf8');
@@ -26,4 +27,10 @@ assert.match(migration, /operatorActive/);
 assert.match(migration, /REVOKE ALL ON FUNCTION/);
 assert.match(migration, /GRANT EXECUTE ON FUNCTION[\s\S]*TO service_role/);
 assert.match(migration, /SCENARIO_NOT_PROVISIONING/);
+assert.match(claimFix, /baseline_operator_id/);
+assert.match(claimFix, /o\.id=baseline_operator_id/);
+assert.doesNotMatch(claimFix, /WHERE o\.id=operator_id/);
+assert.match(worker, /safeClaimFailure/);
+assert.match(worker, /stage:'CLAIM'/);
+assert.match(worker, /claimCode/);
 console.log('PASS offline restart provisioner fixed scenario and read boundary');
