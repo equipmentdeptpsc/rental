@@ -1,0 +1,36 @@
+BEGIN;
+SET LOCAL search_path=erp,auth,extensions,pg_catalog;
+
+-- Forward-only read-boundary correction. A daily DEUR identity is tenant,
+-- rental-equipment-line, and work date; repeated equipment on another day is
+-- therefore not a duplicate.
+CREATE OR REPLACE FUNCTION erp.inspect_uat_limited_pilot_scenarios(command jsonb)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=erp,auth,extensions,pg_catalog AS $$
+DECLARE tenant text:=trim(command->>'companyId'); k text:=trim(command->>'scenarioKey'); p text:=trim(command->>'profileVersion'); s erp.uat_limited_operational_pilot_scenarios; rows jsonb; total integer; submitted integer; equipment_count integer; operator_count integer; duplicates integer;
+BEGIN
+  IF tenant<>'TENANT-LOCAL-001' OR k<>'LIMITED-OPERATIONAL-PILOT-2026-09' OR p<>'UAT_LIMITED_PILOT_V1' THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF;
+  SELECT * INTO s FROM erp.uat_limited_operational_pilot_scenarios x WHERE x.company_id=tenant AND x.scenario_key=k; IF s.scenario_key IS NULL THEN RETURN jsonb_build_object('success',false,'code','SCENARIO_NOT_FOUND'); END IF;
+  SELECT count(*) INTO total FROM erp.deurs d WHERE d.company_id=tenant AND d.rental_equipment_line_id IN(s.scenario->>'line1Id',s.scenario->>'line2Id',s.scenario->>'line3Id');
+  SELECT count(*) INTO submitted FROM erp.deurs d WHERE d.company_id=tenant AND d.rental_equipment_line_id IN(s.scenario->>'line1Id',s.scenario->>'line2Id',s.scenario->>'line3Id') AND d.status='Submitted';
+  SELECT count(DISTINCT d.equipment_id),count(DISTINCT d.operator_id) INTO equipment_count,operator_count FROM erp.deurs d WHERE d.company_id=tenant AND d.rental_equipment_line_id IN(s.scenario->>'line1Id',s.scenario->>'line2Id',s.scenario->>'line3Id');
+  SELECT coalesce(sum(grouped.deur_count-1),0)::integer INTO duplicates FROM (SELECT d.rental_equipment_line_id,d.work_date,count(*)::integer AS deur_count FROM erp.deurs d WHERE d.company_id=tenant AND d.rental_equipment_line_id IN(s.scenario->>'line1Id',s.scenario->>'line2Id',s.scenario->>'line3Id') GROUP BY d.rental_equipment_line_id,d.work_date HAVING count(*)>1) grouped;
+  SELECT coalesce(jsonb_agg(jsonb_build_object('deurId',d.id,'deurNumber',d.deur_number,'workDate',d.work_date,'status',d.status,'version',d.row_version,'rentalId',d.rental_id,'rentalEquipmentLineId',d.rental_equipment_line_id,'equipmentId',d.equipment_id,'assignmentId',d.assignment_id,'operatorId',d.operator_id,'currentActivity',(SELECT e.activity_type FROM erp.deur_events e WHERE e.deur_id=d.id AND e.activity_type<>'shift' AND e.action='start' AND NOT EXISTS(SELECT 1 FROM erp.deur_events x WHERE x.deur_id=e.deur_id AND x.activity_type=e.activity_type AND x.action='end' AND x.sequence>e.sequence) ORDER BY e.sequence DESC LIMIT 1),'operationalTimelineCount',(SELECT count(*) FROM erp.deur_events e WHERE e.deur_id=d.id AND e.activity_type<>'shift'),'activityOverlapCount',greatest((SELECT count(*) FROM erp.deur_events e WHERE e.deur_id=d.id AND e.activity_type<>'shift' AND e.action='start' AND NOT EXISTS(SELECT 1 FROM erp.deur_events x WHERE x.deur_id=e.deur_id AND x.activity_type=e.activity_type AND x.action='end' AND x.sequence>e.sequence))-1,0),'endShiftCount',(SELECT count(*) FROM erp.deur_events e WHERE e.deur_id=d.id AND e.activity_type='shift' AND e.action='end'),'submit',jsonb_build_object('submitSuccessCount',CASE WHEN (SELECT count(*) FROM erp.audit_log a WHERE a.company_id=tenant AND a.aggregate_type='DEUR' AND a.aggregate_id=d.id AND a.action='SUBMIT_DEUR')>0 THEN 1 ELSE 0 END,'duplicateSubmitMutationCount',greatest((SELECT count(*) FROM erp.audit_log a WHERE a.company_id=tenant AND a.aggregate_type='DEUR' AND a.aggregate_id=d.id AND a.action='SUBMIT_DEUR')-1,0)),'postSubmitReadable',d.status='Submitted','duplicateDailyDeurCount',(SELECT greatest(count(*)::integer-1,0) FROM erp.deurs duplicate WHERE duplicate.company_id=tenant AND duplicate.rental_equipment_line_id=d.rental_equipment_line_id AND duplicate.work_date=d.work_date)) ORDER BY d.deur_number),'[]'::jsonb) INTO rows FROM erp.deurs d WHERE d.company_id=tenant AND d.rental_equipment_line_id IN(s.scenario->>'line1Id',s.scenario->>'line2Id',s.scenario->>'line3Id');
+  RETURN jsonb_build_object('success',true,'state',s.state,'scenarioKey',k,'profileVersion',p,'deurs',rows,'scenarioDeurCount',total,'submittedDeurCount',submitted,'coveredEquipmentCount',equipment_count,'coveredOperatorCount',operator_count,'duplicateDailyDeurCount',duplicates,'crossOperatorExposure','[]'::jsonb,'externalEmailBlocked',true,'notificationCount',0,'billingInvoiceMutationBlocked',true,'billingStatementCount',0,'invoiceCount',0,'returnMutationBlocked',true,'returnMutationPresent',false);
+END $$;
+ALTER FUNCTION erp.inspect_uat_limited_pilot_scenarios(jsonb) OWNER TO postgres;
+REVOKE ALL ON FUNCTION erp.inspect_uat_limited_pilot_scenarios(jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION erp.inspect_uat_limited_pilot_scenarios(jsonb) TO service_role;
+
+CREATE OR REPLACE FUNCTION erp.inspect_uat_limited_pilot_deurs(command jsonb)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=erp,auth,extensions,pg_catalog AS $$
+DECLARE base jsonb; enriched jsonb; tenant text:=trim(command->>'companyId'); key text:=trim(command->>'scenarioKey'); profile text:=trim(command->>'profileVersion');
+BEGIN
+  IF tenant<>'TENANT-LOCAL-001' OR key<>'LIMITED-OPERATIONAL-PILOT-2026-09' OR profile<>'UAT_LIMITED_PILOT_V1' THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF;
+  base:=erp.inspect_uat_limited_pilot_scenarios(command); IF coalesce((base->>'success')::boolean,false)=false THEN RETURN base; END IF;
+  SELECT coalesce(jsonb_agg(item||jsonb_build_object('primaryOperatorId',item->>'operatorId','currentCustodyOperatorId',coalesce((SELECT t.to_operator_id FROM erp.deur_turnovers t WHERE t.company_id=tenant AND t.deur_id=item->>'deurId' AND t.status='ACCEPTED' ORDER BY t.accepted_at DESC,t.id DESC LIMIT 1),item->>'operatorId'),'activityTimeline',coalesce((SELECT jsonb_agg(jsonb_build_object('activityType',e.activity_type,'action',e.action,'sequence',e.sequence,'occurredAt',e.occurred_at,'actorId',e.actor_id) ORDER BY e.sequence) FROM erp.deur_events e WHERE e.deur_id=item->>'deurId'),'[]'::jsonb),'endShiftRecorded',(item->>'endShiftCount')::integer=1,'submitRecorded',(item->'submit'->>'submitSuccessCount')::integer=1,'duplicateDailyIdentityCount',(item->>'duplicateDailyDeurCount')::integer,'reviewStatus','NONE','notificationCount',0,'billingStatementCount',0,'invoiceCount',0,'returnMutationPresent',false)) ORDER BY item->>'deurNumber'),'[]'::jsonb) INTO enriched FROM jsonb_array_elements(coalesce(base->'deurs','[]'::jsonb)) item;
+  RETURN base||jsonb_build_object('deurs',enriched,'coveredRentalCount',(SELECT count(DISTINCT x->>'rentalId') FROM jsonb_array_elements(enriched) x),'readBoundary','LIMITED_PILOT_PER_DEUR_CERTIFICATION');
+END $$;
+ALTER FUNCTION erp.inspect_uat_limited_pilot_deurs(jsonb) OWNER TO postgres;
+REVOKE ALL ON FUNCTION erp.inspect_uat_limited_pilot_deurs(jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION erp.inspect_uat_limited_pilot_deurs(jsonb) TO service_role;
+COMMIT;
