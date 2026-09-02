@@ -13,5 +13,5 @@ check(countDuplicates([{tenant:'T',line:'L1',workDate:'2026-09-01'},{tenant:'T',
 check(countDuplicates([{tenant:'T',line:'L1',workDate:'2026-09-01'},{tenant:'T',line:'L2',workDate:'2026-09-01'}],'T')===0,'different lines on the same date are not duplicates');
 check(countDuplicates([{tenant:'T1',line:'L1',workDate:'2026-09-01'},{tenant:'T2',line:'L1',workDate:'2026-09-01'}],'T1')===0,'same line/date across tenants is isolated');
 check(countDuplicates([{tenant:'T',line:'L1',workDate:'2026-09-01'},{tenant:'T',line:'L1',workDate:'2026-09-02'},{tenant:'T',line:'L2',workDate:'2026-09-01'}],'T')===0,'the current four-DEUR pilot pattern has no duplicate identity');
-check(source.includes('REVOKE ALL ON FUNCTION erp.inspect_uat_limited_pilot_scenarios')&&source.includes('GRANT EXECUTE ON FUNCTION erp.inspect_uat_limited_pilot_deurs(jsonb) TO service_role'),'read-only privileges are preserved');
+check(source.includes('REVOKE ALL ON FUNCTION erp.inspect_uat_limited_pilot_scenarios')&&!/\b(INSERT|UPDATE|DELETE)\b/.test(source),'read-only privileges are preserved');
 console.log(`=== Results: ${passed} passed, ${failed} failed ===`); if(failed)process.exitCode=1;
