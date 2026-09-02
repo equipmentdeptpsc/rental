@@ -147,7 +147,7 @@ export default{
      const cors=uatAdminCorsHeaders(request,environment); if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}}); if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
      try{const result=path.endsWith("advance-limited-pilot-business-date")?await advanceUatLimitedPilotBusinessDate(request,environment):await inspectUatLimitedPilotBusinessDate(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_BUSINESS_DATE_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
    }
-  if(path==="/api/admin/uat/inspect-limited-operational-pilot-deurs"){
+  if(path==="/api/admin/uat/inspect-limited-operational-pilot-deurs"||path==="/api/admin/uat/inspect-limited-pilot-deurs"){
      const cors=uatAdminCorsHeaders(request,environment); if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}}); if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}}); try{const result=await inspectUatLimitedPilotDeurs(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_PER_DEUR_READ_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
    }
   if(path==="/api/admin/uat/recover-legacy-provisioning"){
