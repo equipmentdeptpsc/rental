@@ -11,4 +11,5 @@ export class SupabaseUatGroupedReviewCertification{
  dispatchExistingNotification(notificationId:string){return this.post<{success:true;result:"DISPATCHED"|"ALREADY_PROCESSED"}>("/api/admin/uat/dispatch-existing-notification",{notificationId});}
  provisionMultiEquipmentCertification(){return this.post<{success:true;result:"PROVISIONED"|"REUSED";scenario:unknown}>("/api/admin/uat/provision-multi-equipment-certification",{scenarioKey:"MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29"});}
  inspectMultiEquipmentCertification(){return this.post<{success:true;state:string;scenario?:unknown;related?:unknown;counts:Record<string,number>}>("/api/admin/uat/inspect-multi-equipment-certification",{scenarioKey:"MULTI-EQUIPMENT-RUNTIME-CERT-2026-08-29"});}
+  inspectLimitedPilotDeurs(){return this.post<Record<string,unknown>>("/api/admin/uat/inspect-limited-pilot-deurs",{scenarioKey:"LIMITED-OPERATIONAL-PILOT-2026-09",profileVersion:"UAT_LIMITED_PILOT_V1"});}
 }
