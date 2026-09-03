@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const contextState = vi.hoisted(() => ({ rentals: [], rentalEquipmentLines: [], assignments: [], equipment: [], operators: [], projects: [], customers: [] }));
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "admin" }, hasPermission: () => true }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "admin", displayName: "UAT Administrator", username: "admin" }, hasPermission: () => true }) }));
 vi.mock("@/app/navigation/navigationConfig", () => ({
   getVisibleNavigation: () => [{ title: "OPERATIONS", items: [
     { label: "Bookings", path: "/assignments", icon: "assignments" },
