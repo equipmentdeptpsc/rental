@@ -35,7 +35,7 @@ export default function CustomerForm({ initialData, onSubmit }: Props) {
   }
 
   return (
-    <form className="max-w-2xl space-y-5 p-8" onSubmit={(event) => {
+    <form className="app-card max-w-2xl space-y-5 p-6 sm:p-8" onSubmit={(event) => {
       event.preventDefault();
       const contactNumber = normalizeCustomerContact(form.contactNumber);
       const email = form.email.trim();

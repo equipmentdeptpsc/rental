@@ -6,6 +6,8 @@ import DashboardActionQueue from "@/features/dashboard/components/DashboardActio
 import { buildDashboardActionQueue } from "@/features/dashboard/services/dashboardActionQueue";
 import { buildRentalWorkflowSteps, workflowBannerTone } from "@/features/rental/workspace/presentation/rentalWorkflowPresentation";
 import PageHeader from "@/components/ui/PageHeader";
+import FilterBar from "@/components/ui/FilterBar";
+import { LoadingState, ErrorState, EmptyDataState } from "@/components/ui/AsyncState";
 
 describe("UX presentation helpers", () => {
   it("renders a responsive semantic page header with action hierarchy", () => {
@@ -52,5 +54,19 @@ describe("UX presentation helpers", () => {
     expect(steps.find((step) => step.id === "operate")?.state).toBe("current");
     expect(workflowBannerTone("ManagerRejected")).toBe("danger");
     expect(workflowBannerTone("Closed")).toBe("success");
+  });
+
+  it("provides shared loading, error, empty, and filter presentation", () => {
+    const loading = renderToStaticMarkup(createElement(LoadingState, { label: "Loading Rentals" }));
+    expect(loading).toContain('role="status"');
+    expect(loading).toContain("Loading Rentals");
+    const error = renderToStaticMarkup(createElement(ErrorState, { message: "Request failed", onRetry: () => undefined }));
+    expect(error).toContain('role="alert"');
+    expect(error).toContain("Retry");
+    const empty = renderToStaticMarkup(createElement(EmptyDataState, { title: "No customers found" }));
+    expect(empty).toContain("No customers found");
+    const filters = renderToStaticMarkup(createElement(FilterBar, null, createElement("input", { "aria-label": "Search" })));
+    expect(filters).toContain('aria-label="Filters"');
+    expect(filters).toContain('aria-label="Search"');
   });
 });
