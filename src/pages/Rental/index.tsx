@@ -30,6 +30,8 @@ import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 import { filterRentalList } from "@/features/rental/services/filterRentalList";
 import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 import { useAuth } from "@/features/auth/AuthContext";
+import FilterBar from "@/components/ui/FilterBar";
+import { LoadingState, ErrorState, EmptyDataState } from "@/components/ui/AsyncState";
 
 type RentalView = "rentals" | "engagements" | "deur-exceptions";
 
@@ -114,8 +116,8 @@ export default function RentalPage() {
       </div>
 
       {!mutationsAvailable && <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</div>}
-      {rentalList.status === "loading" && <div className="app-card p-6 text-center text-slate-600" role="status">Loading canonical Rental data…</div>}
-      {rentalList.status === "error" && <div className="app-card border border-red-200 p-6" role="alert"><h2 className="font-semibold text-red-800">Rental data unavailable</h2><p className="mt-1 text-sm text-red-700">{rentalList.message}</p><Button className="mt-4" variant="secondary" onClick={rentalList.retry}>Retry</Button></div>}
+      {rentalList.status === "loading" && <LoadingState label="Loading canonical Rental data…" />}
+      {rentalList.status === "error" && <ErrorState title="Rental data unavailable" message={rentalList.message} onRetry={rentalList.retry} />}
 
       {rentalList.status === "loaded" && view === "engagements" && (
         <section className="app-card p-5">
@@ -132,7 +134,7 @@ export default function RentalPage() {
               </thead>
               <tbody>
                 {engagements.length === 0 ? (
-                  <tr><td className="p-6 text-center text-slate-500" colSpan={7}>No active or financially-open engagements.</td></tr>
+                  <tr><td className="p-4" colSpan={7}><EmptyDataState title="No active engagements" description="Active or financially-open Rental engagements will appear here." /></td></tr>
                 ) : engagements.map((engagement) => {
                   const rentalIds = new Set(engagement.rentals.map((rental) => rental.id));
                   const attention = attentionRows.filter((row) => rentalIds.has(row.rental.id)).length;
@@ -164,7 +166,7 @@ export default function RentalPage() {
 
       {rentalList.status === "loaded" && view === "rentals" && (
         <>
-          <section className="app-card grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto]">
+          <FilterBar onClear={() => setQuery("")} canClear={Boolean(query)}>
             <input
               aria-label="Search rentals"
               className="app-control"
@@ -172,12 +174,11 @@ export default function RentalPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <Button variant="secondary" onClick={() => setQuery("")}>Clear</Button>
-          </section>
+          </FilterBar>
 
           <div className="space-y-3 lg:hidden">
             {filteredRentals.length === 0 ? (
-              <p className="app-muted text-center">No rental transactions found.</p>
+              <EmptyDataState title="No rental transactions found" description="Try a different search term or clear the filters." />
             ) : filteredRentals.map((rental) => {
               const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
               const rentalDeurs = deurRepository.getByRentalId(rental.id);
@@ -222,7 +223,7 @@ export default function RentalPage() {
                 </thead>
                 <tbody>
                   {filteredRentals.length === 0 ? (
-                    <tr><td colSpan={9} className="py-10 text-center text-slate-500">No rental transactions found.</td></tr>
+                    <tr><td colSpan={9} className="p-4"><EmptyDataState title="No rental transactions found" description="Try a different search term or clear the filters." /></td></tr>
                   ) : filteredRentals.map((rental) => {
                     const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
                     const rentalDeurs = deurRepository.getByRentalId(rental.id);

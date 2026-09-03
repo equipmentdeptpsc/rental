@@ -270,7 +270,7 @@ export default function RentalForm({
 
   return (
     <form
-      className="space-y-5"
+      className="app-card space-y-5 p-6 sm:p-8"
       onSubmit={(e) => {
         e.preventDefault();
         if (submission.busy) return;
