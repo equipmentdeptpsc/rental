@@ -18,8 +18,9 @@ export class TrustedUserAdministration {
     const actor=await this.service.schema("erp").from("users").select("id,company_id,status").eq("id",actorId).maybeSingle();
     if(actor.error||!actor.data||actor.data.status!=="active")return result(403,{success:false,message:"Active application-user access is required."});
     const reset=request.url.match(/\/api\/admin\/users\/([^/]+)\/reset-password$/);
+    const resetOperatorPin=request.url.match(/\/api\/admin\/users\/([^/]+)\/reset-operator-pin$/);
     const deactivate=request.url.match(/\/api\/admin\/users\/([^/]+)\/deactivate$/);
-    const requiredPermissions=reset?["users.password.reset"]:deactivate?["users.deactivate"]:["users.create","roles.assign"];
+    const requiredPermissions=reset||resetOperatorPin?["users.password.reset"]:deactivate?["users.deactivate"]:["users.create","roles.assign"];
     const permission=await this.service.schema("erp").from("effective_user_permissions").select("permission_code").eq("user_id",actorId).in("permission_code",requiredPermissions);
     if(permission.error)return result(503,{success:false,message:"User authorization is temporarily unavailable."});
     const granted=new Set((permission.data??[]).map(row=>String(row.permission_code)));
@@ -27,7 +28,7 @@ export class TrustedUserAdministration {
     const payload=await request.json().catch(()=>null);
     if(!payload||typeof payload!=="object"||Array.isArray(payload))return result(400,{success:false,message:"Invalid request."});
     const command=payload as Json;
-    return reset?this.reset(actorId,String(actor.data.company_id),decodeURIComponent(reset[1]),command):deactivate?this.deactivate(actorId,String(actor.data.company_id),decodeURIComponent(deactivate[1]),command):this.create(actorId,String(actor.data.company_id),command);
+    return reset?this.reset(actorId,String(actor.data.company_id),decodeURIComponent(reset[1]),command):resetOperatorPin?this.resetOperatorPin(actorId,String(actor.data.company_id),decodeURIComponent(resetOperatorPin[1]),command):deactivate?this.deactivate(actorId,String(actor.data.company_id),decodeURIComponent(deactivate[1]),command):this.create(actorId,String(actor.data.company_id),command);
   }
 
   private async create(actorId:string,companyId:string,command:Json):Promise<SafeResult>{
@@ -69,6 +70,25 @@ export class TrustedUserAdministration {
     return result(200,{success:true});
   }
 
+  private async resetOperatorPin(actorId:string,companyId:string,targetId:string,command:Json):Promise<SafeResult>{
+    const newPin=text(command.newPin),confirmNewPin=text(command.confirmNewPin),commandId=text(command.commandId),idempotencyKey=text(command.idempotencyKey);
+    if(!isValidOperatorPin(newPin)||newPin!==confirmNewPin)return result(400,{success:false,message:"The Operator PIN must be six digits and cannot be an obvious sequence."});
+    if(!commandId||!idempotencyKey)return result(400,{success:false,message:"A command identity is required."});
+    const target=await this.service.schema("erp").from("users").select("id,company_id,operator_id,status").eq("id",targetId).eq("company_id",companyId).eq("status","active").maybeSingle();
+    if(target.error||!target.data)return result(404,{success:false,message:"User is not available."});
+    const prepared=await this.service.schema("erp").rpc("prepare_operator_pin_reset",{command:{actorId,companyId,targetUserId:targetId,commandId,idempotencyKey}});
+    const preparation=prepared.data as {success?:boolean;state?:string;code?:string;message?:string}|null;
+    if(prepared.error)return result(503,{success:false,message:"Operator PIN reset preparation is temporarily unavailable."});
+    if(!preparation?.success){const status=preparation?.code==="FORBIDDEN"?403:preparation?.code==="NOT_FOUND"?404:preparation?.code==="IDEMPOTENCY_MISMATCH"?409:400;return result(status,{success:false,message:preparation?.message??"Operator PIN reset was rejected.",code:preparation?.code});}
+    if(preparation.state==="COMPLETED")return result(200,{success:true});
+    if(preparation.state!=="NEW")return result(409,{success:false,message:"This Operator PIN reset is already being processed.",code:"COMMAND_IN_PROGRESS"});
+    const changed=await this.service.auth.admin.updateUserById(targetId,{password:newPin});
+    if(changed.error){await this.service.schema("erp").rpc("fail_operator_pin_reset",{command:{actorId,companyId,targetUserId:targetId,commandId,idempotencyKey}});return result(400,{success:false,message:"The remote Operator PIN could not be reset."});}
+    const audit=await this.service.schema("erp").rpc("complete_operator_pin_reset",{command:{actorId,companyId,targetUserId:targetId,commandId,idempotencyKey}});
+    if(audit.error||(audit.data as {success?:boolean}|null)?.success!==true)return result(500,{success:false,message:"Operator PIN changed, but audit completion requires administrator support.",code:"AUDIT_COMPLETION_FAILED"});
+    return result(200,{success:true});
+  }
+
   private async deactivate(actorId:string,companyId:string,targetId:string,command:Json):Promise<SafeResult>{
     const commandId=text(command.commandId),idempotencyKey=text(command.idempotencyKey);
     if(!commandId||!idempotencyKey)return result(400,{success:false,message:"A command identity is required."});
@@ -86,3 +106,11 @@ export function createTrustedUserAdministration(environment:GroupedReviewWorkerE
 }
 
 export function safeJson(response:SafeResult):Response{return Response.json(response.body,{status:response.status,headers:{"cache-control":"no-store"}})}
+
+function isValidOperatorPin(pin:string):boolean{
+  if(!/^\d{6}$/.test(pin))return false;
+  const digits=[...pin].map(value=>value.charCodeAt(0));
+  if(digits.every(value=>value===digits[0]))return false;
+  const delta=digits[1]-digits[0];
+  return !((delta===1||delta===-1)&&digits.every((value,index)=>index===0||value-digits[index-1]===delta));
+}

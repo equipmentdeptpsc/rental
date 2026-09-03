@@ -1,7 +1,7 @@
 import{runScheduledJob}from"./runtime";
 import{selectScheduledJob,type GroupedReviewWorkerEnvironment}from"./configuration";
 import{createTrustedUserAdministration}from"./userAdministration";
-import{createTrustedUsernameAuthentication,usernameLoginCorsHeaders}from"./usernameAuthentication";
+import{createTrustedOperatorPinAuthentication,createTrustedUsernameAuthentication,usernameLoginCorsHeaders}from"./usernameAuthentication";
 import{createUatRecipientOverrideVerification}from"./uatRecipientOverrideVerification";
 import{runUatGroupedReviewCertification}from"./uatGroupedReviewCertification";
 import{createUatProviderAuthentication}from"./uatProviderAuthentication";
@@ -35,7 +35,14 @@ export default{
    try{const result=await createTrustedUsernameAuthentication(environment).handle(request);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}
    catch{return Response.json({success:false,message:"Invalid username/email or password."},{status:401,headers:{...cors,"cache-control":"no-store"}});}
   }
-  if(path==="/api/admin/users"||/^\/api\/admin\/users\/[^/]+\/(?:reset-password|deactivate)$/.test(path)){
+  if(path==="/api/auth/operator-pin-login"){
+   const cors=usernameLoginCorsHeaders(request,environment);
+   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
+   if(request.method!=="POST")return Response.json({success:false,message:"Method not allowed."},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
+   try{const result=await createTrustedOperatorPinAuthentication(environment).handle(request);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}
+   catch{return Response.json({success:false,message:"Invalid username/email or password."},{status:401,headers:{...cors,"cache-control":"no-store"}});}
+  }
+  if(path==="/api/admin/users"||/^\/api\/admin\/users\/[^/]+\/(?:reset-password|reset-operator-pin|deactivate)$/.test(path)){
    const cors=uatAdminCorsHeaders(request,environment);
    if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
    if(request.method!=="POST")return Response.json({success:false,message:"Method not allowed."},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
