@@ -68,6 +68,23 @@ function enter(input: HTMLInputElement, value: string) {
 }
 
 describe("credential Login page", () => {
+  it("keeps username readable and toggles password visibility without clearing it", async () => {
+    const { container } = await renderLogin();
+    const [username, password] = [...container.querySelectorAll("input")];
+    expect(username.type).toBe("text");
+    expect(password.type).toBe("password");
+    await act(async () => enter(password, "secret-value"));
+    const toggle = container.querySelector<HTMLButtonElement>('button[aria-label="Show password"]');
+    expect(toggle).toBeTruthy();
+    await act(async () => toggle?.click());
+    expect(password.type).toBe("text");
+    expect(password.value).toBe("secret-value");
+    expect(container.querySelector('button[aria-label="Hide password"]')).toBeTruthy();
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Hide password"]')?.click());
+    expect(password.type).toBe("password");
+    expect(password.value).toBe("secret-value");
+  });
+
   it("sends System Administrator to the canonical dashboard and ignores internal return-to", async () => {
     const { container } = await renderLogin("?returnTo=%2Fequipment");
     const [username, password] = [...container.querySelectorAll("input")];
