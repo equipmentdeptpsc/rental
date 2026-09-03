@@ -63,33 +63,36 @@ export default function Login() {
           <form className="w-full max-w-[380px] space-y-5" onSubmit={handleLogin}>
             <div className="mb-8 flex items-center justify-between"><span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">{remote ? "UAT environment" : "Local environment"}</span><span className="text-xs text-slate-500">Authorized staff</span></div>
             <header className="space-y-2"><h1 className="text-3xl font-semibold tracking-tight">Sign in</h1><p className="text-sm leading-6 text-slate-500 dark:text-slate-400">Enter your workspace credentials to continue.</p></header>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-          {operatorPinMode ? "Operator Code / Employee ID" : remote ? "Email or Username" : "Username"}
-          <span className="relative mt-1 block"><Mail aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 text-slate-400" size={17} /><input
+        <div className="relative">
+          <Mail aria-hidden="true" className="pointer-events-none absolute left-3 top-4 z-10 text-slate-400" size={17} />
+          <input id="login-username" placeholder=" " aria-label={operatorPinMode ? "Operator Code / Employee ID" : remote ? "Email or Username" : "Username"}
             autoComplete={operatorPinMode ? "off" : "username"}
-            className="app-control mt-1"
+            className="app-control peer w-full pl-10 pt-5"
             disabled={isSubmitting}
             onChange={(event) => setUsername(event.target.value)}
             required
             value={username}
-          /></span>
-        </label>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-          {operatorPinMode ? "PIN" : "Password"}
-          <span className="relative mt-1 block"><LockKeyhole aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 text-slate-400" size={17} /><input
+          />
+          <label htmlFor="login-username" className="pointer-events-none absolute left-10 top-1 text-xs font-medium text-slate-500 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-focus:top-1 peer-focus:text-xs dark:text-slate-400">{operatorPinMode ? "Operator Code / Employee ID" : remote ? "Email or Username" : "Username"}</label>
+        </div>
+        <div className="relative">
+          <LockKeyhole aria-hidden="true" className="pointer-events-none absolute left-3 top-4 z-10 text-slate-400" size={17} />
+          <input id="login-password" placeholder=" " aria-label={operatorPinMode ? "PIN" : "Password"}
             autoComplete={operatorPinMode ? "off" : "current-password"}
             inputMode={operatorPinMode ? "numeric" : undefined}
             minLength={operatorPinMode ? 4 : undefined}
             maxLength={operatorPinMode ? 4 : undefined}
             pattern={operatorPinMode ? "[0-9]{4}" : undefined}
-            className="app-control pl-10 pr-12"
+            className="app-control peer w-full pl-10 pr-12 pt-5"
             disabled={isSubmitting}
             onChange={(event) => setPassword(event.target.value)}
             required
             type={passwordVisible ? "text" : "password"}
             value={password}
-          /><button type="button" className="absolute right-1 top-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-300 dark:hover:bg-slate-700" aria-label={passwordVisible ? "Hide password" : "Show password"} onClick={() => setPasswordVisible((value) => !value)}>{passwordVisible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button></span>
-        </label>
+          />
+          <label htmlFor="login-password" className="pointer-events-none absolute left-10 top-1 text-xs font-medium text-slate-500 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-focus:top-1 peer-focus:text-xs dark:text-slate-400">{operatorPinMode ? "PIN" : "Password"}</label>
+          <button type="button" className="absolute right-1 top-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-300 dark:hover:bg-slate-700" aria-label={passwordVisible ? "Hide password" : "Show password"} onClick={() => setPasswordVisible((value) => !value)}>{passwordVisible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button>
+        </div>
         {message && <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200" role="alert" aria-live="polite">{message}</p>}
         <button
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#f0a93a] px-4 py-2.5 font-semibold text-[#25190a] shadow-sm transition hover:bg-[#d6902a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5fa8] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-900"
