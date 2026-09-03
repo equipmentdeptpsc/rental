@@ -42,13 +42,14 @@ import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getAssignmentRuntimeCapability, REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/assignment/services/assignmentRuntimeCapability";
 import RemoteAssignmentForm from "@/features/assignment/components/RemoteAssignmentForm";
 import { useAuth } from "@/features/auth/AuthContext";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function NewAssignment() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const capability = getAssignmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalAssignment));
   if (capability.canonicalMutations && hasPermission("assignment.manage")) return <RemoteAssignmentForm />;
-  if (!capability.legacyMutations) return <div className="mx-auto max-w-3xl space-y-4 p-8"><h1 className="text-3xl font-bold">New Assignment</h1><div className="rounded border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status"><h2 className="font-semibold">Assignment creation unavailable</h2><p className="mt-1 text-sm">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p></div></div>;
+  if (!capability.legacyMutations) return <div className="mx-auto max-w-3xl space-y-4"><PageHeader title="New Assignment" description="Create a clear equipment booking for a project and operator." /><div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" role="status"><h2 className="font-semibold">Assignment creation unavailable</h2><p className="mt-1 text-sm">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p></div></div>;
   return <LocalNewAssignment />;
 }
 
@@ -173,19 +174,9 @@ function LocalNewAssignment() {
   }
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="app-page mx-auto max-w-3xl">
 
-      <div>
-
-        <h1 className="text-3xl font-bold">
-          New Assignment
-        </h1>
-
-        <p className="mt-2 text-gray-500">
-          Assign equipment to a project and operator.
-        </p>
-
-      </div>
+      <PageHeader title="New Assignment" description="Assign equipment to a project and operator." />
 
       <AssignmentForm
         onSubmit={
