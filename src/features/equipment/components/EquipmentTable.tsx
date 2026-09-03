@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { ChevronRight, PackageOpen } from "lucide-react";
+import type { ReactNode } from "react";
 
 import Button from "@/components/ui/Button";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
@@ -26,6 +28,7 @@ interface Props {
   onDelete(id: string): void;
   detailMode?: EquipmentStatusFilter;
   deploymentByEquipment?: Record<string, EquipmentDeploymentSummary>;
+  emptyStateAction?: ReactNode;
 }
 
 export default function EquipmentTable({
@@ -33,6 +36,7 @@ export default function EquipmentTable({
   onDelete,
   detailMode = "All",
   deploymentByEquipment = {},
+  emptyStateAction,
 }: Props) {
   const { showToast } =
     useToast();
@@ -96,7 +100,7 @@ export default function EquipmentTable({
               Category
             </th>
 
-            <th className="p-3 text-left">
+            <th className="w-28 p-3 text-left">
               Status
             </th>
 
@@ -111,12 +115,12 @@ export default function EquipmentTable({
 
         <tbody>
 
-          {equipment.length === 0 && <tr><td colSpan={detailMode === "Assigned" || detailMode === "Deployed" ? 9 : 5}><EmptyState title="No equipment found" description="Try clearing a filter or adjusting your search." /></td></tr>}
+          {equipment.length === 0 && <tr><td colSpan={detailMode === "Assigned" || detailMode === "Deployed" ? 9 : 5}><EmptyState icon={<PackageOpen aria-hidden="true" size={22} />} title="No equipment found" description="Add equipment to begin tracking your fleet." action={emptyStateAction} /></td></tr>}
 
           {equipment.map((item) => (
             <tr
               key={item.id}
-              className=""
+              className="odd:bg-slate-50/40 hover:bg-amber-50/60 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20"
             >
 
               <td className="p-3">
@@ -144,8 +148,8 @@ export default function EquipmentTable({
                   <Link
                     to={`/equipment/${item.id}`}
                   >
-                    <Button variant="secondary">
-                      View
+                    <Button aria-label={`View ${item.equipmentName}`} variant="ghost" size="icon">
+                      <ChevronRight aria-hidden="true" size={17} />
                     </Button>
                   </Link>
 
