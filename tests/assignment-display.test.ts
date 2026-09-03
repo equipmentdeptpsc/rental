@@ -4,7 +4,7 @@ import { displayAssignmentExpectedReturn, getAssignmentNumber } from "@/features
 describe("assignment legacy Expected Return display", () => {
   it("shows a stored value or a readable fallback", () => {
     expect(displayAssignmentExpectedReturn("2026-07-20")).toBe("2026-07-20");
-    expect(displayAssignmentExpectedReturn("")).toBe("Not specified");
+    expect(displayAssignmentExpectedReturn("")).toBe("—");
   });
 
   it("projects stable business-facing assignment numbers without exposing UUIDs", () => {

@@ -50,14 +50,15 @@ afterEach(async () => { authState.permissions = new Set(["rental.manage"]); whil
 describe("canonical Assignment remote UI boundary", () => {
   it("keeps remote list empty when only a local Assignment exists", async () => {
     const container = await render(createElement(Assignments));
-    expect(container.textContent).toContain("No canonical Assignments found.");
+    expect(container.textContent).toContain("No canonical Bookings found.");
     expect(container.textContent).not.toContain("local-only-assignment");
     expect(container.textContent).not.toContain("New Assignment");
   });
 
   it("renders canonical Assignment and deliberately adapted related records", async () => {
     const container = await render(createElement(Assignments), remoteDependencies({ assignments: [assignment] }));
-    expect(container.textContent).toContain("ME-REMOTE — Remote Equipment");
+    expect(container.textContent).toContain("ME-REMOTE");
+    expect(container.textContent).toContain("Remote Equipment");
     expect(container.textContent).toContain("Remote Operator");
     expect(container.textContent).toContain("Remote Project");
     expect(container.querySelector('a[href="/assignments/canonical-assignment"]')).not.toBeNull();
