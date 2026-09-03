@@ -11,7 +11,7 @@ export const organizationBranding: Readonly<OrganizationBranding> = Object.freez
   companyName: "Primary Structures Corporation",
   departmentName: "Equipment Department",
   systemName: "Equipment Rental Management System",
-  logoAssetPath: "/branding/primary-structures-corporation-logo.png",
-  logoAltText: "Primary Structures Corporation logo",
+  logoAssetPath: "/branding/psc-equipment-logo.png",
+  logoAltText: "PSC Equipment logo",
   documentFooter: "Primary Structures Corporation - Equipment Department",
 });

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { storage } from "@/core/storage";
 import { LocalAdministrationRepository } from "@/features/administration/repository/LocalAdministrationRepository";
 import AuditTrailPage from "@/features/administration/pages/AuditTrailPage";
+import { ApplicationDependencyProvider, createLocalApplicationDependencies } from "@/app/composition";
 
 const change = async (element: HTMLInputElement | HTMLSelectElement, value: string) => {
   const prototype = element instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
@@ -17,7 +18,7 @@ describe("P7.8 Administration UX refinement", () => {
     const repo = new LocalAdministrationRepository();
     for (let index = 0; index < 30; index++) repo.appendAudit({ id: `event-${String(index).padStart(2, "0")}`, actorId: index % 2 ? "admin-a" : "admin-b", targetType: index % 3 ? "USER" : "ROLE", targetId: index % 3 ? `user-${index}` : "dispatcher", action: index % 3 ? "USER_DEACTIVATED" : "ROLE_PERMISSION_ADDED", occurredAt: `2026-08-${String(index + 1).padStart(2, "0")}T10:00:00.000Z`, metadata: index % 3 ? undefined : { permissionCode: `rental.permission-${index}` } });
     const container = document.createElement("div"), root = createRoot(container);
-    await act(async () => root.render(createElement(AuditTrailPage)));
+    await act(async () => root.render(createElement(ApplicationDependencyProvider, { dependencies: createLocalApplicationDependencies() }, createElement(AuditTrailPage))));
     expect(container.querySelectorAll("tbody tr")).toHaveLength(20);
     expect(container.querySelector("tbody tr")?.textContent).toContain("Aug 30");
     expect(container.textContent).toContain("Showing 1–20 of 30 events");
