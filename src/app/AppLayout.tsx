@@ -22,15 +22,15 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[var(--app-bg)] text-slate-950 dark:text-slate-100">
+    <div className="flex h-screen overflow-hidden bg-[var(--app-bg)] text-slate-950 dark:text-slate-100">
       {mobileOpen && (
         <button aria-label="Close navigation" className="fixed inset-0 z-30 bg-slate-950/50 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
       <Sidebar collapsed={collapsed} mobileOpen={mobileOpen} onToggle={() => setCollapsed((value) => !value)} onNavigate={() => setMobileOpen(false)} />
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex h-screen min-h-0 min-w-0 flex-1 flex-col">
         <Header onMenu={toggleNavigation} search={<GlobalSearch />} />
-        <main className="min-w-0 flex-1 bg-[var(--app-bg)]">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--app-bg)]">
           <div className="mx-auto w-full p-4 sm:p-5 lg:p-6"><Outlet /></div>
         </main>
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-5 py-3 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
