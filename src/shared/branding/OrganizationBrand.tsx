@@ -6,7 +6,7 @@ export default function OrganizationBrand({ compact = false, inverse = false }: 
       <img
         src={organizationBranding.logoAssetPath}
         alt={organizationBranding.logoAltText}
-        className={`${compact ? "h-8 w-[76px]" : "h-10 w-[95px] sm:h-12 sm:w-[114px]"} shrink-0 object-contain`}
+        className={`${compact ? "h-11 w-[88px]" : "h-12 w-[112px] sm:h-14 sm:w-[132px]"} shrink-0 object-contain`}
       />
       <div className={`min-w-0 leading-tight ${inverse ? "text-white" : "text-slate-900"}`}>
         <div className={`${compact ? "text-[10px]" : "text-[10px] sm:text-xs"} truncate font-bold uppercase tracking-wide`}>

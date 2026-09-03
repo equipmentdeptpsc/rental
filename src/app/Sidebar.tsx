@@ -34,6 +34,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }:
           ); })}</div>
         </section>)}
       </nav>
+      {user && <div className={`shrink-0 border-t border-white/10 p-3 ${collapsed ? "flex justify-center" : ""}`}><div className={`flex items-center gap-2 rounded-lg bg-white/10 p-2 ${collapsed ? "justify-center" : ""}`} title={collapsed ? `${user.displayName} · ${user.username}` : undefined}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f0a93a] text-xs font-bold text-[#071a33]">{user.displayName.slice(0, 2).toUpperCase()}</span>{!collapsed && <span className="min-w-0"><strong className="block truncate text-xs">{user.displayName}</strong><span className="block truncate text-[10px] text-slate-300">{user.username}</span></span>}</div></div>}
       <button aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} aria-expanded={!collapsed} onClick={onToggle} className={`hidden h-12 items-center border-t border-white/10 text-xs text-slate-200 hover:bg-white/8 md:flex ${collapsed ? "justify-center" : "gap-2 px-5"}`}>
         {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /><span>Collapse</span></>}
       </button>
