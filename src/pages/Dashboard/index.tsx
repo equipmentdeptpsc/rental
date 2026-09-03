@@ -66,11 +66,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Fleet Utilization">
-          <div className="mb-2 flex items-baseline justify-between"><span className="text-xs text-slate-500">Productive deployment</span><strong className="text-xl text-blue-600 dark:text-blue-400">{model.utilizationRate}%</strong></div>
-          <MetricRows rows={[["Total Equipment", model.fleetUtilization.total], ["Available", model.fleetUtilization.available], ["Assigned", model.fleetUtilization.assigned], ["Deployed", model.fleetUtilization.deployed], ["Maintenance", model.fleetUtilization.maintenance]]} />
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Fleet utilization" aria-valuemin={0} aria-valuemax={100} aria-valuenow={model.utilizationRate}><div className="h-full rounded-full bg-blue-600 transition-[width]" style={{ width: `${model.utilizationRate}%` }} /></div>
-        </Panel>
         <Panel title="Recent activity" action={hasPermission("users.manage") ? <Link to="/audit-trail">View all</Link> : undefined}>
           <div className="space-y-3">{recentActivity.length ? recentActivity.map((item) => <div key={item.id} className="flex gap-3 text-xs"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.kind === "rental" ? "bg-purple-500" : "bg-[#f0a93a]"}`} /><div className="min-w-0 flex-1"><strong className="block truncate capitalize">{item.title}</strong><span className="block truncate text-slate-500">{item.description}</span></div><time className="shrink-0 text-slate-500">{time.format(new Date(item.timestamp))}</time></div>) : <EmptyState title="No recent activity" description="Equipment updates, rentals, and assignments will appear here as your team starts working." />}</div>
         </Panel>
