@@ -15,6 +15,8 @@ import {
 import type { EquipmentRecord } from "../types";
 import { presentEquipmentStatus } from "../utils/equipmentStatusPresentation";
 import type { EquipmentStatusFilter } from "../services/equipmentListFilters";
+import StatusBadge from "@/components/ui/StatusBadge";
+import EmptyState from "@/components/ui/EmptyState";
 
 export interface EquipmentDeploymentSummary { project?: string; operator?: string; rentalNumber?: string; assignedDate?: string; dateDeployed?: string; hasAssignment: boolean }
 
@@ -109,16 +111,7 @@ export default function EquipmentTable({
 
         <tbody>
 
-          {equipment.length === 0 && (
-            <tr>
-              <td
-                colSpan={detailMode === "Assigned" || detailMode === "Deployed" ? 9 : 5}
-                className="p-6 text-center text-gray-500"
-              >
-                No equipment found.
-              </td>
-            </tr>
-          )}
+          {equipment.length === 0 && <tr><td colSpan={detailMode === "Assigned" || detailMode === "Deployed" ? 9 : 5}><EmptyState title="No equipment found" description="Try clearing a filter or adjusting your search." /></td></tr>}
 
           {equipment.map((item) => (
             <tr
@@ -139,7 +132,7 @@ export default function EquipmentTable({
               </td>
 
               <td className="p-3">
-                <span className="app-badge">{presentEquipmentStatus(item.status)}</span>
+                <StatusBadge tone={item.status === "Available" ? "success" : item.status === "Maintenance" ? "warning" : "neutral"}>{presentEquipmentStatus(item.status)}</StatusBadge>
               </td>
 
               {(detailMode === "Assigned" || detailMode === "Deployed") && <><td className="p-3">{deploymentByEquipment[item.id]?.project ?? "Not linked"}</td><td className="p-3">{deploymentByEquipment[item.id]?.operator ?? "Not linked"}</td><td className="p-3">{deploymentByEquipment[item.id]?.rentalNumber ?? (deploymentByEquipment[item.id]?.hasAssignment ? "Active assignment" : "Not linked")}</td><td className="p-3">{detailMode === "Assigned" ? deploymentByEquipment[item.id]?.assignedDate ?? "—" : deploymentByEquipment[item.id]?.dateDeployed ?? "—"}</td></>}

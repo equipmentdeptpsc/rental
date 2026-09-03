@@ -16,6 +16,8 @@ import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
 import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonicalEquipmentData";
 import { useAuth } from "@/features/auth/AuthContext";
+import FilterBar from "@/components/ui/FilterBar";
+import EmptyState from "@/components/ui/EmptyState";
 
 export default function EquipmentPage() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -34,7 +36,7 @@ function CanonicalEquipmentPage() {
   const canCreate = getEquipmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalEquipment)).canonicalMutations && hasPermission("equipment.create");
   return <div className="app-page"><PageHeader title="Equipment" description="Canonical company equipment." actions={canCreate ? <Link to="/equipment/new"><Button>Add Equipment</Button></Link> : undefined} />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><div className="app-card p-4"><p className="text-xs text-slate-500">All</p><strong className="mt-1 block text-2xl">{visible.length}</strong></div>{[...counts].slice(0, 4).map(([label, value]) => <div className="app-card p-4" key={label}><p className="text-xs text-slate-500">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}</div>
-    {!visible.length ? <div className="app-card p-8 text-center text-slate-500">No canonical Equipment found.</div> : <ResponsiveEquipmentTable items={visible} />}
+    {!visible.length ? <EmptyState title="No canonical Equipment found" description="Equipment will appear here when it is available through the canonical read model." /> : <ResponsiveEquipmentTable items={visible} />}
   </div>;
 }
 
@@ -78,7 +80,7 @@ function LocalEquipmentPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{fleet.map(([label,value,caption])=><button type="button" aria-pressed={status===label} onClick={()=>setStatus(label)} className={`app-card p-4 text-left transition focus-visible:ring-2 focus-visible:ring-blue-500 ${status===label?"border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-950/50":"hover:border-blue-300"}`} key={label}><p className="text-xs text-slate-500">{label}</p><strong className="mt-1 block text-2xl">{value}</strong><span className="text-xs text-slate-500">{caption}</span></button>)}</div>
-      <section className="app-card grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5"><input aria-label="Search Equipment" className="app-control xl:col-span-2" placeholder="Search asset number, equipment, category..." value={query} onChange={event=>setQuery(event.target.value)}/>{[["Category",category,setCategory,values("category")],["Ownership",ownership,setOwnership,values("ownership")],["Location",location,setLocation,values("location")]].map(([label,value,setter,options])=><select key={label as string} aria-label={label as string} className="app-control" value={value as string} onChange={event=>(setter as (value:string)=>void)(event.target.value)}><option value="">All {label as string}</option>{(options as string[]).map(option=><option key={option}>{option}</option>)}</select>)}<Button variant="secondary" onClick={()=>{setQuery("");setStatus("All");setCategory("");setOwnership("");setLocation("")}}>Clear Filters</Button></section>
+      <FilterBar onClear={()=>{setQuery("");setStatus("All");setCategory("");setOwnership("");setLocation("")}} canClear={Boolean(query||category||ownership||location||status!=="All")}><label className="min-w-[15rem] flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">Search<input aria-label="Search Equipment" className="app-control mt-1" placeholder="Search asset number, equipment, category..." value={query} onChange={event=>setQuery(event.target.value)}/></label>{[["Category",category,setCategory,values("category")],["Ownership",ownership,setOwnership,values("ownership")],["Location",location,setLocation,values("location")]].map(([label,value,setter,options])=><label key={label as string} className="text-sm font-medium text-slate-700 dark:text-slate-200">{label as string}<select aria-label={label as string} className="app-control mt-1" value={value as string} onChange={event=>(setter as (value:string)=>void)(event.target.value)}><option value="">All {label as string}</option>{(options as string[]).map(option=><option key={option}>{option}</option>)}</select></label>)}</FilterBar>
       <p className="text-sm text-slate-500">Showing {filtered.length} of {activeEquipment.length} equipment</p>
       <EquipmentTable
         equipment={filtered}
