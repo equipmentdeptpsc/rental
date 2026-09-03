@@ -33,7 +33,7 @@ export default function Header({ onMenu, search }: { onMenu(): void; search?: Re
       <div className="flex items-center gap-4">
         <button aria-label="Toggle navigation" className="rounded-md p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-200 dark:hover:bg-slate-800" onClick={onMenu}><Menu size={22} /></button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-semibold capitalize tracking-tight sm:text-2xl">{meta.title}</h1>
+          <h1 className="font-display truncate text-xl font-semibold capitalize tracking-tight sm:text-2xl">{meta.title}</h1>
           <p className="hidden truncate text-xs text-slate-500 sm:block">{meta.subtitle}</p>
         </div>
         {search && <div className="w-auto sm:w-full sm:max-w-xs xl:max-w-sm">{search}</div>}

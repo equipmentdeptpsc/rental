@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Permission } from "@/features/auth/domain/permission";
 import type { DashboardActionItem } from "../services/dashboardActionQueue";
@@ -6,10 +7,10 @@ export default function DashboardActionQueue({ items, hasPermission, title = "At
   const visibleItems = items.filter((item) => hasPermission(item.permission));
   if (!visibleItems.length) {
     return (
-      <section className="dashboard-panel p-4">
-        <h2 className="dashboard-panel-title">{title}</h2>
-        <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">All clear — no operational exceptions right now.</p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Overdue returns, maintenance flags, approvals, and DEUR issues will surface here.</p>
+      <section className="dashboard-panel border-l-[3px] border-l-emerald-500 bg-emerald-50 p-4 dark:border-emerald-700 dark:bg-emerald-950/30">
+        <div className="flex items-start gap-3"><CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" size={20} /><div><h2 className="dashboard-panel-title text-emerald-900 dark:text-emerald-100">{title}</h2>
+        <p className="mt-2 text-sm font-medium text-emerald-800 dark:text-emerald-200">All clear — no operational exceptions right now.</p>
+        <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">Overdue returns, maintenance flags, approvals, and DEUR issues will surface here.</p></div></div>
       </section>
     );
   }
