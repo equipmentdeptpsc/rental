@@ -56,7 +56,7 @@ afterEach(async () => { vi.clearAllMocks(); while (roots.length) await act(async
 describe("remote canonical Equipment boundary", () => {
   it("ignores a local Equipment when the canonical response is empty", async () => {
     const container = await render(createElement(EquipmentPage));
-    expect(container.textContent).toContain("No canonical Equipment found.");
+    expect(container.textContent).toContain("No canonical Equipment found");
     expect(container.textContent).not.toContain("ME-000001");
     expect(container.textContent).not.toContain("Booked");
   });
