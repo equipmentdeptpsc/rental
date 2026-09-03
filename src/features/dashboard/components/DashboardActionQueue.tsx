@@ -8,7 +8,8 @@ export default function DashboardActionQueue({ items, hasPermission, title = "At
     return (
       <section className="dashboard-panel p-4">
         <h2 className="dashboard-panel-title">{title}</h2>
-        <p className="mt-3 text-sm text-slate-500">No operational exceptions require attention right now.</p>
+        <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">All clear — no operational exceptions right now.</p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Overdue returns, maintenance flags, approvals, and DEUR issues will surface here.</p>
       </section>
     );
   }
