@@ -63,7 +63,7 @@ export default function Dashboard() {
         <Panel title="Fleet">
           {operational.totalEquipment === 0 ? <EmptyState className="px-4 py-6" title="No equipment in the system yet" description="Add your fleet to start tracking availability, assignments, and maintenance from this dashboard." action={hasPermission("equipment.create") ? <Link className="app-link" to="/equipment/new">Add equipment</Link> : undefined} /> : <><MetricRows rows={[["Total equipment tracked", model.fleetUtilization.total], ["Available", model.fleetUtilization.available], ["Assigned", model.fleetUtilization.assigned], ["Maintenance", model.fleetUtilization.maintenance]]} /><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Fleet utilization" aria-valuemin={0} aria-valuemax={100} aria-valuenow={model.utilizationRate}><div className="h-full rounded-full bg-[#f0a93a]" style={{ width: `${model.utilizationRate}%` }} /></div></>}
         </Panel>
-        {model.categoryData.length ? <EquipmentCategoryChart data={model.categoryData} /> : <Panel title="Equipment by Category"><EmptyState className="px-4 py-6" title="No equipment category data yet" description="Category insights will appear once equipment is added." /></Panel>}
+        {model.categoryData.some((item) => item.value > 0) ? <EquipmentCategoryChart data={model.categoryData} /> : <Panel title="Equipment by Category"><EmptyState className="px-4 py-6" title="No equipment category data yet" description="Category insights will appear once equipment is added." /></Panel>}
       </div>
 
     </div>
