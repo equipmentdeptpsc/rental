@@ -4,10 +4,10 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const contextState = vi.hoisted(() => ({ rentals: [], rentalEquipmentLines: [], assignments: [], equipment: [], operators: [], projects: [], customers: [] }));
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "admin" }, hasPermission: () => true }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ user: { id: "admin", displayName: "UAT Administrator", username: "admin" }, hasPermission: () => true }) }));
 vi.mock("@/app/navigation/navigationConfig", () => ({
   getVisibleNavigation: () => [{ title: "OPERATIONS", items: [
-    { label: "Assignments", path: "/assignments", icon: "assignments" },
+    { label: "Bookings", path: "/assignments", icon: "assignments" },
     { label: "Rentals", path: "/rentals", icon: "rentals" },
   ] }],
 }));
@@ -79,7 +79,7 @@ describe("Commercial Terms route isolation", () => {
     expect([...container.querySelectorAll("option")].map(option => option.textContent)).not.toContain(`${localWorkDescription.code} — ${localWorkDescription.name}`);
     expect(container.querySelector('main form')).toBeNull();
     expect(container.querySelector('main [class*="fixed"][class*="inset-0"]')).toBeNull();
-    const assignments = [...container.querySelectorAll("a")].find(link => link.textContent === "Assignments");
+    const assignments = [...container.querySelectorAll("a")].find(link => link.textContent === "Bookings");
     expect(assignments?.closest("form")).toBeNull();
     await act(async () => assignments?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
     expect(container.textContent).toContain("Assignments destination");

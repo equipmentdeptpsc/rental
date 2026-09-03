@@ -99,7 +99,7 @@ describe("permission-aware navigation", () => {
 
   it("shows read-only modules but not Settings to Management", () => {
     expect(labels("management")).toEqual([
-      "Dashboard", "Equipment", "Assignments", "Rentals", "Maintenance",
+      "Dashboard", "Equipment", "Bookings", "Rentals", "Maintenance",
       "Operators", "Projects", "Daily Logs", "Customers", "Billing", "Reports",
     ]);
   });

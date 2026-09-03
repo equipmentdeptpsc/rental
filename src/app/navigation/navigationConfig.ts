@@ -43,7 +43,7 @@ export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
     title: "OPERATIONS",
     items: [
       { icon: "equipment", label: "Equipment", path: "/equipment", permission: "equipment.read" },
-      { icon: "assignments", label: "Assignments", path: "/assignments", permission: "assignment.read" },
+        { icon: "assignments", label: "Bookings", path: "/assignments", permission: "assignment.read" },
       { icon: "rentals", label: "Rentals", path: "/rentals", permission: "rental.read" },
       { icon: "maintenance", label: "Maintenance", path: "/maintenance", permission: "maintenance.read" },
       { icon: "operators", label: "Operators", path: "/operators", permission: "operator.read" },

@@ -4,7 +4,13 @@ import type { Operator } from "@/features/operators/types";
 import type { ProjectRecord } from "@/features/project/types";
 
 export function displayAssignmentExpectedReturn(value: string | undefined): string {
-  return value || "Not specified";
+  if (!value || value.startsWith("1970-01-01")) return "—";
+  return value;
+}
+
+export function displayAssignmentDate(value: string | undefined): string {
+  if (!value || value.startsWith("1970-01-01")) return "—";
+  return value;
 }
 
 export function getAssignmentNumber(assignmentId: string, assignments: readonly AssignmentRecord[]): string {
