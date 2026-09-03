@@ -13,7 +13,7 @@ import EmptyState from "@/components/ui/EmptyState";
 describe("UX presentation helpers", () => {
   it("renders a responsive semantic page header with action hierarchy", () => {
     const markup = renderToStaticMarkup(createElement(PageHeader, { title: "Operations Dashboard", description: "Current work", actions: createElement("button", { type: "button" }, "Refresh") }));
-    expect(markup).toContain("<h1>Operations Dashboard</h1>");
+    expect(markup).toContain('<h1 class="font-display">Operations Dashboard</h1>');
     expect(markup).toContain("Current work");
     expect(markup).toContain("Refresh");
     expect(markup).toContain("flex-wrap");

@@ -12,7 +12,7 @@ export default function OrganizationBrand({ compact = false, inverse = false }: 
         <div className={`${compact ? "text-[10px]" : "text-[10px] sm:text-xs"} truncate font-bold uppercase tracking-wide`}>
           {organizationBranding.companyName}
         </div>
-        <div className={`${compact ? "text-[10px]" : "text-xs"} ${inverse ? "text-slate-300" : "text-slate-600"}`}>
+        <div className={`${compact ? "text-[9px]" : "text-xs"} truncate ${inverse ? "text-slate-300" : "text-slate-600"}`}>
           {organizationBranding.departmentName}
         </div>
         {!compact && <div className="mt-0.5 hidden text-sm font-semibold sm:block">{organizationBranding.systemName}</div>}

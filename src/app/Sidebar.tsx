@@ -28,8 +28,8 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }:
         {groups.map((group) => <section key={group.title} className="mb-5">
           {!collapsed && <h2 className="mb-1.5 px-2 text-[10px] font-medium tracking-wide text-slate-400">{group.title}</h2>}
           <div className="space-y-1">{group.items.map((item) => { const Icon = icons[item.icon]; return (
-            <NavLink key={item.label} to={item.path} title={collapsed ? item.label : undefined} onClick={onNavigate} className={({ isActive }) => `flex min-h-10 items-center rounded-md text-[13px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${collapsed ? "justify-center px-2" : "gap-3 px-2.5"} ${isActive ? "bg-blue-600 text-white shadow-sm" : "text-slate-200 hover:bg-white/8 hover:text-white"}`}>
-              <Icon aria-hidden="true" size={17} className="shrink-0" />{!collapsed && <span>{item.label}</span>}
+            <NavLink key={item.label} to={item.path} title={collapsed ? item.label : undefined} onClick={onNavigate} className={({ isActive }) => `relative flex min-h-10 items-center rounded-md text-[13px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${collapsed ? "justify-center px-2" : "gap-3 px-2.5"} ${isActive ? "bg-amber-400/15 font-medium text-white before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-r before:bg-[#f0a93a]" : "text-slate-200/80 hover:bg-white/8 hover:text-white"}`}>
+              {({ isActive }) => <><Icon aria-hidden="true" size={17} className={`shrink-0 ${isActive ? "text-[#f0a93a]" : ""}`} />{!collapsed && <span>{item.label}</span>}</>}
             </NavLink>
           ); })}</div>
         </section>)}
