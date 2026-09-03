@@ -8,6 +8,7 @@ import DashboardActionQueue from "@/features/dashboard/components/DashboardActio
 import KpiCard from "@/components/ui/KpiCard";
 import { useDashboardViewModel } from "@/features/dashboard/hooks/useDashboardViewModel";
 import { useAuth } from "@/features/auth/AuthContext";
+import PageHeader from "@/components/ui/PageHeader";
 
 const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 const dateTime = new Intl.DateTimeFormat("en-PH", { dateStyle: "short", timeStyle: "short" });
@@ -23,12 +24,12 @@ export default function Dashboard() {
 
   return (
     <div className="app-page">
-      <div className="flex justify-end">
-        <button className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800" onClick={refresh}>
-          <span>Last updated: {dateTime.format(updatedAt)}</span>
-          <RefreshCw size={14} />
+      <PageHeader title="Operations Dashboard" description="Exception-first visibility across equipment, rentals, assignments, and DEUR work." actions={<button aria-label="Refresh dashboard" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" onClick={refresh}>
+          <RefreshCw size={15} /> <span>Refresh · {dateTime.format(updatedAt)}</span>
         </button>
-      </div>
+      } />
+
+      <DashboardActionQueue items={model.actionQueue} hasPermission={hasPermission} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         <KpiCard icon={<Package />} tone="blue" label="Total Equipment" value={operational.totalEquipment} caption="All equipment in system" />
@@ -40,7 +41,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <DashboardActionQueue items={model.actionQueue} hasPermission={hasPermission} />
         <div className="grid gap-4">
           <Panel title="Revenue">
             <MetricRows rows={[["Billed", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)], ["Outstanding", currency.format(financial.revenue.outstanding)]]} />

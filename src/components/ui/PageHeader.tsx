@@ -15,7 +15,7 @@ export default function PageHeader({
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">{actions}</div>}
     </header>
   );
 }

@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import type { Permission } from "@/features/auth/domain/permission";
 import type { DashboardActionItem } from "../services/dashboardActionQueue";
 
-export default function DashboardActionQueue({ items, hasPermission }: { items: readonly DashboardActionItem[]; hasPermission: (permission: Permission) => boolean }) {
+export default function DashboardActionQueue({ items, hasPermission, title = "Attention / Action Required" }: { items: readonly DashboardActionItem[]; hasPermission: (permission: Permission) => boolean; title?: string }) {
   const visibleItems = items.filter((item) => hasPermission(item.permission));
   if (!visibleItems.length) {
     return (
       <section className="dashboard-panel p-4">
-        <h2 className="dashboard-panel-title">Action Queue</h2>
+        <h2 className="dashboard-panel-title">{title}</h2>
         <p className="mt-3 text-sm text-slate-500">No operational exceptions require attention right now.</p>
       </section>
     );
@@ -22,7 +22,7 @@ export default function DashboardActionQueue({ items, hasPermission }: { items: 
   return (
     <section className="dashboard-panel p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="dashboard-panel-title">Action Queue</h2>
+        <h2 className="dashboard-panel-title">{title}</h2>
         <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white">{visibleItems.length}</span>
       </div>
       <ul className="space-y-2">
