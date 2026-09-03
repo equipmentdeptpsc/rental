@@ -76,7 +76,7 @@ describe("remote canonical Equipment boundary", () => {
 describe("remote canonical Operator boundary", () => {
   it("ignores a local Operator when the canonical response is empty", async () => {
     const container = await render(createElement(OperatorsPage));
-    expect(container.textContent).toContain("No canonical Operators found."); expect(container.textContent).not.toContain("Juan Pedro");
+    expect(container.textContent).toContain("No Operators match these filters"); expect(container.textContent).not.toContain("Juan Pedro");
   });
   it("fails closed before local create, edit, link, PIN, or delete behavior", async () => {
     expect((await render(createElement(NewOperator), remoteDependencies(), "/operators/new")).textContent).toContain("Changes unavailable");
@@ -87,7 +87,7 @@ describe("remote canonical Operator boundary", () => {
     const dependencies = remoteDependencies(); let items: Operator[] = [];
     dependencies.readRepositories.operators.list = vi.fn(async () => repositorySuccess({ items, nextCursor: undefined }));
     const container = await render(createElement(OperatorsPage), dependencies);
-    expect(container.textContent).toContain("No canonical Operators found.");
+    expect(container.textContent).toContain("No Operators match these filters");
     items = [{ id: "canonical-operator", name: "New Canonical Operator", email: "", licenseNumber: "", status: "Active", certificationType: "None", joinedDate: "2026-08-23" }];
     await act(async () => { requestCanonicalOperatorRefresh(); await Promise.resolve(); });
     expect(container.textContent).toContain("New Canonical Operator"); expect(container.textContent).toContain("Active"); expect(container.textContent).not.toContain("Juan Pedro");
