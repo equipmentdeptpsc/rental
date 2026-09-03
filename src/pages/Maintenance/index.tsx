@@ -2,6 +2,10 @@ import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
+import PageHeader from "@/components/ui/PageHeader";
+import FilterBar from "@/components/ui/FilterBar";
+import StatusBadge from "@/components/ui/StatusBadge";
+import { EmptyDataState } from "@/components/ui/AsyncState";
 
 import { useMaintenance } from "@/features/maintenance/context/MaintenanceContext";
 import { getMaintenanceDueEquipment } from "@/features/maintenance";
@@ -48,31 +52,11 @@ export default function MaintenancePage() {
   return (
     <div className="app-page">
 
-      <div className="flex items-center justify-between">
+      <PageHeader title="Maintenance" description="Fleet maintenance monitoring" actions={<Link to="/maintenance/new"><Button>Schedule Maintenance</Button></Link>} />
 
-        <div>
+      <FilterBar onClear={() => setFilter("All")} canClear={filter !== "All"}><div className="text-sm text-slate-600 dark:text-slate-300">Filter by maintenance health</div>{cards.map(([label,count])=><button type="button" key={label} aria-pressed={filter===label} onClick={()=>setFilter(label)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-medium ${filter===label?"border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/50":"border-slate-300 dark:border-slate-600"}`}>{label} <span className="font-semibold">{count}</span></button>)}</FilterBar>
 
-          <h1 className="text-3xl font-bold">
-            Maintenance
-          </h1>
-
-          <p className="mt-1 text-gray-500">
-            Fleet maintenance monitoring
-          </p>
-
-        </div>
-
-        <Link to="/maintenance/new">
-          <Button>
-            Schedule Maintenance
-          </Button>
-        </Link>
-
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,count,tone])=><button type="button" key={label} aria-pressed={filter===label} onClick={()=>setFilter(label)} className={`app-card p-5 text-left transition focus-visible:ring-2 focus-visible:ring-blue-500 ${filter===label?"border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-950/50":"hover:border-blue-300"}`}><p className={`text-sm font-medium ${tone==="red"?"text-red-600":tone==="amber"?"text-amber-600":tone==="green"?"text-green-600":"text-blue-600"}`}>{label}</p><strong className="mt-2 block text-3xl">{count}</strong></button>)}</div>
-
-      <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
+      {filtered.length === 0 ? <EmptyDataState title={filter === "All" ? "No maintenance records yet" : "No maintenance records match the current filters"} description="Scheduled maintenance and due equipment will appear here through the canonical maintenance workflow." /> : <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
 
         <table className="min-w-full">
 
@@ -146,22 +130,16 @@ export default function MaintenancePage() {
 
                     {item.due ? (
 
-                      <span className="rounded bg-red-100 px-3 py-1 text-red-700 dark:bg-red-950 dark:text-red-300">
-                        Overdue
-                      </span>
+                      <StatusBadge tone="danger">Overdue</StatusBadge>
 
                     ) : item.remaining <=
                       50 ? (
 
-                      <span className="rounded bg-yellow-100 px-3 py-1 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300">
-                        Due Soon
-                      </span>
+                      <StatusBadge tone="warning">Due Soon</StatusBadge>
 
                     ) : (
 
-                      <span className="rounded bg-green-100 px-3 py-1 text-green-700 dark:bg-green-950 dark:text-green-300">
-                        {item.equipment.status === "Maintenance" ? "In Maintenance" : maintenanceHealth(item)}
-                      </span>
+                      <StatusBadge tone="success">{item.equipment.status === "Maintenance" ? "In Maintenance" : maintenanceHealth(item)}</StatusBadge>
 
                     )}
 
@@ -177,7 +155,7 @@ export default function MaintenancePage() {
 
         </table>
 
-      </div></ResponsiveTable>
+      </div></ResponsiveTable>}
 
     </div>
   );
