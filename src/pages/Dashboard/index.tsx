@@ -43,32 +43,27 @@ export default function Dashboard() {
         <KpiCard icon={<span aria-hidden="true" className="text-2xl font-semibold">₱</span>} tone="green" label="Revenue (Billed)" value={currency.format(financial.revenue.billed)} caption="Total billed" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <div className="grid gap-4">
-          <Panel title="Revenue">
-            <MetricRows rows={[["Billed", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)], ["Outstanding", currency.format(financial.revenue.outstanding)], ["Collection rate", `${financial.collectionPerformance.collectionRate.toFixed(2)}%`]]} />
-            {hasPermission("billing.read") && <Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>}
-          </Panel>
-          <Panel title="Upcoming">
-            <div className="grid grid-cols-[1fr_auto] items-center gap-4">
-              <MetricRows rows={[["Scheduled releases", financial.upcoming.scheduledRelease], ["Expected returns", financial.upcoming.expectedReturns], ["Manager approvals", financial.upcoming.pendingManagerApprovals], ["Customer acknowledgements", financial.upcoming.pendingCustomerAcknowledgements]]} />
-              <div className="grid h-16 w-16 place-items-center rounded-lg bg-blue-50 text-blue-500 dark:bg-blue-950"><CalendarDays size={32} /></div>
-            </div>
-          </Panel>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <Panel title="Fleet">
-          {operational.totalEquipment === 0 ? <EmptyState title="No equipment in the system yet" description="Add your fleet to start tracking availability, assignments, and maintenance from this dashboard." action={hasPermission("equipment.create") ? <Link className="app-link" to="/equipment/new">Add equipment</Link> : undefined} /> : <><MetricRows rows={[["Total equipment tracked", model.fleetUtilization.total], ["Available", model.fleetUtilization.available], ["Assigned", model.fleetUtilization.assigned], ["Maintenance", model.fleetUtilization.maintenance]]} /><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Fleet utilization" aria-valuemin={0} aria-valuemax={100} aria-valuenow={model.utilizationRate}><div className="h-full rounded-full bg-[#f0a93a]" style={{ width: `${model.utilizationRate}%` }} /></div></>}
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.2fr)]">
+        <Panel title="Revenue">
+          <MetricRows rows={[["Billed", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)], ["Outstanding", currency.format(financial.revenue.outstanding)], ["Collection rate", `${financial.collectionPerformance.collectionRate.toFixed(2)}%`]]} />
+          {hasPermission("billing.read") && <Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>}
         </Panel>
-        <EquipmentCategoryChart data={model.categoryData} />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
+        <Panel title="Upcoming">
+          <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+            <MetricRows rows={[["Scheduled releases", financial.upcoming.scheduledRelease], ["Expected returns", financial.upcoming.expectedReturns], ["Manager approvals", financial.upcoming.pendingManagerApprovals], ["Customer acknowledgements", financial.upcoming.pendingCustomerAcknowledgements]]} />
+            <div className="grid h-12 w-12 place-items-center rounded-lg bg-blue-50 text-blue-500 dark:bg-blue-950"><CalendarDays size={24} /></div>
+          </div>
+        </Panel>
         <Panel title="Recent activity" action={hasPermission("users.manage") ? <Link to="/audit-trail">View all</Link> : undefined}>
-          <div className="space-y-3">{recentActivity.length ? recentActivity.map((item) => <div key={item.id} className="flex gap-3 text-xs"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.kind === "rental" ? "bg-purple-500" : "bg-[#f0a93a]"}`} /><div className="min-w-0 flex-1"><strong className="block truncate capitalize">{item.title}</strong><span className="block truncate text-slate-500">{item.description}</span></div><time className="shrink-0 text-slate-500">{time.format(new Date(item.timestamp))}</time></div>) : <EmptyState title="No recent activity" description="Equipment updates, rentals, and assignments will appear here as your team starts working." />}</div>
+          <div className="space-y-3">{recentActivity.length ? recentActivity.map((item) => <div key={item.id} className="flex gap-3 text-xs"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.kind === "rental" ? "bg-purple-500" : "bg-[#f0a93a]"}`} /><div className="min-w-0 flex-1"><strong className="block truncate capitalize">{item.title}</strong><span className="block truncate text-slate-500">{item.description}</span></div><time className="shrink-0 text-slate-500">{time.format(new Date(item.timestamp))}</time></div>) : <EmptyState className="px-3 py-6" title="No recent activity" description="Equipment updates, rentals, and assignments will appear here as your team starts working." />}</div>
         </Panel>
+      </div>
+
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <Panel title="Fleet">
+          {operational.totalEquipment === 0 ? <EmptyState className="px-4 py-6" title="No equipment in the system yet" description="Add your fleet to start tracking availability, assignments, and maintenance from this dashboard." action={hasPermission("equipment.create") ? <Link className="app-link" to="/equipment/new">Add equipment</Link> : undefined} /> : <><MetricRows rows={[["Total equipment tracked", model.fleetUtilization.total], ["Available", model.fleetUtilization.available], ["Assigned", model.fleetUtilization.assigned], ["Maintenance", model.fleetUtilization.maintenance]]} /><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Fleet utilization" aria-valuemin={0} aria-valuemax={100} aria-valuenow={model.utilizationRate}><div className="h-full rounded-full bg-[#f0a93a]" style={{ width: `${model.utilizationRate}%` }} /></div></>}
+        </Panel>
+        {model.categoryData.length ? <EquipmentCategoryChart data={model.categoryData} /> : <Panel title="Equipment by Category"><EmptyState className="px-4 py-6" title="No equipment category data yet" description="Category insights will appear once equipment is added." /></Panel>}
       </div>
 
     </div>

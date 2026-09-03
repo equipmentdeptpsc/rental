@@ -8,6 +8,7 @@ import { buildRentalWorkflowSteps, workflowBannerTone } from "@/features/rental/
 import PageHeader from "@/components/ui/PageHeader";
 import FilterBar from "@/components/ui/FilterBar";
 import { LoadingState, ErrorState, EmptyDataState } from "@/components/ui/AsyncState";
+import EmptyState from "@/components/ui/EmptyState";
 
 describe("UX presentation helpers", () => {
   it("renders a responsive semantic page header with action hierarchy", () => {
@@ -68,5 +69,15 @@ describe("UX presentation helpers", () => {
     const filters = renderToStaticMarkup(createElement(FilterBar, null, createElement("input", { "aria-label": "Search" })));
     expect(filters).toContain('aria-label="Filters"');
     expect(filters).toContain('aria-label="Search"');
+  });
+
+  it("supports compact intentional dashboard empty states", () => {
+    const markup = renderToStaticMarkup(createElement(EmptyState, {
+      className: "px-4 py-6",
+      title: "No equipment category data yet",
+      description: "Category insights will appear once equipment is added.",
+    }));
+    expect(markup).toContain("px-4 py-6");
+    expect(markup).toContain("No equipment category data yet");
   });
 });
