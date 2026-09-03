@@ -22,7 +22,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }:
   return (
     <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 flex h-dvh w-[216px] shrink-0 flex-col bg-[#071a33] text-white shadow-xl transition-[width,transform] duration-200 md:sticky md:top-0 md:self-start md:translate-x-0 ${collapsed ? "md:w-[68px]" : "md:w-[216px]"}`}>
       <div className={`flex h-[78px] items-center border-b border-white/10 ${collapsed ? "justify-center px-2" : "px-4"}`}>
-        {collapsed ? <img src="/branding/primary-structures-corporation-logo.png" alt="Primary Structures Corporation" className="h-9 w-10 object-contain" /> : <OrganizationBrand compact inverse />}
+        {collapsed ? <img src="/branding/psc-equipment-logo.png" alt="PSC Equipment logo" className="h-9 w-10 object-contain" /> : <OrganizationBrand compact inverse />}
       </div>
       <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3 py-4">
         {groups.map((group) => <section key={group.title} className="mb-5">
