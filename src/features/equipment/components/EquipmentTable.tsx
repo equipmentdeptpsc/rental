@@ -83,30 +83,30 @@ export default function EquipmentTable({
   return (
     <ResponsiveTable><div className="app-card min-w-max overflow-hidden">
 
-      <table className="app-table min-w-full">
+      <table className="app-table min-w-full table-fixed">
 
         <thead>
           <tr>
 
-            <th className="p-3 text-left">
+            <th className="w-[16%] px-4 py-3 text-left">
               Asset No.
             </th>
 
-            <th className="p-3 text-left">
+            <th className="w-[28%] px-4 py-3 text-left">
               Equipment
             </th>
 
-            <th className="p-3 text-left">
+            <th className="w-[20%] px-4 py-3 text-left">
               Category
             </th>
 
-            <th className="w-28 p-3 text-left">
+            <th className="w-[16%] px-4 py-3 text-left">
               Status
             </th>
 
             {(detailMode === "Assigned" || detailMode === "Deployed") && <><th className="p-3 text-left">Project</th><th className="p-3 text-left">Operator</th><th className="p-3 text-left">{detailMode === "Assigned" ? "Assignment" : "Rental / Assignment"}</th><th className="p-3 text-left">{detailMode === "Assigned" ? "Assigned Date" : "Date Deployed"}</th></>}
 
-            <th className="p-3 text-right">
+            <th className="w-[20%] px-4 py-3 text-right">
               Actions
             </th>
 
@@ -123,19 +123,19 @@ export default function EquipmentTable({
               className="odd:bg-slate-50/40 hover:bg-amber-50/60 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20"
             >
 
-              <td className="p-3">
+              <td className="px-4 py-3 align-middle">
                 {item.assetNo}
               </td>
 
-              <td className="p-3">
+              <td className="px-4 py-3 align-middle">
                 {item.equipmentName}
               </td>
 
-              <td className="p-3">
+              <td className="px-4 py-3 align-middle">
                 {item.category}
               </td>
 
-              <td className="p-3">
+              <td className="px-4 py-3 align-middle whitespace-nowrap">
                 <StatusBadge tone={item.status === "Available" ? "success" : item.status === "Maintenance" ? "warning" : "neutral"}>{presentEquipmentStatus(item.status)}</StatusBadge>
               </td>
 
