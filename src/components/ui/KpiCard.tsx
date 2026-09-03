@@ -31,7 +31,7 @@ export default function KpiCard({
       type={onClick ? "button" : undefined}
       aria-pressed={onClick ? active : undefined}
       onClick={onClick}
-      className={`app-card flex min-h-24 items-center gap-3 p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+      className={`app-card flex min-h-24 w-[min(220px,100%)] items-center gap-3 p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
         active ? "border-blue-500 ring-1 ring-blue-500 dark:bg-blue-950/40" : onClick ? "hover:border-blue-300" : ""
       }`}
     >

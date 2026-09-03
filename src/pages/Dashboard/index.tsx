@@ -34,7 +34,7 @@ export default function Dashboard() {
 
       <DashboardActionQueue items={model.actionQueue} hasPermission={hasPermission} />
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="flex flex-wrap items-stretch gap-3">
         <KpiCard icon={<Package />} tone="blue" label="Total Equipment" value={operational.totalEquipment} caption="All equipment in system" />
         <KpiCard icon={<CheckCircle2 />} tone="green" label="Available Equipment" value={operational.availableEquipment} caption="Ready for assignment" />
         <KpiCard icon={<Wrench />} tone="orange" label="In Maintenance" value={operational.maintenanceEquipment} caption="Under maintenance" />

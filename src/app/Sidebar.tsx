@@ -24,7 +24,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }:
       <div className={`flex h-[78px] items-center border-b border-white/10 ${collapsed ? "justify-center px-2" : "px-4"}`}>
         {collapsed ? <img src="/branding/psc-equipment-logo.png" alt="PSC Equipment logo" className="h-9 w-10 object-contain" /> : <OrganizationBrand compact inverse />}
       </div>
-      <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3 py-4">
+      <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3 py-4 [scrollbar-gutter:stable]">
         {groups.map((group) => <section key={group.title} className="mb-5">
           {!collapsed && <h2 className="mb-1.5 px-2 text-[10px] font-medium tracking-wide text-slate-400">{group.title}</h2>}
           <div className="space-y-1">{group.items.map((item) => { const Icon = icons[item.icon]; return (
