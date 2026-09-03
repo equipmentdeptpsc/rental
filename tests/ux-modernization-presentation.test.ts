@@ -5,8 +5,17 @@ import { MemoryRouter } from "react-router-dom";
 import DashboardActionQueue from "@/features/dashboard/components/DashboardActionQueue";
 import { buildDashboardActionQueue } from "@/features/dashboard/services/dashboardActionQueue";
 import { buildRentalWorkflowSteps, workflowBannerTone } from "@/features/rental/workspace/presentation/rentalWorkflowPresentation";
+import PageHeader from "@/components/ui/PageHeader";
 
 describe("UX presentation helpers", () => {
+  it("renders a responsive semantic page header with action hierarchy", () => {
+    const markup = renderToStaticMarkup(createElement(PageHeader, { title: "Operations Dashboard", description: "Current work", actions: createElement("button", { type: "button" }, "Refresh") }));
+    expect(markup).toContain("<h1>Operations Dashboard</h1>");
+    expect(markup).toContain("Current work");
+    expect(markup).toContain("Refresh");
+    expect(markup).toContain("flex-wrap");
+  });
+
   it("builds dashboard action queue items from pending operational signals", () => {
     const items = buildDashboardActionQueue({
       deurs: [
