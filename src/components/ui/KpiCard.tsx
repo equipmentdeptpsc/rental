@@ -31,18 +31,18 @@ export default function KpiCard({
       type={onClick ? "button" : undefined}
       aria-pressed={onClick ? active : undefined}
       onClick={onClick}
-      className={`app-card flex min-h-32 items-center gap-4 p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+      className={`app-card flex min-h-24 items-center gap-3 p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
         active ? "border-blue-500 ring-1 ring-blue-500 dark:bg-blue-950/40" : onClick ? "hover:border-blue-300" : ""
       }`}
     >
       {icon && (
-        <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl [&_svg]:h-6 [&_svg]:w-6 ${tones[tone]}`}>
+        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg [&_svg]:h-5 [&_svg]:w-5 ${tones[tone]}`}>
           {icon}
         </div>
       )}
       <div className="min-w-0">
         <h2 className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</h2>
-        <div className="mt-1 truncate text-2xl font-semibold">{value}</div>
+        <div className="mt-1 truncate text-xl font-semibold">{value}</div>
         {caption && <p className="mt-1 truncate text-[10px] text-slate-500">{caption}</p>}
       </div>
     </Tag>
