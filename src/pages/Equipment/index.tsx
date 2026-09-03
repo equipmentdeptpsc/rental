@@ -18,6 +18,9 @@ import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonic
 import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import EmptyState from "@/components/ui/EmptyState";
+import { LoadingState, ErrorState } from "@/components/ui/AsyncState";
+import StatusBadge from "@/components/ui/StatusBadge";
+import { filterCanonicalEquipment } from "@/features/equipment/services/filterCanonicalEquipment";
 
 export default function EquipmentPage() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -28,20 +31,27 @@ function CanonicalEquipmentPage() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const data = useCanonicalEquipmentData();
-  if (data.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Equipment…</div>;
-  if (data.status === "error") return <div className="p-8" role="alert">{data.message}<button className="ml-3 underline" onClick={data.retry}>Retry</button></div>;
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
+  if (data.status === "loading") return <div className="app-page"><LoadingState label="Loading canonical Equipment…" /></div>;
+  if (data.status === "error") return <div className="app-page"><ErrorState message={data.message} onRetry={data.retry} /></div>;
   const visible = data.items.filter((item) => item.active && !item.deleted);
+  const filtered = filterCanonicalEquipment(visible, { query, category, status });
+  const categories = [...new Set(visible.map((item) => item.category).filter(Boolean))].sort() as string[];
+  const statuses = [...new Set(visible.map((item) => item.statusLabel).filter(Boolean))].sort() as string[];
   const counts = new Map<string, number>();
   for (const item of visible) counts.set(item.statusLabel ?? "Unavailable", (counts.get(item.statusLabel ?? "Unavailable") ?? 0) + 1);
   const canCreate = getEquipmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalEquipment)).canonicalMutations && hasPermission("equipment.create");
   return <div className="app-page"><PageHeader title="Equipment" description="Canonical company equipment." actions={canCreate ? <Link to="/equipment/new"><Button>Add Equipment</Button></Link> : undefined} />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><div className="app-card p-4"><p className="text-xs text-slate-500">All</p><strong className="mt-1 block text-2xl">{visible.length}</strong></div>{[...counts].slice(0, 4).map(([label, value]) => <div className="app-card p-4" key={label}><p className="text-xs text-slate-500">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}</div>
-    {!visible.length ? <EmptyState title="No canonical Equipment found" description="Equipment will appear here when it is available through the canonical read model." /> : <ResponsiveEquipmentTable items={visible} />}
+    <FilterBar onClear={() => { setQuery(""); setCategory(""); setStatus(""); }} canClear={Boolean(query || category || status)}><label className="min-w-[15rem] flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">Search<input aria-label="Search Equipment" className="app-control mt-1" placeholder="Search asset number, equipment, or category" value={query} onChange={(event) => setQuery(event.target.value)} /></label><label className="text-sm font-medium text-slate-700 dark:text-slate-200">Category<select aria-label="Category" className="app-control mt-1" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">All Categories</option>{categories.map((value) => <option key={value}>{value}</option>)}</select></label><label className="text-sm font-medium text-slate-700 dark:text-slate-200">Status<select aria-label="Status" className="app-control mt-1" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All Statuses</option>{statuses.map((value) => <option key={value}>{value}</option>)}</select></label></FilterBar>
+    {!visible.length ? <EmptyState title="No canonical Equipment found" description="Equipment will appear here when it is available through the canonical read model." /> : <>{filtered.length === 0 ? <EmptyState title="No matching equipment" description="Try clearing a filter or adjusting your search." /> : <ResponsiveEquipmentTable items={filtered} />}</>}
   </div>;
 }
 
 function ResponsiveEquipmentTable({ items }: { items: ReturnType<typeof useCanonicalEquipmentData>["items"] }) {
-  return <div className="app-card overflow-x-auto"><table className="app-table min-w-full"><thead><tr><th>Asset No.</th><th>Equipment</th><th>Category</th><th>Status</th><th className="text-right">Action</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{item.assetNo}</td><td>{item.equipmentName}</td><td>{item.category ?? "—"}</td><td>{item.statusLabel ?? "Unavailable"}</td><td className="text-right"><Link className="text-blue-600 underline" to={`/equipment/${item.id}`}>View</Link></td></tr>)}</tbody></table></div>;
+  return <div className="app-card overflow-x-auto"><table className="app-table min-w-full"><thead><tr><th>Asset No.</th><th>Equipment</th><th>Category</th><th>Status</th><th className="text-right">Action</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{item.assetNo}</td><td>{item.equipmentName}</td><td>{item.category ?? "—"}</td><td><StatusBadge tone={item.statusLabel === "Available" ? "success" : item.statusLabel === "Maintenance" ? "warning" : "neutral"}>{item.statusLabel ?? "Unavailable"}</StatusBadge></td><td className="text-right"><Link className="text-blue-600 underline" to={`/equipment/${item.id}`}>View</Link></td></tr>)}</tbody></table></div>;
 }
 
 function LocalEquipmentPage() {
