@@ -8,7 +8,7 @@ const pageMeta: Readonly<Record<string, { title: string; subtitle: string }>> = 
   "/dashboard": { title: "Dashboard", subtitle: "Overview of operations, equipment, rentals, DEUR, and billing." },
   "/": { title: "Dashboard", subtitle: "Overview of operations, equipment, rentals, DEUR, and billing." },
   "/equipment": { title: "Equipment", subtitle: "Manage fleet records, availability, and lifecycle status." },
-  "/assignments": { title: "Assignments", subtitle: "Coordinate equipment, operators, and projects." },
+  "/assignments": { title: "Bookings", subtitle: "Coordinate equipment, operators, and projects." },
   "/rentals": { title: "Rentals", subtitle: "Manage rental operations and lifecycle progress." },
   "/billing": { title: "Billing", subtitle: "Review billable activity, invoices, and collections." },
 };
