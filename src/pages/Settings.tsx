@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
 
 import PrefixTable from "@/features/settings/components/PrefixTable";
 import PrefixForm from "@/features/settings/components/PrefixForm";
@@ -148,20 +149,10 @@ export default function Settings() {
   return (
     <div className="space-y-6 p-4 sm:p-8">
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <PageHeader title="Settings" description="System configuration and master data, grouped by operational capability." />
 
-        <div>
-          <h1 className="text-3xl font-bold">
-            Settings
-          </h1>
-
-          <p className="text-gray-500 mt-1">
-            System configuration and master data.
-          </p>
-        </div>
-
-      </div>
-
+      <section aria-labelledby="operations-settings" className="space-y-4">
+      <h2 id="operations-settings" className="text-sm font-semibold uppercase tracking-wide text-slate-500">Operations</h2>
       <div className="rounded-xl border bg-white p-6">
         <h2 className="text-2xl font-semibold">DEUR Shift Windows</h2>
         <p className="mb-4 text-gray-500">These windows define expectation due times only. Released Rentals retain immutable copies.</p>
@@ -177,7 +168,10 @@ export default function Settings() {
           </div>)}
         </div>
       </div>
+      </section>
 
+      <section aria-labelledby="master-data-settings" className="space-y-4">
+      <h2 id="master-data-settings" className="text-sm font-semibold uppercase tracking-wide text-slate-500">Master data</h2>
       <div className="rounded-xl border bg-white p-6">
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-2xl font-semibold">Equipment Prefix Master</h2><p className="text-gray-500">Manage equipment numbering prefixes.</p></div><button ref={prefixTrigger} type="button" className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700" onClick={newPrefix}>+ New Prefix</button></div>
@@ -188,6 +182,7 @@ export default function Settings() {
         />
 
       </div>
+      </section>
 
       {configuration.persistenceMode !== PersistenceMode.Remote && <div className="rounded-xl border bg-white p-6">
         <h2 className="text-2xl font-semibold">Development Email Outbox</h2>
