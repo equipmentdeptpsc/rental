@@ -16,11 +16,12 @@ import type { RemoteCore } from "@/core/remote";
 import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
 import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepository";
 import { SupabaseOperatorCertificationRepository } from "@/features/operators/certifications/repository";
+import { SupabaseEquipmentSubcategoryRepository } from "./SupabaseEquipmentSubcategoryRepository";
 
 export function createSupabaseReadRepositories(client: SupabaseClient, core: RemoteCore) {
   return {
     users: new SupabaseReadRepository<User>(client, { repositoryName: "User", table: "users", columns: "id,username,display_name,email,company_id,status,operator_id,credential_mode,created_at,updated_at,user_roles(app_roles(code))", searchColumns: ["username", "display_name", "email"], mapRow: mapUser }, core),
-    equipment: new SupabaseReadRepository<EquipmentRecord>(client, { repositoryName: "Equipment", table: "equipment", searchColumns: ["asset_no", "equipment_name", "serial_number"] }, core),
+    equipment: new SupabaseReadRepository<EquipmentRecord>(client, { repositoryName: "Equipment", table: "equipment_read_model", searchColumns: ["asset_no", "equipment_name", "serial_number", "subcategory_name"] }, core),
     rentals: new SupabaseReadRepository<RentalRecord>(client, { repositoryName: "Rental", table: "rentals", searchColumns: ["rental_number", "customer_snapshot", "project_snapshot"], mapRow: mapRental }, core),
     assignments: new SupabaseReadRepository<AssignmentRecord>(client, { repositoryName: "Assignment", table: "assignments", searchColumns: ["remarks"], mapRow: mapAssignment }, core),
     operators: new SupabaseReadRepository<Operator>(client, { repositoryName: "Operator", table: "operators", searchColumns: ["name", "email", "license_number"] }, core),
@@ -32,6 +33,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
     canonicalAudit: new SupabaseReadRepository<CanonicalAuditEvent>(client, { repositoryName: "CanonicalAudit", table: "audit_log", columns: "id,company_id,aggregate_type,aggregate_id,action,actor_id,actor_name,occurred_at,correlation_id", searchColumns: ["aggregate_type", "aggregate_id", "action", "actor_id", "actor_name"], mapRow: mapCanonicalAudit }, core),
     certificationTypes: new SupabaseCertificationReadRepository(client),
+    equipmentSubcategories: new SupabaseEquipmentSubcategoryRepository(client),
     operatorCertifications: new SupabaseOperatorCertificationRepository(client),
   };
 }
