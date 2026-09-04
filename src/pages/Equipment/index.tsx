@@ -16,6 +16,7 @@ import { filterEquipmentList, type EquipmentStatusFilter } from "@/features/equi
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
 import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonicalEquipmentData";
+import { useCanonicalEquipmentFilters } from "@/features/equipment/hooks/useCanonicalEquipmentFilters";
 import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import EmptyState from "@/components/ui/EmptyState";
@@ -31,22 +32,25 @@ export default function EquipmentPage() {
 function CanonicalEquipmentPage() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
-  const data = useCanonicalEquipmentData();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
-  const [status, setStatus] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
+  const [statusId, setStatusId] = useState("");
+  const data = useCanonicalEquipmentData({ categoryId, subcategoryId, statusId });
+  const options = useCanonicalEquipmentFilters(categoryId);
   if (data.status === "loading") return <div className="app-page"><LoadingState label="Loading canonical Equipment…" /></div>;
   if (data.status === "error") return <div className="app-page"><ErrorState message={data.message} onRetry={data.retry} /></div>;
   const visible = data.items.filter((item) => item.active && !item.deleted);
-  const filtered = filterCanonicalEquipment(visible, { query, category, status });
-  const categories = [...new Set(visible.map((item) => item.category).filter(Boolean))].sort() as string[];
-  const statuses = [...new Set(visible.map((item) => item.statusLabel).filter(Boolean))].sort() as string[];
+  const filtered = filterCanonicalEquipment(visible, { query, category: "", status: "" });
   const counts = new Map<string, number>();
   for (const item of visible) counts.set(item.statusLabel ?? "Unavailable", (counts.get(item.statusLabel ?? "Unavailable") ?? 0) + 1);
   const canCreate = getEquipmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalEquipment)).canonicalMutations && hasPermission("equipment.create");
+  const categoryError = options.categories.status === "error";
+  const subcategoryError = options.subcategories.status === "error";
+  const statusError = options.statuses.status === "error";
   return <div className="app-page"><PageHeader title="Equipment" description="Canonical company equipment." actions={canCreate ? <Link to="/equipment/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">Add Equipment</Button></Link> : undefined} />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatusCard label="All" value={visible.length} /><>{[...counts].slice(0, 3).map(([label, value]) => <StatusCard key={label} label={label} value={value} />)}</></div>
-    <FilterBar onClear={() => { setQuery(""); setCategory(""); setStatus(""); }} canClear={Boolean(query || category || status)}><label className="min-w-[15rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Search</span><input aria-label="Search Equipment" className="app-control mt-1 w-full" placeholder="Search asset number, equipment, or category" value={query} onChange={(event) => setQuery(event.target.value)} /></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Category</span><select aria-label="Category" className="app-control mt-1 w-full" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">All Categories</option>{categories.map((value) => <option key={value}>{value}</option>)}</select></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Status</span><select aria-label="Status" className="app-control mt-1 w-full" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All Statuses</option>{statuses.map((value) => <option key={value}>{value}</option>)}</select></label></FilterBar>
+    <FilterBar onClear={() => { setQuery(""); setCategoryId(""); setSubcategoryId(""); setStatusId(""); }} canClear={Boolean(query || categoryId || subcategoryId || statusId)}><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Category</span><select aria-label="Category" className="app-control mt-1 w-full" value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setSubcategoryId(""); }} disabled={options.categories.status === "loading"}><option value="">{categoryError ? "Categories unavailable" : options.categories.status === "loading" ? "Loading categories…" : "All Categories"}</option>{options.categories.items.map((value) => <option key={value.id} value={value.id}>{value.name}</option>)}</select></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Sub-Category</span><select aria-label="Sub-Category" className="app-control mt-1 w-full" value={subcategoryId} onChange={(event) => setSubcategoryId(event.target.value)} disabled={!categoryId || options.subcategories.status === "loading"}><option value="">{!categoryId ? "Select a Category first" : subcategoryError ? "Sub-categories unavailable" : options.subcategories.status === "loading" ? "Loading sub-categories…" : "All Sub-Categories"}</option>{options.subcategories.items.map((value) => <option key={value.id} value={value.id}>{value.name}</option>)}</select></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Status</span><select aria-label="Status" className="app-control mt-1 w-full" value={statusId} onChange={(event) => setStatusId(event.target.value)} disabled={options.statuses.status === "loading"}><option value="">{statusError ? "Statuses unavailable" : options.statuses.status === "loading" ? "Loading statuses…" : "All Statuses"}</option>{options.statuses.items.map((value) => <option key={value.id} value={value.id}>{value.status}</option>)}</select></label><label className="min-w-[15rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Search</span><input aria-label="Search Equipment" className="app-control mt-1 w-full" placeholder="Search asset number, equipment, or category" value={query} onChange={(event) => setQuery(event.target.value)} /></label></FilterBar>
     {!visible.length ? <EmptyState icon={<PackageOpen aria-hidden="true" size={22} />} title="No canonical Equipment found" description="Equipment will appear here when it is available through the canonical read model." action={canCreate ? <Link to="/equipment/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">Add Equipment</Button></Link> : undefined} /> : <>{filtered.length === 0 ? <EmptyState title="No matching equipment" description="Try clearing a filter or adjusting your search." /> : <ResponsiveEquipmentTable items={filtered} />}</>}
   </div>;
 }

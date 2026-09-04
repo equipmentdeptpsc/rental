@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { subscribeCanonicalEquipmentRefresh } from "@/features/equipment/remote/canonicalEquipmentRefresh";
+import { toCanonicalEquipmentQueryFilters, type CanonicalEquipmentRemoteFilter } from "@/features/equipment/services/filterCanonicalEquipment";
 
 export interface CanonicalEquipmentProjection {
   id: string;
@@ -31,7 +32,7 @@ type State =
 
 const text = (value: unknown) => typeof value === "string" ? value : undefined;
 
-export function useCanonicalEquipmentData() {
+export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilter = {}) {
   const { readRepositories, repositories } = useApplicationDependenciesCompatibility();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>({ status: "loading", items: [] });
@@ -41,7 +42,10 @@ export function useCanonicalEquipmentData() {
   useEffect(() => {
     let active = true;
     setState({ status: "loading", items: [] });
-    void Promise.all([readRepositories.equipment.list(), repositories.equipmentStatusRead.list()]).then(([equipment, statuses]) => {
+    void Promise.all([
+      readRepositories.equipment.list({ filters: toCanonicalEquipmentQueryFilters(filters) }),
+      repositories.equipmentStatusRead.list(),
+    ]).then(([equipment, statuses]) => {
       if (!active) return;
       if (!equipment.success || !statuses.success) {
         setState({ status: "error", items: [], message: "Canonical Equipment data could not be loaded." });
@@ -75,7 +79,7 @@ export function useCanonicalEquipmentData() {
       setState({ status: "loaded", items });
     }).catch(() => { if (active) setState({ status: "error", items: [], message: "Canonical Equipment data could not be loaded." }); });
     return () => { active = false; };
-  }, [attempt, readRepositories.equipment, repositories.equipmentStatusRead]);
+  }, [attempt, readRepositories.equipment, repositories.equipmentStatusRead, filters.categoryId, filters.subcategoryId, filters.statusId]);
 
   return { ...state, retry };
 }
