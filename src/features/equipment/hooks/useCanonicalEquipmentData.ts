@@ -11,6 +11,7 @@ export interface CanonicalEquipmentProjection {
   statusLabel?: string;
   active: boolean;
   deleted: boolean;
+  categoryId?: string;
   category?: string;
   subcategoryId?: string;
   subcategoryName?: string;
@@ -58,6 +59,7 @@ export function useCanonicalEquipmentData() {
           statusLabel: statusId ? statusLabels.get(statusId) : undefined,
           active: row.active === true,
           deleted: row.deletedAt !== null && row.deletedAt !== undefined,
+          categoryId: text(row.categoryId),
           category: text(row.category),
           subcategoryId: text(row.subcategoryId),
           subcategoryName: text(row.subcategoryName),
