@@ -6,6 +6,7 @@ export interface CanonicalEquipmentRemoteFilter {
   subcategoryId?: string;
   statusId?: string;
   projectId?: string;
+  customerId?: string;
 }
 
 export function toCanonicalEquipmentQueryFilters(filter: CanonicalEquipmentRemoteFilter) {
@@ -14,6 +15,7 @@ export function toCanonicalEquipmentQueryFilters(filter: CanonicalEquipmentRemot
     subcategory_id: filter.subcategoryId || undefined,
     status_id: filter.statusId || undefined,
     project_id: filter.projectId || undefined,
+    customer_id: filter.customerId || undefined,
   };
 }
 
