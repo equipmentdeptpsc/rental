@@ -43,6 +43,7 @@ import type { ProjectCommandRepository } from "@/features/project/commands/contr
 import type { OperatorCommandRepository } from "@/features/operators/commands/contracts";
 import type { EquipmentCommandRepository } from "@/features/equipment/commands/contracts";
 import type { CustomerCommandRepository } from "@/features/customer/commands/contracts";
+import type { OperatorCertificationRepository } from "@/features/operators/certifications/repository";
 import type {
   OperationalEventRepository,
   OperationalEventStream,
@@ -70,8 +71,9 @@ export interface ApplicationReadRepositories {
   workDescriptions: ReadOnlyRepository<WorkDescriptionRecord>;
   canonicalAudit: ReadOnlyRepository<CanonicalAuditEvent>;
   certificationTypes: ReadOnlyRepository<CertificationTypeRecord>;
+  operatorCertifications: OperatorCertificationRepository;
 }
-export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository; certificationTypes?: CertificationTypeCommandRepository }
+export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository; certificationTypes?: CertificationTypeCommandRepository; operatorCertifications?: OperatorCertificationRepository }
 export interface ApplicationChangeNotifications { subscribeDeur(listener: (record: DeurRecord) => void): () => void }
 export interface OperationalSynchronizationDependencies {
   readonly tenantId?: string;

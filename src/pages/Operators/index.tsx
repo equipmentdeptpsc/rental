@@ -18,7 +18,7 @@ export default function OperatorsPage() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const capability = getOperatorRuntimeCapability(configuration, Boolean(commandRepositories.canonicalOperator));
-  return capability.canonicalReads ? <CanonicalOperatorsPage canCreate={capability.canonicalMutations && hasPermission("operator.manage")} /> : <LocalOperatorsPage />;
+  return capability.canonicalReads ? <CanonicalOperatorsPage canCreate={capability.canonicalMutations && hasPermission("operator.create")} /> : <LocalOperatorsPage />;
 }
 
 function CanonicalOperatorsPage({ canCreate }: { canCreate: boolean }) {

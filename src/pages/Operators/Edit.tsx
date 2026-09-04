@@ -7,10 +7,11 @@ import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getOperatorRuntimeCapability, REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/operators/services/operatorRuntimeCapability";
 import RemoteMutationUnavailable from "@/components/ui/RemoteMutationUnavailable";
+import RemoteOperatorCertificationEditor from "@/features/operators/components/RemoteOperatorCertificationEditor";
 
 export default function EditOperator() {
-  const { configuration } = useApplicationDependenciesCompatibility();
-  return getOperatorRuntimeCapability(configuration).legacyMutations ? <LocalEditOperator /> : <RemoteMutationUnavailable title="Edit Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
+  return getOperatorRuntimeCapability(configuration).legacyMutations ? <LocalEditOperator /> : commandRepositories.operatorCertifications ? <RemoteOperatorCertificationEditor /> : <RemoteMutationUnavailable title="Edit Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 
 function LocalEditOperator() {

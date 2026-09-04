@@ -13,7 +13,7 @@ export default function NewOperator() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const capability = getOperatorRuntimeCapability(configuration, Boolean(commandRepositories.canonicalOperator));
-  if (capability.canonicalMutations && hasPermission("operator.manage")) return <RemoteOperatorForm />;
+  if (capability.canonicalMutations && hasPermission("operator.create")) return <RemoteOperatorForm />;
   return capability.legacyMutations ? <LocalNewOperator /> : <RemoteMutationUnavailable title="New Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 

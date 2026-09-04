@@ -26,6 +26,7 @@ import { customerRepository } from "@/features/customer/repository";
 import { projectRepository } from "@/features/project/repository";
 import { operatorRepository } from "@/features/operators/repository";
 import { PersistenceMode } from "./ApplicationDependencies";
+import { LocalOperatorCertificationRepository } from "@/features/operators/certifications/repository";
 import { LocalDeurCommandRepository } from "@/features/rental/deur/commands/LocalDeurCommandRepository";
 import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
 import { workDescriptionRepository } from "@/features/masters/work-description";
@@ -105,6 +106,7 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     workDescriptions: new LocalReadRepository(() => workDescriptionRepository.getAll()),
     canonicalAudit: new LocalReadRepository(() => []),
     certificationTypes: new LocalReadRepository(() => []),
+    operatorCertifications: new LocalOperatorCertificationRepository(),
   };
   const synchronization = overrides.synchronization ?? (() => {
     const repository = new InMemoryOperationalEventRepository();
@@ -125,5 +127,5 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
       replayCoordinator: new BrowserReplayCoordinator(typeof navigator !== "undefined" ? navigator.locks : undefined),
     };
   })();
-  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(currentAuthenticatedUser),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},synchronization,authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
+  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(currentAuthenticatedUser),operatorCertifications:new LocalOperatorCertificationRepository(),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},synchronization,authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
 }
