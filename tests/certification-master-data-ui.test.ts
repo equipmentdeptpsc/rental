@@ -10,6 +10,9 @@ describe("certification master-data UI boundary", () => {
     expect(repository).toContain("command_update_certification_type");
     expect(repository).toContain("command_activate_certification_type");
     expect(repository).toContain("command_deactivate_certification_type");
+    expect(page).toContain("expectedRowVersion: item.rowVersion");
+    expect(page).toContain("expectedRowVersion: editing.rowVersion");
+    expect(page).not.toContain("expectedVersion:");
     expect(page).not.toContain("masterData.manage");
     expect(page).not.toContain("Delete");
   });
