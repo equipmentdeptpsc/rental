@@ -65,7 +65,7 @@ describe("canonical remote Operator-linked password reset",()=>{
   it("shows remote Reset Password only with permission and clears both fields on every exit",()=>{
     expect(pageSource).toContain('role.permissions.includes("users.password.reset")');
     expect(pageSource).toContain('(!remote||canResetPassword)');
-    expect(pageSource).toContain('!remote&&user.operatorId?"Reset PIN":"Reset Password"');
+    expect(pageSource).toContain('{user.operatorId?"Reset PIN":"Reset Password"}');
     expect(pageSource).toContain('finally{setNewPassword("");setConfirmNewPassword("");setResetVisible(false)}');
     expect(pageSource).toContain('resetCommand.current=undefined;setNewPassword("");setConfirmNewPassword("")');
     expect(pageSource).toContain('const commandId=resetCommand.current??crypto.randomUUID();resetCommand.current=commandId');
