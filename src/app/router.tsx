@@ -158,7 +158,7 @@ export const router = createBrowserRouter([
         element: permitted("masterData.manage", <Suspense fallback={<div className="p-8 text-slate-500">Loading Work Descriptions…</div>}><WorkDescriptionPage /></Suspense>),
       },
       { path: "settings/idle-reasons", element: permitted("masterData.manage", <Suspense fallback={<div className="p-8">Loading Idle Reasons…</div>}><IdleReasonPage /></Suspense>) },
-      { path: "settings/equipment-subcategories", element: permitted("masterData.manage", <Suspense fallback={<div className="p-8">Loading Equipment Sub-Categories…</div>}><EquipmentSubcategoryPage /></Suspense>) },
+      { path: "settings/equipment-subcategories", element: permitted("masterData.read", <Suspense fallback={<div className="p-8">Loading Equipment Sub-Categories…</div>}><EquipmentSubcategoryPage /></Suspense>) },
       { path: "settings/certification-types", element: permitted("masterData.read", <Suspense fallback={<div className="p-8">Loading Certification Types…</div>}><CertificationTypesPage /></Suspense>) },
     ],
   },

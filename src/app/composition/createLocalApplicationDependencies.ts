@@ -27,7 +27,7 @@ import { projectRepository } from "@/features/project/repository";
 import { operatorRepository } from "@/features/operators/repository";
 import { PersistenceMode } from "./ApplicationDependencies";
 import { LocalOperatorCertificationRepository } from "@/features/operators/certifications/repository";
-import { LocalEquipmentSubcategoryReadRepository } from "@/features/masters/equipment-subcategory/canonical";
+import { LocalEquipmentSubcategoryReadRepository, LocalEquipmentCategoryReadRepository } from "@/features/masters/equipment-subcategory/canonical";
 import { LocalDeurCommandRepository } from "@/features/rental/deur/commands/LocalDeurCommandRepository";
 import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
 import { workDescriptionRepository } from "@/features/masters/work-description";
@@ -108,6 +108,7 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     canonicalAudit: new LocalReadRepository(() => []),
     certificationTypes: new LocalReadRepository(() => []),
     equipmentSubcategories: new LocalEquipmentSubcategoryReadRepository(),
+    equipmentCategories: new LocalEquipmentCategoryReadRepository(),
     operatorCertifications: new LocalOperatorCertificationRepository(),
   };
   const synchronization = overrides.synchronization ?? (() => {
