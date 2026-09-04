@@ -3,6 +3,6 @@ export interface CertificationTypeRecord {
 }
 export interface CertificationTypeCommandRepository {
   create(input: { commandId: string; idempotencyKey: string; certificationTypeId: string; name: string }): Promise<{ success: boolean; code?: string; value?: CertificationTypeRecord }>;
-  update(input: { commandId: string; idempotencyKey: string; certificationTypeId: string; name: string; expectedVersion: number }): Promise<{ success: boolean; code?: string; value?: CertificationTypeRecord }>;
-  setActive(input: { commandId: string; idempotencyKey: string; certificationTypeId: string; expectedVersion: number }, active: boolean): Promise<{ success: boolean; code?: string; value?: CertificationTypeRecord }>;
+  update(input: { commandId: string; idempotencyKey: string; certificationTypeId: string; name: string; expectedRowVersion: number }): Promise<{ success: boolean; code?: string; value?: CertificationTypeRecord }>;
+  setActive(input: { commandId: string; idempotencyKey: string; certificationTypeId: string; expectedRowVersion: number }, active: boolean): Promise<{ success: boolean; code?: string; value?: CertificationTypeRecord }>;
 }
