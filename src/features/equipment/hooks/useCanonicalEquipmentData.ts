@@ -17,6 +17,7 @@ export interface CanonicalEquipmentProjection {
   subcategoryId?: string;
   subcategoryName?: string;
   subcategoryActive?: boolean;
+  projectId?: string;
   type?: string;
   manufacturer?: string;
   model?: string;
@@ -68,6 +69,7 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
           subcategoryId: text(row.subcategoryId),
           subcategoryName: text(row.subcategoryName),
           subcategoryActive: typeof row.subcategoryActive === "boolean" ? row.subcategoryActive : undefined,
+          projectId: text(row.projectId),
           type: text(row.type),
           manufacturer: text(row.manufacturer),
           model: text(row.modelText) ?? text(row.model),
@@ -79,7 +81,7 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
       setState({ status: "loaded", items });
     }).catch(() => { if (active) setState({ status: "error", items: [], message: "Canonical Equipment data could not be loaded." }); });
     return () => { active = false; };
-  }, [attempt, readRepositories.equipment, repositories.equipmentStatusRead, filters.categoryId, filters.subcategoryId, filters.statusId]);
+  }, [attempt, readRepositories.equipment, repositories.equipmentStatusRead, filters.categoryId, filters.subcategoryId, filters.statusId, filters.projectId]);
 
   return { ...state, retry };
 }
