@@ -12,6 +12,9 @@ export interface CanonicalEquipmentProjection {
   active: boolean;
   deleted: boolean;
   category?: string;
+  subcategoryId?: string;
+  subcategoryName?: string;
+  subcategoryActive?: boolean;
   type?: string;
   manufacturer?: string;
   model?: string;
@@ -56,6 +59,9 @@ export function useCanonicalEquipmentData() {
           active: row.active === true,
           deleted: row.deletedAt !== null && row.deletedAt !== undefined,
           category: text(row.category),
+          subcategoryId: text(row.subcategoryId),
+          subcategoryName: text(row.subcategoryName),
+          subcategoryActive: typeof row.subcategoryActive === "boolean" ? row.subcategoryActive : undefined,
           type: text(row.type),
           manufacturer: text(row.manufacturer),
           model: text(row.modelText) ?? text(row.model),
