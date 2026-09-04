@@ -17,4 +17,5 @@ export interface RemoteUserAdministration {
   create(input: CreateUserInput & { commandId: string; idempotencyKey: string }): Promise<User>;
   deactivate(userId: string, commandId: string, idempotencyKey: string): Promise<User>;
   resetPassword(userId: string, newPassword: string, commandId: string, idempotencyKey: string): Promise<void>;
+  resetOperatorPin(userId: string, newPin: string, confirmNewPin: string, commandId: string, idempotencyKey: string): Promise<void>;
 }

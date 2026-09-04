@@ -46,7 +46,7 @@ describe("Catalog 2.0 remote Users-list visibility", () => {
   });
 
   it("retains the direct PostgREST safe-field projection and role mapping", () => {
-    const projection = "id,username,display_name,email,company_id,status,operator_id,created_at,updated_at,user_roles(app_roles(code))";
+    const projection = "id,username,display_name,email,company_id,status,operator_id,credential_mode,created_at,updated_at,user_roles(app_roles(code))";
     expect(repository).toContain(`.from("users").select("${projection}")`);
     for (const forbidden of ["password", "encrypted_password", "service_role"])
       expect(projection).not.toContain(forbidden);

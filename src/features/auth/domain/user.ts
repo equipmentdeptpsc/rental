@@ -1,4 +1,5 @@
 export type UserStatus = "active" | "inactive";
+export type CredentialMode = "PASSWORD" | "OPERATOR_PIN";
 
 export interface User {
   readonly id: string;
@@ -9,6 +10,7 @@ export interface User {
   readonly systemRoles: readonly string[];
   readonly status: UserStatus;
   readonly operatorId?: string;
+  readonly credentialMode?: CredentialMode;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

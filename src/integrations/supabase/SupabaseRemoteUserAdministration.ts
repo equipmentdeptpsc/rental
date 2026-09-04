@@ -8,9 +8,9 @@ export class SupabaseRemoteUserAdministration implements RemoteUserAdministratio
   constructor(private readonly client: SupabaseClient, private readonly endpoint = "/api/admin/users") {}
 
   async listUsers(): Promise<readonly User[]> {
-    const { data, error } = await this.client.schema("erp").from("users").select("id,username,display_name,email,company_id,status,operator_id,created_at,updated_at,user_roles(app_roles(code))").order("display_name");
+    const { data, error } = await this.client.schema("erp").from("users").select("id,username,display_name,email,company_id,status,operator_id,credential_mode,created_at,updated_at,user_roles(app_roles(code))").order("display_name");
     if (error) throw new Error("Unable to load canonical Users.");
-    return (data ?? []).map((row: any) => ({ id:row.id,username:row.username,displayName:row.display_name,email:row.email??undefined,companyId:row.company_id,status:row.status,operatorId:row.operator_id??undefined,createdAt:row.created_at,updatedAt:row.updated_at,systemRoles:(row.user_roles??[]).flatMap((x:any)=>x.app_roles?.code?[x.app_roles.code]:[]) }));
+    return (data ?? []).map((row: any) => ({ id:row.id,username:row.username,displayName:row.display_name,email:row.email??undefined,companyId:row.company_id,status:row.status,operatorId:row.operator_id??undefined,credentialMode:row.credential_mode==="OPERATOR_PIN"?"OPERATOR_PIN":"PASSWORD",createdAt:row.created_at,updatedAt:row.updated_at,systemRoles:(row.user_roles??[]).flatMap((x:any)=>x.app_roles?.code?[x.app_roles.code]:[]) }));
   }
   async listRoles(): Promise<readonly RemoteAssignableRole[]> {
     const { data, error } = await this.client.schema("erp").from("app_roles").select("code,name,active,deprecated_at,catalog_version,role_permissions(app_permissions(code,active))").order("name");
@@ -29,6 +29,7 @@ export class SupabaseRemoteUserAdministration implements RemoteUserAdministratio
   create(input: CreateUserInput & { commandId:string;idempotencyKey:string }): Promise<User> { return this.request<User>(this.endpoint,input); }
   deactivate(userId:string,commandId:string,idempotencyKey:string):Promise<User>{return this.request<User>(`${this.endpoint}/${encodeURIComponent(userId)}/deactivate`,{commandId,idempotencyKey});}
   resetPassword(userId:string,newPassword:string,commandId:string,idempotencyKey:string):Promise<void>{return this.request<void>(`${this.endpoint}/${encodeURIComponent(userId)}/reset-password`,{newPassword,commandId,idempotencyKey});}
+  resetOperatorPin(userId:string,newPin:string,confirmNewPin:string,commandId:string,idempotencyKey:string):Promise<void>{return this.request<void>(`${this.endpoint}/${encodeURIComponent(userId)}/reset-operator-pin`,{newPin,confirmNewPin,commandId,idempotencyKey});}
   private async request<T>(url:string,body:unknown):Promise<T>{
     const session=await this.client.auth.getSession();const token=session.data.session?.access_token;
     if(!token)throw new Error("Your session has expired. Sign in again.");
