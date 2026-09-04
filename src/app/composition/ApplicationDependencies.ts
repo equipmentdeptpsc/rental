@@ -34,6 +34,7 @@ import type { RemoteAuthenticationProvider } from "@/features/auth/providers/Rem
 import type { OperatorPinCredentialService } from "@/features/auth/services/OperatorPinCredentialService";
 import type { RemoteUserAdministration } from "@/features/users/services/RemoteUserAdministration";
 import type { CanonicalAuditEvent } from "@/features/administration/domain/canonicalAudit";
+import type { CertificationTypeRecord, CertificationTypeCommandRepository } from "@/features/masters/certification-type/types";
 import type { DeurCommandRepository } from "@/features/rental/deur/commands/contracts";
 import type { OperationalCommandRepositories } from "@/features/rental/operations/commands/contracts";
 import type { CanonicalRentalRemoteRepository } from "@/features/rental/remote/contracts";
@@ -68,8 +69,9 @@ export interface ApplicationReadRepositories {
   rentalEquipmentLines: ReadOnlyRepository<RentalEquipmentLine>;
   workDescriptions: ReadOnlyRepository<WorkDescriptionRecord>;
   canonicalAudit: ReadOnlyRepository<CanonicalAuditEvent>;
+  certificationTypes: ReadOnlyRepository<CertificationTypeRecord>;
 }
-export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository }
+export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository; certificationTypes?: CertificationTypeCommandRepository }
 export interface ApplicationChangeNotifications { subscribeDeur(listener: (record: DeurRecord) => void): () => void }
 export interface OperationalSynchronizationDependencies {
   readonly tenantId?: string;

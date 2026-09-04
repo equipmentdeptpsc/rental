@@ -11,6 +11,7 @@ import type { CanonicalDeurEvent, DeurRecord } from "@/features/rental/deur/type
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
 import type { CanonicalAuditEvent } from "@/features/administration/domain/canonicalAudit";
+import { SupabaseCertificationReadRepository } from "./SupabaseCertificationRepository";
 import type { RemoteCore } from "@/core/remote";
 import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
 import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepository";
@@ -29,6 +30,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     workDescriptions: new SupabaseReadRepository<WorkDescriptionRecord>(client, { repositoryName: "WorkDescription", table: "work_descriptions", searchColumns: ["code", "name"] }, core),
     canonicalAudit: new SupabaseReadRepository<CanonicalAuditEvent>(client, { repositoryName: "CanonicalAudit", table: "audit_log", columns: "id,company_id,aggregate_type,aggregate_id,action,actor_id,actor_name,occurred_at,correlation_id", searchColumns: ["aggregate_type", "aggregate_id", "action", "actor_id", "actor_name"], mapRow: mapCanonicalAudit }, core),
+    certificationTypes: new SupabaseCertificationReadRepository(client),
   };
 }
 export function mapCanonicalAudit(row: Record<string, unknown>): RepositoryResult<CanonicalAuditEvent> {

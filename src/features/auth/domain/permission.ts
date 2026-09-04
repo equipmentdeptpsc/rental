@@ -42,6 +42,8 @@ export const PERMISSIONS = {
     "settings.update",
     "settings.manage",
     "masterData.read",
+    "masterData.create",
+    "masterData.update",
     "masterData.manage",
   ],
 } as const;

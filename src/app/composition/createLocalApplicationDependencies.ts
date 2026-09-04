@@ -104,6 +104,7 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     rentalEquipmentLines: new LocalReadRepository(() => repositories.rentalEquipmentLine.getAll()),
     workDescriptions: new LocalReadRepository(() => workDescriptionRepository.getAll()),
     canonicalAudit: new LocalReadRepository(() => []),
+    certificationTypes: new LocalReadRepository(() => []),
   };
   const synchronization = overrides.synchronization ?? (() => {
     const repository = new InMemoryOperationalEventRepository();

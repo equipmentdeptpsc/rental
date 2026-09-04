@@ -68,6 +68,7 @@ const CostCodePage = lazy(() => import("@/features/masters/cost-code/pages"));
 const WorkDescriptionPage = lazy(() => import("@/features/masters/work-description/pages"));
 const IdleReasonPage = lazy(() => import("@/features/masters/idle-reason/pages"));
 const EquipmentSubcategoryPage = lazy(() => import("@/features/masters/equipment-subcategory/pages"));
+const CertificationTypesPage = lazy(() => import("@/features/masters/certification-type/pages/CertificationTypesPage"));
 
 function permitted(permission: Permission, element: ReactNode) {
   return <RequirePermission permission={permission}>{element}</RequirePermission>;
@@ -158,6 +159,7 @@ export const router = createBrowserRouter([
       },
       { path: "settings/idle-reasons", element: permitted("masterData.manage", <Suspense fallback={<div className="p-8">Loading Idle Reasons…</div>}><IdleReasonPage /></Suspense>) },
       { path: "settings/equipment-subcategories", element: permitted("masterData.manage", <Suspense fallback={<div className="p-8">Loading Equipment Sub-Categories…</div>}><EquipmentSubcategoryPage /></Suspense>) },
+      { path: "settings/certification-types", element: permitted("masterData.read", <Suspense fallback={<div className="p-8">Loading Certification Types…</div>}><CertificationTypesPage /></Suspense>) },
     ],
   },
 ]);
