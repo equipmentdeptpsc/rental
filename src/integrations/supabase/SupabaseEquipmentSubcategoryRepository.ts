@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
-import type { EquipmentSubcategoryCommandRepository, EquipmentSubcategoryReadRepository, CanonicalEquipmentSubcategory } from "@/features/masters/equipment-subcategory/canonical";
+import type { EquipmentSubcategoryCommandRepository, EquipmentSubcategoryReadRepository, CanonicalEquipmentSubcategory, EquipmentCategoryReadRepository, CanonicalEquipmentCategory } from "@/features/masters/equipment-subcategory/canonical";
 
 type RpcClient = Pick<SupabaseClient, "schema">;
 const map = (row: Record<string, unknown>): CanonicalEquipmentSubcategory => ({ id: String(row.id), categoryId: String(row.category_id), name: String(row.name), code: typeof row.code === "string" ? row.code : undefined, active: Boolean(row.active), usageCount: Number(row.usage_count ?? 0), updatedAt: String(row.updated_at ?? ""), rowVersion: Number(row.row_version ?? 0) });
@@ -16,4 +16,11 @@ export class SupabaseEquipmentSubcategoryRepository implements EquipmentSubcateg
   create(input: Parameters<EquipmentSubcategoryCommandRepository["create"]>[0]) { return this.command("command_create_equipment_subcategory", input); }
   update(input: Parameters<EquipmentSubcategoryCommandRepository["update"]>[0]) { return this.command("command_update_equipment_subcategory", input); }
   setActive(input: Parameters<EquipmentSubcategoryCommandRepository["setActive"]>[0], active: boolean) { return this.command(active ? "command_activate_equipment_subcategory" : "command_deactivate_equipment_subcategory", input); }
+}
+
+export class SupabaseEquipmentCategoryReadRepository implements EquipmentCategoryReadRepository {
+  constructor(private readonly client: RpcClient) {}
+  async list(): Promise<RepositoryResult<{ items: CanonicalEquipmentCategory[] }>> { const { data, error } = await this.client.schema("erp").from("equipment_categories").select("id,name,active").eq("active", true).is("deleted_at", null).order("sort_order"); return error || !Array.isArray(data) ? failure("Equipment Categories could not be loaded.") : repositorySuccess({ items: data.map((row) => ({ id: String((row as Record<string, unknown>).id), name: String((row as Record<string, unknown>).name), active: Boolean((row as Record<string, unknown>).active) })) }); }
+  async search(query: string) { const result = await this.list(); if (!result.success) return result; const term = query.trim().toLowerCase(); return repositorySuccess({ items: result.value.items.filter((item) => !term || item.name.toLowerCase().includes(term)) }); }
+  async getById(id: string) { const result = await this.list(); if (!result.success) return result; return repositorySuccess(result.value.items.find((item) => item.id === id) ?? null); }
 }
