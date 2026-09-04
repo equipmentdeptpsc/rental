@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import EquipmentForm from "@/features/equipment/components/EquipmentForm";
 
@@ -16,7 +16,15 @@ import { validateDuplicateEquipment } from "@/features/equipment/utils/duplicate
 
 export default function EditEquipment() {
   const { configuration } = useApplicationDependenciesCompatibility();
-  return getEquipmentRuntimeCapability(configuration).legacyMutations ? <LocalEditEquipment /> : <RemoteMutationUnavailable title="Edit Equipment" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
+  const capability = getEquipmentRuntimeCapability(configuration);
+  if (capability.legacyMutations) return <LocalEditEquipment />;
+  if (capability.canonicalReads) return <RemoteEquipmentEditReadOnly />;
+  return <RemoteMutationUnavailable title="Edit Equipment" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
+}
+
+function RemoteEquipmentEditReadOnly() {
+  const { id } = useParams();
+  return <div className="max-w-2xl space-y-4 p-8"><h1 className="text-3xl font-bold">Edit Equipment</h1><p className="rounded border border-slate-200 bg-slate-50 p-4 text-slate-700">Remote Equipment sub-category edit is pending a canonical Equipment update command. No changes can be saved from this screen.</p><Link className="text-blue-600 underline" to={`/equipment/${id ?? ""}`}>View canonical Equipment details</Link></div>;
 }
 
 function LocalEditEquipment() {
