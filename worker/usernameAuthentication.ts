@@ -29,7 +29,8 @@ export class TrustedUsernameAuthentication {
     if(!await allowed(identifierKey,[this.limits.identifierBurst,this.limits.identifierSustained]))return response(429);
 
     const lookup=await this.resolver.schema("erp").rpc("resolve_active_application_user_login",{identifier});
-    const resolved=lookup.data as {success?:boolean;email?:unknown}|null;
+    const resolved=lookup.data as {success?:boolean;email?:unknown;credentialMode?:unknown}|null;
+    if(!lookup.error&&resolved?.success===true&&resolved.credentialMode==='OPERATOR_PIN')return response(401);
     const email=!lookup.error&&resolved?.success===true&&typeof resolved.email==="string"?resolved.email:"invalid-login@invalid.example";
     const authenticated=await this.passwords.auth.signInWithPassword({email,password});
     if(email==="invalid-login@invalid.example"||authenticated.error||!authenticated.data.session)return response(401);
