@@ -16,7 +16,7 @@ export default function RemoteOperatorForm() {
   const [types, setTypes] = useState<CertificationTypeRecord[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [loadError, setLoadError] = useState("");
-  useEffect(() => { let mounted = true; void commandRepositories.operatorCertifications?.listAssignableTypes().then((result) => { if (!mounted) return; if (result.success) setTypes(result.value); else setLoadError(result.message); }); return () => { mounted = false; }; }, [commandRepositories.operatorCertifications]);
+  useEffect(() => { let mounted = true; void commandRepositories.operatorCertifications?.listAssignableTypes().then((result) => { if (!mounted) return; if (result.success) setTypes(result.value); else setLoadError(result.error.message); }); return () => { mounted = false; }; }, [commandRepositories.operatorCertifications]);
   const identity = useRef<{ operatorId: string; commandId: string; idempotencyKey: string } | undefined>(undefined);
   const assignmentIdentities = useRef(new Map<string, { commandId: string; idempotencyKey: string }>());
   const submission = useFormSubmission("Operator", async () => {
