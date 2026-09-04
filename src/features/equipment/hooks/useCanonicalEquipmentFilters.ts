@@ -24,7 +24,7 @@ export function useCanonicalEquipmentFilters(categoryId: string, canReadProjects
       if (!active) return;
       setCategories(categoryResult.success ? { status: "ready", items: categoryResult.value.items } : { status: "error", items: [] });
       setStatuses(statusResult.success ? { status: "ready", items: statusResult.value.filter((item) => item.active && !item.deleted) } : { status: "error", items: [] });
-      setProjects(projectsResult.success ? { status: "ready", items: projectsResult.value.items.filter((item) => item.active && !item.deleted) } : { status: "error", items: [] });
+      setProjects(projectsResult.success ? { status: "ready", items: projectsResult.value.items.filter((item) => item.status === "Active" && !item.deleted) } : { status: "error", items: [] });
     }).catch(() => {
       if (!active) return;
       setCategories({ status: "error", items: [] });
