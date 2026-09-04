@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterCanonicalEquipment } from "@/features/equipment/services/filterCanonicalEquipment";
+import { filterCanonicalEquipment, toCanonicalEquipmentQueryFilters } from "@/features/equipment/services/filterCanonicalEquipment";
 
 const items = [
   { id: "1", assetNo: "A-1", equipmentName: "Excavator", category: "Heavy", statusLabel: "Available", active: true, deleted: false },
@@ -12,5 +12,10 @@ describe("canonical equipment filters", () => {
     expect(filterCanonicalEquipment(items, { query: "", category: "Power", status: "" })[0].id).toBe("2");
     expect(filterCanonicalEquipment(items, { query: "", category: "", status: "Available" })[0].id).toBe("1");
     expect(filterCanonicalEquipment(items, { query: "missing", category: "", status: "" })).toHaveLength(0);
+  });
+
+  it("maps remote filters to canonical identifier predicates", () => {
+    expect(toCanonicalEquipmentQueryFilters({ categoryId: "cat-1", subcategoryId: "sub-1", statusId: "status-1" })).toEqual({ category_id: "cat-1", subcategory_id: "sub-1", status_id: "status-1" });
+    expect(toCanonicalEquipmentQueryFilters({ categoryId: "", subcategoryId: "", statusId: "" })).toEqual({ category_id: undefined, subcategory_id: undefined, status_id: undefined });
   });
 });

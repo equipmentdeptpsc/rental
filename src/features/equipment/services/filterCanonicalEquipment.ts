@@ -1,5 +1,21 @@
 import type { CanonicalEquipmentProjection } from "../hooks/useCanonicalEquipmentData";
 
+export interface CanonicalEquipmentRemoteFilter {
+  query?: string;
+  categoryId?: string;
+  subcategoryId?: string;
+  statusId?: string;
+}
+
+export function toCanonicalEquipmentQueryFilters(filter: CanonicalEquipmentRemoteFilter) {
+  return {
+    category_id: filter.categoryId || undefined,
+    subcategory_id: filter.subcategoryId || undefined,
+    status_id: filter.statusId || undefined,
+  };
+}
+
+/** Local-only projection filtering retained for compatibility and search presentation. */
 export interface CanonicalEquipmentFilter { query: string; category: string; status: string }
 
 export function filterCanonicalEquipment(items: readonly CanonicalEquipmentProjection[], filter: CanonicalEquipmentFilter) {
