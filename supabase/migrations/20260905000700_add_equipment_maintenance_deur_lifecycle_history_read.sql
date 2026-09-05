@@ -11,11 +11,11 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
       AND erp.can_read_company_row(e.company_id)
       AND erp.current_user_has_permission('maintenance.read')
   ), events AS (
-    SELECT m.id || ':Scheduled:' || m.scheduled_date::text, m.id, 'Scheduled'::text, m.scheduled_date, 'date'::text, m.maintenance_type
+    SELECT m.id::text || ':Scheduled:' || m.scheduled_date::text, m.id::text, 'Scheduled'::text, m.scheduled_date, 'date'::text, m.maintenance_type
     FROM erp.maintenance_records m JOIN visible_equipment e ON e.id=m.equipment_id
     WHERE m.deleted_at IS NULL AND m.scheduled_date IS NOT NULL
     UNION ALL
-    SELECT m.id || ':Completed:' || m.completed_date::text, m.id, 'Completed'::text, m.completed_date, 'date'::text, m.maintenance_type
+    SELECT m.id::text || ':Completed:' || m.completed_date::text, m.id::text, 'Completed'::text, m.completed_date, 'date'::text, m.maintenance_type
     FROM erp.maintenance_records m JOIN visible_equipment e ON e.id=m.equipment_id
     WHERE m.deleted_at IS NULL AND m.completed_date IS NOT NULL
   )
@@ -35,11 +35,11 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
     SELECT d.id, d.deur_number, d.created_at, d.submitted_at, d.acknowledged_at, d.rejected_at, d.corrected_at
     FROM erp.deurs d JOIN visible_equipment e ON e.id=d.equipment_id AND e.company_id=d.company_id
   ), events AS (
-    SELECT d.id || ':Created:' || d.created_at::text, d.id, d.deur_number, 'Created'::text, d.created_at, 'timestamp'::text FROM visible_deurs d
-    UNION ALL SELECT d.id || ':Submitted:' || d.submitted_at::text, d.id, d.deur_number, 'Submitted'::text, d.submitted_at, 'timestamp'::text FROM visible_deurs d WHERE d.submitted_at IS NOT NULL
-    UNION ALL SELECT d.id || ':Acknowledged:' || d.acknowledged_at::text, d.id, d.deur_number, 'Acknowledged'::text, d.acknowledged_at, 'timestamp'::text FROM visible_deurs d WHERE d.acknowledged_at IS NOT NULL
-    UNION ALL SELECT d.id || ':Rejected:' || d.rejected_at::text, d.id, d.deur_number, 'Rejected'::text, d.rejected_at, 'timestamp'::text FROM visible_deurs d WHERE d.rejected_at IS NOT NULL
-    UNION ALL SELECT d.id || ':CorrectionRevisionCreated:' || d.corrected_at::text, d.id, d.deur_number, 'CorrectionRevisionCreated'::text, d.corrected_at, 'timestamp'::text FROM visible_deurs d WHERE d.corrected_at IS NOT NULL
+    SELECT d.id::text || ':Created:' || d.created_at::text, d.id::text, d.deur_number, 'Created'::text, d.created_at, 'timestamp'::text FROM visible_deurs d
+    UNION ALL SELECT d.id::text || ':Submitted:' || d.submitted_at::text, d.id::text, d.deur_number, 'Submitted'::text, d.submitted_at, 'timestamp'::text FROM visible_deurs d WHERE d.submitted_at IS NOT NULL
+    UNION ALL SELECT d.id::text || ':Acknowledged:' || d.acknowledged_at::text, d.id::text, d.deur_number, 'Acknowledged'::text, d.acknowledged_at, 'timestamp'::text FROM visible_deurs d WHERE d.acknowledged_at IS NOT NULL
+    UNION ALL SELECT d.id::text || ':Rejected:' || d.rejected_at::text, d.id::text, d.deur_number, 'Rejected'::text, d.rejected_at, 'timestamp'::text FROM visible_deurs d WHERE d.rejected_at IS NOT NULL
+    UNION ALL SELECT d.id::text || ':CorrectionRevisionCreated:' || d.corrected_at::text, d.id::text, d.deur_number, 'CorrectionRevisionCreated'::text, d.corrected_at, 'timestamp'::text FROM visible_deurs d WHERE d.corrected_at IS NOT NULL
   )
   SELECT * FROM events ORDER BY occurred_at DESC, id DESC
   LIMIT LEAST(20, GREATEST(1, COALESCE(requested_limit, 10)));
