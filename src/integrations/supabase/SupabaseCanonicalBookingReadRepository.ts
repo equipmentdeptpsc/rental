@@ -1,0 +1,53 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
+import { canonicalBookingStatuses, type CanonicalBookingListItem, type CanonicalBookingPage, type CanonicalBookingReadRepository, type CanonicalBookingSearchInput, type CanonicalBookingSort } from "@/features/booking/canonical";
+
+type RpcClient = Pick<SupabaseClient, "schema">;
+const statuses = new Set<string>(canonicalBookingStatuses);
+const sorts = new Set<CanonicalBookingSort>(["createdAt", "dateOut", "expectedReturn", "rentalStatus"]);
+const defaultLimit = 25;
+const maximumLimit = 100;
+const text = (value: unknown): string | undefined => typeof value === "string" && value.trim() ? value : undefined;
+const boundedLimit = (value: number | undefined) => Number.isFinite(value) ? Math.max(1, Math.min(maximumLimit, Math.trunc(value as number))) : defaultLimit;
+const boundedOffset = (value: number | undefined) => Number.isFinite(value) ? Math.max(0, Math.trunc(value as number)) : 0;
+
+function mapRow(value: unknown): CanonicalBookingListItem | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const row = value as Record<string, unknown>;
+  const rentalId = text(row.rental_id), lineId = text(row.rental_equipment_line_id), equipmentId = text(row.equipment_id), status = text(row.rental_status), dateOut = text(row.date_out), createdAt = text(row.created_at);
+  if (!rentalId || !lineId || !equipmentId || !status || !statuses.has(status) || !dateOut || !createdAt) return undefined;
+  return {
+    rentalId, rentalEquipmentLineId: lineId, equipmentId, rentalStatus: status as CanonicalBookingListItem["rentalStatus"], dateOut, createdAt,
+    ...(text(row.rental_number) ? { rentalNumber: text(row.rental_number) } : {}),
+    ...(text(row.equipment_asset_number) ? { equipmentAssetNumber: text(row.equipment_asset_number) } : {}),
+    ...(text(row.equipment_name) ? { equipmentName: text(row.equipment_name) } : {}),
+    ...(text(row.customer_id) ? { customerId: text(row.customer_id) } : {}),
+    ...(text(row.customer_name) ? { customerName: text(row.customer_name) } : {}),
+    ...(text(row.project_id) ? { projectId: text(row.project_id) } : {}),
+    ...(text(row.project_name) ? { projectName: text(row.project_name) } : {}),
+    ...(text(row.expected_return) ? { expectedReturn: text(row.expected_return) } : {}), ...(text(row.actual_return) ? { actualReturn: text(row.actual_return) } : {}),
+    ...(text(row.reserved_at) ? { reservedAt: text(row.reserved_at) } : {}), ...(text(row.released_at) ? { releasedAt: text(row.released_at) } : {}),
+    ...(text(row.activated_at) ? { activatedAt: text(row.activated_at) } : {}), ...(text(row.returned_at) ? { returnedAt: text(row.returned_at) } : {}),
+    ...(text(row.closed_at) ? { closedAt: text(row.closed_at) } : {}), ...(text(row.cancelled_at) ? { cancelledAt: text(row.cancelled_at) } : {}),
+  };
+}
+
+export class SupabaseCanonicalBookingReadRepository implements CanonicalBookingReadRepository {
+  constructor(private readonly client: RpcClient) {}
+
+  async searchCanonicalBookingRows(input: CanonicalBookingSearchInput = {}): Promise<RepositoryResult<CanonicalBookingPage>> {
+    const limit = boundedLimit(input.limit), offset = boundedOffset(input.offset), sort = input.sort && sorts.has(input.sort) ? input.sort : "createdAt";
+    const { data, error } = await this.client.schema("erp").rpc("search_booking_rows", {
+      p_status: input.status && statuses.has(input.status) ? input.status : null,
+      p_customer_id: text(input.customerId) ?? null, p_project_id: text(input.projectId) ?? null, p_equipment_id: text(input.equipmentId) ?? null,
+      p_rental_number_search: text(input.rentalNumberSearch) ?? null, p_order_field: sort, p_order_ascending: input.ascending === true,
+      p_offset: offset, p_limit: limit,
+    });
+    if (error || !Array.isArray(data)) return repositoryFailure("REMOTE_READ_FAILED", "Canonical Rental Bookings could not be loaded.", { context: { repository: "CanonicalBooking" }, recoverability: "RETRYABLE", recommendedAction: "Retry the request." });
+    const rows = data.map(mapRow);
+    if (rows.some((row) => !row)) return repositoryFailure("REMOTE_ROW_MALFORMED", "Canonical Rental Bookings could not be read safely.", { context: { repository: "CanonicalBooking" }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Repair the canonical Booking read projection." });
+    const first = data[0] as Record<string, unknown> | undefined, totalCount = typeof first?.total_count === "number" && first.total_count >= 0 ? first.total_count : 0;
+    return repositorySuccess({ rows: rows as CanonicalBookingListItem[], totalCount, offset, limit, hasMore: offset + rows.length < totalCount });
+  }
+}
