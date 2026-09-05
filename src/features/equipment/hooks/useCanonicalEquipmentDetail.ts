@@ -9,6 +9,7 @@ import type { ProjectRecord } from "@/features/project/types";
 import type { RentalRecord } from "@/features/rental/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { EquipmentMaintenanceSnapshot } from "@/features/maintenance/canonical";
+import type { DeurRecord } from "@/features/rental/deur/types";
 import type { CanonicalEquipmentProjection } from "./useCanonicalEquipmentData";
 
 export type DetailSection<T> =
@@ -16,11 +17,18 @@ export type DetailSection<T> =
   | { status: "ready"; value: T }
   | { status: "error" };
 
+export interface RecentDeurActivityRecord {
+  record: DeurRecord;
+  operatorName?: string;
+  projectName?: string;
+}
+
 export interface CanonicalEquipmentDetail {
   equipment: DetailSection<CanonicalEquipmentProjection | null>;
   assignment: DetailSection<{ assignment?: AssignmentRecord; project?: ProjectRecord; operator?: Operator; projectReadable: boolean; operatorReadable: boolean }>;
   rental: DetailSection<{ line?: RentalEquipmentLine; rental?: RentalRecord; customer?: CustomerRecord; customerReadable: boolean }>;
   maintenance: DetailSection<EquipmentMaintenanceSnapshot>;
+  recentDeurs: DetailSection<RecentDeurActivityRecord[]>;
   retry: () => void;
 }
 
@@ -50,6 +58,7 @@ export function useCanonicalEquipmentDetail(id: string | undefined): CanonicalEq
   const [assignment, setAssignment] = useState<CanonicalEquipmentDetail["assignment"]>({ status: "loading" });
   const [rental, setRental] = useState<CanonicalEquipmentDetail["rental"]>({ status: "loading" });
   const [maintenance, setMaintenance] = useState<CanonicalEquipmentDetail["maintenance"]>({ status: "loading" });
+  const [recentDeurs, setRecentDeurs] = useState<CanonicalEquipmentDetail["recentDeurs"]>({ status: "loading" });
 
   useEffect(() => {
     let active = true;
@@ -119,5 +128,26 @@ export function useCanonicalEquipmentDetail(id: string | undefined): CanonicalEq
     return () => { active = false; };
   }, [attempt, canReadMaintenance, id, readRepositories.maintenance]);
 
-  return { equipment, assignment, rental, maintenance, retry: () => setAttempt((value) => value + 1) };
+  useEffect(() => {
+    let active = true;
+    if (!id || !hasPermission("deur.read")) { setRecentDeurs({ status: "ready", value: [] }); return () => { active = false; }; }
+    setRecentDeurs({ status: "loading" });
+    void readRepositories.deurs.list({ filters: { equipment_id: id }, ordering: [{ field: "work_date", ascending: false }, { field: "created_at", ascending: false }], paging: { limit: 5 } }).then(async (result) => {
+      if (!active) return;
+      if (!result.success) { setRecentDeurs({ status: "error" }); return; }
+      const operatorIds = canReadOperators ? [...new Set(result.value.items.map((item) => item.operatorId).filter(Boolean))] : [];
+      const projectIds = canReadProjects ? [...new Set(result.value.items.map((item) => item.projectId).filter((value): value is string => Boolean(value)))] : [];
+      const [operators, projects] = await Promise.all([
+        Promise.all(operatorIds.map((operatorId) => readRepositories.operators.getById(operatorId))),
+        Promise.all(projectIds.map((projectId) => readRepositories.projects.getById(projectId))),
+      ]);
+      if (!active) return;
+      const operatorNames = new Map(operators.flatMap((value) => value?.success && value.value ? [[value.value.id, value.value.name] as const] : []));
+      const projectNames = new Map(projects.flatMap((value) => value?.success && value.value ? [[value.value.id, value.value.projectName] as const] : []));
+      setRecentDeurs({ status: "ready", value: result.value.items.map((record) => ({ record, operatorName: canReadOperators ? operatorNames.get(record.operatorId) : undefined, projectName: record.projectId && canReadProjects ? projectNames.get(record.projectId) : undefined })) });
+    }).catch(() => { if (active) setRecentDeurs({ status: "error" }); });
+    return () => { active = false; };
+  }, [attempt, canReadOperators, canReadProjects, hasPermission, id, readRepositories.deurs, readRepositories.operators, readRepositories.projects]);
+
+  return { equipment, assignment, rental, maintenance, recentDeurs, retry: () => setAttempt((value) => value + 1) };
 }
