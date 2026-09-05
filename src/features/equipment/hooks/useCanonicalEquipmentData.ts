@@ -25,6 +25,11 @@ export interface CanonicalEquipmentProjection {
   serialNumber?: string;
   maintenanceType?: string;
   currentReading?: number;
+  engineNumber?: string;
+  chassisNumber?: string;
+  plateNumber?: string;
+  yearModel?: number;
+  capacity?: string;
 }
 
 type State =
@@ -78,6 +83,11 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
           serialNumber: text(row.serialNumber),
           maintenanceType: text(row.maintenanceType),
           currentReading: typeof row.currentReading === "number" ? row.currentReading : undefined,
+          engineNumber: text(row.engineNumber),
+          chassisNumber: text(row.chassisNumber),
+          plateNumber: text(row.plateNumber),
+          yearModel: typeof row.yearModel === "number" ? row.yearModel : undefined,
+          capacity: text(row.capacity),
         };
       });
       setState({ status: "loaded", items });
