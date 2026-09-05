@@ -8,6 +8,7 @@ import type { Operator } from "@/features/operators/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { RentalRecord } from "@/features/rental/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
+import type { EquipmentMaintenanceSnapshot } from "@/features/maintenance/canonical";
 import type { CanonicalEquipmentProjection } from "./useCanonicalEquipmentData";
 
 export type DetailSection<T> =
@@ -19,6 +20,7 @@ export interface CanonicalEquipmentDetail {
   equipment: DetailSection<CanonicalEquipmentProjection | null>;
   assignment: DetailSection<{ assignment?: AssignmentRecord; project?: ProjectRecord; operator?: Operator; projectReadable: boolean; operatorReadable: boolean }>;
   rental: DetailSection<{ line?: RentalEquipmentLine; rental?: RentalRecord; customer?: CustomerRecord; customerReadable: boolean }>;
+  maintenance: DetailSection<EquipmentMaintenanceSnapshot>;
   retry: () => void;
 }
 
@@ -42,10 +44,12 @@ export function useCanonicalEquipmentDetail(id: string | undefined): CanonicalEq
   const canReadOperators = hasPermission("operator.read");
   const canReadRentals = hasPermission("rental.read");
   const canReadCustomers = hasPermission("customer.read");
+  const canReadMaintenance = hasPermission("maintenance.read");
   const [attempt, setAttempt] = useState(0);
   const [equipment, setEquipment] = useState<DetailSection<CanonicalEquipmentProjection | null>>({ status: "loading" });
   const [assignment, setAssignment] = useState<CanonicalEquipmentDetail["assignment"]>({ status: "loading" });
   const [rental, setRental] = useState<CanonicalEquipmentDetail["rental"]>({ status: "loading" });
+  const [maintenance, setMaintenance] = useState<CanonicalEquipmentDetail["maintenance"]>({ status: "loading" });
 
   useEffect(() => {
     let active = true;
@@ -104,5 +108,16 @@ export function useCanonicalEquipmentDetail(id: string | undefined): CanonicalEq
     return () => { active = false; };
   }, [attempt, canReadCustomers, canReadRentals, id, readRepositories.customers, readRepositories.rentalEquipmentLines, readRepositories.rentals]);
 
-  return { equipment, assignment, rental, retry: () => setAttempt((value) => value + 1) };
+  useEffect(() => {
+    let active = true;
+    if (!id || !canReadMaintenance) { setMaintenance({ status: "ready", value: { openRecords: [] } }); return () => { active = false; }; }
+    setMaintenance({ status: "loading" });
+    void readRepositories.maintenance.getEquipmentMaintenanceSnapshot(id).then((result) => {
+      if (!active) return;
+      setMaintenance(result.success ? { status: "ready", value: result.value } : { status: "error" });
+    }).catch(() => { if (active) setMaintenance({ status: "error" }); });
+    return () => { active = false; };
+  }, [attempt, canReadMaintenance, id, readRepositories.maintenance]);
+
+  return { equipment, assignment, rental, maintenance, retry: () => setAttempt((value) => value + 1) };
 }
