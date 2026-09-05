@@ -132,7 +132,7 @@ export function useCanonicalEquipmentDetail(id: string | undefined): CanonicalEq
     let active = true;
     if (!id || !hasPermission("deur.read")) { setRecentDeurs({ status: "ready", value: [] }); return () => { active = false; }; }
     setRecentDeurs({ status: "loading" });
-    void readRepositories.deurs.list({ filters: { equipment_id: id }, ordering: [{ field: "work_date", ascending: false }, { field: "created_at", ascending: false }], paging: { limit: 5 } }).then(async (result) => {
+    void Promise.resolve(readRepositories.deurs.list({ filters: { equipment_id: id }, ordering: [{ field: "work_date", ascending: false }, { field: "created_at", ascending: false }], paging: { limit: 5 } })).then(async (result) => {
       if (!active) return;
       if (!result.success) { setRecentDeurs({ status: "error" }); return; }
       const operatorIds = canReadOperators ? [...new Set(result.value.items.map((item) => item.operatorId).filter(Boolean))] : [];
