@@ -18,6 +18,7 @@ import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepositor
 import { SupabaseOperatorCertificationRepository } from "@/features/operators/certifications/repository";
 import { SupabaseEquipmentSubcategoryRepository } from "./SupabaseEquipmentSubcategoryRepository";
 import { SupabaseEquipmentMaintenanceSnapshotRepository } from "./SupabaseEquipmentMaintenanceSnapshotRepository";
+import { SupabaseEquipmentRentalLifecycleHistoryRepository } from "./SupabaseEquipmentRentalLifecycleHistoryRepository";
 
 export function createSupabaseReadRepositories(client: SupabaseClient, core: RemoteCore) {
   return {
@@ -36,6 +37,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     certificationTypes: new SupabaseCertificationReadRepository(client),
     equipmentSubcategories: new SupabaseEquipmentSubcategoryRepository(client),
     maintenance: new SupabaseEquipmentMaintenanceSnapshotRepository(client),
+    rentalLifecycleHistory: new SupabaseEquipmentRentalLifecycleHistoryRepository(client),
     operatorCertifications: new SupabaseOperatorCertificationRepository(client),
   };
 }
