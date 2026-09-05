@@ -17,6 +17,7 @@ import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/c
 import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepository";
 import { SupabaseOperatorCertificationRepository } from "@/features/operators/certifications/repository";
 import { SupabaseEquipmentSubcategoryRepository } from "./SupabaseEquipmentSubcategoryRepository";
+import { SupabaseEquipmentMaintenanceSnapshotRepository } from "./SupabaseEquipmentMaintenanceSnapshotRepository";
 
 export function createSupabaseReadRepositories(client: SupabaseClient, core: RemoteCore) {
   return {
@@ -34,6 +35,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     canonicalAudit: new SupabaseReadRepository<CanonicalAuditEvent>(client, { repositoryName: "CanonicalAudit", table: "audit_log", columns: "id,company_id,aggregate_type,aggregate_id,action,actor_id,actor_name,occurred_at,correlation_id", searchColumns: ["aggregate_type", "aggregate_id", "action", "actor_id", "actor_name"], mapRow: mapCanonicalAudit }, core),
     certificationTypes: new SupabaseCertificationReadRepository(client),
     equipmentSubcategories: new SupabaseEquipmentSubcategoryRepository(client),
+    maintenance: new SupabaseEquipmentMaintenanceSnapshotRepository(client),
     operatorCertifications: new SupabaseOperatorCertificationRepository(client),
   };
 }

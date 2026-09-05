@@ -45,6 +45,7 @@ import type { EquipmentCommandRepository } from "@/features/equipment/commands/c
 import type { CustomerCommandRepository } from "@/features/customer/commands/contracts";
 import type { OperatorCertificationRepository } from "@/features/operators/certifications/repository";
 import type { EquipmentSubcategoryCommandRepository, EquipmentSubcategoryReadRepository, EquipmentCategoryReadRepository } from "@/features/masters/equipment-subcategory/canonical";
+import type { EquipmentMaintenanceSnapshotRepository } from "@/features/maintenance/canonical";
 import type {
   OperationalEventRepository,
   OperationalEventStream,
@@ -74,6 +75,7 @@ export interface ApplicationReadRepositories {
   certificationTypes: ReadOnlyRepository<CertificationTypeRecord>;
   equipmentSubcategories: EquipmentSubcategoryReadRepository;
   equipmentCategories: EquipmentCategoryReadRepository;
+  maintenance: EquipmentMaintenanceSnapshotRepository;
   operatorCertifications: OperatorCertificationRepository;
 }
 export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository; certificationTypes?: CertificationTypeCommandRepository; equipmentSubcategories?: EquipmentSubcategoryCommandRepository; operatorCertifications?: OperatorCertificationRepository }
