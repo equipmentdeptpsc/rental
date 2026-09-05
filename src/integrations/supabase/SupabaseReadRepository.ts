@@ -26,7 +26,10 @@ export class SupabaseReadRepository<T, TFilter extends RemoteReadFilter = Remote
     const searchQuery = options.query?.trim();
     const result = await this.read<unknown[]>("list", normalized.signal, (signal) => {
       let query = this.client.schema("erp").from(this.definition.table).select(this.definition.columns ?? "*");
-      for (const [field, value] of Object.entries(normalized.filters ?? {})) if (value !== undefined) query = query.eq(field, value);
+      for (const [field, value] of Object.entries(normalized.filters ?? {})) {
+        if (value === undefined) continue;
+        query = value === null ? query.is(field, null) : query.eq(field, value);
+      }
       if (searchQuery && this.definition.searchColumns?.length) {
         const escaped = searchQuery.replaceAll("%", "\\%").replaceAll(",", "\\,");
         query = query.or(this.definition.searchColumns.map((field) => `${field}.ilike.%${escaped}%`).join(","));

@@ -5,17 +5,21 @@ export interface CanonicalEquipmentRemoteFilter {
   categoryId?: string;
   subcategoryId?: string;
   statusId?: string;
-  projectId?: string;
-  customerId?: string;
+  projectId?: string | typeof PROJECT_FILTER_UNASSIGNED;
+  customerId?: string | typeof CUSTOMER_FILTER_NONE;
 }
+
+/** Typed UI selections translated to canonical NULL predicates by this adapter. */
+export const PROJECT_FILTER_UNASSIGNED = "__UNASSIGNED_PROJECT__" as const;
+export const CUSTOMER_FILTER_NONE = "__NO_CURRENT_CUSTOMER__" as const;
 
 export function toCanonicalEquipmentQueryFilters(filter: CanonicalEquipmentRemoteFilter) {
   return {
     category_id: filter.categoryId || undefined,
     subcategory_id: filter.subcategoryId || undefined,
     status_id: filter.statusId || undefined,
-    project_id: filter.projectId || undefined,
-    customer_id: filter.customerId || undefined,
+    project_id: filter.projectId === PROJECT_FILTER_UNASSIGNED ? null : filter.projectId || undefined,
+    customer_id: filter.customerId === CUSTOMER_FILTER_NONE ? null : filter.customerId || undefined,
   };
 }
 
