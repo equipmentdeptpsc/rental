@@ -9,7 +9,7 @@ import type { User } from "@/features/auth/domain/user";
 
 class Query {
   constructor(private readonly response: { data: unknown; error: unknown }) {}
-  select() { return this; } eq() { return this; } or() { return this; } order() { return this; } range() { return this; }
+  select() { return this; } eq() { return this; } is() { return this; } or() { return this; } order() { return this; } range() { return this; }
   abortSignal() { return this; } maybeSingle() { return this; }
   then(resolve: (value: { data: unknown; error: unknown }) => unknown) { return Promise.resolve(this.response).then(resolve); }
 }
@@ -43,6 +43,18 @@ describe("Phase B Supabase read infrastructure", () => {
     );
     const result = await repository.search("crane", { filters: { active: true }, ordering: [{ field: "asset_no" }], paging: { offset: 0, limit: 10 } });
     expect(result).toEqual(repositorySuccess({ items: [{ id: "equipment-1", assetNo: "EQ-001", equipmentName: "Crane", active: true }], nextCursor: undefined }));
+  });
+
+  it("translates null filters to Supabase IS NULL and omits undefined filters", async () => {
+    const calls: string[] = [];
+    class FilterQuery extends Query {
+      override eq(field: string, value: unknown) { calls.push(`eq:${field}:${String(value)}`); return this; }
+      override is(field: string, value: unknown) { calls.push(`is:${field}:${String(value)}`); return this; }
+    }
+    const client = { schema: vi.fn(() => ({ from: vi.fn(() => new FilterQuery({ data: [{ id: "equipment-1" }], error: null })) })) } as unknown as SupabaseClient;
+    const repository = new SupabaseReadRepository<{ id: string }>(client, { repositoryName: "Equipment", table: "equipment" }, createRemoteCore());
+    await repository.list({ filters: { project_id: null, customer_id: undefined, status_id: "status-1" } });
+    expect(calls).toEqual(["is:project_id:null", "eq:status_id:status-1"]);
   });
 
   it("preserves canonical Assignment identity and maps its relationship and date fields", async () => {

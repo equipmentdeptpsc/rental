@@ -5,6 +5,7 @@ import type { CanonicalEquipmentCategory, CanonicalEquipmentSubcategory } from "
 import type { EquipmentStatusRecord } from "@/features/masters/equipment-status/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { CustomerRecord } from "@/features/customer/types";
+import { CUSTOMER_FILTER_NONE, PROJECT_FILTER_UNASSIGNED } from "@/features/equipment/services/filterCanonicalEquipment";
 
 type OptionsState<T> = { status: "loading" | "ready" | "error"; items: T[] };
 
@@ -28,8 +29,8 @@ export function useCanonicalEquipmentFilters(categoryId: string, canReadProjects
       if (!active) return;
       setCategories(categoryResult.success ? { status: "ready", items: categoryResult.value.items } : { status: "error", items: [] });
       setStatuses(statusResult.success ? { status: "ready", items: statusResult.value.filter((item) => item.active && !item.deleted) } : { status: "error", items: [] });
-      setProjects(projectsResult.success ? { status: "ready", items: projectsResult.value.items.filter((item) => item.status === "Active" && !item.deleted) } : { status: "error", items: [] });
-      setCustomers(customersResult.success ? { status: "ready", items: customersResult.value.items.filter((item) => item.active) } : { status: "error", items: [] });
+      setProjects(projectsResult.success ? { status: "ready", items: [...(canReadProjects ? [{ id: PROJECT_FILTER_UNASSIGNED, projectName: "Unassigned", projectCode: "", location: "", projectManager: "", status: "Active", deleted: false } as ProjectRecord] : []), ...projectsResult.value.items.filter((item) => item.status === "Active" && !item.deleted)] } : { status: "error", items: [] });
+      setCustomers(customersResult.success ? { status: "ready", items: [...(canReadCustomers ? [{ id: CUSTOMER_FILTER_NONE, customerCode: "", companyName: "No Current Customer", email: "", address: "", active: true } as CustomerRecord] : []), ...customersResult.value.items.filter((item) => item.active)] } : { status: "error", items: [] });
     }).catch(() => {
       if (!active) return;
       setCategories({ status: "error", items: [] });

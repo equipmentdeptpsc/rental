@@ -20,8 +20,11 @@ describe("canonical Equipment customer filter UI", () => {
     expect(page).toContain("projectId || customerId");
   });
 
-  it("does not offer the deferred no-current-customer null predicate", () => {
-    expect(page).not.toContain("No Current Customer");
+  it("offers explicit null-state selections without leaking sentinel IDs to the remote adapter", () => {
+    expect(filters).toContain("No Current Customer");
+    expect(filters).toContain("Unassigned");
+    expect(filters).toContain("CUSTOMER_FILTER_NONE");
+    expect(filters).toContain("PROJECT_FILTER_UNASSIGNED");
     expect(page).not.toContain("customerIsNull");
   });
 });
