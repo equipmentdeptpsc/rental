@@ -24,6 +24,7 @@ import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equ
 import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonicalEquipmentData";
 import { useCanonicalEquipmentDetail, type RecentDeurActivityRecord } from "@/features/equipment/hooks/useCanonicalEquipmentDetail";
 import type { CanonicalMaintenanceRecord } from "@/features/maintenance/canonical";
+import type { RentalLifecycleEvent } from "@/features/rental/history/canonical";
 
 export default function EquipmentDetails() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -52,6 +53,27 @@ function RecentDeurActivity({ item, display }: { item: RecentDeurActivityRecord;
   return <article className="rounded-lg border border-slate-200 p-4 dark:border-slate-700"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold">{display(record.deurNumber)}</p><p className="mt-1 text-xs text-slate-500">Work Date {display(record.workDate)}</p></div><StatusBadge tone={record.status === "Submitted" || record.status === "Acknowledged" ? "success" : record.status === "Rejected" ? "danger" : "neutral"}>{record.status}</StatusBadge></div><dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3"><div><dt className="text-xs text-slate-500">Operator</dt><dd className="mt-1 break-words font-medium">{display(operatorName)}</dd></div><div><dt className="text-xs text-slate-500">Project</dt><dd className="mt-1 break-words font-medium">{display(projectName)}</dd></div><div><dt className="text-xs text-slate-500">Operating</dt><dd className="mt-1 font-medium">{display(record.totalOperatingMinutes)} min</dd></div><div><dt className="text-xs text-slate-500">Idle</dt><dd className="mt-1 font-medium">{display(record.totalIdleMinutes)} min</dd></div><div><dt className="text-xs text-slate-500">Standby</dt><dd className="mt-1 font-medium">{display(record.totalStandbyMinutes)} min</dd></div><div><dt className="text-xs text-slate-500">Meal Break</dt><dd className="mt-1 font-medium">{display(record.totalMealBreakMinutes)} min</dd></div><div><dt className="text-xs text-slate-500">Breakdown</dt><dd className="mt-1 font-medium">{display(record.totalMaintenanceMinutes)} min</dd></div>{record.submittedAt && <div><dt className="text-xs text-slate-500">Submitted</dt><dd className="mt-1 break-words font-medium">{display(record.submittedAt)}</dd></div>}</dl></article>;
 }
 
+function RentalLifecycleHistoryDiagnostic({ equipmentId, assetNo }: { equipmentId: string; assetNo: string }) {
+  const { configuration, readRepositories } = useApplicationDependenciesCompatibility();
+  const { hasPermission } = useAuth();
+  const [state, setState] = useState<{ status: "idle" | "loading" | "ready" | "error"; events?: readonly RentalLifecycleEvent[]; message?: string }>({ status: "idle" });
+  const uatOnly = typeof window !== "undefined"
+    && /(^|\.)uat\.pscequipment\.online$|workers\.dev$/.test(window.location.hostname)
+    && configuration.persistenceMode === "remote";
+  const permitted = uatOnly && hasPermission("equipment.read") && hasPermission("rental.read");
+  if (!permitted) return null;
+  const inspect = async () => {
+    setState({ status: "loading" });
+    try {
+      const result = await readRepositories.rentalLifecycleHistory.getEquipmentRentalLifecycleEvents(equipmentId);
+      setState(result.success ? { status: "ready", events: result.value } : { status: "error", message: result.error.message });
+    } catch {
+      setState({ status: "error", message: "Rental lifecycle history could not be loaded." });
+    }
+  };
+  return <section className="app-card border-dashed p-5" aria-label="UAT rental lifecycle history diagnostic"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">UAT Rental Lifecycle History</h2><p className="text-xs text-slate-500">Read-only diagnostic · {assetNo}</p></div><Button size="sm" variant="secondary" loading={state.status === "loading"} onClick={inspect}>Inspect Rental History</Button></div>{state.status === "error" && <p role="alert" className="mt-3 text-sm text-red-700">{state.message}</p>}{state.status === "ready" && <div className="mt-4 space-y-2 text-sm"><p className="text-xs text-slate-500">{state.events?.length ?? 0} event(s), server-ordered newest first</p>{state.events?.length ? state.events.map((event) => <div key={event.id} className="grid gap-1 rounded border border-slate-200 p-3 dark:border-slate-700 sm:grid-cols-[auto_1fr_auto] sm:items-center"><span className="font-medium">{event.eventType}</span><span>{event.rentalNumber ?? "—"}</span><time dateTime={event.occurredAt} className="text-slate-500">{event.occurredAt}</time></div>) : <p className="text-slate-500">No Rental lifecycle events found.</p>}</div>}</section>;
+}
+
 function CanonicalEquipmentDetails() {
   const { id } = useParams();
   const detail = useCanonicalEquipmentDetail(id);
@@ -67,6 +89,7 @@ function CanonicalEquipmentDetails() {
   const recentDeurs = detail.recentDeurs.status === "ready" ? detail.recentDeurs.value : undefined;
   return <main className="app-page space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-slate-500">Equipment</p><h1 className="text-3xl font-bold">{identity.equipmentName}</h1><p className="mt-1 text-slate-500">Asset No. {identity.assetNo}</p></div><div className="flex items-center gap-3"><StatusBadge tone="neutral">{display(identity.statusLabel)}</StatusBadge><Link className="text-blue-600 underline" to="/equipment">Back to Equipment</Link></div></header>
+    <RentalLifecycleHistoryDiagnostic equipmentId={identity.id} assetNo={identity.assetNo} />
      <section className="app-card p-5"><h2 className="text-lg font-semibold">Identification</h2><dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["Category", identity.category],["Sub-Category", identity.subcategoryName],["Manufacturer", identity.manufacturer],["Model", identity.model],["Year", identity.yearModel],["Serial Number", identity.serialNumber],["Engine Number", identity.engineNumber],["Chassis Number", identity.chassisNumber],["Plate Number", identity.plateNumber]].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 font-medium">{display(value)}</dd></div>)}</dl></section>
      <section className="app-card p-5"><h2 className="text-lg font-semibold">Operating Data</h2><dl className="mt-4 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-slate-500">Capacity</dt><dd className="mt-1 font-medium">{display(identity.capacity)}</dd></div><div><dt className="text-xs text-slate-500">Maintenance Tracking</dt><dd className="mt-1 font-medium">{display(identity.maintenanceType)}</dd></div><div><dt className="text-xs text-slate-500">Current Reading</dt><dd className="mt-1 font-medium">{display(identity.currentReading)}</dd></div></dl></section>
     {hasPermission("assignment.read") && <section className="app-card p-5"><h2 className="text-lg font-semibold">Current Assignment</h2>{detail.assignment.status === "loading" ? <p role="status" className="mt-3 text-sm text-slate-500">Loading assignment…</p> : detail.assignment.status === "error" ? <div className="mt-3"><p role="alert" className="text-sm text-red-700">Assignment details could not be loaded.</p><Button className="mt-2" size="sm" variant="secondary" onClick={detail.retry}>Retry</Button></div> : !assignment?.assignment ? <p className="mt-3 text-sm text-slate-500">Not currently assigned</p> : <dl className="mt-4 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-slate-500">Status</dt><dd className="mt-1 font-medium">{assignment.assignment.status}</dd></div>{assignment.projectReadable && <div><dt className="text-xs text-slate-500">Project</dt><dd className="mt-1 font-medium">{display(assignment.project?.projectName)}</dd></div>}{assignment.operatorReadable && <div><dt className="text-xs text-slate-500">Operator</dt><dd className="mt-1 font-medium">{display(assignment.operator?.name)}</dd></div>}<div><dt className="text-xs text-slate-500">Assigned Date</dt><dd className="mt-1 font-medium">{display(assignment.assignment.assignedDate)}</dd></div></dl>}</section>}
