@@ -40,6 +40,12 @@ export interface CanonicalBookingSearchInput {
   limit?: number;
 }
 
+export interface CanonicalBookingCalendarSearchInput extends CanonicalBookingSearchInput {
+  /** Inclusive ISO-8601 business-date window; enforced again by the canonical RPC. */
+  windowStart: string;
+  windowEnd: string;
+}
+
 export interface CanonicalBookingPage {
   rows: readonly CanonicalBookingListItem[];
   totalCount: number;
@@ -50,11 +56,18 @@ export interface CanonicalBookingPage {
 
 export interface CanonicalBookingReadRepository {
   searchCanonicalBookingRows(input?: CanonicalBookingSearchInput): Promise<RepositoryResult<CanonicalBookingPage>>;
+  searchCanonicalBookingCalendarRows(input: CanonicalBookingCalendarSearchInput): Promise<RepositoryResult<CanonicalBookingPage>>;
 }
 
 /** Local compatibility mode intentionally has no Rental-backed Booking projection. */
 export class LocalCanonicalBookingReadRepository implements CanonicalBookingReadRepository {
   async searchCanonicalBookingRows(): Promise<RepositoryResult<CanonicalBookingPage>> {
+    return repositoryFailure("REMOTE_BOOKING_READ_UNAVAILABLE", "Canonical Rental Bookings are available only in remote mode.", {
+      context: { repository: "CanonicalBooking" }, recoverability: "USER_ACTION_REQUIRED", recommendedAction: "Use the existing local Assignment compatibility view.",
+    });
+  }
+
+  async searchCanonicalBookingCalendarRows(): Promise<RepositoryResult<CanonicalBookingPage>> {
     return repositoryFailure("REMOTE_BOOKING_READ_UNAVAILABLE", "Canonical Rental Bookings are available only in remote mode.", {
       context: { repository: "CanonicalBooking" }, recoverability: "USER_ACTION_REQUIRED", recommendedAction: "Use the existing local Assignment compatibility view.",
     });

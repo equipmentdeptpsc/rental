@@ -1,16 +1,23 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
-import { canonicalBookingStatuses, type CanonicalBookingListItem, type CanonicalBookingPage, type CanonicalBookingReadRepository, type CanonicalBookingSearchInput, type CanonicalBookingSort } from "@/features/booking/canonical";
+import { canonicalBookingStatuses, type CanonicalBookingCalendarSearchInput, type CanonicalBookingListItem, type CanonicalBookingPage, type CanonicalBookingReadRepository, type CanonicalBookingSearchInput, type CanonicalBookingSort } from "@/features/booking/canonical";
 
 type RpcClient = Pick<SupabaseClient, "schema">;
 const statuses = new Set<string>(canonicalBookingStatuses);
 const sorts = new Set<CanonicalBookingSort>(["createdAt", "dateOut", "expectedReturn", "rentalStatus"]);
 const defaultLimit = 25;
 const maximumLimit = 100;
+const maximumCalendarWindowDays = 93;
 const text = (value: unknown): string | undefined => typeof value === "string" && value.trim() ? value : undefined;
 const boundedLimit = (value: number | undefined) => Number.isFinite(value) ? Math.max(1, Math.min(maximumLimit, Math.trunc(value as number))) : defaultLimit;
 const boundedOffset = (value: number | undefined) => Number.isFinite(value) ? Math.max(0, Math.trunc(value as number)) : 0;
+const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value;
+const calendarWindowIsValid = (start: string, end: string) => {
+  if (!validDate(start) || !validDate(end) || start > end) return false;
+  const startAt = Date.parse(`${start}T00:00:00.000Z`), endAt = Date.parse(`${end}T00:00:00.000Z`);
+  return (endAt - startAt) / 86_400_000 + 1 <= maximumCalendarWindowDays;
+};
 
 function mapRow(value: unknown): CanonicalBookingListItem | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
@@ -42,6 +49,25 @@ export class SupabaseCanonicalBookingReadRepository implements CanonicalBookingR
       p_status: input.status && statuses.has(input.status) ? input.status : null,
       p_customer_id: text(input.customerId) ?? null, p_project_id: text(input.projectId) ?? null, p_equipment_id: text(input.equipmentId) ?? null,
       p_rental_number_search: text(input.rentalNumberSearch) ?? null, p_order_field: sort, p_order_ascending: input.ascending === true,
+      p_offset: offset, p_limit: limit,
+    });
+    if (error || !Array.isArray(data)) return repositoryFailure("REMOTE_READ_FAILED", "Canonical Rental Bookings could not be loaded.", { context: { repository: "CanonicalBooking" }, recoverability: "RETRYABLE", recommendedAction: "Retry the request." });
+    const rows = data.map(mapRow);
+    if (rows.some((row) => !row)) return repositoryFailure("REMOTE_ROW_MALFORMED", "Canonical Rental Bookings could not be read safely.", { context: { repository: "CanonicalBooking" }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Repair the canonical Booking read projection." });
+    const first = data[0] as Record<string, unknown> | undefined, totalCount = typeof first?.total_count === "number" && first.total_count >= 0 ? first.total_count : 0;
+    return repositorySuccess({ rows: rows as CanonicalBookingListItem[], totalCount, offset, limit, hasMore: offset + rows.length < totalCount });
+  }
+
+  async searchCanonicalBookingCalendarRows(input: CanonicalBookingCalendarSearchInput): Promise<RepositoryResult<CanonicalBookingPage>> {
+    if (!calendarWindowIsValid(input.windowStart, input.windowEnd)) return repositoryFailure("INVALID_CALENDAR_WINDOW", "Choose an inclusive calendar window of no more than 93 days.", {
+      context: { repository: "CanonicalBooking" }, recoverability: "USER_ACTION_REQUIRED", recommendedAction: "Choose a valid, shorter calendar period.",
+    });
+    const limit = boundedLimit(input.limit), offset = boundedOffset(input.offset), sort = input.sort && sorts.has(input.sort) ? input.sort : "dateOut";
+    const { data, error } = await this.client.schema("erp").rpc("search_booking_calendar_rows", {
+      p_window_start: input.windowStart, p_window_end: input.windowEnd,
+      p_status: input.status && statuses.has(input.status) ? input.status : null,
+      p_customer_id: text(input.customerId) ?? null, p_project_id: text(input.projectId) ?? null, p_equipment_id: text(input.equipmentId) ?? null,
+      p_rental_number_search: text(input.rentalNumberSearch) ?? null, p_order_field: sort, p_order_ascending: input.ascending ?? true,
       p_offset: offset, p_limit: limit,
     });
     if (error || !Array.isArray(data)) return repositoryFailure("REMOTE_READ_FAILED", "Canonical Rental Bookings could not be loaded.", { context: { repository: "CanonicalBooking" }, recoverability: "RETRYABLE", recommendedAction: "Retry the request." });
