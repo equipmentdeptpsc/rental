@@ -37,13 +37,15 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
     SELECT d.id, d.deur_number, d.created_at, d.submitted_at, d.acknowledged_at, d.rejected_at, d.corrected_at
     FROM erp.deurs d JOIN visible_equipment e ON e.id=d.equipment_id AND e.company_id=d.company_id
   ), events AS (
-    SELECT d.id::text || ':Created:' || d.created_at::text, d.id::text, d.deur_number, 'Created'::text, d.created_at, 'timestamp'::text FROM visible_deurs d
+    SELECT d.id::text || ':Created:' || d.created_at::text AS id, d.id::text AS deur_id, d.deur_number AS deur_number, 'Created'::text AS event_type, d.created_at AS occurred_at, 'timestamp'::text AS occurred_at_precision FROM visible_deurs d
     UNION ALL SELECT d.id::text || ':Submitted:' || d.submitted_at::text, d.id::text, d.deur_number, 'Submitted'::text, d.submitted_at, 'timestamp'::text FROM visible_deurs d WHERE d.submitted_at IS NOT NULL
     UNION ALL SELECT d.id::text || ':Acknowledged:' || d.acknowledged_at::text, d.id::text, d.deur_number, 'Acknowledged'::text, d.acknowledged_at, 'timestamp'::text FROM visible_deurs d WHERE d.acknowledged_at IS NOT NULL
     UNION ALL SELECT d.id::text || ':Rejected:' || d.rejected_at::text, d.id::text, d.deur_number, 'Rejected'::text, d.rejected_at, 'timestamp'::text FROM visible_deurs d WHERE d.rejected_at IS NOT NULL
     UNION ALL SELECT d.id::text || ':CorrectionRevisionCreated:' || d.corrected_at::text, d.id::text, d.deur_number, 'CorrectionRevisionCreated'::text, d.corrected_at, 'timestamp'::text FROM visible_deurs d WHERE d.corrected_at IS NOT NULL
   )
-  SELECT * FROM events ORDER BY occurred_at DESC, id DESC
+  SELECT event.id, event.deur_id, event.deur_number, event.event_type, event.occurred_at, event.occurred_at_precision
+  FROM events AS event
+  ORDER BY event.occurred_at DESC, event.id DESC
   LIMIT LEAST(20, GREATEST(1, COALESCE(requested_limit, 10)));
 $$;
 
