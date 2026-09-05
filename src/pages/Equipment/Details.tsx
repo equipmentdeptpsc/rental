@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import Button from "@/components/ui/Button";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useProject } from "@/features/project/context/ProjectContext";
@@ -21,13 +22,14 @@ import { canUseCanonicalRemoteRentalMutations, canUseLegacyRentalMutations } fro
 import { useAuth } from "@/features/auth/AuthContext";
 import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
 import { useCanonicalEquipmentData } from "@/features/equipment/hooks/useCanonicalEquipmentData";
+import { useCanonicalEquipmentDetail } from "@/features/equipment/hooks/useCanonicalEquipmentDetail";
 
 export default function EquipmentDetails() {
   const { configuration } = useApplicationDependenciesCompatibility();
   return getEquipmentRuntimeCapability(configuration).canonicalReads ? <CanonicalEquipmentDetails /> : <LocalEquipmentDetails />;
 }
 
-function CanonicalEquipmentDetails() {
+export function LegacyCanonicalEquipmentDetails() {
   const { id } = useParams();
   const data = useCanonicalEquipmentData();
   const { readRepositories } = useApplicationDependenciesCompatibility();
@@ -38,6 +40,26 @@ function CanonicalEquipmentDetails() {
   const equipment = data.items.find((item) => item.id === id && !item.deleted);
   if (!equipment) return <div className="p-8">Equipment not found.</div>;
   return <div className="space-y-6 p-8"><div><h1 className="text-3xl font-bold">{equipment.equipmentName}</h1><p className="mt-1 text-slate-500">Asset No. {equipment.assetNo}</p></div><div className="grid gap-4 md:grid-cols-3"><div className="app-card p-5"><p className="text-sm text-slate-500">Canonical Status</p><strong className="mt-2 block text-2xl">{equipment.statusLabel ?? "Unavailable"}</strong></div><div className="app-card p-5"><p className="text-sm text-slate-500">Active</p><strong className="mt-2 block text-2xl">{equipment.active ? "Yes" : "No"}</strong></div><div className="app-card p-5"><p className="text-sm text-slate-500">Current Reading</p><strong className="mt-2 block text-2xl">{equipment.currentReading ?? "—"}</strong></div></div><section className="app-card p-6"><h2 className="text-xl font-semibold">Canonical Equipment Information</h2><dl className="mt-4 grid gap-3 md:grid-cols-2"><div><dt className="text-sm text-slate-500">Category</dt><dd>{equipment.categoryId ? categoryNames.get(equipment.categoryId) ?? "Equipment Category" : "—"}</dd></div><div><dt className="text-sm text-slate-500">Sub-Category</dt><dd>{equipment.subcategoryName ? <>{equipment.subcategoryName}{equipment.subcategoryActive === false && <span className="ml-2 text-sm text-amber-700">— Inactive</span>}</> : "—"}</dd></div><div><dt className="text-sm text-slate-500">Manufacturer</dt><dd>{equipment.manufacturer ?? "—"}</dd></div><div><dt className="text-sm text-slate-500">Model</dt><dd>{equipment.model ?? "—"}</dd></div><div><dt className="text-sm text-slate-500">Serial Number</dt><dd>{equipment.serialNumber ?? "—"}</dd></div><div><dt className="text-sm text-slate-500">Maintenance Tracking</dt><dd>{equipment.maintenanceType ?? "—"}</dd></div></dl></section><p className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Remote Equipment sub-category edit is pending a canonical Equipment update command. Assignment, Rental, maintenance, daily-log, history, edit, and deletion panels remain unavailable until their canonical boundaries are certified.</p><Link className="text-blue-600 underline" to="/equipment">Back to Equipment</Link></div>;
+}
+
+function CanonicalEquipmentDetails() {
+  const { id } = useParams();
+  const detail = useCanonicalEquipmentDetail(id);
+  const { hasPermission } = useAuth();
+  const identity = detail.equipment.status === "ready" ? detail.equipment.value : undefined;
+  if (detail.equipment.status === "loading") return <main className="app-page" aria-busy="true"><p role="status">Loading Equipment…</p></main>;
+  if (detail.equipment.status === "error") return <main className="app-page"><p role="alert">Equipment could not be loaded.</p><Button variant="secondary" onClick={detail.retry}>Retry</Button></main>;
+  if (!identity) return <main className="app-page"><p>Equipment not found.</p><Link className="text-blue-600 underline" to="/equipment">Back to Equipment</Link></main>;
+  const display = (value: unknown) => typeof value === "string" && value.trim() ? value : value === 0 ? "0" : "—";
+  const assignment = detail.assignment.status === "ready" ? detail.assignment.value : undefined;
+  const rental = detail.rental.status === "ready" ? detail.rental.value : undefined;
+  return <main className="app-page space-y-6">
+    <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-slate-500">Equipment</p><h1 className="text-3xl font-bold">{identity.equipmentName}</h1><p className="mt-1 text-slate-500">Asset No. {identity.assetNo}</p></div><div className="flex items-center gap-3"><StatusBadge tone="neutral">{display(identity.statusLabel)}</StatusBadge><Link className="text-blue-600 underline" to="/equipment">Back to Equipment</Link></div></header>
+     <section className="app-card p-5"><h2 className="text-lg font-semibold">Identification</h2><dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["Category", identity.category],["Sub-Category", identity.subcategoryName],["Manufacturer", identity.manufacturer],["Model", identity.model],["Year", identity.yearModel],["Serial Number", identity.serialNumber],["Engine Number", identity.engineNumber],["Chassis Number", identity.chassisNumber],["Plate Number", identity.plateNumber]].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 font-medium">{display(value)}</dd></div>)}</dl></section>
+     <section className="app-card p-5"><h2 className="text-lg font-semibold">Operating Data</h2><dl className="mt-4 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-slate-500">Capacity</dt><dd className="mt-1 font-medium">{display(identity.capacity)}</dd></div><div><dt className="text-xs text-slate-500">Maintenance Tracking</dt><dd className="mt-1 font-medium">{display(identity.maintenanceType)}</dd></div><div><dt className="text-xs text-slate-500">Current Reading</dt><dd className="mt-1 font-medium">{display(identity.currentReading)}</dd></div></dl></section>
+    {hasPermission("assignment.read") && <section className="app-card p-5"><h2 className="text-lg font-semibold">Current Assignment</h2>{detail.assignment.status === "loading" ? <p role="status" className="mt-3 text-sm text-slate-500">Loading assignment…</p> : detail.assignment.status === "error" ? <div className="mt-3"><p role="alert" className="text-sm text-red-700">Assignment details could not be loaded.</p><Button className="mt-2" size="sm" variant="secondary" onClick={detail.retry}>Retry</Button></div> : !assignment?.assignment ? <p className="mt-3 text-sm text-slate-500">Not currently assigned</p> : <dl className="mt-4 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-slate-500">Status</dt><dd className="mt-1 font-medium">{assignment.assignment.status}</dd></div>{assignment.projectReadable && <div><dt className="text-xs text-slate-500">Project</dt><dd className="mt-1 font-medium">{display(assignment.project?.projectName)}</dd></div>}{assignment.operatorReadable && <div><dt className="text-xs text-slate-500">Operator</dt><dd className="mt-1 font-medium">{display(assignment.operator?.name)}</dd></div>}<div><dt className="text-xs text-slate-500">Assigned Date</dt><dd className="mt-1 font-medium">{display(assignment.assignment.assignedDate)}</dd></div></dl>}</section>}
+    {hasPermission("rental.read") && <section className="app-card p-5"><h2 className="text-lg font-semibold">Current Rental</h2>{detail.rental.status === "loading" ? <p role="status" className="mt-3 text-sm text-slate-500">Loading rental…</p> : detail.rental.status === "error" ? <div className="mt-3"><p role="alert" className="text-sm text-red-700">Rental details could not be loaded.</p><Button className="mt-2" size="sm" variant="secondary" onClick={detail.retry}>Retry</Button></div> : !rental?.rental ? <p className="mt-3 text-sm text-slate-500">No current rental</p> : <dl className="mt-4 grid gap-4 sm:grid-cols-3"><div><dt className="text-xs text-slate-500">Rental Number</dt><dd className="mt-1 font-medium">{display(rental.rental.rentalNumber)}</dd></div><div><dt className="text-xs text-slate-500">Status</dt><dd className="mt-1 font-medium">{rental.rental.status}</dd></div>{rental.customerReadable && <div><dt className="text-xs text-slate-500">Customer</dt><dd className="mt-1 font-medium">{display(rental.customer?.companyName ?? (rental.rental.customerId ? undefined : "No current customer"))}</dd></div>}<div><dt className="text-xs text-slate-500">Start Date</dt><dd className="mt-1 font-medium">{display(rental.rental.dateOut)}</dd></div></dl>}</section>}
+  </main>;
 }
 
 function LocalEquipmentDetails() {
