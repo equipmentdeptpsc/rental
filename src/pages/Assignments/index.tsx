@@ -16,7 +16,7 @@ import { useProject } from "@/features/project/context/ProjectContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { canonicalBookingStatuses, type CanonicalBookingListItem, type CanonicalBookingPage, type CanonicalBookingSearchInput, type CanonicalBookingSort } from "@/features/booking/canonical";
+import { canonicalBookingStatuses, type CanonicalBookingListItem, type CanonicalBookingPage, type CanonicalBookingSearchInput } from "@/features/booking/canonical";
 
 export default function Assignments() {
   const { configuration } = useApplicationDependenciesCompatibility();
