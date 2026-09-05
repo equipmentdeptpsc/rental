@@ -26,4 +26,11 @@ describe("canonical Booking list UI", () => {
     expect(source).toContain("Open Rental");
     expect(source).not.toContain("Return Equipment");
   });
+
+  it("loads filter options independently from bounded canonical readers", () => {
+    expect(source).toContain("readRepositories.customers.list({ paging: { limit: 100 }");
+    expect(source).toContain("readRepositories.projects.list({ paging: { limit: 100 }");
+    expect(source).toContain("readRepositories.equipment.list({ paging: { limit: 100 }");
+    expect(source).not.toContain("const options = page?.rows");
+  });
 });

@@ -41,17 +41,34 @@ function RemoteBookingTabs({ data }: { data: CanonicalAssignmentData }) {
 function RentalBookingsView() {
   const { readRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
+  const canReadCustomer = hasPermission("customer.read"), canReadProject = hasPermission("project.read"), canReadEquipment = hasPermission("equipment.read");
   const [filters, setFilters] = useState<CanonicalBookingSearchInput>({ limit: 25, sort: "createdAt" });
   const [page, setPage] = useState<CanonicalBookingPage | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
+  const [optionState, setOptionState] = useState<{ customers: Array<[string, string]>; projects: Array<[string, string]>; equipment: Array<[string, string]> }>({ customers: [], projects: [], equipment: [] });
   const load = async (input: CanonicalBookingSearchInput) => { setStatus("loading"); const response = await readRepositories.canonicalBookings.searchCanonicalBookingRows(input); if (response.success) { setPage(response.value); setError(""); setStatus("ready"); } else { setPage(null); setError(response.error.message); setStatus("error"); } };
   useEffect(() => { void load(filters); }, [filters]);
+  useEffect(() => {
+    let active = true;
+    const loadOptions = async () => {
+      const [customers, projects, equipment] = await Promise.all([
+        canReadCustomer ? readRepositories.customers.list({ paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : Promise.resolve(null),
+        canReadProject ? readRepositories.projects.list({ paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : Promise.resolve(null),
+        canReadEquipment ? readRepositories.equipment.list({ paging: { limit: 100 }, ordering: [{ field: "equipmentName", ascending: true }] }) : Promise.resolve(null),
+      ]);
+      if (!active) return;
+      setOptionState({
+        customers: customers?.success ? customers.value.items.flatMap((item) => item.id && item.companyName ? [[item.id, item.companyName] as [string, string]] : []) : [],
+        projects: projects?.success ? projects.value.items.flatMap((item) => item.id && item.projectName ? [[item.id, `${item.projectCode} · ${item.projectName}`] as [string, string]] : []) : [],
+        equipment: equipment?.success ? equipment.value.items.flatMap((item) => item.id && item.equipmentName ? [[item.id, `${item.assetNo ? `${item.assetNo} · ` : ""}${item.equipmentName}`] as [string, string]] : []) : [],
+      });
+    };
+    void loadOptions();
+    return () => { active = false; };
+  }, [canReadCustomer, canReadProject, canReadEquipment, readRepositories]);
   const setFilter = (key: keyof CanonicalBookingSearchInput, value: string) => { setPage(null); setFilters((current) => ({ ...current, [key]: value || undefined, offset: 0 })); };
-  const options = page?.rows ?? [];
-  const customers = [...new Map(options.filter((row) => row.customerId && row.customerName).map((row) => [row.customerId!, row.customerName!])).entries()];
-  const projects = [...new Map(options.filter((row) => row.projectId && row.projectName).map((row) => [row.projectId!, row.projectName!])).entries()];
-  const equipment = [...new Map(options.filter((row) => row.equipmentId && row.equipmentName).map((row) => [row.equipmentId, `${row.equipmentAssetNumber ? `${row.equipmentAssetNumber} · ` : ""}${row.equipmentName}`])).entries()];
+  const customers = optionState.customers, projects = optionState.projects, equipment = optionState.equipment;
   const reset = () => setFilters({ limit: 25, sort: "createdAt", offset: 0 });
   const totalPages = page ? Math.max(1, Math.ceil(page.totalCount / page.limit)) : 1;
   const currentPage = page ? Math.floor(page.offset / page.limit) + 1 : 1;
