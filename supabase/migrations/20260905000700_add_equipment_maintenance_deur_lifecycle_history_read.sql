@@ -11,7 +11,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
       AND erp.can_read_company_row(e.company_id)
       AND erp.current_user_has_permission('maintenance.read')
   ), events AS (
-    SELECT m.id::text || ':Scheduled:' || m.scheduled_date::text, m.id::text, 'Scheduled'::text, m.scheduled_date, 'date'::text, m.maintenance_type
+    SELECT m.id::text || ':Scheduled:' || m.scheduled_date::text AS id, m.id::text AS maintenance_record_id, 'Scheduled'::text AS event_type, m.scheduled_date AS occurred_at, 'date'::text AS occurred_at_precision, m.maintenance_type AS maintenance_type
     FROM erp.maintenance_records m JOIN visible_equipment e ON e.id=m.equipment_id
     WHERE m.deleted_at IS NULL AND m.scheduled_date IS NOT NULL
     UNION ALL
@@ -19,7 +19,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
     FROM erp.maintenance_records m JOIN visible_equipment e ON e.id=m.equipment_id
     WHERE m.deleted_at IS NULL AND m.completed_date IS NOT NULL
   )
-  SELECT * FROM events ORDER BY occurred_at DESC, id DESC
+  SELECT event.id, event.maintenance_record_id, event.event_type, event.occurred_at, event.occurred_at_precision, event.maintenance_type
+  FROM events AS event
+  ORDER BY event.occurred_at DESC, event.id DESC
   LIMIT LEAST(20, GREATEST(1, COALESCE(requested_limit, 10)));
 $$;
 
