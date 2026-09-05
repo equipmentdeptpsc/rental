@@ -48,6 +48,7 @@ import type { EquipmentSubcategoryCommandRepository, EquipmentSubcategoryReadRep
 import type { EquipmentMaintenanceSnapshotRepository } from "@/features/maintenance/canonical";
 import type { EquipmentRentalLifecycleHistoryRepository } from "@/features/rental/history/canonical";
 import type { EquipmentLifecycleSummaryRepository } from "@/features/equipment/history/canonical";
+import type { CanonicalBookingReadRepository } from "@/features/booking/canonical";
 import type {
   OperationalEventRepository,
   OperationalEventStream,
@@ -80,6 +81,7 @@ export interface ApplicationReadRepositories {
   maintenance: EquipmentMaintenanceSnapshotRepository;
   rentalLifecycleHistory: EquipmentRentalLifecycleHistoryRepository;
   lifecycleSummary: EquipmentLifecycleSummaryRepository;
+  canonicalBookings: CanonicalBookingReadRepository;
   operatorCertifications: OperatorCertificationRepository;
 }
 export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository; certificationTypes?: CertificationTypeCommandRepository; equipmentSubcategories?: EquipmentSubcategoryCommandRepository; operatorCertifications?: OperatorCertificationRepository }
