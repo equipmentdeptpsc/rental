@@ -29,6 +29,7 @@ import { PersistenceMode } from "./ApplicationDependencies";
 import { LocalOperatorCertificationRepository } from "@/features/operators/certifications/repository";
 import { LocalEquipmentSubcategoryReadRepository, LocalEquipmentCategoryReadRepository } from "@/features/masters/equipment-subcategory/canonical";
 import { LocalEquipmentMaintenanceSnapshotRepository } from "@/features/maintenance/canonical";
+import { LocalEquipmentLifecycleSummaryRepository } from "@/features/equipment/history/canonical";
 import { LocalEquipmentRentalLifecycleHistoryRepository } from "@/features/rental/history/canonical";
 import { maintenanceRepository } from "@/features/maintenance/repository";
 import { LocalDeurCommandRepository } from "@/features/rental/deur/commands/LocalDeurCommandRepository";
@@ -113,6 +114,7 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     equipmentSubcategories: new LocalEquipmentSubcategoryReadRepository(),
     equipmentCategories: new LocalEquipmentCategoryReadRepository(),
     maintenance: new LocalEquipmentMaintenanceSnapshotRepository(() => maintenanceRepository.getAll()),
+    lifecycleSummary: new LocalEquipmentLifecycleSummaryRepository(),
     rentalLifecycleHistory: new LocalEquipmentRentalLifecycleHistoryRepository(),
     operatorCertifications: new LocalOperatorCertificationRepository(),
   };
