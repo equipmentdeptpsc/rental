@@ -14,6 +14,13 @@ describe("canonical Booking read projection", () => {
     expect(migration).not.toMatch(/INSERT INTO|UPDATE erp\.|DELETE FROM/);
   });
 
+  it("requires qualified ordering in the forward correction", () => {
+    const correction = readFileSync("supabase/migrations/20260905000900_fix_canonical_booking_read_projection_ordering.sql", "utf8");
+    expect(correction).toContain("counted.created_at");
+    expect(correction).toContain("counted.rental_equipment_line_id DESC");
+    expect(correction).toContain("REVOKE ALL ON FUNCTION erp._search_booking_rows");
+  });
+
   it("sends bounded canonical filters and ordering to the RPC", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: [{ rental_id: "r1", rental_number: "R-1", rental_status: "Reserved", rental_equipment_line_id: "l1", equipment_id: "e1", date_out: "2026-09-05", created_at: "2026-09-05T01:00:00Z", total_count: 2 }], error: null });
     const repository = new SupabaseCanonicalBookingReadRepository({ schema: vi.fn(() => ({ rpc })) } as never);
