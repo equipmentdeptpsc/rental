@@ -49,10 +49,12 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
   useEffect(() => subscribeCanonicalRentalRefresh(retry), []);
 
   useEffect(() => {
-    if (!remote) {
-      setState({ status: "loaded", data: fallback });
-      return;
-    }
+    if (remote) return;
+    setState({ status: "loaded", data: fallback });
+  }, [fallback, remote]);
+
+  useEffect(() => {
+    if (!remote) return;
     setState({ status: "loading", data: emptyRemoteData() });
     let active = true;
     void Promise.all([
@@ -86,7 +88,7 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
       if (active) setState({ status: "error", data: emptyRemoteData(), message: "Canonical Rental data could not be loaded. Retry the request or contact support." });
     });
     return () => { active = false; };
-  }, [attempt, commandRepositories.canonicalRental, fallback, readRepositories, remote]);
+  }, [attempt, commandRepositories.canonicalRental, readRepositories, remote]);
 
   return { ...state, retry } as RentalListLoadState;
 }
