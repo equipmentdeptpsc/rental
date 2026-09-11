@@ -68,6 +68,10 @@ interface Props {
 
   assignment?: AssignmentRecord;
   initialAssignmentIds?: string[];
+  initialDateOut?: string;
+  initialExpectedReturn?: string;
+  onDateOutChange?(value: string): void;
+  onExpectedReturnChange?(value: string): void;
   canonicalData?: { equipment: EquipmentRecord[]; customers: CustomerRecord[]; projects: ProjectRecord[]; operators: Operator[]; assignments: AssignmentRecord[]; costCodes: CanonicalReferenceCode[]; activityCodes: CanonicalReferenceCode[] };
 }
 
@@ -95,6 +99,10 @@ export default function RentalForm({
   initialProjectWarning,
   assignment,
   initialAssignmentIds = [],
+  initialDateOut,
+  initialExpectedReturn,
+  onDateOutChange,
+  onExpectedReturnChange,
   canonicalData,
 }: Props) {
   const submission=useFormSubmission("Rental",onSubmit);
@@ -213,9 +221,9 @@ export default function RentalForm({
       operatorId: initialOperatorId ?? "",
   
       projectId: initialProjectId ?? "",
-      dateOut: localCalendarDate(),
+      dateOut: initialDateOut ?? localCalendarDate(),
   
-      expectedReturn: "",
+      expectedReturn: initialExpectedReturn ?? "",
       rentalType: "",
       deurExpectationFrequency: "PER_WORKDAY",
       expectedShiftCodes: ["DAY"],
@@ -429,12 +437,11 @@ export default function RentalForm({
         value={form.dateOut}
         onChange={(e) => {
           const dateOut = e.target.value;
+          const expectedReturn = form.expectedReturn && form.expectedReturn < dateOut ? "" : form.expectedReturn;
           editedFields.current.add("dateOut");
-          setForm((prev) => ({
-            ...prev,
-            dateOut,
-            expectedReturn: prev.expectedReturn && prev.expectedReturn < dateOut ? "" : prev.expectedReturn,
-          }));
+          onDateOutChange?.(dateOut);
+          if (expectedReturn !== form.expectedReturn) onExpectedReturnChange?.(expectedReturn);
+          setForm((prev) => ({ ...prev, dateOut, expectedReturn }));
         }}
       />
 
@@ -445,7 +452,10 @@ export default function RentalForm({
         value={
           form.expectedReturn ?? ""
         }
-        onChange={(e) => update("expectedReturn", e.target.value)}
+        onChange={(e) => {
+          onExpectedReturnChange?.(e.target.value);
+          update("expectedReturn", e.target.value);
+        }}
       />
       <p className="text-xs text-slate-600">{EXPECTED_RETURN_GUIDANCE}</p>
 

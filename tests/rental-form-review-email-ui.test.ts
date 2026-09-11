@@ -78,6 +78,63 @@ describe("RentalForm user-entered values", () => {
     expect((submitted[0] as { expectedReturn?: string }).expectedReturn).toBe("2031-04-13");
   });
 
+  it("retains edited contact and date fields when Rental Type changes", async () => {
+    const container = document.createElement("div");
+    root = createRoot(container);
+    const props = { onSubmit: (): void => undefined, initialCustomerId: customer.id, initialProjectId: "project-1", canonicalData: { equipment: [{ id: "equipment-1", active: true, deleted: false }] as never, customers: [customer], projects: [{ id: "project-1", customerId: customer.id, projectCode: "P-1", projectName: "Project", status: "Active" }] as never, operators: [{ id: "operator-1", name: "Operator", status: "Active" }] as never, assignments: [{ id: "assignment-1", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1", status: "Active" }] as never, costCodes: [], activityCodes: [] } };
+    await act(async () => root?.render(createElement(RentalForm, props)));
+    const representative = container.querySelector('input[type="text"]') as HTMLInputElement;
+    const email = container.querySelector('input[type="email"]') as HTMLInputElement;
+    const dates = [...container.querySelectorAll('input[type="date"]')] as HTMLInputElement[];
+    const rentalType = [...container.querySelectorAll("select")].find((select) => [...select.options].some((option) => option.value === "Bare Rental")) as HTMLSelectElement;
+    await act(async () => {
+      setInputValue(representative, "Synthetic UAT Representative");
+      setInputValue(email, "uat.d3e@example.test");
+      setInputValue(dates[0], "2031-04-11");
+      setInputValue(dates[1], "2031-04-13");
+    });
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(rentalType, "Bare Rental");
+      rentalType.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const refreshedDates = [...container.querySelectorAll('input[type="date"]')] as HTMLInputElement[];
+    expect((container.querySelector('input[type="text"]') as HTMLInputElement).value).toBe("Synthetic UAT Representative");
+    expect((container.querySelector('input[type="email"]') as HTMLInputElement).value).toBe("uat.d3e@example.test");
+    expect(refreshedDates[0].value).toBe("2031-04-11");
+    expect(refreshedDates[1].value).toBe("2031-04-13");
+  });
+
+  it("restores edited date fields after the form remounts with its parent draft", async () => {
+    const container = document.createElement("div");
+    root = createRoot(container);
+    let dateDraft = { dateOut: "", expectedReturn: "" };
+    let remount = 0;
+    const renderHarness = async () => {
+      await act(async () => root?.render(createElement(RentalForm, {
+        key: remount,
+        onSubmit: (): void => undefined,
+        initialCustomerId: customer.id,
+        initialProjectId: "project-1",
+        initialDateOut: dateDraft.dateOut || undefined,
+        initialExpectedReturn: dateDraft.expectedReturn || undefined,
+        onDateOutChange: (value: string) => { dateDraft = { ...dateDraft, dateOut: value }; },
+        onExpectedReturnChange: (value: string) => { dateDraft = { ...dateDraft, expectedReturn: value }; },
+        canonicalData: { equipment: [{ id: "equipment-1", active: true, deleted: false }] as never, customers: [customer], projects: [{ id: "project-1", customerId: customer.id, projectCode: "P-1", projectName: "Project", status: "Active" }] as never, operators: [{ id: "operator-1", name: "Operator", status: "Active" }] as never, assignments: [{ id: "assignment-1", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1", status: "Active" }] as never, costCodes: [], activityCodes: [] },
+      })));
+    };
+    await renderHarness();
+    const dates = [...container.querySelectorAll('input[type="date"]')] as HTMLInputElement[];
+    await act(async () => {
+      setInputValue(dates[0], "2031-04-11");
+      setInputValue(dates[1], "2031-04-13");
+    });
+    remount += 1;
+    await renderHarness();
+    const remountedDates = [...container.querySelectorAll('input[type="date"]')] as HTMLInputElement[];
+    expect(remountedDates[0].value).toBe("2031-04-11");
+    expect(remountedDates[1].value).toBe("2031-04-13");
+  });
+
   it("keeps intended customer and assignment defaults on initial load", async () => {
     const seededCustomer = { ...customer, contactPerson: "Synthetic Customer Contact", email: "synthetic.customer@example.test" };
     const container = document.createElement("div");

@@ -26,7 +26,7 @@ import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE
 import { canUseCanonicalRemoteRentalCreation } from "@/features/rental/services/rentalRuntimeCapability";
 import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import { useAuth } from "@/features/auth/AuthContext";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isRentalType } from "@/features/rental/types";
 import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
@@ -52,6 +52,13 @@ export default function NewRental() {
     searchParams.get(
       "equipment"
     );
+
+  const rentalContextKey = assignmentQuery ?? equipmentParam ?? "new-rental";
+  const [dateDraft, setDateDraft] = useState<{ contextKey: string; dateOut?: string; expectedReturn?: string }>({ contextKey: rentalContextKey });
+  useEffect(() => {
+    setDateDraft((current) => current.contextKey === rentalContextKey ? current : { contextKey: rentalContextKey });
+  }, [rentalContextKey]);
+  const activeDateDraft = dateDraft.contextKey === rentalContextKey ? dateDraft : { contextKey: rentalContextKey };
 
   const { assignments: localAssignments } = useAssignment();
   const localEquipment = useEquipment().equipment;
@@ -209,6 +216,10 @@ export default function NewRental() {
         initialProjectWarning={assignmentProjectError}
         assignment={assignment}
         initialAssignmentIds={assignment ? [assignment.id] : []}
+        initialDateOut={activeDateDraft.dateOut}
+        initialExpectedReturn={activeDateDraft.expectedReturn}
+        onDateOutChange={(dateOut) => setDateDraft((current) => ({ ...current, contextKey: rentalContextKey, dateOut }))}
+        onExpectedReturnChange={(expectedReturn) => setDateDraft((current) => ({ ...current, contextKey: rentalContextKey, expectedReturn }))}
         canonicalData={remoteCreation ? { equipment: canonicalData.data.equipment, customers, projects, operators: canonicalData.data.operators, assignments, costCodes: canonicalData.data.costCodes, activityCodes: canonicalData.data.activityCodes } : undefined}
       />}
 
