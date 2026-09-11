@@ -158,6 +158,7 @@ describe("RentalForm user-entered values", () => {
     expect((container.querySelector('input[type="text"]') as HTMLInputElement).value).toBe("Synthetic Customer Contact");
     expect((container.querySelector('input[type="email"]') as HTMLInputElement).value).toBe("synthetic.customer@example.test");
     expect((container.querySelectorAll('input[type="date"]')[0] as HTMLInputElement).value).toBe("2026-09-08");
+    expect((container.querySelectorAll('input[type="date"]')[1] as HTMLInputElement).value).toBe("");
     expect((container.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
   });
 

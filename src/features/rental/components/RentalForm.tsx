@@ -437,10 +437,11 @@ export default function RentalForm({
         value={form.dateOut}
         onChange={(e) => {
           const dateOut = e.target.value;
-          const expectedReturn = form.expectedReturn && form.expectedReturn < dateOut ? "" : form.expectedReturn;
+          const currentExpectedReturn = form.expectedReturn ?? "";
+          const expectedReturn = currentExpectedReturn && currentExpectedReturn < dateOut ? "" : currentExpectedReturn;
           editedFields.current.add("dateOut");
           onDateOutChange?.(dateOut);
-          if (expectedReturn !== form.expectedReturn) onExpectedReturnChange?.(expectedReturn);
+          if (expectedReturn !== currentExpectedReturn) onExpectedReturnChange?.(expectedReturn);
           setForm((prev) => ({ ...prev, dateOut, expectedReturn }));
         }}
       />
