@@ -222,7 +222,7 @@ export default function RentalForm({
       assignmentIds: initialAssignmentIds,
   
     });
-  const editedContactFields = useRef(new Set<"customerRepresentativeName" | "customerReviewEmail">());
+  const editedFields = useRef(new Set<"customerRepresentativeName" | "customerReviewEmail" | "dateOut" | "expectedReturn">());
 
   const projectOptions = useMemo(
     () => [
@@ -243,10 +243,10 @@ export default function RentalForm({
       equipmentId: initialEquipmentId ?? prev.equipmentId,
       customerId: initialCustomerId ?? prev.customerId,
       customer: customers.find((item) => item.id === initialCustomerId)?.companyName ?? prev.customer,
-      customerRepresentativeName: editedContactFields.current.has("customerRepresentativeName")
+      customerRepresentativeName: editedFields.current.has("customerRepresentativeName")
         ? prev.customerRepresentativeName
         : customers.find((item) => item.id === initialCustomerId)?.contactPerson ?? prev.customerRepresentativeName,
-      customerReviewEmail: editedContactFields.current.has("customerReviewEmail")
+      customerReviewEmail: editedFields.current.has("customerReviewEmail")
         ? prev.customerReviewEmail
         : customers.find((item) => item.id === initialCustomerId)?.email ?? prev.customerReviewEmail,
       projectId: initialProjectId && !prev.projectId ? initialProjectId : prev.projectId,
@@ -260,8 +260,8 @@ export default function RentalForm({
     key: K,
     value: RentalFormData[K]
   ) {
-    if (key === "customerRepresentativeName" || key === "customerReviewEmail") {
-      editedContactFields.current.add(key);
+    if (key === "customerRepresentativeName" || key === "customerReviewEmail" || key === "dateOut" || key === "expectedReturn") {
+      editedFields.current.add(key);
     }
     setForm((prev) => ({
       ...prev,
@@ -318,8 +318,8 @@ export default function RentalForm({
             const customer = customers.find(
               (item) => item.id === e.target.value
             );
-            editedContactFields.current.delete("customerRepresentativeName");
-            editedContactFields.current.delete("customerReviewEmail");
+            editedFields.current.delete("customerRepresentativeName");
+            editedFields.current.delete("customerReviewEmail");
             setForm((previous) => ({ ...previous, customerId: e.target.value, customer: customer?.companyName ?? "", customerRepresentativeName: customer?.contactPerson ?? "", customerReviewEmail: customer?.email ?? "", projectId: projects.some((project) => project.id === previous.projectId && project.customerId === e.target.value) ? previous.projectId : "", assignmentIds: [] }));
           }}
       />
@@ -429,6 +429,7 @@ export default function RentalForm({
         value={form.dateOut}
         onChange={(e) => {
           const dateOut = e.target.value;
+          editedFields.current.add("dateOut");
           setForm((prev) => ({
             ...prev,
             dateOut,
@@ -444,12 +445,7 @@ export default function RentalForm({
         value={
           form.expectedReturn ?? ""
         }
-        onChange={(e) =>
-          update(
-            "expectedReturn",
-            e.target.value
-          )
-        }
+        onChange={(e) => update("expectedReturn", e.target.value)}
       />
       <p className="text-xs text-slate-600">{EXPECTED_RETURN_GUIDANCE}</p>
 
