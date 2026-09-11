@@ -12,8 +12,37 @@ const messages: Record<string, string> = {
   PERSISTENCE_FAILURE: "The remote service could not save the Rental. Refresh before retrying.", TRANSPORT_FAILURE: "Confirmation was not received from the remote service. Refresh before retrying.", INVALID_RESPONSE: "The remote service returned an invalid response.",
 };
 type RpcClient = Pick<SupabaseClient, "schema">;
+type RpcResponse = { data: unknown; error: unknown };
+type AbortableRpcRequest = PromiseLike<RpcResponse> & { abortSignal?(signal: AbortSignal): PromiseLike<RpcResponse> };
+
+export const CANONICAL_RENTAL_DRAFT_RPC_TIMEOUT_MILLISECONDS = 20_000;
+export const CANONICAL_RENTAL_DRAFT_UNCERTAIN_MESSAGE = "The Rental request did not complete. Please verify the result before retrying.";
+
+export interface CanonicalRentalDraftTransportDiagnostic {
+  operation: "command_create_draft_rental";
+  state: "STARTED" | "COMPLETED" | "TIMEOUT" | "TRANSPORT_FAILURE";
+  startedAt: string;
+  elapsedMilliseconds: number;
+  httpStatus?: number;
+  domainCode?: string;
+}
+
+interface CanonicalRentalRepositoryOptions {
+  draftTimeoutMilliseconds?: number;
+  now?: () => Date;
+  setTimeout?: (callback: () => void, milliseconds: number) => ReturnType<typeof globalThis.setTimeout>;
+  clearTimeout?: (handle: ReturnType<typeof globalThis.setTimeout>) => void;
+  onDraftTransportDiagnostic?: (diagnostic: CanonicalRentalDraftTransportDiagnostic) => void;
+}
+
+let lastDraftTransportDiagnostic: CanonicalRentalDraftTransportDiagnostic | undefined;
+
+export function getLastCanonicalRentalDraftTransportDiagnostic(): CanonicalRentalDraftTransportDiagnostic | undefined {
+  return lastDraftTransportDiagnostic;
+}
+
 export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteRepository {
-  constructor(private readonly client: RpcClient) {}
+  constructor(private readonly client: RpcClient, private readonly options: CanonicalRentalRepositoryOptions = {}) {}
   async readWorkspace(rentalId: string) {
     const workspace=await this.read<CanonicalRentalWorkspace>("read_canonical_rental_workspace", { target_rental_id: rentalId }, value => ({ rentalId: String(value.rentalId), contracts: array(value.contracts), commercialSnapshots: array(value.commercialSnapshots), expectationDispositions:[] }));
     if(!workspace.success)return workspace;
@@ -48,7 +77,7 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
       };
     } catch { return failure("TRANSPORT_FAILURE"); }
   }
-  createDraft(input: CreateCanonicalDraftInput) { return this.command("command_create_draft_rental", input); }
+  createDraft(input: CreateCanonicalDraftInput) { return this.createDraftWithTransportGuard(input); }
   updateTerms(input: UpdateCanonicalTermsInput) { return this.command("command_update_draft_rental_terms", input); }
   submitApproval(input: CanonicalVersionedInput) { return this.command("command_submit_rental_approval", input); }
   decideApproval(input: DecideCanonicalApprovalInput) { return this.command("command_decide_rental_approval", input); }
@@ -63,11 +92,71 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
   private async command(name: string, input: unknown): Promise<CanonicalCommandResult> {
     try { const { data, error } = await this.client.schema("erp").rpc(name, { command: input }); if (error) return failure("TRANSPORT_FAILURE"); const value = object(data); if (!value || value.success !== true) return failure(code(value?.code), value); const result = object(value.value); if (!result || typeof result.rentalId !== "string" || (typeof result.version !== "number" && typeof result.waiverId !== "string")) return failure("INVALID_RESPONSE"); return { success: true, disposition: value.disposition === "REPLAYED" ? "REPLAYED" : "ACCEPTED", value: result as unknown as CanonicalCommandValue }; } catch { return failure("TRANSPORT_FAILURE"); }
   }
+  private async createDraftWithTransportGuard(input: CreateCanonicalDraftInput): Promise<CanonicalCommandResult> {
+    const started = this.now();
+    this.recordDraftTransportDiagnostic({ operation: "command_create_draft_rental", state: "STARTED", startedAt: started.toISOString(), elapsedMilliseconds: 0 });
+    const controller = typeof AbortController === "undefined" ? undefined : new AbortController();
+    let timedOut = false;
+    let timeout: ReturnType<typeof globalThis.setTimeout> | undefined;
+    const timeoutMilliseconds = this.options.draftTimeoutMilliseconds ?? CANONICAL_RENTAL_DRAFT_RPC_TIMEOUT_MILLISECONDS;
+    const timeoutResult = new Promise<never>((_, reject) => {
+      timeout = this.setTimer(() => {
+        timedOut = true;
+        controller?.abort();
+        reject(new Error("CANONICAL_RENTAL_DRAFT_RPC_TIMEOUT"));
+      }, timeoutMilliseconds);
+    });
+    try {
+      const request = this.client.schema("erp").rpc("command_create_draft_rental", { command: input }) as AbortableRpcRequest;
+      const response = await Promise.race([
+        Promise.resolve(typeof request.abortSignal === "function" && controller ? request.abortSignal(controller.signal) : request),
+        timeoutResult,
+      ]);
+      if (response.error) {
+        this.recordDraftTransportDiagnostic({
+          operation: "command_create_draft_rental", state: "TRANSPORT_FAILURE", startedAt: started.toISOString(), elapsedMilliseconds: this.elapsed(started),
+          ...(httpStatus(response.error) !== undefined ? { httpStatus: httpStatus(response.error) } : {}),
+        });
+        return { success: false, code: "TRANSPORT_FAILURE", message: CANONICAL_RENTAL_DRAFT_UNCERTAIN_MESSAGE };
+      }
+      const outcome = this.commandResult(response.data, response.error);
+      this.recordDraftTransportDiagnostic({
+        operation: "command_create_draft_rental", state: "COMPLETED", startedAt: started.toISOString(), elapsedMilliseconds: this.elapsed(started),
+        ...(httpStatus(response.error) !== undefined ? { httpStatus: httpStatus(response.error) } : {}),
+        ...(!outcome.success ? { domainCode: outcome.code } : {}),
+      });
+      return outcome;
+    } catch {
+      const state = timedOut ? "TIMEOUT" : "TRANSPORT_FAILURE";
+      this.recordDraftTransportDiagnostic({ operation: "command_create_draft_rental", state, startedAt: started.toISOString(), elapsedMilliseconds: this.elapsed(started) });
+      return { success: false, code: "TRANSPORT_FAILURE", message: CANONICAL_RENTAL_DRAFT_UNCERTAIN_MESSAGE };
+    } finally {
+      if (timeout !== undefined) this.clearTimer(timeout);
+    }
+  }
+  private commandResult(data: unknown, error: unknown): CanonicalCommandResult {
+    if (error) return failure("TRANSPORT_FAILURE");
+    const value = object(data);
+    if (!value || value.success !== true) return failure(code(value?.code), value);
+    const result = object(value.value);
+    if (!result || typeof result.rentalId !== "string" || (typeof result.version !== "number" && typeof result.waiverId !== "string")) return failure("INVALID_RESPONSE");
+    return { success: true, disposition: value.disposition === "REPLAYED" ? "REPLAYED" : "ACCEPTED", value: result as unknown as CanonicalCommandValue };
+  }
+  private now() { return (this.options.now ?? (() => new Date()))(); }
+  private elapsed(started: Date) { return Math.max(0, this.now().getTime() - started.getTime()); }
+  private setTimer(callback: () => void, milliseconds: number) { return (this.options.setTimeout ?? globalThis.setTimeout)(callback, milliseconds); }
+  private clearTimer(handle: ReturnType<typeof globalThis.setTimeout>) { (this.options.clearTimeout ?? globalThis.clearTimeout)(handle); }
+  private recordDraftTransportDiagnostic(diagnostic: CanonicalRentalDraftTransportDiagnostic) {
+    lastDraftTransportDiagnostic = diagnostic;
+    this.options.onDraftTransportDiagnostic?.(diagnostic);
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("canonical-rental-draft-transport", { detail: diagnostic }));
+  }
 }
 function object(value: unknown): Record<string, unknown> | undefined { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined; }
 function array<T>(value: unknown): T[] { return Array.isArray(value) ? value as T[] : []; }
 function strings(value: unknown): string[] { return array<unknown>(value).filter((item): item is string => typeof item === "string"); }
 function code(value: unknown): keyof typeof messages { return typeof value === "string" && value in messages ? value : "INVALID_RESPONSE"; }
+function httpStatus(value: unknown): number | undefined { return value && typeof value === "object" && "status" in value && typeof value.status === "number" ? value.status : undefined; }
 const draftValidationReasons = new Set<CanonicalDraftValidationReason>(["INVALID_COMMAND", "INVALID_CONTACT", "INVALID_LINE_SET", "INVALID_DATE", "INVALID_IDEMPOTENCY_STATE", "INVALID_LINE_SHAPE"]);
 function safeValidationDetails(value: unknown): { reason: CanonicalDraftValidationReason } | undefined {
   const details = object(value);

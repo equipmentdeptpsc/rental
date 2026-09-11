@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { SupabaseCanonicalRentalRepository } from "@/integrations/supabase/SupabaseCanonicalRentalRepository";
+import { CANONICAL_RENTAL_DRAFT_UNCERTAIN_MESSAGE, SupabaseCanonicalRentalRepository } from "@/integrations/supabase/SupabaseCanonicalRentalRepository";
 
 function client(responses: unknown[]) {
   const rpc = vi.fn().mockImplementation(() => Promise.resolve(responses.shift()));
@@ -67,6 +67,43 @@ describe("canonical remote Rental repository", () => {
     expect(await repository.createDraft(input)).toMatchObject({ success: false, code: "VALIDATION_REJECTED", message: "The request is incomplete or invalid.", details: undefined });
     expect(await repository.createDraft(input)).toMatchObject({ success: false, code: "EQUIPMENT_INTERVAL_CONFLICT", message: "This equipment is already committed for the requested interval." });
     expect(await repository.createDraft(input)).toMatchObject({ success: false, code: "MISSING_RELATIONSHIP", message: "Referenced Rental information has changed or is unavailable. Refresh and try again." });
+  });
+
+  it("keeps HTTP-200 domain conflicts canonical and records a completed diagnostic", async () => {
+    const diagnostics: unknown[] = [];
+    const repository = new SupabaseCanonicalRentalRepository(client([{ data: { success: false, code: "EQUIPMENT_INTERVAL_CONFLICT" }, error: null }]).value as never, { onDraftTransportDiagnostic: (value) => diagnostics.push(value) });
+    const result = await repository.createDraft({ commandId: "r-1", idempotencyKey: "key", customerId: "c-1", projectId: "p-1", dateOut: "2026-08-22", rentalType: "Bare Rental", representativeName: "Representative", representativeEmail: "representative@example.test", lines: [{ assignmentId: "a-1" }] });
+    expect(result).toMatchObject({ success: false, code: "EQUIPMENT_INTERVAL_CONFLICT", message: "This equipment is already committed for the requested interval." });
+    expect(diagnostics).toContainEqual(expect.objectContaining({ state: "COMPLETED", domainCode: "EQUIPMENT_INTERVAL_CONFLICT" }));
+  });
+
+  it("bounds a stalled draft RPC without retrying and emits a timeout diagnostic", async () => {
+    vi.useFakeTimers();
+    const rpc = vi.fn(() => new Promise<never>(() => undefined));
+    const diagnostics: unknown[] = [];
+    const repository = new SupabaseCanonicalRentalRepository({ schema: () => ({ rpc }) } as never, { draftTimeoutMilliseconds: 50, onDraftTransportDiagnostic: (value) => diagnostics.push(value) });
+    const pending = repository.createDraft({ commandId: "r-1", idempotencyKey: "key", customerId: "c-1", projectId: "p-1", dateOut: "2026-08-22", rentalType: "Bare Rental", representativeName: "Representative", representativeEmail: "representative@example.test", lines: [{ assignmentId: "a-1" }] });
+    await vi.advanceTimersByTimeAsync(50);
+    await expect(pending).resolves.toEqual({ success: false, code: "TRANSPORT_FAILURE", message: CANONICAL_RENTAL_DRAFT_UNCERTAIN_MESSAGE });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(diagnostics).toContainEqual(expect.objectContaining({ state: "TIMEOUT" }));
+    vi.useRealTimers();
+  });
+
+  it("maps a rejected draft transport to the uncertain-result message without retrying", async () => {
+    const rpc = vi.fn(() => Promise.reject(new Error("network failed")));
+    const repository = new SupabaseCanonicalRentalRepository({ schema: () => ({ rpc }) } as never);
+    await expect(repository.createDraft({ commandId: "r-1", idempotencyKey: "key", customerId: "c-1", projectId: "p-1", dateOut: "2026-08-22", rentalType: "Bare Rental", representativeName: "Representative", representativeEmail: "representative@example.test", lines: [{ assignmentId: "a-1" }] })).resolves.toEqual({ success: false, code: "TRANSPORT_FAILURE", message: CANONICAL_RENTAL_DRAFT_UNCERTAIN_MESSAGE });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps an SDK transport response to the uncertain-result message and records its safe status", async () => {
+    const diagnostics: unknown[] = [];
+    const rpc = vi.fn(() => Promise.resolve({ data: null, error: { status: 503, message: "unavailable" } }));
+    const repository = new SupabaseCanonicalRentalRepository({ schema: () => ({ rpc }) } as never, { onDraftTransportDiagnostic: (value) => diagnostics.push(value) });
+    await expect(repository.createDraft({ commandId: "r-1", idempotencyKey: "key", customerId: "c-1", projectId: "p-1", dateOut: "2026-08-22", rentalType: "Bare Rental", representativeName: "Representative", representativeEmail: "representative@example.test", lines: [{ assignmentId: "a-1" }] })).resolves.toEqual({ success: false, code: "TRANSPORT_FAILURE", message: CANONICAL_RENTAL_DRAFT_UNCERTAIN_MESSAGE });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(diagnostics).toContainEqual(expect.objectContaining({ state: "TRANSPORT_FAILURE", httpStatus: 503 }));
   });
 
 });

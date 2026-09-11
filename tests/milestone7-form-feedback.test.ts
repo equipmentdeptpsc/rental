@@ -44,4 +44,14 @@ describe("Milestone 7 form feedback", () => {
     expect((view.container.querySelector("button") as HTMLButtonElement).disabled).toBe(false);
     await act(async () => view.root.unmount());
   });
+
+  it("clears Saving after a bounded transport failure", async () => {
+    const save = vi.fn(async () => { throw new Error("The Rental request did not complete. Please verify the result before retrying."); });
+    const view = render(save);
+    await act(async () => view.root.render(view.element));
+    await act(async () => view.container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+    expect((view.container.querySelector("button") as HTMLButtonElement).disabled).toBe(false);
+    expect(view.container.querySelector('[role="alert"]')?.textContent).toContain("The Rental request did not complete. Please verify the result before retrying.");
+    await act(async () => view.root.unmount());
+  });
 });
