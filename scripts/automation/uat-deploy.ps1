@@ -9,6 +9,7 @@ if ($Kind -eq 'Application') {
   if (-not $env:VITE_SUPABASE_URL) { $env:VITE_SUPABASE_URL = "https://$($script:ExpectedUatProjectRef).supabase.co" }
   if (-not $env:VITE_SUPABASE_PUBLISHABLE_KEY -and $env:SUPABASE_PUBLISHABLE_KEY) { $env:VITE_SUPABASE_PUBLISHABLE_KEY = $env:SUPABASE_PUBLISHABLE_KEY }
   if (-not $env:VITE_REMOTE_OPERATIONAL_WRITES_ENABLED) { $env:VITE_REMOTE_OPERATIONAL_WRITES_ENABLED = 'false' }
+  if (-not $env:VITE_REMOTE_OPERATOR_CREATE_ENABLED) { $env:VITE_REMOTE_OPERATOR_CREATE_ENABLED = 'false' }
 }
 if ($Kind -eq 'Migration') {
   if (-not $ExpectedMigration) { throw 'ExpectedMigration is required for migration deployment.' }

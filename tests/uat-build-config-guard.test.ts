@@ -13,12 +13,16 @@ describe("UAT build configuration guard", () => {
   it("accepts isolated UAT remote configuration", () => {
     expect(() => execFileSync(process.execPath, [guard], { env: { ...process.env, ...base }, stdio: "pipe" })).not.toThrow();
   });
+  it("accepts the narrow Operator-create flag while broad writes remain disabled", () => {
+    expect(() => execFileSync(process.execPath, [guard], { env: { ...process.env, ...base, VITE_REMOTE_OPERATOR_CREATE_ENABLED: "true" }, stdio: "pipe" })).not.toThrow();
+  });
   it.each([
     ["missing key", { VITE_SUPABASE_PUBLISHABLE_KEY: "" }],
     ["invalid key shape", { VITE_SUPABASE_PUBLISHABLE_KEY: "\u0016" }],
     ["wrong URL", { VITE_SUPABASE_URL: "https://other.supabase.co" }],
     ["non-remote mode", { VITE_PERSISTENCE_MODE: "local" }],
     ["broad writes enabled", { VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "true" }],
+    ["invalid narrow Operator-create flag", { VITE_REMOTE_OPERATOR_CREATE_ENABLED: "yes" }],
   ])("fails closed for %s", (_label, override) => {
     expect(() => execFileSync(process.execPath, [guard], { env: { ...process.env, ...base, ...override }, stdio: "pipe" })).toThrow();
   });
