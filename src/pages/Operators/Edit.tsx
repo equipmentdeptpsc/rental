@@ -11,7 +11,10 @@ import RemoteOperatorCertificationEditor from "@/features/operators/components/R
 
 export default function EditOperator() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
-  return getOperatorRuntimeCapability(configuration).legacyMutations ? <LocalEditOperator /> : commandRepositories.operatorCertifications ? <RemoteOperatorCertificationEditor /> : <RemoteMutationUnavailable title="Edit Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
+  const { hasPermission } = useAuth();
+  const capability = getOperatorRuntimeCapability(configuration, Boolean(commandRepositories.canonicalOperator));
+  const canEdit = capability.canonicalMutations && Boolean(commandRepositories.operatorCertifications) && hasPermission("operator.update");
+  return capability.legacyMutations ? <LocalEditOperator /> : canEdit ? <RemoteOperatorCertificationEditor /> : <RemoteMutationUnavailable title="Edit Operator" message={REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 
 function LocalEditOperator() {

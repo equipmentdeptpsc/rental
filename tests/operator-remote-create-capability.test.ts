@@ -7,19 +7,28 @@ const authState = vi.hoisted(() => ({ permissions: new Set<string>(["operator.cr
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => authState.permissions.has(permission) }) }));
 
 import { ApplicationDependencyProvider, createApplicationDependencies, createLocalApplicationDependencies, PersistenceMode, type ApplicationDependencies } from "@/app/composition";
+import { repositorySuccess } from "@/core/persistence";
 import { getAssignmentRuntimeCapability } from "@/features/assignment/services/assignmentRuntimeCapability";
 import { getEquipmentRuntimeCapability } from "@/features/equipment/services/equipmentRuntimeCapability";
 import { getOperatorRuntimeCapability } from "@/features/operators/services/operatorRuntimeCapability";
 import { canUseCanonicalRemoteRentalCreation } from "@/features/rental/services/rentalRuntimeCapability";
 import { SupabaseOperatorCommandRepository } from "@/integrations/supabase/SupabaseOperatorCommandRepository";
+import EditOperator from "@/pages/Operators/Edit";
+import OperatorsPage from "@/pages/Operators";
 import NewOperator from "@/pages/Operators/New";
 
 const roots: Root[] = [];
 
-function remoteDependencies(input: { operatorCreateEnabled?: boolean; repositoryAvailable?: boolean } = {}): ApplicationDependencies {
+function remoteDependencies(input: { operatorCreateEnabled?: boolean; operationalWritesEnabled?: boolean; repositoryAvailable?: boolean } = {}): ApplicationDependencies {
   const local = createLocalApplicationDependencies();
   return {
     ...local,
+    readRepositories: {
+      ...local.readRepositories,
+      operators: { list: vi.fn(async () => repositorySuccess({ items: [{ id: "operator-1", name: "Existing Operator", status: "Active", deletedAt: null }] })) },
+      users: { list: vi.fn(async () => repositorySuccess({ items: [] })) },
+      assignments: { list: vi.fn(async () => repositorySuccess({ items: [] })) },
+    } as ApplicationDependencies["readRepositories"],
     commandRepositories: {
       ...local.commandRepositories,
       ...(input.repositoryAvailable === false ? {} : { canonicalOperator: { createOperator: vi.fn() } }),
@@ -27,17 +36,17 @@ function remoteDependencies(input: { operatorCreateEnabled?: boolean; repository
     configuration: {
       ...local.configuration,
       persistenceMode: PersistenceMode.Remote,
-      remoteOperationalWritesEnabled: false,
+      remoteOperationalWritesEnabled: input.operationalWritesEnabled ?? false,
       remoteOperatorCreateEnabled: input.operatorCreateEnabled ?? false,
     },
   } as ApplicationDependencies;
 }
 
-async function render(dependencies: ApplicationDependencies) {
+async function render(dependencies: ApplicationDependencies, page = createElement(NewOperator)) {
   const container = document.createElement("div");
   const root = createRoot(container);
   roots.push(root);
-  await act(async () => root.render(createElement(ApplicationDependencyProvider, { dependencies }, createElement(MemoryRouter, null, createElement(NewOperator)))));
+  await act(async () => root.render(createElement(ApplicationDependencyProvider, { dependencies }, createElement(MemoryRouter, null, page))));
   return container;
 }
 
@@ -67,6 +76,27 @@ describe("narrow canonical Operator-create capability", () => {
     authState.permissions.delete("operator.create");
     const denied = await render(remoteDependencies({ operatorCreateEnabled: true }));
     expect(denied.textContent).toContain("Operator changes, linked-user changes, and PIN changes are unavailable in remote mode until canonical commands are certified.");
+  });
+
+  it("shows create but hides Edit links when only narrow Operator creation is enabled", async () => {
+    const page = await render(remoteDependencies({ operatorCreateEnabled: true }), createElement(OperatorsPage));
+    expect(page.textContent).toContain("New Operator");
+    expect(page.textContent).toContain("Read-only canonical view");
+    expect(page.textContent).not.toContain("Edit");
+    expect(page.querySelector('a[href="/operators/edit/operator-1"]')).toBeNull();
+  });
+
+  it("preserves Edit links when the existing broad Operator mutation gate is enabled", async () => {
+    authState.permissions.add("operator.update");
+    const page = await render(remoteDependencies({ operatorCreateEnabled: true, operationalWritesEnabled: true }), createElement(OperatorsPage));
+    expect(page.textContent).toContain("New Operator");
+    expect(page.querySelector('a[href="/operators/edit/operator-1"]')).not.toBeNull();
+  });
+
+  it("keeps the direct Operator edit route unavailable in create-only mode", async () => {
+    const page = await render(remoteDependencies({ operatorCreateEnabled: true }), createElement(EditOperator));
+    expect(page.textContent).toContain("Edit Operator");
+    expect(page.textContent).toContain("unavailable in remote mode");
   });
 
   it("does not broaden Assignment, Rental, Equipment, or general Operator mutations", () => {
