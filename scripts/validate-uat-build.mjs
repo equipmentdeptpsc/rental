@@ -1,14 +1,23 @@
 const expectedProjectRef = "jtkctarqbwmqdcewthkn";
-const required = ["VITE_PERSISTENCE_MODE", "VITE_SUPABASE_URL"];
+const required = ["VITE_SUPABASE_URL"];
+const expectedFlags = {
+  VITE_PERSISTENCE_MODE: "remote",
+  VITE_REMOTE_RENTAL_CREATE_ENABLED: "true",
+  VITE_REMOTE_RENTAL_CANCEL_ENABLED: "true",
+  VITE_REMOTE_ASSIGNMENT_CREATE_ENABLED: "true",
+  VITE_REMOTE_ASSIGNMENT_CANCEL_ENABLED: "true",
+  VITE_REMOTE_OPERATOR_CREATE_ENABLED: "true",
+  VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "false",
+};
 const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.SUPABASE_PUBLISHABLE_KEY?.trim();
 const supportedPublishableKey = /^(?:sb_publishable_[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.test(publishableKey ?? "");
 const missing = required.filter((key) => !process.env[key]?.trim());
-const operatorCreateFlag = process.env.VITE_REMOTE_OPERATOR_CREATE_ENABLED;
-const operatorCreateFlagValid = operatorCreateFlag === undefined || operatorCreateFlag === "true" || operatorCreateFlag === "false";
+const invalidFlags = Object.entries(expectedFlags).filter(([key, expected]) => process.env[key] !== expected);
 if (!publishableKey) missing.push("VITE_SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEY");
 else if (!supportedPublishableKey) missing.push("a supported Supabase publishable-key shape");
-if (process.env.VITE_PERSISTENCE_MODE !== "remote" || process.env.VITE_REMOTE_OPERATIONAL_WRITES_ENABLED === "true" || !operatorCreateFlagValid || missing.length) {
-  console.error(`UAT build configuration invalid: ${missing.length ? `missing ${missing.join(", ")}` : !operatorCreateFlagValid ? "VITE_REMOTE_OPERATOR_CREATE_ENABLED must be true or false" : "VITE_PERSISTENCE_MODE must be remote"}.`);
+if (missing.length || invalidFlags.length) {
+  const invalid = invalidFlags.map(([key, expected]) => `${key} must be ${expected}`).join(", ");
+  console.error(`UAT build configuration invalid: ${missing.length ? `missing ${missing.join(", ")}` : invalid}.`);
   process.exit(1);
 }
 try {
