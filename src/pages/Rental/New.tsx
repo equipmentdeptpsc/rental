@@ -150,7 +150,10 @@ export default function NewRental() {
         representativeName: data.customerRepresentativeName.trim(), representativeEmail: normalizeBusinessEmail(data.customerReviewEmail),
         lines: data.assignmentIds.map((assignmentId) => ({ assignmentId })),
       });
-      if (!result.success) throw new Error(result.message);
+      if (!result.success) {
+        const error = Object.assign(new Error(result.message), { code: result.code, details: result.details });
+        throw error;
+      }
       requestCanonicalRentalRefresh();
       navigate(`/rentals/${result.value.rentalId}/commercial-terms`);
       return;

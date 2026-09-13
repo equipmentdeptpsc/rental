@@ -5,8 +5,8 @@ const source = readFileSync("src/features/rental/components/RentalForm.tsx", "ut
 
 describe("Milestone 11.6D4B2A rental availability UI", () => {
   it("renders a neutral status while required inputs are incomplete", () => {
-    expect(source).toContain('setAvailability({ status: "not_checked" })');
-    expect(source).toContain("!form.equipmentId");
+    expect(source).toContain('setAvailabilityByKey({});');
+    expect(source).toContain("availabilityLines.length === 0");
     expect(source).toContain("!form.dateOut");
     expect(source).toContain("!form.expectedReturn");
     expect(source).toContain("Availability not checked yet.");
@@ -29,27 +29,27 @@ describe("Milestone 11.6D4B2A rental availability UI", () => {
   });
 
   it("checks ordinary rentals without an inferred source assignment", () => {
-    expect(source).toContain('key: "rental-equipment"');
+    expect(source).toContain('key: line.key');
     expect(source).toContain("equipmentId: form.equipmentId");
     expect(source).toContain("windowStart: form.dateOut");
     expect(source).toContain("windowEnd: form.expectedReturn");
-    expect(source).toContain("assignment?.id ? { sourceAssignmentId: assignment.id } : {}");
+    expect(source).toContain("line.sourceAssignmentId ? { sourceAssignmentId: line.sourceAssignmentId } : {}");
   });
 
   it("passes the explicit source Assignment for Rental-from-Assignment", () => {
-    expect(source).toContain("sourceAssignmentId: assignment.id");
-    expect(source).toContain("assignment?.id");
+    expect(source).toContain("sourceAssignmentId: item.id");
+    expect(source).toContain("sourceAssignmentId: line.sourceAssignmentId");
   });
 
   it("refreshes availability when equipment or date inputs change", () => {
-    expect(source).toContain("form.dateOut, form.equipmentId, form.expectedReturn");
-    expect(source).toContain("availabilityController, assignment?.id, canonicalData");
+    expect(source).toContain("form.dateOut, form.expectedReturn");
+    expect(source).toContain("availabilityController, availabilityLines, canonicalData");
   });
 
   it("keeps the selected equipment in the form while showing a conflict", () => {
     expect(source).toContain('value={form.equipmentId}');
     expect(source).toContain('onChange={(e) => update("equipmentId", e.target.value)}');
-    expect(source).toContain("availability.result?.conflicts?.map");
+    expect(source).toContain("availability.result?.conflicts?.length");
   });
 
   it("renders open-ended occupancy and business references instead of raw identifiers", () => {

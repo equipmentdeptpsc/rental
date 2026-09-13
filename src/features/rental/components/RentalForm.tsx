@@ -32,6 +32,45 @@ import type { ProjectRecord } from "@/features/project/types";
 import type { Operator } from "@/features/operators/types";
 import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
 
+type AvailabilityLine = { key: string; equipmentId: string; sourceAssignmentId?: string; label: string };
+
+function conflictEquipmentId(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  for (const key of ["equipmentId", "equipment_id"]) if (typeof record[key] === "string" && record[key]) return record[key];
+  for (const key of ["details", "value", "conflict", "line", "equipment"]) {
+    const nested = conflictEquipmentId(record[key]);
+    if (nested) return nested;
+  }
+  if (Array.isArray(record.conflicts)) for (const conflict of record.conflicts) {
+    const nested = conflictEquipmentId(conflict);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
+function conflictAvailabilityResult(value: unknown) {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  if (typeof record.equipmentId !== "string" || typeof record.available !== "boolean" || !Array.isArray(record.conflicts)) return undefined;
+  return record as unknown as { equipmentId: string; available: boolean; conflictCount: number; conflicts: readonly never[] };
+}
+
+function AvailabilityStatus({ availability }: { availability: EquipmentAvailabilityState }) {
+  return <>
+    {availability.status === "not_checked" && "Availability not checked yet."}
+    {availability.status === "checking" && "Checking availability…"}
+    {availability.status === "available" && "Available for the selected dates."}
+    {availability.status === "error" && "Unable to verify availability."}
+    {availability.status === "conflict" && <>
+      <strong>Equipment unavailable for selected dates.</strong>
+      {availability.result?.conflicts?.length
+        ? availability.result.conflicts.map((conflict, index) => <p key={`${conflict.equipmentId}-${index}`} className="mt-1">Existing {conflict.sourceType === "RENTAL" ? `Rental ${conflict.rentalNumber ?? "commitment"}` : "Assignment commitment"}. Occupied: {conflict.commitmentStart ?? "Unknown"} → {conflict.isOpenEnded ? "Open-ended" : conflict.commitmentEnd ?? "Unknown"}</p>)
+        : <p className="mt-1">{availability.message ?? "Equipment is no longer available for the selected dates."}</p>}
+    </>}
+  </>;
+}
+
 export interface RentalFormData {
   equipmentId: string;
   customerId: string;
@@ -108,7 +147,27 @@ export default function RentalForm({
   canonicalData,
 }: Props) {
   const { repositories } = useApplicationDependenciesCompatibility();
-  const submission=useFormSubmission("Rental",onSubmit);
+  const [submitRaceConflict, setSubmitRaceConflict] = useState<string | undefined>();
+  const availabilityByKeyRef = useRef<Record<string, EquipmentAvailabilityState>>({});
+  const submission=useFormSubmission("Rental", async (data) => {
+    try {
+      await onSubmit(data);
+    } catch (value) {
+      const failure = value && typeof value === "object" ? value as { code?: string; message?: string; details?: unknown; value?: { equipmentId?: string } } : undefined;
+      if (failure?.code === "EQUIPMENT_INTERVAL_CONFLICT") {
+        const equipmentId = conflictEquipmentId(failure) ?? failure.value?.equipmentId;
+        const matchingLine = availabilityLines.find((line) => line.equipmentId === equipmentId);
+        if (matchingLine) {
+           const state = availabilityController?.markWriteResult(matchingLine.key, { success: false, code: failure.code, message: failure.message, value: conflictAvailabilityResult(failure.details) }) ?? { status: "conflict" as const, message: failure.message };
+          availabilityByKeyRef.current = { ...availabilityByKeyRef.current, [matchingLine.key]: state };
+          setAvailabilityByKey((current) => ({ ...current, [matchingLine.key]: state }));
+        } else {
+          setSubmitRaceConflict("Equipment is no longer available for the selected dates.");
+        }
+      }
+      throw value;
+    }
+  });
   const { equipment: localEquipment } =
     useEquipment();
 
@@ -234,8 +293,15 @@ export default function RentalForm({
   
     });
   const editedFields = useRef(new Set<"customerRepresentativeName" | "customerReviewEmail" | "dateOut" | "expectedReturn">());
-  const availabilityController = useMemo(() => new EquipmentAvailabilityController(repositories.equipmentAvailability), [repositories.equipmentAvailability]);
-  const [availability, setAvailability] = useState<EquipmentAvailabilityState>({ status: "not_checked" });
+  const availabilityController = useMemo(() => repositories.equipmentAvailability ? new EquipmentAvailabilityController(repositories.equipmentAvailability) : undefined, [repositories.equipmentAvailability]);
+  const [availabilityByKey, setAvailabilityByKey] = useState<Record<string, EquipmentAvailabilityState>>({});
+
+  const availabilityLines = useMemo<AvailabilityLine[]>(() => {
+    const selected = form.assignmentIds.map((id) => assignments.find((item) => item.id === id)).filter((item): item is AssignmentRecord => Boolean(item));
+    if (selected.length) return selected.map((item) => ({ key: `rental-equipment:${item.id}`, equipmentId: item.equipmentId, sourceAssignmentId: item.id, label: getAssignmentNumber(item.id, assignments) }));
+    if (form.equipmentId) return [{ key: `rental-equipment:${form.equipmentId}`, equipmentId: form.equipmentId, label: getRentalEquipmentLabel(equipment.find((item) => item.id === form.equipmentId)) }];
+    return [];
+  }, [assignments, equipment, form.assignmentIds, form.equipmentId]);
 
   const projectOptions = useMemo(
     () => [
@@ -268,11 +334,26 @@ export default function RentalForm({
   }, [customers, initialCustomerId, initialEquipmentId, initialProjectId, initialOperatorId]);
 
   useEffect(() => {
-    if (!canonicalData || !form.equipmentId || !form.dateOut || !form.expectedReturn) { setAvailability({ status: "not_checked" }); return; }
+    if (!canonicalData || !form.dateOut || !form.expectedReturn || availabilityLines.length === 0) {
+      setAvailabilityByKey({});
+      availabilityByKeyRef.current = {};
+      return;
+    }
+    if (!availabilityController) {
+      setAvailabilityByKey(Object.fromEntries(availabilityLines.map((line) => [line.key, { status: "error" as const, message: "Unable to verify availability." }])));
+      return;
+    }
     let active = true;
-    void availabilityController.check({ key: "rental-equipment", equipmentId: form.equipmentId, windowStart: form.dateOut, windowEnd: form.expectedReturn, ...(assignment?.id ? { sourceAssignmentId: assignment.id } : {}) }).then((state) => { if (active) setAvailability(state); });
+    setSubmitRaceConflict(undefined);
+     setAvailabilityByKey(() => Object.fromEntries(availabilityLines.map((line) => [line.key, { status: "checking" as const }] as const)));
+     void Promise.all(availabilityLines.map(async (line) => [line.key, await availabilityController.check({ key: line.key, equipmentId: line.equipmentId, windowStart: form.dateOut, windowEnd: form.expectedReturn, ...(line.sourceAssignmentId ? { sourceAssignmentId: line.sourceAssignmentId } : {}) })] as const)).then((entries) => {
+      if (!active) return;
+      const next = Object.fromEntries(entries);
+      availabilityByKeyRef.current = next;
+      setAvailabilityByKey(next);
+    });
     return () => { active = false; };
-  }, [availabilityController, assignment?.id, canonicalData, form.dateOut, form.equipmentId, form.expectedReturn]);
+  }, [availabilityController, availabilityLines, canonicalData, form.dateOut, form.expectedReturn]);
 
   function update<
     K extends keyof RentalFormData
@@ -311,6 +392,11 @@ export default function RentalForm({
           return;
         }
 
+        if (canonicalData && Object.values(availabilityByKey).some((state) => state.status === "conflict")) {
+          submission.fail("Resolve equipment availability conflicts before saving.");
+          return;
+        }
+
         void submission.submit({ ...form, expectedReturn: form.expectedReturn || undefined });
       }}
     >
@@ -325,13 +411,11 @@ export default function RentalForm({
           onChange={(e) => update("equipmentId", e.target.value)}
         />
       )}
-      {canonicalData && <div className="rounded-lg border p-3 text-sm" role="status" aria-live="polite">
-        {availability.status === "not_checked" && "Availability not checked yet."}
-        {availability.status === "checking" && "Checking availability…"}
-        {availability.status === "available" && "Available for the selected dates."}
-        {availability.status === "error" && "Unable to verify availability."}
-        {availability.status === "conflict" && <><strong>Equipment unavailable for selected dates.</strong>{availability.result?.conflicts?.map((conflict, index) => <p key={`${conflict.equipmentId}-${index}`} className="mt-1">Existing {conflict.sourceType === "RENTAL" ? `Rental ${conflict.rentalNumber ?? "commitment"}` : "Assignment commitment"}. Occupied: {conflict.commitmentStart ?? "Unknown"} → {conflict.isOpenEnded ? "Open-ended" : conflict.commitmentEnd ?? "Unknown"}</p>)}</>}
-      </div>}
+      {canonicalData && submitRaceConflict && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm" role="alert">{submitRaceConflict}</div>}
+      {canonicalData && availabilityLines.map((line) => <div key={line.key} className="rounded-lg border p-3 text-sm" role="status" aria-live="polite" aria-label={`Availability for ${line.label}`}>
+        <strong className="block">{line.label}</strong>
+        <AvailabilityStatus availability={availabilityByKey[line.key] ?? { status: "not_checked" }} />
+      </div>)}
 
       <Select
         searchable clearable
@@ -386,6 +470,7 @@ export default function RentalForm({
             return <label key={item.id} className={`flex items-center gap-3 rounded border p-3 text-sm ${eligible && !duplicateSelected ? "" : "opacity-50"}`}>
               <input type="checkbox" disabled={!eligible || duplicateSelected} checked={form.assignmentIds.includes(item.id)} onChange={(event) => update("assignmentIds", event.target.checked ? [...form.assignmentIds, item.id] : form.assignmentIds.filter((id) => id !== item.id))} />
               <span><strong>{getAssignmentDisplayName({ assignment: item, equipment: machine, operator, project: projects.find((record) => record.id === item.projectId) })}</strong><br /><span className="text-xs text-slate-500">{getAssignmentNumber(item.id, assignments)}</span></span>
+              {canonicalData && <span className="ml-auto text-xs" aria-label={`Availability status for ${getAssignmentNumber(item.id, assignments)}`}>{availabilityByKey[`rental-equipment:${item.id}`]?.status ?? "not_checked"}</span>}
             </label>;
           })}
         </div>
