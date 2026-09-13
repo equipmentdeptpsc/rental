@@ -334,7 +334,11 @@ export default function RentalForm({
   }, [customers, initialCustomerId, initialEquipmentId, initialProjectId, initialOperatorId]);
 
   useEffect(() => {
-    if (!canonicalData || !form.dateOut || !form.expectedReturn || availabilityLines.length === 0) {
+    const expectedReturnIsValid = !form.expectedReturn || (
+      /^\d{4}-\d{2}-\d{2}$/.test(form.expectedReturn) &&
+      form.expectedReturn >= form.dateOut
+    );
+    if (!canonicalData || !form.dateOut || !expectedReturnIsValid || availabilityLines.length === 0) {
       setAvailabilityByKey({});
       availabilityByKeyRef.current = {};
       return;
@@ -346,7 +350,7 @@ export default function RentalForm({
     let active = true;
     setSubmitRaceConflict(undefined);
      setAvailabilityByKey(() => Object.fromEntries(availabilityLines.map((line) => [line.key, { status: "checking" as const }] as const)));
-     void Promise.all(availabilityLines.map(async (line) => [line.key, await availabilityController.check({ key: line.key, equipmentId: line.equipmentId, windowStart: form.dateOut, windowEnd: form.expectedReturn ?? null, ...(line.sourceAssignmentId ? { sourceAssignmentId: line.sourceAssignmentId } : {}) })] as const)).then((entries) => {
+     void Promise.all(availabilityLines.map(async (line) => [line.key, await availabilityController.check({ key: line.key, equipmentId: line.equipmentId, windowStart: form.dateOut, windowEnd: form.expectedReturn || null, ...(line.sourceAssignmentId ? { sourceAssignmentId: line.sourceAssignmentId } : {}) })] as const)).then((entries) => {
       if (!active) return;
       const next = Object.fromEntries(entries);
       availabilityByKeyRef.current = next;

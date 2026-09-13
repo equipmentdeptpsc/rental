@@ -8,7 +8,7 @@ describe("Milestone 11.6D4B2A rental availability UI", () => {
     expect(source).toContain('setAvailabilityByKey({});');
     expect(source).toContain("availabilityLines.length === 0");
     expect(source).toContain("!form.dateOut");
-    expect(source).toContain("!form.expectedReturn");
+    expect(source).toContain("!expectedReturnIsValid");
     expect(source).toContain("Availability not checked yet.");
   });
 
@@ -32,7 +32,7 @@ describe("Milestone 11.6D4B2A rental availability UI", () => {
     expect(source).toContain('key: line.key');
     expect(source).toContain("equipmentId: form.equipmentId");
     expect(source).toContain("windowStart: form.dateOut");
-    expect(source).toContain("windowEnd: form.expectedReturn");
+    expect(source).toContain("windowEnd: form.expectedReturn || null");
     expect(source).toContain("line.sourceAssignmentId ? { sourceAssignmentId: line.sourceAssignmentId } : {}");
   });
 
