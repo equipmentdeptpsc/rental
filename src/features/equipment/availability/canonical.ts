@@ -5,7 +5,8 @@ export type EquipmentCommitmentSource = "RENTAL" | "ASSIGNMENT" | "RESTRICTED";
 export interface EquipmentAvailabilityInput {
   equipmentId: string;
   windowStart: string;
-  windowEnd: string;
+  /** A NULL end is an open-ended requested interval. */
+  windowEnd: string | null;
   /** Only the pending canonical Rental-from-Assignment workflow may supply this. */
   sourceAssignmentId?: string;
 }

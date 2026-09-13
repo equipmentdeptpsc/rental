@@ -20,7 +20,7 @@ export class EquipmentAvailabilityController {
   async check(request: AvailabilityRequest): Promise<EquipmentAvailabilityState> {
     const generation = (this.generations.get(request.key) ?? 0) + 1;
     this.generations.set(request.key, generation);
-    if (!request.equipmentId || !request.windowStart || !request.windowEnd) {
+    if (!request.equipmentId || !request.windowStart) {
       const state = { status: "not_checked" } as const; this.states.set(request.key, state); return state;
     }
     this.states.set(request.key, { status: "checking" });

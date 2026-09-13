@@ -13,7 +13,7 @@ const integer = (value: unknown): number | undefined => typeof value === "number
 const boundedLimit = (value: number | undefined) => Number.isFinite(value) ? Math.max(1, Math.min(maximumLimit, Math.trunc(value as number))) : defaultLimit;
 const boundedOffset = (value: number | undefined) => Number.isFinite(value) ? Math.max(0, Math.trunc(value as number)) : 0;
 const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value;
-const validWindow = (start: string, end: string) => validDate(start) && validDate(end) && start <= end && (Date.parse(`${end}T00:00:00.000Z`) - Date.parse(`${start}T00:00:00.000Z`)) / 86_400_000 + 1 <= maximumWindowDays;
+const validWindow = (start: string, end: string | null) => validDate(start) && (end === null || (validDate(end) && start <= end && (Date.parse(`${end}T00:00:00.000Z`) - Date.parse(`${start}T00:00:00.000Z`)) / 86_400_000 + 1 <= maximumWindowDays));
 
 function mapRow(value: unknown): EquipmentCommitmentRow | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
