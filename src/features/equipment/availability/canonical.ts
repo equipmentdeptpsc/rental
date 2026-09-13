@@ -6,6 +6,8 @@ export interface EquipmentAvailabilityInput {
   equipmentId: string;
   windowStart: string;
   windowEnd: string;
+  /** Only the pending canonical Rental-from-Assignment workflow may supply this. */
+  sourceAssignmentId?: string;
 }
 
 export interface EquipmentCommitmentRow {

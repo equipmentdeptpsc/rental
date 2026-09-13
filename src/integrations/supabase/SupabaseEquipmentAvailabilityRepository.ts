@@ -48,9 +48,9 @@ export class SupabaseEquipmentAvailabilityRepository implements EquipmentAvailab
 
   async checkEquipmentAvailability(input: EquipmentAvailabilityInput): Promise<RepositoryResult<EquipmentAvailabilityResult>> {
     if (!text(input.equipmentId) || !validWindow(input.windowStart, input.windowEnd)) return invalidWindow();
-    const { data, error } = await this.client.schema("erp").rpc("check_equipment_availability", {
-      p_equipment_id: input.equipmentId, p_window_start: input.windowStart, p_window_end: input.windowEnd,
-    });
+    const { data, error } = await this.client.schema("erp").rpc(input.sourceAssignmentId ? "check_equipment_availability_for_pending_rental" : "check_equipment_availability", input.sourceAssignmentId
+      ? { p_equipment_id: input.equipmentId, p_window_start: input.windowStart, p_window_end: input.windowEnd, p_source_assignment_id: input.sourceAssignmentId }
+      : { p_equipment_id: input.equipmentId, p_window_start: input.windowStart, p_window_end: input.windowEnd });
     if (error || !Array.isArray(data) || data.length === 0) return remoteFailure();
     const rows = data.map(mapRow);
     if (rows.some((row) => !row)) return malformed();

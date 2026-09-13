@@ -55,4 +55,24 @@ describe("canonical equipment availability conflict read foundation", () => {
     expect(result.success).toBe(true);
     expect(rpc).toHaveBeenCalledWith("search_equipment_commitment_conflicts", expect.objectContaining({ p_offset: 2, p_limit: 100 }));
   });
+
+  it("uses the relationship-aware RPC only when explicit source Assignment context is supplied", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [{ equipment_id: "e1", available: true, conflict_count: 0 }], error: null });
+    const repository = new SupabaseEquipmentAvailabilityRepository({ schema: vi.fn(() => ({ rpc })) } as never);
+    const result = await repository.checkEquipmentAvailability({ equipmentId: "e1", windowStart: "2026-09-01", windowEnd: "2026-09-05", sourceAssignmentId: "a1" });
+    expect(result.success).toBe(true);
+    expect(rpc).toHaveBeenCalledWith("check_equipment_availability_for_pending_rental", {
+      p_equipment_id: "e1", p_window_start: "2026-09-01", p_window_end: "2026-09-05", p_source_assignment_id: "a1",
+    });
+    expect(rpc).not.toHaveBeenCalledWith("check_equipment_availability", expect.anything());
+  });
+
+  it("preserves canonical result mapping and remote error handling for the new RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [{ equipment_id: "e1", available: false, conflict_count: 1, source_type: "ASSIGNMENT", commitment_start: "2026-09-01", commitment_end: null, is_open_ended: true }], error: null });
+    const repository = new SupabaseEquipmentAvailabilityRepository({ schema: vi.fn(() => ({ rpc })) } as never);
+    const result = await repository.checkEquipmentAvailability({ equipmentId: "e1", windowStart: "2026-09-01", windowEnd: "2026-09-05", sourceAssignmentId: "a1" });
+    expect(result.success && result.value.conflicts[0]).toMatchObject({ sourceType: "ASSIGNMENT", commitmentStart: "2026-09-01", isOpenEnded: true });
+    const failed = new SupabaseEquipmentAvailabilityRepository({ schema: vi.fn(() => ({ rpc: vi.fn().mockResolvedValue({ data: null, error: new Error("read failed") }) })) } as never);
+    expect((await failed.checkEquipmentAvailability({ equipmentId: "e1", windowStart: "2026-09-01", windowEnd: "2026-09-05", sourceAssignmentId: "a1" })).success).toBe(false);
+  });
 });
