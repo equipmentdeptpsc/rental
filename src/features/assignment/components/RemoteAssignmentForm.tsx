@@ -48,12 +48,12 @@ export default function RemoteAssignmentForm() {
   }, [commandRepositories.canonicalRental]);
 
   useEffect(() => {
-    if (!form.equipmentId || !form.assignedDate || !form.expectedReturn || !availabilityController) {
+    if (!form.equipmentId || !form.assignedDate || !availabilityController) {
       setAvailability({ status: "not_checked" });
       return;
     }
     let active = true;
-    void availabilityController.check({ key: availabilityKey, equipmentId: form.equipmentId, windowStart: form.assignedDate, windowEnd: form.expectedReturn }).then((state) => { if (active) setAvailability(state); });
+    void availabilityController.check({ key: availabilityKey, equipmentId: form.equipmentId, windowStart: form.assignedDate, windowEnd: form.expectedReturn || null }).then((state) => { if (active) setAvailability(state); });
     return () => { active = false; };
   }, [availabilityController, form.assignedDate, form.equipmentId, form.expectedReturn]);
 

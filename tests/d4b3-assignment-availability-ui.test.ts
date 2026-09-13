@@ -20,9 +20,17 @@ describe("Milestone 11.6D4B3 Assignment availability UI", () => {
     expect(source).toContain("availabilityController.check({ key: availabilityKey");
     expect(source).toContain("equipmentId: form.equipmentId");
     expect(source).toContain("windowStart: form.assignedDate");
-    expect(source).toContain("windowEnd: form.expectedReturn");
+    expect(source).toContain("windowEnd: form.expectedReturn || null");
     expect(source).not.toContain("sourceAssignmentId");
     expect(source).not.toContain("check_equipment_availability_for_pending_rental");
+  });
+
+  it("checks an open-ended Assignment and does not neutralize a blank Expected Return", () => {
+    expect(source).toContain("!form.equipmentId || !form.assignedDate || !availabilityController");
+    expect(source).not.toContain("!form.expectedReturn || !availabilityController");
+    expect(source).toContain("windowEnd: form.expectedReturn || null");
+    expect(source).toContain("availability.status === \"available\"");
+    expect(source).toContain("availability.status === \"conflict\"");
   });
 
   it("refreshes on date changes and preserves the selected equipment on conflict", () => {
