@@ -20,6 +20,8 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useCostCodes } from "@/features/masters/cost-code/context/useCostCodes";
 import { useActivityCodes } from "@/features/masters/activity-code";
+import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { EquipmentAvailabilityController, type EquipmentAvailabilityState } from "@/features/equipment/availability/controller";
 import { createRentalOperationalMetadataSnapshot } from "@/features/rental/services/createRentalOperationalMetadataSnapshot";
 import { selectableRentalEquipment } from "@/features/rental/services/selectableRentalEquipment";
 import RentalOperationalMetadataCard from "./RentalOperationalMetadataCard";
@@ -105,6 +107,7 @@ export default function RentalForm({
   onExpectedReturnChange,
   canonicalData,
 }: Props) {
+  const { repositories } = useApplicationDependenciesCompatibility();
   const submission=useFormSubmission("Rental",onSubmit);
   const { equipment: localEquipment } =
     useEquipment();
@@ -231,6 +234,8 @@ export default function RentalForm({
   
     });
   const editedFields = useRef(new Set<"customerRepresentativeName" | "customerReviewEmail" | "dateOut" | "expectedReturn">());
+  const availabilityController = useMemo(() => new EquipmentAvailabilityController(repositories.equipmentAvailability), [repositories.equipmentAvailability]);
+  const [availability, setAvailability] = useState<EquipmentAvailabilityState>({ status: "not_checked" });
 
   const projectOptions = useMemo(
     () => [
@@ -261,6 +266,13 @@ export default function RentalForm({
       operatorId: initialOperatorId ?? prev.operatorId,
     }));
   }, [customers, initialCustomerId, initialEquipmentId, initialProjectId, initialOperatorId]);
+
+  useEffect(() => {
+    if (!canonicalData || !form.equipmentId || !form.dateOut || !form.expectedReturn) { setAvailability({ status: "not_checked" }); return; }
+    let active = true;
+    void availabilityController.check({ key: "rental-equipment", equipmentId: form.equipmentId, windowStart: form.dateOut, windowEnd: form.expectedReturn, ...(assignment?.id ? { sourceAssignmentId: assignment.id } : {}) }).then((state) => { if (active) setAvailability(state); });
+    return () => { active = false; };
+  }, [availabilityController, assignment?.id, canonicalData, form.dateOut, form.equipmentId, form.expectedReturn]);
 
   function update<
     K extends keyof RentalFormData
@@ -313,6 +325,13 @@ export default function RentalForm({
           onChange={(e) => update("equipmentId", e.target.value)}
         />
       )}
+      {canonicalData && <div className="rounded-lg border p-3 text-sm" role="status" aria-live="polite">
+        {availability.status === "not_checked" && "Availability not checked yet."}
+        {availability.status === "checking" && "Checking availability…"}
+        {availability.status === "available" && "Available for the selected dates."}
+        {availability.status === "error" && "Unable to verify availability."}
+        {availability.status === "conflict" && <><strong>Equipment unavailable for selected dates.</strong>{availability.result?.conflicts?.map((conflict, index) => <p key={`${conflict.equipmentId}-${index}`} className="mt-1">Existing {conflict.sourceType === "RENTAL" ? `Rental ${conflict.rentalNumber ?? "commitment"}` : "Assignment commitment"}. Occupied: {conflict.commitmentStart ?? "Unknown"} → {conflict.isOpenEnded ? "Open-ended" : conflict.commitmentEnd ?? "Unknown"}</p>)}</>}
+      </div>}
 
       <Select
         searchable clearable
