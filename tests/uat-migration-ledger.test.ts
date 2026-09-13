@@ -23,9 +23,9 @@ function invokeTableLedger(table: string, dry: string[], expected: string[]) {
   return () => execFileSync(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command], { stdio: "pipe" });
 }
 
-function invokeDryRunParser(dryRun: string) {
+function invokeDryRunParser(dryRun: string, expected = "20260911000300,20260911000400") {
   const encoded = Buffer.from(dryRun, "utf8").toString("base64");
-  const command = `. '${helper}'; $dry = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encoded}')); $versions = @(Get-DryRunPendingMigrationVersions $dry); if (($versions -join ',') -ne '20260911000300,20260911000400') { throw ($versions -join ',') }`;
+  const command = `. '${helper}'; $dry = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encoded}')); $versions = @(Get-DryRunPendingMigrationVersions $dry); if (($versions -join ',') -ne '${expected}') { throw ($versions -join ',') }`;
   return () => execFileSync(powershell, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command], { stdio: "pipe" });
 }
 
@@ -39,6 +39,9 @@ describe("UAT migration ledger guard", () => {
   it("rejects a remote-only table row", () => expect(invokeTableLedger(`${table}   \`              \` | \`20260911000500\` | now\n`, ["20260911000300", "20260911000400"], ["20260911000300", "20260911000400"])).toThrow());
   it("rejects duplicate remote versions", () => expect(invokeRemoteParser(`${table}   \`20260911000200\` | \`20260911000200\` | now\n`)).toThrow());
   it("prefers the dry-run JSON summary over repeated human-readable lines", () => expect(invokeDryRunParser("Would push these migrations:\n • 20260911000300_a.sql\n • 20260911000400_b.sql\n{\"upToDate\":false,\"migrations\":[\"20260911000300_a.sql\",\"20260911000400_b.sql\"]}")).not.toThrow());
+  it("accepts explicit JSON up-to-date with zero migrations", () => expect(invokeDryRunParser('{"upToDate":true,"migrations":[]}', "")).not.toThrow());
+  it("accepts the canonical human-readable up-to-date message", () => expect(invokeDryRunParser("Remote database is up to date.", "")).not.toThrow());
+  it("rejects empty or malformed dry-run output", () => expect(invokeDryRunParser("", "")).toThrow());
 
   it.each([
     ["zero pending", local, [], []],
@@ -53,5 +56,7 @@ describe("UAT migration ledger guard", () => {
     ["remote ledger ahead", [...local, { version: "20260911000500", name: "future" }], [], []],
     ["applied migration name mismatch", [{ version: "20260911000100", name: "edited" }], ["20260911000200", "20260911000300", "20260911000400"], ["20260911000200", "20260911000300", "20260911000400"]],
     ["dry-run disagreement", local.slice(0, 2), ["20260911000300"], ["20260911000300", "20260911000400"]],
+    ["pending ledger with zero dry-run", local.slice(0, 3), [], ["20260911000400"]],
+    ["aligned ledger with pending dry-run", local, ["20260911000400"], []],
   ])("rejects %s", (_label, remote, dry, expected) => expect(invoke(remote, dry, expected)).toThrow());
 });

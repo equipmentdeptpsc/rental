@@ -50,13 +50,15 @@ function Get-DryRunPendingMigrationVersions([string]$DryRunLog) {
   $jsonMatch = [regex]::Match($DryRunLog, '(?s)(\{\s*"upToDate".*\})\s*$')
   if ($jsonMatch.Success) {
     try { $document = $jsonMatch.Groups[1].Value | ConvertFrom-Json -ErrorAction Stop } catch { throw 'Unable to parse the Supabase dry-run JSON summary.' }
-    if ($document.migrations -is [array]) {
-      return @($document.migrations | ForEach-Object {
+    if ($document.PSObject.Properties.Name -contains 'migrations') {
+      $migrations = @($document.migrations)
+      return @($migrations | ForEach-Object {
         if ([string]$_ -notmatch '^(?<version>\d{14})_[A-Za-z0-9_-]+\.sql$') { throw "Invalid dry-run migration filename: $_." }
         $Matches.version
       })
     }
   }
+  if ($DryRunLog -match '(?im)(Remote database is up to date|No migrations (?:to apply|to be applied)|Database is up to date)') { return @() }
   $versions = @([regex]::Matches($DryRunLog, '(?m)^\s*[\u2022*-]\s+(\d{14})_[A-Za-z0-9_-]+\.sql\s*$') | ForEach-Object { $_.Groups[1].Value })
   if (-not $versions.Count) { throw 'Supabase dry-run output contained no parseable pending migrations.' }
   return $versions
@@ -79,11 +81,12 @@ function Assert-UatMigrationLedger(
     }
   }
   $pendingVersions = @($localVersions | Select-Object -Skip $remote.Count)
-  if (@($DryRunPendingVersions).Count -ne $pendingVersions.Count -or (Compare-Object $DryRunPendingVersions $pendingVersions -SyncWindow 0)) {
-    throw "Supabase dry-run pending migrations disagree with the local/remote ledger: expected $($pendingVersions -join ', '); received $($DryRunPendingVersions -join ', ')."
+  $dryVersions = @($DryRunPendingVersions | Where-Object { $_ })
+  if ($dryVersions.Count -ne $pendingVersions.Count -or ($dryVersions.Count -gt 0 -and (Compare-Object $dryVersions $pendingVersions -SyncWindow 0))) {
+    throw "Supabase dry-run pending migrations disagree with the local/remote ledger: expected $($pendingVersions -join ', '); received $($dryVersions -join ', ')."
   }
   $expectedVersions = @($ExpectedPendingVersions | ForEach-Object { [string]$_ -split ',' } | Where-Object { $_ })
-  if ($expectedVersions.Count -ne $pendingVersions.Count -or (Compare-Object $expectedVersions $pendingVersions -SyncWindow 0)) {
+  if ($expectedVersions.Count -ne $pendingVersions.Count -or ($expectedVersions.Count -gt 0 -and (Compare-Object $expectedVersions $pendingVersions -SyncWindow 0))) {
     throw "Expected pending migrations do not match the contiguous local suffix: expected $($expectedVersions -join ', '); found $($pendingVersions -join ', ')."
   }
   return $pendingVersions
