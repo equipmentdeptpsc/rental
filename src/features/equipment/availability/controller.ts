@@ -1,4 +1,3 @@
-import type { RepositoryResult } from "@/core/persistence";
 import type { EquipmentAvailabilityInput, EquipmentAvailabilityRepository, EquipmentAvailabilityResult } from "./canonical";
 
 export type EquipmentAvailabilityState =
@@ -28,7 +27,7 @@ export class EquipmentAvailabilityController {
     if (this.generations.get(request.key) !== generation) return this.getState(request.key);
     const state = result.success
       ? result.value.available ? { status: "available", result: result.value } as const : { status: "conflict", result: result.value } as const
-      : { status: "error", message: result.message } as const;
+      : { status: "error", message: result.error.message } as const;
     this.states.set(request.key, state); return state;
   }
 

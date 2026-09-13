@@ -23,6 +23,7 @@ import { SupabaseOperatorCommandRepository } from "@/integrations/supabase/Supab
 import { SupabaseEquipmentCommandRepository } from "@/integrations/supabase/SupabaseEquipmentCommandRepository";
 import { SupabaseCustomerCommandRepository } from "@/integrations/supabase/SupabaseCustomerCommandRepository";
 import { SupabaseEquipmentSubcategoryRepository, SupabaseEquipmentCategoryReadRepository } from "@/integrations/supabase/SupabaseEquipmentSubcategoryRepository";
+import { SupabaseEquipmentAvailabilityRepository } from "@/integrations/supabase/SupabaseEquipmentAvailabilityRepository";
 import { SupabaseEquipmentLifecycleSummaryRepository } from "@/integrations/supabase/SupabaseEquipmentLifecycleSummaryRepository";
 import { resolveRuntimeEnvironment } from "./runtimeEnvironment";
 
@@ -53,7 +54,7 @@ export function createApplicationDependencies(configuration:ApplicationRuntimeCo
   const validated=validateSupabaseConfiguration(remoteConfiguration);const remoteCore=createRemoteCore();
   const client=validated.success?getSupabaseBrowserClient(validated.value):undefined;
   const equipmentStatusRead=client?new SupabaseEquipmentStatusReadRepository(client,remoteCore):new MissingRemoteConfigurationRepository();
-  const dependencies=createLocalApplicationDependencies({...overrides,repositories:{...overrides.repositories,equipmentStatusRead}});
+  const dependencies=createLocalApplicationDependencies({...overrides,repositories:{...overrides.repositories,equipmentStatusRead,...(client?{equipmentAvailability:new SupabaseEquipmentAvailabilityRepository(client)}:{})}});
   if(!client)return{...dependencies,commandRepositories:{deurCommands:new MissingRemoteCommandConfiguration(),...createUnavailableOperationalCommands()},changeNotifications:{subscribeDeur:()=>()=>{}},synchronization:{...dependencies.synchronization,tenantId:undefined,publishEnabled:false},configuration:{equipmentStatusSource:"supabase",persistenceMode:PersistenceMode.Remote,remoteOperationalWritesEnabled:false,remoteOperatorCreateEnabled:false,remoteEquipmentCreateEnabled:false,remoteRentalCreateEnabled:false,remoteRentalCommercialTermsEnabled:false,remoteRentalApprovalEnabled:false,remoteRentalReserveEnabled:false,remoteRentalReleaseEnabled:false,remoteRentalActivateEnabled:false,remoteRentalReturnEnabled:false,remoteRentalCancelEnabled:false,remoteAssignmentCreateEnabled:false,remoteAssignmentCancelEnabled:false,remoteProjectCustomerLinkEnabled:false}};
   const readRepositories=createSupabaseReadRepositories(client,remoteCore);
   const remoteAuthenticationProvider=new SupabaseAuthenticationProvider(client,readRepositories.users);

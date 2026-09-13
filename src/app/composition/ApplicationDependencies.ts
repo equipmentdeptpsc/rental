@@ -65,7 +65,7 @@ export interface RepositoryDependencies {
   rentalContract: typeof rentalContractRepository; rentalEquipmentLine: typeof rentalEquipmentLineRepository;
   deur: Pick<typeof deurRepository, "getAll" | "getById" | "getByRentalId" | "update" | "unlockBilling">; billingStatement: Pick<typeof billingStatementRepository, "getAll" | "getById" | "getByRentalId" | "search" | "create" | "update" | "delete">; prefix: typeof prefixRepository;
   costCode: typeof costCodeRepository; activityCode: typeof activityCodeRepository; deurShiftWindow: typeof deurShiftWindowRepository;
-  equipmentStatusRead: ReadOnlyEquipmentStatusRepository;
+  equipmentStatusRead: ReadOnlyEquipmentStatusRepository; equipmentAvailability: EquipmentAvailabilityRepository;
 }
 export type EquipmentStatusSource="local"|"supabase";
 export enum PersistenceMode { Local = "local", Remote = "remote" }

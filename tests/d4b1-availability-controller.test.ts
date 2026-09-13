@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { repositoryFailure } from "@/core/persistence";
 import { EquipmentAvailabilityController } from "@/features/equipment/availability/controller";
 
 const result = (available: boolean) => ({ success: true as const, value: { equipmentId: "e", available, conflictCount: available ? 0 : 1, conflicts: [] } });
@@ -11,7 +12,7 @@ describe("D4B1 availability controller", () => {
     expect((await controller.check({ ...request("x"), equipmentId: "" })).status).toBe("not_checked");
     const pending = controller.check(request("x")); expect(controller.getState("x").status).toBe("checking"); expect((await pending).status).toBe("available"); expect(calls).toHaveLength(1);
     const conflictRepo = new EquipmentAvailabilityController({ ...repo, checkEquipmentAvailability: async () => result(false) }); expect((await conflictRepo.check(request("x"))).status).toBe("conflict");
-    const errorRepo = new EquipmentAvailabilityController({ ...repo, checkEquipmentAvailability: async () => ({ success: false as const, message: "read failed" }) }); expect((await errorRepo.check(request("x"))).status).toBe("error");
+    const errorRepo = new EquipmentAvailabilityController({ ...repo, checkEquipmentAvailability: async () => repositoryFailure("REMOTE_READ_FAILED", "read failed") }); expect((await errorRepo.check(request("x"))).status).toBe("error");
   });
   it("propagates explicit source context and isolates keys", async () => {
     let seen: any; const repo = { checkEquipmentAvailability: async (input: any) => { seen = input; return result(true); }, searchEquipmentCommitments: async () => { throw new Error(); } };
