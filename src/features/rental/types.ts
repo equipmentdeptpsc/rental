@@ -1,12 +1,31 @@
-export type RentalLifecycleStatus =
+export type ParentRentalStatus =
   | "Draft"
-  | "Assigned"
+  | "Reserved"
+  | "Released"
+  | "Active"
+  | "Closed"
+  | "Cancelled";
+
+/** Preserved only while legacy parent records and commands are remediated. */
+export type LegacyParentRentalStatus = "Assigned" | "Returned";
+
+/** Existing RentalRecord compatibility surface; new parent transitions use ParentRentalStatus. */
+export type RentalLifecycleStatus = ParentRentalStatus | LegacyParentRentalStatus;
+
+export type EquipmentLineLifecycleStatus =
+  | "Draft"
   | "Reserved"
   | "Released"
   | "Active"
   | "Returned"
-  | "Closed"
   | "Cancelled";
+
+/** Preserved only while legacy line records and coupled commands are remediated. */
+export type LegacyEquipmentLineLifecycleStatus = "Assigned" | "Closed";
+
+export type RentalEquipmentLineLifecycleStatus =
+  | EquipmentLineLifecycleStatus
+  | LegacyEquipmentLineLifecycleStatus;
 
 export type RentalApprovalStatus = "NotSubmitted" | "Pending" | "Approved" | "Rejected";
 
