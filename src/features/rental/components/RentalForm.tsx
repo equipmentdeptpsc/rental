@@ -65,7 +65,7 @@ function AvailabilityStatus({ availability }: { availability: EquipmentAvailabil
     {availability.status === "conflict" && <>
       <strong>Equipment unavailable for selected dates.</strong>
       {availability.result?.conflicts?.length
-        ? availability.result.conflicts.map((conflict, index) => <p key={`${conflict.equipmentId}-${index}`} className="mt-1">Existing {conflict.sourceType === "RENTAL" ? `Rental ${conflict.rentalNumber ?? "commitment"}` : "Assignment commitment"}. Occupied: {conflict.commitmentStart ?? "Unknown"} → {conflict.isOpenEnded ? "Open-ended" : conflict.commitmentEnd ?? "Unknown"}</p>)
+        ? availability.result.conflicts.map((conflict, index) => <p key={`${conflict.equipmentId}-${index}`} className="mt-1 min-w-0 break-words">Existing {conflict.sourceType === "RENTAL" ? `Rental ${conflict.rentalNumber ?? "commitment"}` : "Assignment commitment"}. Occupied: {conflict.commitmentStart ?? "Unknown"} → {conflict.isOpenEnded ? "Open-ended" : conflict.commitmentEnd ?? "Unknown"}</p>)
         : <p className="mt-1">{availability.message ?? "Equipment is no longer available for the selected dates."}</p>}
     </>}
   </>;
@@ -412,8 +412,8 @@ export default function RentalForm({
         />
       )}
       {canonicalData && submitRaceConflict && <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm" role="alert">{submitRaceConflict}</div>}
-      {canonicalData && availabilityLines.map((line) => <div key={line.key} className="rounded-lg border p-3 text-sm" role="status" aria-live="polite" aria-label={`Availability for ${line.label}`}>
-        <strong className="block">{line.label}</strong>
+      {canonicalData && availabilityLines.map((line) => <div key={line.key} className="min-w-0 rounded-lg border p-3 text-sm" role="status" aria-live="polite" aria-label={`Availability for ${line.label}`}>
+        <strong className="block min-w-0 break-words">{line.label}</strong>
         <AvailabilityStatus availability={availabilityByKey[line.key] ?? { status: "not_checked" }} />
       </div>)}
 
@@ -467,10 +467,10 @@ export default function RentalForm({
             const operator = operators.find((record) => record.id === item.operatorId);
             const duplicateSelected = form.assignmentIds.some((id) => id !== item.id && assignments.find((candidate) => candidate.id === id)?.equipmentId === item.equipmentId);
             const eligible = Boolean(machine && !machine.deleted && machine.active !== false);
-            return <label key={item.id} className={`flex items-center gap-3 rounded border p-3 text-sm ${eligible && !duplicateSelected ? "" : "opacity-50"}`}>
+            return <label key={item.id} className={`flex flex-wrap items-start gap-3 rounded border p-3 text-sm ${eligible && !duplicateSelected ? "" : "opacity-50"}`}>
               <input type="checkbox" disabled={!eligible || duplicateSelected} checked={form.assignmentIds.includes(item.id)} onChange={(event) => update("assignmentIds", event.target.checked ? [...form.assignmentIds, item.id] : form.assignmentIds.filter((id) => id !== item.id))} />
-              <span><strong>{getAssignmentDisplayName({ assignment: item, equipment: machine, operator, project: projects.find((record) => record.id === item.projectId) })}</strong><br /><span className="text-xs text-slate-500">{getAssignmentNumber(item.id, assignments)}</span></span>
-              {canonicalData && <span className="ml-auto text-xs" aria-label={`Availability status for ${getAssignmentNumber(item.id, assignments)}`}>{availabilityByKey[`rental-equipment:${item.id}`]?.status ?? "not_checked"}</span>}
+              <span className="min-w-0 flex-1 break-words"><strong>{getAssignmentDisplayName({ assignment: item, equipment: machine, operator, project: projects.find((record) => record.id === item.projectId) })}</strong><br /><span className="text-xs text-slate-500">{getAssignmentNumber(item.id, assignments)}</span></span>
+              {canonicalData && <span className="ml-auto max-w-full shrink-0 break-words text-xs" aria-label={`Availability status for ${getAssignmentNumber(item.id, assignments)}`}>{availabilityByKey[`rental-equipment:${item.id}`]?.status ?? "not_checked"}</span>}
             </label>;
           })}
         </div>
