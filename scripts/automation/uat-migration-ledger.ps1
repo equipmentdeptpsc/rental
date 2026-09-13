@@ -9,11 +9,11 @@ function Get-LocalMigrationLedger([string]$MigrationsPath) {
   return $migrations
 }
 
-function ConvertTo-MigrationLedger([object[]]$Rows, [string]$Source) {
+function ConvertTo-MigrationLedger([object[]]$Rows, [string]$Source, [switch]$AllowMissingName) {
   $ledger = @($Rows | ForEach-Object {
     $version = [string]$_.version
     $name = [string]$_.name
-    if ($version -notmatch '^\d{14}$' -or [string]::IsNullOrWhiteSpace($name)) { throw "Invalid $Source migration ledger row." }
+    if ($version -notmatch '^\d{14}$' -or (-not $AllowMissingName -and [string]::IsNullOrWhiteSpace($name))) { throw "Invalid $Source migration ledger row." }
     [pscustomobject]@{ Version = $version; Name = $name; FileName = "${version}_${name}.sql" }
   })
   $duplicates = @($ledger | Group-Object Version | Where-Object Count -gt 1)
@@ -22,13 +22,44 @@ function ConvertTo-MigrationLedger([object[]]$Rows, [string]$Source) {
 }
 
 function Get-RemoteMigrationLedger([string]$MigrationListLog) {
-  try { $document = $MigrationListLog | ConvertFrom-Json -ErrorAction Stop } catch { throw 'Unable to parse the Supabase migration ledger JSON.' }
-  $rows = if ($document -is [array]) { $document } elseif ($document.migrations -is [array]) { $document.migrations } else { throw 'Supabase migration ledger JSON has no migrations array.' }
-  return ConvertTo-MigrationLedger $rows 'remote'
+  $trimmed = $MigrationListLog.Trim()
+  if ($trimmed.StartsWith('[') -or $trimmed.StartsWith('{')) {
+    try { $document = $trimmed | ConvertFrom-Json -ErrorAction Stop } catch { throw 'Unable to parse the Supabase migration ledger JSON.' }
+    $rows = if ($document -is [array]) { $document } elseif ($document.migrations -is [array]) { $document.migrations } else { throw 'Supabase migration ledger JSON has no migrations array.' }
+    return ConvertTo-MigrationLedger $rows 'remote'
+  }
+  $rows = @()
+  $sawHeader = $false
+  foreach ($line in ($MigrationListLog -split "`r?`n")) {
+    if ($line -match '^\s*Local\s+\|\s+Remote\s+\|\s+Time') { $sawHeader = $true; continue }
+    if (-not $sawHeader -or [string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*-+\s*\|') { continue }
+    if ($line -match '^\s*`(?<local>[^`]*)`\s*\|\s*`(?<remote>[^`]*)`\s*\|') {
+      $local = $Matches.local.Trim(); $remote = $Matches.remote.Trim()
+      if ($local -and $local -notmatch '^\d{14}$') { throw "Invalid remote migration table local version: $local." }
+      if ($remote -and $remote -notmatch '^\d{14}$') { throw "Invalid remote migration table remote version: $remote." }
+      if ($remote) { $rows += [pscustomobject]@{ version = $remote; name = $null } }
+      continue
+    }
+    if ($line -match '\|') { throw "Malformed Supabase migration table row: $line" }
+  }
+  if (-not $sawHeader -or -not $rows.Count) { throw 'Supabase migration ledger output contained no parseable migration table.' }
+  return ConvertTo-MigrationLedger $rows 'remote' -AllowMissingName
 }
 
 function Get-DryRunPendingMigrationVersions([string]$DryRunLog) {
-  return @([regex]::Matches($DryRunLog, '(?m)(\d{14})_[A-Za-z0-9_-]+\.sql') | ForEach-Object { $_.Groups[1].Value })
+  $jsonMatch = [regex]::Match($DryRunLog, '(?s)(\{\s*"upToDate".*\})\s*$')
+  if ($jsonMatch.Success) {
+    try { $document = $jsonMatch.Groups[1].Value | ConvertFrom-Json -ErrorAction Stop } catch { throw 'Unable to parse the Supabase dry-run JSON summary.' }
+    if ($document.migrations -is [array]) {
+      return @($document.migrations | ForEach-Object {
+        if ([string]$_ -notmatch '^(?<version>\d{14})_[A-Za-z0-9_-]+\.sql$') { throw "Invalid dry-run migration filename: $_." }
+        $Matches.version
+      })
+    }
+  }
+  $versions = @([regex]::Matches($DryRunLog, '(?m)^\s*[\u2022*-]\s+(\d{14})_[A-Za-z0-9_-]+\.sql\s*$') | ForEach-Object { $_.Groups[1].Value })
+  if (-not $versions.Count) { throw 'Supabase dry-run output contained no parseable pending migrations.' }
+  return $versions
 }
 
 function Assert-UatMigrationLedger(
@@ -43,7 +74,7 @@ function Assert-UatMigrationLedger(
   $remoteVersions = @($remote | ForEach-Object Version)
   if ($remote.Count -gt $local.Count) { throw 'Remote migration ledger is ahead of the local ledger.' }
   for ($index = 0; $index -lt $remote.Count; $index++) {
-    if ($remoteVersions[$index] -ne $localVersions[$index] -or $remote[$index].Name -ne $local[$index].Name) {
+    if ($remoteVersions[$index] -ne $localVersions[$index] -or ($remote[$index].Name -and $remote[$index].Name -ne $local[$index].Name)) {
       throw "Remote migration ledger diverges from the local forward-only prefix at position $index."
     }
   }
@@ -51,8 +82,9 @@ function Assert-UatMigrationLedger(
   if (@($DryRunPendingVersions).Count -ne $pendingVersions.Count -or (Compare-Object $DryRunPendingVersions $pendingVersions -SyncWindow 0)) {
     throw "Supabase dry-run pending migrations disagree with the local/remote ledger: expected $($pendingVersions -join ', '); received $($DryRunPendingVersions -join ', ')."
   }
-  if (@($ExpectedPendingVersions).Count -ne $pendingVersions.Count -or (Compare-Object $ExpectedPendingVersions $pendingVersions -SyncWindow 0)) {
-    throw "Expected pending migrations do not match the contiguous local suffix: expected $($ExpectedPendingVersions -join ', '); found $($pendingVersions -join ', ')."
+  $expectedVersions = @($ExpectedPendingVersions | ForEach-Object { [string]$_ -split ',' } | Where-Object { $_ })
+  if ($expectedVersions.Count -ne $pendingVersions.Count -or (Compare-Object $expectedVersions $pendingVersions -SyncWindow 0)) {
+    throw "Expected pending migrations do not match the contiguous local suffix: expected $($expectedVersions -join ', '); found $($pendingVersions -join ', ')."
   }
   return $pendingVersions
 }
