@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CanonicalCommandResult, CanonicalCommandValue, CanonicalDraftValidationReason, CanonicalReadResult, CanonicalRentalReferenceData, CanonicalRentalReleaseReadiness, CanonicalRentalRemoteRepository, CanonicalRentalReturnEvidence, CanonicalRentalWorkspace, CanonicalVersionedInput, ConfigureCanonicalCustomerReviewInput, CreateCanonicalDraftInput, DecideCanonicalApprovalInput, UpdateCanonicalTermsInput } from "@/features/rental/remote/contracts";
+import type { AddRentalEquipmentInput, AddRentalEquipmentResult, CanonicalCommandResult, CanonicalCommandValue, CanonicalDraftValidationReason, CanonicalReadResult, CanonicalRentalReferenceData, CanonicalRentalReleaseReadiness, CanonicalRentalRemoteRepository, CanonicalRentalReturnEvidence, CanonicalRentalWorkspace, CanonicalVersionedInput, ConfigureCanonicalCustomerReviewInput, CreateCanonicalDraftInput, DecideCanonicalApprovalInput, UpdateCanonicalTermsInput } from "@/features/rental/remote/contracts";
 
 const messages: Record<string, string> = {
   UNAUTHENTICATED: "Your session has expired. Sign in and try again.", FORBIDDEN: "You do not have permission to perform this action.",
   VALIDATION_REJECTED: "The request is incomplete or invalid.", NOT_FOUND: "Referenced Rental information has changed or is unavailable. Refresh and try again.",
   MISSING_RELATIONSHIP: "Referenced Rental information has changed or is unavailable. Refresh and try again.", EQUIPMENT_UNAVAILABLE: "This equipment already has an active or pending Rental.", EQUIPMENT_INTERVAL_CONFLICT: "This equipment is already committed for the requested interval.",
+  DUPLICATE_EQUIPMENT_LINE: "This equipment is already included in this Rental.", PARENT_READ_ONLY: "This Rental is read-only and cannot accept additional equipment.", PARENT_STATE_NOT_ELIGIBLE: "Additional equipment is not available in this Rental state.", INVALID_EFFECTIVE_START: "Choose an effective start date within the Rental interval.",
   RENTAL_NUMBER_CONFLICT: "Rental number allocation conflicted. Please retry.", RENTAL_CONFLICT: "This Rental already exists.", CONFLICT: "This Rental changed while you were working. Refresh and try again.",
   LINE_SET_MISMATCH: "The Rental equipment list changed. Refresh and try again.", INVALID_TRANSITION: "This action is not available for the Rental's current state.",
   RELEASE_NOT_READY: "This Rental is not ready for release.", IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
@@ -84,6 +85,7 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
   reserve(input: CanonicalVersionedInput) { return this.command("command_reserve_rental", input); }
   release(input: CanonicalVersionedInput) { return this.command("command_release_rental", input); }
   activate(input: CanonicalVersionedInput) { return this.command("command_activate_rental", input); }
+  addEquipment(input: AddRentalEquipmentInput): Promise<AddRentalEquipmentResult> { return this.command("command_add_rental_equipment", input) as Promise<AddRentalEquipmentResult>; }
   configureCustomerReview(input: ConfigureCanonicalCustomerReviewInput) { return this.command("command_configure_rental_customer_review", input); }
   waiveDeurExpectation(input: import("@/features/rental/remote/contracts").WaiveDeurExpectationInput) { return this.command("command_waive_deur_expectation", input); }
   private async read<T>(name: string, args: Record<string, unknown>, map: (value: Record<string, unknown>) => T): Promise<CanonicalReadResult<T>> {

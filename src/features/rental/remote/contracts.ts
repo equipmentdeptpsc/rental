@@ -22,7 +22,7 @@ export interface CanonicalRentalReleaseReadiness { rentalId: string; eligible: b
 export interface CanonicalRentalReturnEvidence { rental:{id:string;number:string;status:string;version:number}; line:{id:string;status:string;actualReturnDate:string|null;equipmentId:string}; assignment:{id:string;status:string;returnedDate:string|null}|null; availability:{onReturnDate:unknown[]|null;onNextDate:unknown[]|null} }
 
 export type CanonicalDraftValidationReason = "INVALID_COMMAND" | "INVALID_CONTACT" | "INVALID_LINE_SET" | "INVALID_DATE" | "INVALID_IDEMPOTENCY_STATE" | "INVALID_LINE_SHAPE";
-export type CanonicalRentalFailureCode = "UNAUTHENTICATED" | "FORBIDDEN" | "VALIDATION_REJECTED" | "NOT_FOUND" | "MISSING_RELATIONSHIP" | "EQUIPMENT_UNAVAILABLE" | "EQUIPMENT_INTERVAL_CONFLICT" | "RENTAL_NUMBER_CONFLICT" | "RENTAL_CONFLICT" | "CONFLICT" | "LINE_SET_MISMATCH" | "INVALID_TRANSITION" | "RELEASE_NOT_READY" | "IDEMPOTENCY_MISMATCH" | "EXPECTATION_NOT_WAIVABLE" | "EXPECTATION_HAS_DEUR" | "ALREADY_WAIVED" | "PERSISTENCE_FAILURE" | "TRANSPORT_FAILURE" | "INVALID_RESPONSE";
+export type CanonicalRentalFailureCode = "UNAUTHENTICATED" | "FORBIDDEN" | "VALIDATION_REJECTED" | "NOT_FOUND" | "MISSING_RELATIONSHIP" | "EQUIPMENT_UNAVAILABLE" | "EQUIPMENT_INTERVAL_CONFLICT" | "DUPLICATE_EQUIPMENT_LINE" | "PARENT_READ_ONLY" | "PARENT_STATE_NOT_ELIGIBLE" | "INVALID_EFFECTIVE_START" | "RENTAL_NUMBER_CONFLICT" | "RENTAL_CONFLICT" | "CONFLICT" | "LINE_SET_MISMATCH" | "INVALID_TRANSITION" | "RELEASE_NOT_READY" | "IDEMPOTENCY_MISMATCH" | "EXPECTATION_NOT_WAIVABLE" | "EXPECTATION_HAS_DEUR" | "ALREADY_WAIVED" | "PERSISTENCE_FAILURE" | "TRANSPORT_FAILURE" | "INVALID_RESPONSE";
 export type CanonicalReadResult<T> = { success: true; value: T } | { success: false; code: CanonicalRentalFailureCode; message: string };
 export interface CanonicalCommandValue { rentalId: string; rentalNumber?: string; status: string; approvalStatus?: string; version: number; lineIds?: string[] }
 export type CanonicalCommandResult = { success: true; disposition: "ACCEPTED" | "REPLAYED"; value: CanonicalCommandValue } | { success: false; code: CanonicalRentalFailureCode; message: string; details?: unknown; currentVersion?: number };
@@ -34,6 +34,10 @@ export interface CanonicalVersionedInput { commandId: string; idempotencyKey: st
 export interface DecideCanonicalApprovalInput extends CanonicalVersionedInput { decision: "Approved" | "Rejected"; remarks?: string }
 export interface ConfigureCanonicalCustomerReviewInput extends CanonicalVersionedInput { customerId: string; representativeName: string; representativeEmail: string }
 export interface WaiveDeurExpectationInput { commandId:string; idempotencyKey:string; rentalId:string; rentalEquipmentLineId:string; workDate:string; expectationFingerprint:string; reason:string }
+export interface AddRentalEquipmentInput { commandId: string; idempotencyKey: string; rentalId: string; equipmentId: string; proposedEffectiveStartDate: string; sourceAssignmentId?: string }
+export interface AddRentalEquipmentValue { rentalId: string; rentalNumber?: string; rentalLineId: string; equipmentId: string; lineStatus: string; canonicalLineStatus?: string; effectiveStartDate: string; effectiveEndDate?: string; sourceAssignmentId?: string; version: number }
+export type AddRentalEquipmentResult = { success: true; disposition: "ACCEPTED" | "REPLAYED"; value: AddRentalEquipmentValue } | { success: false; code: CanonicalRentalFailureCode; message: string; details?: unknown; currentVersion?: number };
+export interface CanonicalRentalEquipmentRepository { addEquipment(input: AddRentalEquipmentInput): Promise<AddRentalEquipmentResult> }
 
 export interface CanonicalRentalRemoteRepository {
   readWorkspace(rentalId: string): Promise<CanonicalReadResult<CanonicalRentalWorkspace>>;
@@ -47,6 +51,7 @@ export interface CanonicalRentalRemoteRepository {
   reserve(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
   release(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
   activate(input: CanonicalVersionedInput): Promise<CanonicalCommandResult>;
+  addEquipment?(input: AddRentalEquipmentInput): Promise<AddRentalEquipmentResult>;
   configureCustomerReview?(input: ConfigureCanonicalCustomerReviewInput): Promise<CanonicalCommandResult>;
   waiveDeurExpectation?(input: WaiveDeurExpectationInput): Promise<CanonicalCommandResult>;
 }

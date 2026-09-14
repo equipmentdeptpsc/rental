@@ -35,6 +35,7 @@ import type { WorkDescriptionRecord } from "@/features/masters/work-description/
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
+import type { AssignmentRecord } from "@/features/assignment/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
 import { projectCanonicalDeurCommercialSnapshots, projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
 import { resolveRentalWorkspaceDeurs } from "./resolveRentalWorkspaceDeurs";
@@ -55,6 +56,7 @@ interface RentalWorkspaceContextValue {
     workDescriptions: WorkDescriptionRecord[];
     equipment: EquipmentRecord[];
     operators: Operator[];
+    assignments: AssignmentRecord[];
   };
 }
 
@@ -123,8 +125,8 @@ export default function RentalWorkspaceProvider({
   }, [dependencies.readRepositories.billing, remote, rentalId, workspaceVersion]);
 
   useEffect(
-    () => subscribeRentalWorkspaceChange(rentalId, () => setWorkspaceVersion(value => value + 1)),
-    [rentalId]
+    () => subscribeRentalWorkspaceChange(rentalId, () => { if (!remote) localRental.refreshRentalEquipmentLines(); setWorkspaceVersion(value => value + 1); }),
+    [rentalId, remote]
   );
   const aggregate = useMemo(() => {
     const rental =
@@ -227,7 +229,7 @@ export default function RentalWorkspaceProvider({
       value={{
         aggregate,
         billingStatements: remote ? remoteStatements : billingStatementRepository.getByRentalId(rentalId),
-        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, equipment: equipmentRecords, operators },
+        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, equipment: equipmentRecords, operators, assignments },
       }}
     >
       {children}

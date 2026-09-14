@@ -7,6 +7,8 @@ export interface RentalEquipmentLine {
   assignmentId?: string;
   operatorId: string;
   status: RentalEquipmentLineLifecycleStatus;
+  canonicalLineStatus?: RentalEquipmentLineLifecycleStatus;
+  effectiveStartDate?: string;
   operationalMetadata?: RentalOperationalMetadataSnapshot;
   /** Editable source selection before release; the frozen snapshot is authoritative afterward. */
   deurWorkDescriptionId?: string;

@@ -33,6 +33,7 @@ import { LocalEquipmentLifecycleSummaryRepository } from "@/features/equipment/h
 import { LocalEquipmentRentalLifecycleHistoryRepository } from "@/features/rental/history/canonical";
 import { LocalCanonicalBookingReadRepository } from "@/features/booking/canonical";
 import { LocalEquipmentAvailabilityRepository } from "@/features/equipment/availability/canonical";
+import { LocalCanonicalRentalEquipmentRepository } from "@/features/rental/remote/LocalCanonicalRentalEquipmentRepository";
 import { maintenanceRepository } from "@/features/maintenance/repository";
 import { LocalDeurCommandRepository } from "@/features/rental/deur/commands/LocalDeurCommandRepository";
 import { subscribeDeurChanges } from "@/features/rental/deur/synchronization/deurChangeNotifications";
@@ -141,5 +142,5 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
       replayCoordinator: new BrowserReplayCoordinator(typeof navigator !== "undefined" ? navigator.locks : undefined),
     };
   })();
-  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(currentAuthenticatedUser),operatorCertifications:new LocalOperatorCertificationRepository(),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},synchronization,authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false,remoteRentalApprovalEnabled:false,remoteRentalReserveEnabled:false,remoteRentalReleaseEnabled:false,remoteRentalActivateEnabled:false,remoteRentalReturnEnabled:false,remoteRentalCancelEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
+  return { persistence: overrides.persistence ?? new LocalStoragePersistenceAdapter(storage), repositories,readRepositories,commandRepositories:{deurCommands:new LocalDeurCommandRepository(currentAuthenticatedUser),operatorCertifications:new LocalOperatorCertificationRepository(),canonicalRentalEquipment:new LocalCanonicalRentalEquipmentRepository(repositories.rental, repositories.rentalEquipmentLine, repositories.equipment, repositories.assignment),...createLocalOperationalCommands()},changeNotifications:{subscribeDeur:subscribeDeurChanges},synchronization,authentication,configuration:{equipmentStatusSource:"local",persistenceMode:PersistenceMode.Local,remoteOperationalWritesEnabled:false,remoteRentalApprovalEnabled:false,remoteRentalReserveEnabled:false,remoteRentalReleaseEnabled:false,remoteRentalActivateEnabled:false,remoteRentalReturnEnabled:false,remoteRentalCancelEnabled:false}, compatibility: { sharedLegacySingletons: Object.keys(localRepositories) as Array<keyof RepositoryDependencies> } };
 }

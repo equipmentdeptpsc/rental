@@ -114,6 +114,7 @@ interface RentalContextType {
   saveCommercialTermsForSelectedLines(rentalId: string, lineIds: string[], input: RentalCommercialTermsInput): RentalTransitionResult;
   rentalEquipmentLines: RentalEquipmentLine[];
   rentalEquipmentLineMigrationIssues: RentalEquipmentLineMigrationIssue[];
+  refreshRentalEquipmentLines(): void;
   addRentalEquipmentLine(rentalId: string, input: NewRentalEquipmentLineInput): { success: boolean; message?: string; issues?: RentalEquipmentLineIssue[] };
   removeRentalEquipmentLine(rentalId: string, lineId: string): { success: boolean; message?: string; issues?: RentalEquipmentLineIssue[] };
   getReleaseReadiness(rentalId: string): RentalReleaseReadinessResult;
@@ -948,6 +949,7 @@ export function RentalProvider({
       saveCommercialTermsForSelectedLines,
       rentalEquipmentLines,
       rentalEquipmentLineMigrationIssues,
+      refreshRentalEquipmentLines,
       addRentalEquipmentLine,
       removeRentalEquipmentLine,
       getReleaseReadiness,
