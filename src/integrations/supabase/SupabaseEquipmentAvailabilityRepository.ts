@@ -4,6 +4,13 @@ import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/c
 import type { EquipmentAvailabilityInput, EquipmentAvailabilityRepository, EquipmentAvailabilityResult, EquipmentCommitmentRow, EquipmentCommitmentSearchInput, EquipmentCommitmentSearchResult, EquipmentCommitmentSource } from "@/features/equipment/availability/canonical";
 
 type RpcClient = Pick<SupabaseClient, "schema">;
+type AbortableRpcRequest = PromiseLike<{ data: unknown; error: unknown }> & { abortSignal?(signal: AbortSignal): PromiseLike<{ data: unknown; error: unknown }> };
+interface EquipmentAvailabilityRepositoryOptions {
+  timeoutMilliseconds?: number;
+  setTimeout?: (callback: () => void, milliseconds: number) => ReturnType<typeof globalThis.setTimeout>;
+  clearTimeout?: (handle: ReturnType<typeof globalThis.setTimeout>) => void;
+}
+export const EQUIPMENT_AVAILABILITY_RPC_TIMEOUT_MILLISECONDS = 10_000;
 const defaultLimit = 25;
 const maximumLimit = 100;
 const maximumWindowDays = 93;
@@ -44,19 +51,41 @@ function invalidWindow<T>(): RepositoryResult<T> {
 }
 
 export class SupabaseEquipmentAvailabilityRepository implements EquipmentAvailabilityRepository {
-  constructor(private readonly client: RpcClient) {}
+  constructor(private readonly client: RpcClient, private readonly options: EquipmentAvailabilityRepositoryOptions = {}) {}
 
   async checkEquipmentAvailability(input: EquipmentAvailabilityInput): Promise<RepositoryResult<EquipmentAvailabilityResult>> {
     if (!text(input.equipmentId) || !validWindow(input.windowStart, input.windowEnd)) return invalidWindow();
-    const { data, error } = await this.client.schema("erp").rpc(input.sourceAssignmentId ? "check_equipment_availability_for_pending_rental" : "check_equipment_availability", input.sourceAssignmentId
+    const name = input.sourceAssignmentId ? "check_equipment_availability_for_pending_rental" : "check_equipment_availability";
+    const args = input.sourceAssignmentId
       ? { p_equipment_id: input.equipmentId, p_window_start: input.windowStart, p_window_end: input.windowEnd, p_source_assignment_id: input.sourceAssignmentId }
-      : { p_equipment_id: input.equipmentId, p_window_start: input.windowStart, p_window_end: input.windowEnd });
-    if (error || !Array.isArray(data) || data.length === 0) return remoteFailure();
-    const rows = data.map(mapRow);
-    if (rows.some((row) => !row)) return malformed();
-    const first = data[0] as Record<string, unknown>;
-    if (typeof first.available !== "boolean" || integer(first.conflict_count) === undefined) return malformed();
-    return repositorySuccess({ equipmentId: input.equipmentId, available: first.available, conflictCount: integer(first.conflict_count) ?? 0, conflicts: rows.filter((row) => row?.sourceType) as EquipmentCommitmentRow[] });
+      : { p_equipment_id: input.equipmentId, p_window_start: input.windowStart, p_window_end: input.windowEnd };
+    const controller = typeof AbortController === "undefined" ? undefined : new AbortController();
+    let timeout: ReturnType<typeof globalThis.setTimeout> | undefined;
+    let timedOut = false;
+    try {
+      const request = this.client.schema("erp").rpc(name, args) as AbortableRpcRequest;
+      const timeoutResult = new Promise<never>((_, reject) => {
+        timeout = (this.options.setTimeout ?? globalThis.setTimeout)(() => {
+          timedOut = true;
+          controller?.abort();
+          reject(new Error("AVAILABILITY_CHECK_TIMEOUT"));
+        }, this.options.timeoutMilliseconds ?? EQUIPMENT_AVAILABILITY_RPC_TIMEOUT_MILLISECONDS);
+      });
+      const { data, error } = await Promise.race([
+        Promise.resolve(typeof request.abortSignal === "function" && controller ? request.abortSignal(controller.signal) : request),
+        timeoutResult,
+      ]);
+      if (error || !Array.isArray(data) || data.length === 0) return remoteFailure();
+      const rows = data.map(mapRow);
+      if (rows.some((row) => !row)) return malformed();
+      const first = data[0] as Record<string, unknown>;
+      if (typeof first.available !== "boolean" || integer(first.conflict_count) === undefined) return malformed();
+      return repositorySuccess({ equipmentId: input.equipmentId, available: first.available, conflictCount: integer(first.conflict_count) ?? 0, conflicts: rows.filter((row) => row?.sourceType) as EquipmentCommitmentRow[] });
+    } catch {
+      return timedOut ? timeoutFailure() : remoteFailure();
+    } finally {
+      if (timeout !== undefined) (this.options.clearTimeout ?? globalThis.clearTimeout)(timeout);
+    }
   }
 
   async searchEquipmentCommitments(input: EquipmentCommitmentSearchInput): Promise<RepositoryResult<EquipmentCommitmentSearchResult>> {
@@ -77,6 +106,9 @@ export class SupabaseEquipmentAvailabilityRepository implements EquipmentAvailab
 
 function remoteFailure<T>(): RepositoryResult<T> {
   return repositoryFailure("REMOTE_READ_FAILED", "Canonical equipment availability could not be loaded.", { context: { repository: "EquipmentAvailability" }, recoverability: "RETRYABLE", recommendedAction: "Retry the request." });
+}
+function timeoutFailure<T>(): RepositoryResult<T> {
+  return repositoryFailure("AVAILABILITY_CHECK_TIMEOUT", "Availability could not be verified. Please try again.", { context: { repository: "EquipmentAvailability" }, recoverability: "RETRYABLE", recommendedAction: "Retry the availability check." });
 }
 function malformed<T>(): RepositoryResult<T> {
   return repositoryFailure("REMOTE_ROW_MALFORMED", "Canonical equipment availability could not be read safely.", { context: { repository: "EquipmentAvailability" }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Repair the canonical availability read projection." });

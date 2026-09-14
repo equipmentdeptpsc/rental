@@ -23,7 +23,12 @@ export class EquipmentAvailabilityController {
       const state = { status: "not_checked" } as const; this.states.set(request.key, state); return state;
     }
     this.states.set(request.key, { status: "checking" });
-    const result = await this.repository.checkEquipmentAvailability(request);
+    let result: Awaited<ReturnType<EquipmentAvailabilityRepository["checkEquipmentAvailability"]>>;
+    try {
+      result = await this.repository.checkEquipmentAvailability(request);
+    } catch {
+      result = { success: false, error: { code: "AVAILABILITY_CHECK_FAILED", message: "Availability could not be verified. Please try again.", context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry the availability check." } };
+    }
     if (this.generations.get(request.key) !== generation) return this.getState(request.key);
     const state = result.success
       ? result.value.available ? { status: "available", result: result.value } as const : { status: "conflict", result: result.value } as const

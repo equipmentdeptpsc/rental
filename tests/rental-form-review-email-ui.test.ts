@@ -2,6 +2,8 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const state = vi.hoisted(() => ({ dependencies: { repositories: { equipmentAvailability: { checkEquipmentAvailability: async (input: { equipmentId: string }) => ({ success: true as const, value: { equipmentId: input.equipmentId, available: true, conflictCount: 0, conflicts: [] } }) } } } }));
+
 vi.mock("@/components/form/useFormSubmission", () => ({
   useFormSubmission: (_entity: string, onSubmit: (data: unknown) => void) => ({
     busy: false,
@@ -10,6 +12,7 @@ vi.mock("@/components/form/useFormSubmission", () => ({
     submit: (data: unknown) => onSubmit(data),
   }),
 }));
+vi.mock("@/app/composition", () => ({ useApplicationDependenciesCompatibility: () => state.dependencies }));
 vi.mock("@/components/ui/Input", () => ({ default: ({ label, ...props }: { label: string } & Record<string, unknown>) => createElement("label", {}, label, createElement("input", props)) }));
 vi.mock("@/components/ui/Select", () => ({ default: ({ label, options = [], ...props }: { label: string; options?: Array<{ value: string; label: string }> } & Record<string, unknown>) => createElement("label", {}, label, createElement("select", props, options.map((option) => createElement("option", { key: option.value, value: option.value }, option.label))) ) }));
 vi.mock("@/components/ui/Button", () => ({ default: ({ children, ...props }: { children?: unknown } & Record<string, unknown>) => createElement("button", props, String(children ?? "")) }));
@@ -69,7 +72,7 @@ describe("RentalForm user-entered values", () => {
     expect(refreshedEmail.value).toBe("uat.d3e@example.test");
     expect(refreshedDates[0].value).toBe("2031-04-11");
     expect(refreshedDates[1].value).toBe("2031-04-13");
-    await act(async () => { (container.querySelector('input[type="checkbox"]') as HTMLInputElement).click(); });
+    await act(async () => { (container.querySelector('input[type="checkbox"]') as HTMLInputElement).click(); await Promise.resolve(); await Promise.resolve(); });
     await act(async () => container.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
     expect(submitted).toHaveLength(1);
     expect((submitted[0] as { customerRepresentativeName?: string }).customerRepresentativeName).toBe("Synthetic UAT Representative");
@@ -217,7 +220,7 @@ describe("RentalForm user-entered values", () => {
     root = createRoot(container);
     await act(async () => root?.render(createElement(RentalForm, { onSubmit: (data: unknown): void => { submitted.push(data); }, canonicalData: { equipment: [{ id: "equipment-1", active: true, deleted: false }] as never, customers: [customer], projects: [{ id: "project-1", customerId: customer.id, projectCode: "P-1", projectName: "Project", status: "Active" }] as never, operators: [{ id: "operator-1", name: "Operator", status: "Active" }] as never, assignments: [{ id: "assignment-1", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1", status: "Active" }] as never, costCodes: [], activityCodes: [] }, initialCustomerId: customer.id, initialProjectId: "project-1" })));
     const assignment = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    await act(async () => { assignment.click(); });
+    await act(async () => { assignment.click(); await Promise.resolve(); await Promise.resolve(); });
     await act(async () => container.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
     expect(submitted).toHaveLength(1);
     expect((submitted[0] as { assignmentIds: string[] }).assignmentIds).toEqual(["assignment-1"]);

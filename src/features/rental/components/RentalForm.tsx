@@ -350,7 +350,13 @@ export default function RentalForm({
     let active = true;
     setSubmitRaceConflict(undefined);
      setAvailabilityByKey(() => Object.fromEntries(availabilityLines.map((line) => [line.key, { status: "checking" as const }] as const)));
-     void Promise.all(availabilityLines.map(async (line) => [line.key, await availabilityController.check({ key: line.key, equipmentId: line.equipmentId, windowStart: form.dateOut, windowEnd: form.expectedReturn || null, ...(line.sourceAssignmentId ? { sourceAssignmentId: line.sourceAssignmentId } : {}) })] as const)).then((entries) => {
+     void Promise.all(availabilityLines.map(async (line) => {
+       try {
+         return [line.key, await availabilityController.check({ key: line.key, equipmentId: line.equipmentId, windowStart: form.dateOut, windowEnd: form.expectedReturn || null, ...(line.sourceAssignmentId ? { sourceAssignmentId: line.sourceAssignmentId } : {}) })] as const;
+       } catch {
+         return [line.key, { status: "error" as const, message: "Availability could not be verified. Please try again." }] as const;
+       }
+     })).then((entries) => {
       if (!active) return;
       const next = Object.fromEntries(entries);
       availabilityByKeyRef.current = next;
@@ -396,8 +402,9 @@ export default function RentalForm({
           return;
         }
 
-        if (canonicalData && Object.values(availabilityByKey).some((state) => state.status === "conflict")) {
-          submission.fail("Resolve equipment availability conflicts before saving.");
+        if (canonicalData && availabilityLines.some((line) => availabilityByKey[line.key]?.status !== "available")) {
+          const hasConflict = Object.values(availabilityByKey).some((state) => state.status === "conflict");
+          submission.fail(hasConflict ? "Resolve equipment availability conflicts before saving." : "Verify that all selected equipment is available before saving.");
           return;
         }
 
