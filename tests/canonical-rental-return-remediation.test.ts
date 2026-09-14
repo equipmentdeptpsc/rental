@@ -74,7 +74,7 @@ describe("canonical remote Rental Return remediation", () => {
 
   it("shows Return only for authorized Active Rentals and dispatches once", async () => {
     const returnAll = vi.fn(async () => ({ success: true, disposition: "ACCEPTED", value: { rentalId: active.id, lines: [], version: 1 } } as const));
-    const container = await render(dependencies(returnAll)); await act(async () => { await Promise.resolve(); }); const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return Equipment")!;
+    const container = await render(dependencies(returnAll)); await act(async () => { await Promise.resolve(); }); const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return All Equipment")!;
     expect(button).toBeTruthy();
     const date = container.querySelector<HTMLInputElement>('input[aria-label="Return business date"]')!;
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(date, "2026-09-06"); date.dispatchEvent(new Event("input", { bubbles: true })); button.click(); button.click(); await Promise.resolve(); });
@@ -85,7 +85,7 @@ describe("canonical remote Rental Return remediation", () => {
 
   it("fails closed when the server reports an unresolved historical expectation", async () => {
     const returnAll = vi.fn(); const container = await render(dependencies(returnAll, false)); await act(async () => { await Promise.resolve(); });
-    const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return Equipment")!;
+    const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return All Equipment")!;
     expect(button.disabled).toBe(true);
     expect(button.title).toContain("historical DEUR expectation");
     button.click(); expect(returnAll).not.toHaveBeenCalled();

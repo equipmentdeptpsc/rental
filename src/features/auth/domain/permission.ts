@@ -16,6 +16,7 @@ export const PERMISSIONS = {
     "rental.release",
     "rental.activate",
     "rental.return",
+    "rental.close",
     "rental.approve",
     "rental.approval.submit",
     "rental.approval.decide",

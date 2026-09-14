@@ -52,6 +52,12 @@ export function canUseCanonicalRemoteRentalCancelMutation(configuration: RentalR
   return configuration.persistenceMode === PersistenceMode.Remote
     && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteRentalCancelEnabled === true);
 }
+export function canUseCanonicalRemoteRentalLineReserveMutation(configuration: RentalRuntimeConfiguration): boolean { return configuration.persistenceMode === PersistenceMode.Remote && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteRentalLineReserveEnabled === true); }
+export function canUseCanonicalRemoteRentalLineReleaseMutation(configuration: RentalRuntimeConfiguration): boolean { return configuration.persistenceMode === PersistenceMode.Remote && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteRentalLineReleaseEnabled === true); }
+export function canUseCanonicalRemoteRentalLineActivateMutation(configuration: RentalRuntimeConfiguration): boolean { return configuration.persistenceMode === PersistenceMode.Remote && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteRentalLineActivateEnabled === true); }
+export function canUseCanonicalRemoteRentalLineCancelMutation(configuration: RentalRuntimeConfiguration): boolean { return configuration.persistenceMode === PersistenceMode.Remote && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteRentalLineCancelEnabled === true); }
+export function canUseCanonicalRemoteRentalLineReturnMutation(configuration: RentalRuntimeConfiguration): boolean { return configuration.persistenceMode === PersistenceMode.Remote && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteRentalLineReturnEnabled === true); }
+export function canUseCanonicalRemoteRentalCloseMutation(configuration: RentalRuntimeConfiguration): boolean { return configuration.persistenceMode === PersistenceMode.Remote && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteRentalCloseEnabled === true); }
 
 export function canUseAnyRentalMutations(configuration: RentalRuntimeConfiguration, canonicalRepositoryAvailable: boolean): boolean {
   return canUseLegacyRentalMutations(configuration)

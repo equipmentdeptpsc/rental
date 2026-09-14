@@ -7,6 +7,7 @@ import type {
   RentalClosureProjection, RentalClosureReadiness, RentalClosureReadinessInput,
   RentalLineReturnProjection, RentalReturnCommandRepository, RentalReturnReadiness, ReturnAllProjection,
   ReturnAllRentalLinesInput, ReturnRentalLineInput,
+  RentalLineLifecycleCommandRepository, RentalLineLifecycleInput, RentalLineLifecycleProjection,
   CreateReservedRentalInput, RentalLifecycleCommandRepository, RentalLifecycleProjection,
   RentalLifecycleTransitionInput,
   BillingCommandInput, BillingConsumptionProjection, BillingEvidenceProjection,
@@ -23,12 +24,29 @@ type Repository = CustomerReviewCommandRepository & DeurRevisionCommandRepositor
   MeterCheckpointCommandRepository & RentalReturnCommandRepository & RentalClosureCommandRepository &
   RentalLifecycleCommandRepository & BillingFinancialCommandRepository & RecoveryCommandRepository;
 
+function normalizeRemoteFailure<T>(data: unknown): OperationalCommandResult<T> | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const failure = data as Record<string, unknown>;
+  if (failure.success !== false || typeof failure.code !== "string") return undefined;
+  const message = typeof failure.message === "string" ? failure.message : "The remote command was rejected.";
+  return {
+    success: false,
+    code: failure.code as OperationalCommandResult<T> extends { success: false; code: infer Code } ? Code : never,
+    message,
+    retryable: typeof failure.retryable === "boolean" ? failure.retryable : false,
+    refreshRequired: typeof failure.refreshRequired === "boolean" ? failure.refreshRequired : failure.code === "CONFLICT",
+    ...(typeof failure.currentVersion === "number" ? { currentVersion: failure.currentVersion } : {}),
+  };
+}
+
 export class SupabaseOperationalCommandRepository implements Repository {
   constructor(private readonly client: RpcClient) {}
   private async rpc<T>(name: string, input: unknown): Promise<OperationalCommandResult<T>> {
     const { data, error } = await this.client.schema("erp").rpc(name, { command: input as Record<string, unknown> });
     if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
     if (!isOperationalCommandResult<T>(data)) {
+      const remoteFailure = normalizeRemoteFailure<T>(data);
+      if (remoteFailure) return remoteFailure;
       return { success: false, code: "VALIDATION_REJECTED", message: "The remote command returned an invalid response.", retryable: false, refreshRequired: true };
     }
     return data;
@@ -39,6 +57,10 @@ export class SupabaseOperationalCommandRepository implements Repository {
   createCorrection = (input: CreateDeurRevisionInput) => this.rpc<DeurRevisionResult>("command_create_deur_correction", input);
   record = (input: RecordMeterCheckpointInput) => this.rpc<MeterCheckpointResult>("command_record_meter_checkpoint", input);
   returnLine = (input: ReturnRentalLineInput) => this.rpc<RentalLineReturnProjection>("command_return_rental_line", input);
+  reserveLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_reserve_rental_line", input);
+  releaseLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_release_rental_line", input);
+  activateLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_activate_rental_line", input);
+  cancelLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_cancel_rental_line", input);
   returnAll = (input: ReturnAllRentalLinesInput) => this.rpc<ReturnAllProjection>("command_return_all_rental_lines", input);
   getReturnReadiness = (input: { rentalId: string }) => this.rpc<RentalReturnReadiness>("get_rental_return_readiness", input);
   getReadiness = (input: RentalClosureReadinessInput) => this.rpc<RentalClosureReadiness>("get_rental_closure_readiness", input);
@@ -79,4 +101,20 @@ export function createSupabaseRentalReturnCommands(client: RpcClient): RentalRet
 export function createSupabaseRentalCancellationCommands(client: RpcClient): Pick<RentalLifecycleCommandRepository, "cancel"> {
   const repository = new SupabaseOperationalCommandRepository(client);
   return { cancel: repository.cancel };
+}
+
+export function createSupabaseRentalLineLifecycleCommands(client: RpcClient, enabled: { reserve: boolean; release: boolean; activate: boolean; cancel: boolean; return: boolean }): Partial<RentalLineLifecycleCommandRepository> {
+  const repository = new SupabaseOperationalCommandRepository(client);
+  return {
+    ...(enabled.reserve ? { reserveLine: repository.reserveLine } : {}),
+    ...(enabled.release ? { releaseLine: repository.releaseLine } : {}),
+    ...(enabled.activate ? { activateLine: repository.activateLine } : {}),
+    ...(enabled.cancel ? { cancelLine: repository.cancelLine } : {}),
+    ...(enabled.return ? { returnLine: repository.returnLine } : {}),
+  };
+}
+
+export function createSupabaseRentalClosureCommands(client: RpcClient): RentalClosureCommandRepository {
+  const repository = new SupabaseOperationalCommandRepository(client);
+  return { getReadiness: repository.getReadiness, close: repository.close };
 }

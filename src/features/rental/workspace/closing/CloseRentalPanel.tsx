@@ -13,18 +13,20 @@ import {
 } from "@/components/ui/toast/ToastContext";
 
 import { useCloseReadiness } from "./useCloseReadiness";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { executeRentalBillingHandoff, prepareRentalBillingHandoff, type BillingHandoffReview } from "@/features/rental/billingstatement/services/executeRentalBillingHandoff";
 import { billingHandoffAuditRepository } from "@/features/rental/billingstatement/repository/BillingHandoffAuditRepository";
 import BillingHandoffReviewDialog from "./BillingHandoffReviewDialog";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
-import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseCanonicalRemoteRentalCloseMutation, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 
 export default function CloseRentalPanel() {
-  const { configuration } = useApplicationDependenciesCompatibility();
+  const dependencies = useApplicationDependenciesCompatibility();
+  const { configuration } = dependencies;
   const mutationsAvailable = canUseLegacyRentalMutations(configuration);
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const aggregate =
     useRentalWorkspaceAggregate();
 
@@ -41,10 +43,23 @@ export default function CloseRentalPanel() {
   const [review, setReview] = useState<BillingHandoffReview>();
   const [executing, setExecuting] = useState(false);
   const [statementNumber, setStatementNumber] = useState<string>();
+  const [remoteReady, setRemoteReady] = useState<{ canClose: boolean; message: string }>({ canClose: false, message: "" });
 
   const closed =
     aggregate.rental.status ===
     "Closed";
+  const remoteClose = canUseCanonicalRemoteRentalCloseMutation(configuration) && Boolean(dependencies.commandRepositories.rentalClosureCommands?.close) && hasPermission("rental.close");
+  useEffect(() => {
+    let active = true;
+    if (!remoteClose || aggregate.rental.status !== "Active" || !dependencies.commandRepositories.rentalClosureCommands?.getReadiness) { setRemoteReady({ canClose: false, message: "" }); return () => { active = false; }; }
+    void dependencies.commandRepositories.rentalClosureCommands.getReadiness({ rentalId: aggregate.rental.id }).then(result => {
+      if (!active) return;
+      setRemoteReady(result.success ? { canClose: result.value.ready, message: result.value.blockers.map(item => item.message).join(" ") } : { canClose: false, message: result.message });
+    });
+    return () => { active = false; };
+  }, [aggregate.rental.id, aggregate.rental.status, dependencies.commandRepositories.rentalClosureCommands, remoteClose]);
+
+  if (remoteClose) return <div className="space-y-4"><h2 className="text-2xl font-semibold">Close Rental</h2><p className="text-sm text-slate-600">Parent Rental Status: {aggregate.rental.status}</p>{aggregate.rental.status !== "Active" ? <p className="rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">Only an Active Rental can be closed. Cancelled, Closed, and historical Returned Rentals are read-only.</p> : <><p className={`rounded border p-4 ${remoteReady.canClose ? "border-green-200 bg-green-50 text-green-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{remoteReady.canClose ? "Canonical closure readiness passed." : remoteReady.message || "Checking canonical closure readiness…"}</p><Button disabled={!remoteReady.canClose} onClick={async () => { const result = await dependencies.commandRepositories.rentalClosureCommands!.close({ rentalId: aggregate.rental.id, commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID(), expectedVersion: aggregate.rental.rowVersion }); showToast(result.success ? "Rental closed successfully." : result.message, result.success ? "success" : "error"); if (result.success) requestCanonicalRentalRefresh(); }}>Close Rental</Button></>}</div>;
 
   function handleCloseRental() {
     if (

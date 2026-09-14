@@ -6,6 +6,8 @@ export type OperationalCommandFailureCode =
   | "CUSTOMER_INVALID" | "PROJECT_CODE_CONFLICT" | "OPERATOR_ID_CONFLICT" | "ASSET_NUMBER_CONFLICT" | "EQUIPMENT_ID_CONFLICT"
   | "IDEMPOTENCY_MISMATCH" | "EQUIPMENT_UNAVAILABLE" | "EQUIPMENT_INTERVAL_CONFLICT" | "RENTAL_CONFLICT"
   | "MISSING_RELATIONSHIP" | "CANCELLATION_NOT_ALLOWED" | "CUSTOMER_RELINK_NOT_ALLOWED"
+  | "PARENT_READ_ONLY" | "ACTIVATION_NOT_READY" | "LINE_CANCEL_ACTIVE_REQUIRES_RETURN"
+  | "LINE_CANCEL_NOT_ALLOWED" | "LINE_CANCEL_BILLABLE_DEUR" | "PARENT_CANCEL_ACTIVE_EQUIPMENT" | "PARENT_CANCEL_BILLABLE_DEUR"
   | "BILLING_INELIGIBLE" | "DUPLICATE_CONSUMPTION" | "UNSUPPORTED_BILLING_METHOD"
   | "RECOVERY_NOT_ALLOWED" | "DOWNSTREAM_EVIDENCE_EXISTS" | "ALREADY_REVERSED"
   | "TRANSPORT_FAILURE" | "PERSISTENCE_FAILURE";
@@ -70,6 +72,16 @@ export interface RentalReturnCommandRepository {
   returnLine(input: ReturnRentalLineInput): Promise<OperationalCommandResult<RentalLineReturnProjection>>;
   returnAll(input: ReturnAllRentalLinesInput): Promise<OperationalCommandResult<ReturnAllProjection>>;
   getReturnReadiness(input: { rentalId: string }): Promise<OperationalCommandResult<RentalReturnReadiness>>;
+}
+
+export interface RentalLineLifecycleInput extends OperationalCommandMetadata { rentalId: string; rentalLineId: string }
+export interface RentalLineLifecycleProjection { rentalId: string; rentalLineId: string; status: "Reserved" | "Released" | "Active" | "Cancelled"; canonicalLineStatus?: string; version: number; effectiveStartDate?: string }
+export interface RentalLineLifecycleCommandRepository {
+  reserveLine(input: RentalLineLifecycleInput): Promise<OperationalCommandResult<RentalLineLifecycleProjection>>;
+  releaseLine(input: RentalLineLifecycleInput): Promise<OperationalCommandResult<RentalLineLifecycleProjection>>;
+  activateLine(input: RentalLineLifecycleInput): Promise<OperationalCommandResult<RentalLineLifecycleProjection>>;
+  cancelLine(input: RentalLineLifecycleInput): Promise<OperationalCommandResult<RentalLineLifecycleProjection>>;
+  returnLine(input: ReturnRentalLineInput): Promise<OperationalCommandResult<RentalLineReturnProjection>>;
 }
 
 export interface RentalClosureReadinessInput { rentalId: string }
@@ -169,6 +181,7 @@ export interface OperationalCommandRepositories {
   rentalReturnCommands: RentalReturnCommandRepository;
   rentalClosureCommands: RentalClosureCommandRepository;
   rentalLifecycleCommands: RentalLifecycleCommandRepository;
+  rentalLineLifecycleCommands?: Partial<RentalLineLifecycleCommandRepository>;
   billingFinancialCommands: BillingFinancialCommandRepository;
   recoveryCommands: RecoveryCommandRepository;
 }

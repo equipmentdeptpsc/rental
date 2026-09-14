@@ -69,7 +69,7 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
           : { actions: canonicalApprovalMutations && permissions.submit ? [{ id: "submit" as const, label: approval === "Rejected" ? "Resubmit for Approval" : "Submit for Approval" }] : [], message: approval === "Rejected" ? rental.approvalDecisionRemarks ? `Rejected: ${rental.approvalDecisionRemarks}` : "Rejected" : undefined }
       : rental.status === "Reserved" ? { actions: (canonicalOperationalMutations || canonicalReleaseMutations) && permissions.release ? [{ id: "release" as const, label: "Release Equipment" }] : [], message: "Approved and reserved" }
         : rental.status === "Released" ? { actions: canonicalActivateMutations && permissions.activate ? [{ id: "activate" as const, label: "Activate Rental" }] : [], message: "Released" }
-        : rental.status === "Active" ? { actions: canonicalReturnMutations && permissions.return ? [{ id: "return" as const, label: "Return Equipment" }] : [], message: "Active" }
+        : rental.status === "Active" ? { actions: canonicalReturnMutations && permissions.return ? [{ id: "return" as const, label: "Return All Equipment" }] : [], message: "Active" }
         : { actions: [], message: undefined }
     : deriveRentalQuickActions(rental, permissions);
   async function run(id: RentalQuickActionId) {
