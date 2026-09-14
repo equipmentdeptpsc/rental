@@ -26,10 +26,10 @@ const statement = (tax:{vat?:boolean;withholding?:boolean}={}):BillingStatement 
 
 describe("Primary Structures Corporation branding and Billing Statement PDF",()=>{
   it("centralizes the approved identity and static logo path",()=>{
-    expect(organizationBranding).toMatchObject({companyName:"Primary Structures Corporation",departmentName:"Equipment Department",systemName:"Equipment Rental Management System",logoAssetPath:"/branding/primary-structures-corporation-logo.png"});
-    expect(readFileSync("public/branding/primary-structures-corporation-logo.png").subarray(1,4).toString()).toBe("PNG");
+    expect(organizationBranding).toMatchObject({companyName:"Primary Structures Corporation",departmentName:"Equipment Department",systemName:"Equipment Rental Management System",logoAssetPath:"/branding/psc-equipment-logo.png",logoAltText:"PSC Equipment logo"});
+    expect(readFileSync("public/branding/psc-equipment-logo.png").subarray(1,4).toString()).toBe("PNG");
     const html=renderToStaticMarkup(createElement(OrganizationBrand));
-    expect(html).toContain("Primary Structures Corporation logo");
+    expect(html).toContain("PSC Equipment logo");
     expect(html).toContain("Primary Structures Corporation");
     expect(html).toContain("Equipment Department");
     expect(html).toContain("Equipment Rental Management System");
@@ -37,7 +37,7 @@ describe("Primary Structures Corporation branding and Billing Statement PDF",()=
 
   it("renders a branded valid PDF with a tabular business-reference row, footer, and embedded logo",()=>{
     const document=buildInvoiceDocument(statement({vat:true}));
-    const logo=new Uint8Array(readFileSync("public/branding/primary-structures-corporation-logo.png"));
+    const logo=new Uint8Array(readFileSync("public/branding/psc-equipment-logo.png"));
     const pdf=generateBillingStatementPdf(document,"Administrator",logo);
     const decoded=new TextDecoder("latin1").decode(pdf);
     const semantic=billingStatementPdfText(document);
@@ -50,6 +50,15 @@ describe("Primary Structures Corporation branding and Billing Statement PDF",()=
     expect(semantic.join(" ")).toContain("Excavator 1 (ME-000001)");
     expect(semantic.join(" ")).toContain("Operator 1");
     expect(semantic.join(" ")).not.toContain("internal-rental-uuid");
+    expect(decoded).toContain("/SMask");
+  });
+
+  it("keeps RGB PNG support and rejects invalid or missing images safely",()=>{
+    const document=buildInvoiceDocument(statement());
+    const rgb=new Uint8Array(readFileSync("public/branding/primary-structures-corporation-logo.png"));
+    expect(new TextDecoder("latin1").decode(generateBillingStatementPdf(document,"Administrator",rgb))).toContain("/Subtype /Image");
+    expect(new TextDecoder("latin1").decode(generateBillingStatementPdf(document,"Administrator",new Uint8Array([137,80,78,71])))).not.toContain("/Subtype /Image");
+    expect(new TextDecoder("latin1").decode(generateBillingStatementPdf(document))).not.toContain("/Subtype /Image");
   });
 
   it("repeats the table header and numbers pages for multi-line statements",()=>{

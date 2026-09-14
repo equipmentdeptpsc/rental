@@ -1,5 +1,6 @@
 import type { InvoiceDocument } from "@/features/rental/workspace/invoice/InvoiceDocumentBuilder";
 import { organizationBranding } from "../../../shared/branding/organizationBranding";
+import { decode as decodePng, encode as encodePng } from "fast-png";
 
 const encoder = new TextEncoder();
 const escapePdf = (value: string) => value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
@@ -38,23 +39,56 @@ export function billingStatementPdfText(document: InvoiceDocument, preparedBy = 
   ].map(ascii);
 }
 
-interface PngImage { width: number; height: number; data: Uint8Array }
-function readPng(bytes?: Uint8Array): PngImage | undefined {
-  if (!bytes || bytes.length < 33 || String.fromCharCode(...bytes.slice(1, 4)) !== "PNG") return undefined;
+interface PngImage { width: number; height: number; data: Uint8Array; alphaData?: Uint8Array }
+
+function pngIdat(bytes: Uint8Array): Uint8Array | undefined {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const width = view.getUint32(16); const height = view.getUint32(20);
-  const bitDepth = bytes[24]; const colorType = bytes[25];
-  if (bitDepth !== 8 || colorType !== 2) return undefined;
   const chunks: Uint8Array[] = [];
   for (let offset = 8; offset + 12 <= bytes.length;) {
-    const length = view.getUint32(offset); const type = String.fromCharCode(...bytes.slice(offset + 4, offset + 8));
+    const length = view.getUint32(offset);
+    const end = offset + 12 + length;
+    if (end > bytes.length) return undefined;
+    const type = String.fromCharCode(...bytes.slice(offset + 4, offset + 8));
     if (type === "IDAT") chunks.push(bytes.slice(offset + 8, offset + 8 + length));
-    offset += 12 + length;
+    offset = end;
     if (type === "IEND") break;
   }
+  if (chunks.length === 0) return undefined;
   const data = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
-  let cursor = 0; for (const chunk of chunks) { data.set(chunk, cursor); cursor += chunk.length; }
-  return chunks.length ? { width, height, data } : undefined;
+  let cursor = 0;
+  for (const chunk of chunks) { data.set(chunk, cursor); cursor += chunk.length; }
+  return data;
+}
+
+function readPng(bytes?: Uint8Array): PngImage | undefined {
+  if (!bytes || bytes.length < 33 || String.fromCharCode(...bytes.slice(1, 4)) !== "PNG") return undefined;
+  try {
+    const decoded = decodePng(bytes, { checkCrc: true });
+    if (decoded.depth !== 8 || (decoded.channels !== 3 && decoded.channels !== 4)) return undefined;
+    const data = pngIdat(bytes);
+    if (!data) return undefined;
+    if (decoded.channels === 3) return { width: decoded.width, height: decoded.height, data };
+
+    const rgba = decoded.data;
+    if (!(rgba instanceof Uint8Array || rgba instanceof Uint8ClampedArray) || rgba.length !== decoded.width * decoded.height * 4) return undefined;
+    const rgb = new Uint8Array(decoded.width * decoded.height * 3);
+    const alpha = new Uint8Array(decoded.width * decoded.height);
+    for (let pixel = 0, color = 0; pixel < alpha.length; pixel += 1, color += 4) {
+      rgb[pixel * 3] = rgba[color];
+      rgb[pixel * 3 + 1] = rgba[color + 1];
+      rgb[pixel * 3 + 2] = rgba[color + 2];
+      alpha[pixel] = rgba[color + 3];
+    }
+    const rgbPng = encodePng({ width: decoded.width, height: decoded.height, data: rgb, depth: 8, channels: 3 });
+    const alphaPng = encodePng({ width: decoded.width, height: decoded.height, data: alpha, depth: 8, channels: 1 });
+    const normalizedRgb = pngIdat(rgbPng);
+    const normalizedAlpha = pngIdat(alphaPng);
+    return normalizedRgb && normalizedAlpha
+      ? { width: decoded.width, height: decoded.height, data: normalizedRgb, alphaData: normalizedAlpha }
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const text = (value: string, x: number, y: number, size = 8) => `BT /F1 ${size} Tf ${x} ${y} Td (${escapePdf(short(value, 90))}) Tj ET`;
@@ -136,6 +170,7 @@ export function generateBillingStatementPdf(document: InvoiceDocument, preparedB
   const pageChunks = Array.from({ length: Math.max(1, Math.ceil(document.serviceLines.length / rowsPerPage)) }, (_, index) => document.serviceLines.slice(index * rowsPerPage, (index + 1) * rowsPerPage));
   const fontId = 3 + pageChunks.length * 2;
   const imageId = png ? fontId + 1 : undefined;
+  const maskId = png?.alphaData ? imageId! + 1 : undefined;
   const pageIds = pageChunks.map((_, index) => 3 + index * 2);
   const objects: Uint8Array[] = [
     encoder.encode("<< /Type /Catalog /Pages 2 0 R >>"),
@@ -149,7 +184,8 @@ export function generateBillingStatementPdf(document: InvoiceDocument, preparedB
     objects.push(concat([encoder.encode(`<< /Length ${content.length} >>\nstream\n`),content,encoder.encode("\nendstream")]));
   });
   objects.push(encoder.encode("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"));
-  if (png) objects.push(concat([encoder.encode(`<< /Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns ${png.width} >> /Length ${png.data.length} >>\nstream\n`),png.data,encoder.encode("\nendstream")]));
+  if (png) objects.push(concat([encoder.encode(`<< /Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns ${png.width} >>${maskId ? ` /SMask ${maskId} 0 R` : ""} /Length ${png.data.length} >>\nstream\n`),png.data,encoder.encode("\nendstream")]));
+  if (png?.alphaData) objects.push(concat([encoder.encode(`<< /Type /XObject /Subtype /Image /Width ${png.width} /Height ${png.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 1 /BitsPerComponent 8 /Columns ${png.width} >> /Length ${png.alphaData.length} >>\nstream\n`),png.alphaData,encoder.encode("\nendstream")]));
 
   const parts: Uint8Array[] = [encoder.encode("%PDF-1.4\n")];
   const offsets = [0]; let length = parts[0].length;
