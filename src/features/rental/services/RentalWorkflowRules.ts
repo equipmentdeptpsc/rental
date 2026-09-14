@@ -146,7 +146,7 @@ export function getRentalTransitionError(
 }
 
 export function isRentalLocked(rental: RentalRecord) {
-  return rental.status === "Closed";
+  return rental.status === "Closed" || rental.status === "Cancelled" || rental.status === "Returned";
 }
 
 export function canEditRental(rental: RentalRecord) {
