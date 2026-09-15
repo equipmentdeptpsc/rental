@@ -38,6 +38,13 @@ function RemoteBookingTabs({ data }: { data: CanonicalAssignmentData }) {
   return <div className="space-y-4"><div className="app-card flex flex-wrap gap-1 p-2" role="tablist" aria-label="Booking views"><button type="button" role="tab" aria-selected={tab === "assignments"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "assignments" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("assignments")}>Assignments</button><button type="button" role="tab" aria-selected={tab === "rentals"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "rentals" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("rentals")}>Rental Bookings</button></div>{tab === "assignments" ? <RemoteAssignmentSections data={data} /> : <CanonicalBookingOperationsWorkspace />}</div>;
 }
 
+function assignmentViewStatus(assignment: AssignmentRecord): "Active" | "Overdue" | "Completed" | "Cancelled" {
+  if (assignment.status === "Completed" || assignment.status === "Cancelled") return assignment.status;
+  const expected = assignment.expectedReturn && !assignment.expectedReturn.startsWith("1970-01-01") ? assignment.expectedReturn.slice(0, 10) : "";
+  const today = new Date().toISOString().slice(0, 10);
+  return expected && expected < today && !assignment.returnedDate ? "Overdue" : "Active";
+}
+
 function RemoteAssignmentSections({ data }: { data: CanonicalAssignmentData }) {
   const [query, setQuery] = useState("");
   const current = data.assignments.filter((item) => item.status === "Active");

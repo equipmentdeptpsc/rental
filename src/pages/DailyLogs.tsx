@@ -37,7 +37,7 @@ function CanonicalDailyLogs() {
       readRepositories.operators.list(),
       readRepositories.projects.list(),
     ]).then(([deurs, rentals, equipment, operators, projects]) => {
-      if (![deurs, rentals, equipment, operators, projects].every((result) => result.success)) {
+      if (!deurs.success || !rentals.success || !equipment.success || !operators.success || !projects.success) {
         setError("Canonical Daily Logs data could not be loaded.");
         setState("error");
         return;
