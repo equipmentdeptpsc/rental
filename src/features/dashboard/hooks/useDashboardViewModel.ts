@@ -55,9 +55,9 @@ export function useDashboardViewModel(refreshKey = 0) {
       const [deurResult, statementResult, auditResult] = await Promise.allSettled([
         readRepositories.deurs.list(), readRepositories.billing.list(), readRepositories.canonicalAudit.list(),
       ]);
-      const deurs = deurResult.status === "fulfilled" && deurResult.value.success ? deurResult.value.items : [];
-      const statements = statementResult.status === "fulfilled" && statementResult.value.success ? statementResult.value.items : [];
-      const audit = auditResult.status === "fulfilled" && auditResult.value.success ? auditResult.value.items : [];
+      const deurs = deurResult.status === "fulfilled" && deurResult.value.success ? deurResult.value.value.items : [];
+      const statements = statementResult.status === "fulfilled" && statementResult.value.success ? statementResult.value.value.items : [];
+      const audit = auditResult.status === "fulfilled" && auditResult.value.success ? auditResult.value.value.items : [];
       setRemoteState({
         status: "loaded",
         equipment: equipmentResult.value.items,
