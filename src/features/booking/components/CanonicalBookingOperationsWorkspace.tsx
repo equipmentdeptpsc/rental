@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
 import StatusBadge from "@/components/ui/StatusBadge";
+import "./canonicalBookingOperations.css";
 import { filterBookingOperations, normalizeBookingOperations, type BookingPresentationRow, type BookingPresentationStatus } from "../bookingOperationsPresentation";
 
 type View = "timeline" | "kanban" | "calendar" | "list";

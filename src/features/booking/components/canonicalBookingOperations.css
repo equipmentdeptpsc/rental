@@ -1,0 +1,46 @@
+[aria-label="Canonical booking operations workspace"] > :first-child {
+  align-items: center;
+}
+
+[aria-label="Canonical booking operations workspace"] [role="tablist"] {
+  flex: none;
+  white-space: nowrap;
+}
+
+[aria-label="Canonical booking operations workspace"] .app-control {
+  min-height: 2.25rem;
+  font-size: 0.8125rem;
+}
+
+[aria-label="Canonical booking operations workspace"] > .app-card {
+  border-radius: 0.625rem;
+}
+
+[aria-label="Canonical booking operations workspace"] table th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[aria-label="Canonical booking operations workspace"] table td {
+  height: 3.25rem;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+@media (min-width: 1280px) {
+  [aria-label="Canonical booking operations workspace"] > :first-child {
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 639px) {
+  [aria-label="Canonical booking operations workspace"] [role="tablist"] {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  [aria-label="Canonical booking operations workspace"] [role="tablist"] button {
+    min-width: max-content;
+  }
+}
