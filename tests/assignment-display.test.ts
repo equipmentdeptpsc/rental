@@ -7,13 +7,15 @@ describe("assignment legacy Expected Return display", () => {
     expect(displayAssignmentExpectedReturn("")).toBe("—");
   });
 
-  it("projects stable business-facing assignment numbers without exposing UUIDs", () => {
+  it("derives the display identity from the canonical ID, not array position", () => {
     const assignments = [
       { id: "78ccaf72-e04c-49d2-85ea-55561ff33499" },
       { id: "c1962362-d63f-44d4-87a1-b04714f32b81" },
     ] as unknown as Parameters<typeof getAssignmentNumber>[1];
-    expect(getAssignmentNumber(assignments[0].id, assignments)).toBe("ASN-000001");
-    expect(getAssignmentNumber(assignments[1].id, assignments)).toBe("ASN-000002");
-    expect(getAssignmentNumber("missing", assignments)).toBe("ASN-UNAVAILABLE");
+    expect(getAssignmentNumber(assignments[0].id, assignments)).toBe("ASN-78CCAF72");
+    expect(getAssignmentNumber(assignments[1].id, assignments)).toBe("ASN-C1962362");
+    expect(getAssignmentNumber(assignments[0].id, [...assignments].reverse())).toBe("ASN-78CCAF72");
+    expect(getAssignmentNumber("ASN-000015", assignments)).toBe("ASN-000015");
+    expect(getAssignmentNumber("", assignments)).toBe("ASN-UNAVAILABLE");
   });
 });
