@@ -3,8 +3,9 @@ import type { CollectionTransaction } from "@/features/rental/collections/types"
 import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
 import type { RentalRecord } from "@/features/rental/types";
 import type { DeurRecord } from "@/features/rental/deur/types";
+import { evaluateCanonicalApprovalDecisionEligibility } from "@/features/rental/approval/canonicalApprovalDecisionEligibility";
 
-export function calculateBusinessDashboardSummary(input:{statements:BillingStatement[];collections:CollectionTransaction[];rentals:RentalRecord[];deurs:DeurRecord[]}){
+export function calculateBusinessDashboardSummary(input:{statements:BillingStatement[];collections:CollectionTransaction[];rentals:RentalRecord[];deurs:DeurRecord[];currentUserId?: string;approvalPermissionGranted?: boolean}){
  const statements=input.statements.filter(item=>item.invoiceStatus!=="Cancelled"&&item.invoiceStatus!=="Not Invoiced");
  const totals=statements.map(statement=>reconcileStatementCollections(statement,input.collections));
  const totalInvoiced=totals.reduce((sum,item)=>sum+item.invoiceTotal,0),totalCollected=totals.reduce((sum,item)=>sum+item.totalCollected,0),outstanding=totals.reduce((sum,item)=>sum+item.outstandingBalance,0);
@@ -14,7 +15,7 @@ export function calculateBusinessDashboardSummary(input:{statements:BillingState
   upcoming:{
    scheduledRelease:input.rentals.filter(item=>item.status==="Reserved"&&item.approvalStatus==="Approved").length,
    expectedReturns:input.rentals.filter(item=>["Released","Active"].includes(item.status)&&Boolean(item.expectedReturn)).length,
-   pendingManagerApprovals:input.rentals.filter(item=>item.approvalStatus==="Pending").length,
+   pendingManagerApprovals:input.rentals.filter(item=>item.approvalStatus==="Pending" && item.status === "Reserved" && (input.approvalPermissionGranted === undefined || evaluateCanonicalApprovalDecisionEligibility(item, input.currentUserId, input.approvalPermissionGranted).eligible)).length,
    pendingCustomerAcknowledgements:input.deurs.filter(item=>item.status==="Submitted"&&!item.revision?.supersededByRevisionId).length,
   },
  };

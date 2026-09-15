@@ -33,7 +33,8 @@ describe("UX presentation helpers", () => {
     expect(items.some((item) => item.id === "deur-missing")).toBe(true);
     expect(items.some((item) => item.id === "manager-approval")).toBe(true);
     expect(items.some((item) => item.id === "expected-returns")).toBe(true);
-    expect(items.every((item) => item.permission === "rental.read")).toBe(true);
+    expect(items.filter((item) => item.id !== "manager-approval").every((item) => item.permission === "rental.read")).toBe(true);
+    expect(items.find((item) => item.id === "manager-approval")?.permission).toBe("rental.approval.decide");
 
     const denied = renderToStaticMarkup(createElement(
       MemoryRouter,
@@ -45,7 +46,7 @@ describe("UX presentation helpers", () => {
     const allowed = renderToStaticMarkup(createElement(
       MemoryRouter,
       null,
-      createElement(DashboardActionQueue, { items, hasPermission: (permission) => permission === "rental.read" }),
+      createElement(DashboardActionQueue, { items, hasPermission: (permission) => permission === "rental.read" || permission === "rental.approval.decide" }),
     ));
     expect(allowed).toContain('href="/rentals');
   });

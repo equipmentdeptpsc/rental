@@ -6,6 +6,7 @@ import { useDashboardViewModel } from "@/features/dashboard/hooks/useDashboardVi
 import { useAuth } from "@/features/auth/AuthContext";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import { ErrorState, LoadingState } from "@/components/ui/AsyncState";
 
 const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 const updatedDateTime = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" });
@@ -22,6 +23,9 @@ export default function Dashboard() {
     ...model.recentEquipmentActivity.map((item) => ({ id: `equipment-${item.id}`, title: item.title, description: `${item.equipment?.assetNo ?? "Equipment"} · ${item.actor}`, timestamp: item.timestamp, kind: "equipment" as const })),
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 8);
   const refresh = () => { setRefreshKey((value) => value + 1); setUpdatedAt(new Date()); };
+
+  if (model.status === "loading") return <div className="app-page"><PageHeader title="Operations Dashboard" description="Exception-first visibility across equipment, rentals, assignments, and DEUR work." /><LoadingState label="Loading canonical dashboard data…" /></div>;
+  if (model.status === "error") return <div className="app-page"><PageHeader title="Operations Dashboard" description="Exception-first visibility across equipment, rentals, assignments, and DEUR work." actions={<button aria-label="Refresh dashboard" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium" onClick={refresh}><RefreshCw size={15} /> <span>Refresh</span></button>} /><ErrorState message={model.error ?? "Canonical Dashboard data could not be loaded."} onRetry={refresh} /></div>;
 
   return (
     <div className="app-page">

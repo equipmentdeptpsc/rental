@@ -73,8 +73,8 @@ export function buildDashboardActionQueue(input: {
       id: "manager-approval",
       title: "Manager approvals pending",
       description: "Rentals waiting for release authorization.",
-      href: "/rentals",
-      permission: "rental.read",
+      href: "/rentals?view=approvals",
+      permission: "rental.approval.decide",
       tone: "warning",
       count: input.pendingManagerApprovals,
     });
