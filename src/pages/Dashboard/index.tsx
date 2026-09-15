@@ -2,8 +2,11 @@ import { useState, type ReactNode } from "react";
 import { CalendarDays, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardActionQueue from "@/features/dashboard/components/DashboardActionQueue";
+import CanonicalBillingVisibilityPanel from "@/features/dashboard/components/CanonicalBillingVisibilityPanel";
 import { useDashboardViewModel } from "@/features/dashboard/hooks/useDashboardViewModel";
+import { useCanonicalBillingVisibility } from "@/features/dashboard/hooks/useCanonicalBillingVisibility";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useApplicationDependenciesCompatibility, PersistenceMode } from "@/app/composition";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { ErrorState, LoadingState } from "@/components/ui/AsyncState";
@@ -17,6 +20,8 @@ export default function Dashboard() {
   const [updatedAt, setUpdatedAt] = useState(() => new Date());
   const model = useDashboardViewModel(refreshKey);
   const { hasPermission } = useAuth();
+  const { configuration } = useApplicationDependenciesCompatibility();
+  const billingVisibility = useCanonicalBillingVisibility(hasPermission("billing.read"));
   const { operational, financial } = model;
   const recentActivity = [
     ...model.activity.map((item) => ({ id: `activity-${item.id}`, title: item.title, description: item.description, timestamp: item.timestamp, kind: item.kind })),
@@ -47,7 +52,7 @@ export default function Dashboard() {
 
       <div className="grid items-start gap-4 xl:grid-cols-2">
         <Panel title="Rentals"><MetricRows rows={[["Active rentals", operational.activeRentals], ["Pending DEUR", model.pendingDeur]]} /><Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/rentals">View rentals →</Link></Panel>
-        <Panel title="Revenue"><MetricRows rows={[["Billed", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)], ["Outstanding", currency.format(financial.revenue.outstanding)], ["Collection rate", `${financial.collectionPerformance.collectionRate.toFixed(2)}%`]]} />{hasPermission("billing.read") && <Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>}</Panel>
+        {configuration.persistenceMode === PersistenceMode.Remote ? <CanonicalBillingVisibilityPanel state={billingVisibility} /> : <Panel title="Revenue"><MetricRows rows={[["Billed", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)], ["Outstanding", currency.format(financial.revenue.outstanding)], ["Collection rate", `${financial.collectionPerformance.collectionRate.toFixed(2)}%`]]} />{hasPermission("billing.read") && <Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>}</Panel>}
       </div>
 
       <Panel title="Recent activity" action={hasPermission("users.manage") ? <Link to="/audit-trail">View all</Link> : undefined}>

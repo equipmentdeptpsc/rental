@@ -17,6 +17,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { canonicalBookingStatuses, type CanonicalBookingListItem, type CanonicalBookingPage, type CanonicalBookingSearchInput, type CanonicalBookingOperationalSearchInput } from "@/features/booking/canonical";
+import CanonicalBookingOperationsWorkspace from "@/features/booking/components/CanonicalBookingOperationsWorkspace";
 
 export default function Assignments() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -35,7 +36,7 @@ function RemoteAssignments() {
 
 function RemoteBookingTabs({ data }: { data: CanonicalAssignmentData }) {
   const [tab, setTab] = useState<"assignments" | "rentals">("assignments");
-  return <div className="space-y-4"><div className="app-card flex flex-wrap gap-1 p-2" role="tablist" aria-label="Booking views"><button type="button" role="tab" aria-selected={tab === "assignments"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "assignments" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("assignments")}>Assignments</button><button type="button" role="tab" aria-selected={tab === "rentals"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "rentals" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("rentals")}>Rental Bookings</button></div>{tab === "assignments" ? <RemoteAssignmentSections data={data} /> : <RentalBookingsView />}</div>;
+  return <div className="space-y-4"><div className="app-card flex flex-wrap gap-1 p-2" role="tablist" aria-label="Booking views"><button type="button" role="tab" aria-selected={tab === "assignments"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "assignments" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("assignments")}>Assignments</button><button type="button" role="tab" aria-selected={tab === "rentals"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "rentals" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("rentals")}>Rental Bookings</button></div>{tab === "assignments" ? <RemoteAssignmentSections data={data} /> : <CanonicalBookingOperationsWorkspace />}</div>;
 }
 
 type RentalBookingView = "list" | "calendar" | "agenda" | "operations";
