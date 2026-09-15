@@ -23,6 +23,13 @@ describe("Dashboard beta blocker", () => {
     expect(item).toMatchObject({ permission: "rental.approval.decide", href: "/rentals?view=approvals", count: 1 });
   });
 
+  it("consolidates acknowledgement sources into one action item", () => {
+    const items = buildDashboardActionQueue({ deurs: [{ status: "Submitted" } as never], rentals: [], pendingManagerApprovals: 0, pendingCustomerAcknowledgements: 1, expectedReturns: 0 });
+    expect(items.filter((item) => item.id.includes("ack") || item.id.includes("review"))).toHaveLength(1);
+    expect(items.find((item) => item.id === "deur-review")).toMatchObject({ title: "Acknowledgements pending", count: 1, href: "/rentals?view=deur-exceptions" });
+    expect(items.some((item) => item.id === "customer-ack")).toBe(false);
+  });
+
   it("projects canonical equipment and Rental state into operational KPIs", () => {
     const summary = calculateDashboardSummary(
       [{ id: "equipment-1", status: "Available" } as never],

@@ -60,8 +60,8 @@ export function buildDashboardActionQueue(input: {
   if (pendingReview) {
     items.push({
       id: "deur-review",
-      title: "DEUR awaiting acknowledgement",
-      description: "Submitted DEURs need customer or manager review.",
+      title: "Acknowledgements pending",
+      description: "Submitted DEURs awaiting customer review and acknowledgement.",
       href: "/rentals?view=deur-exceptions",
       permission: "rental.read",
       tone: "info",
@@ -77,17 +77,6 @@ export function buildDashboardActionQueue(input: {
       permission: "rental.approval.decide",
       tone: "warning",
       count: input.pendingManagerApprovals,
-    });
-  }
-  if (input.pendingCustomerAcknowledgements) {
-    items.push({
-      id: "customer-ack",
-      title: "Customer acknowledgements pending",
-      description: "Review requests sent and awaiting response.",
-      href: "/rentals?view=deur-exceptions",
-      permission: "rental.read",
-      tone: "info",
-      count: input.pendingCustomerAcknowledgements,
     });
   }
   if (input.expectedReturns) {

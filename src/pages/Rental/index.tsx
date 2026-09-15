@@ -28,7 +28,7 @@ import { projectRentalCollectionStatus } from "@/features/rental/collections/col
 import { projectActiveRentalEngagements } from "@/features/rental/services/projectActiveRentalEngagements";
 import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 import { filterRentalList } from "@/features/rental/services/filterRentalList";
-import { canUseCanonicalRemoteRentalCreation, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import { canUseAnyRentalMutations, canUseCanonicalRemoteRentalCreation, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import { LoadingState, ErrorState, EmptyDataState } from "@/components/ui/AsyncState";
@@ -47,6 +47,7 @@ export default function RentalPage() {
   const { billingStatement: billingStatementRepository } = dependencies.repositories;
   const mutationsAvailable = canUseLegacyRentalMutations(dependencies.configuration)
     || (canUseCanonicalRemoteRentalCreation(dependencies.configuration) && Boolean(dependencies.commandRepositories.canonicalRental) && hasPermission("rental.create"));
+  const anyMutationsAvailable = canUseAnyRentalMutations(dependencies.configuration, Boolean(dependencies.commandRepositories.canonicalRental));
   const rentalContext = useRental();
   const equipmentContext = useEquipment();
   const assignmentContext = useAssignment();
@@ -119,7 +120,7 @@ export default function RentalPage() {
         ))}
       </div>
 
-      {!mutationsAvailable && <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</div>}
+      {!anyMutationsAvailable && <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</div>}
       {rentalList.status === "loading" && <LoadingState label="Loading canonical Rental data…" />}
       {rentalList.status === "error" && <ErrorState title="Rental data unavailable" message={rentalList.message} onRetry={rentalList.retry} />}
 
