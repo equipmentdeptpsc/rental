@@ -33,7 +33,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import { LoadingState, ErrorState, EmptyDataState } from "@/components/ui/AsyncState";
 
-type RentalView = "rentals" | "engagements" | "deur-exceptions";
+type RentalView = "rentals" | "engagements" | "deur-exceptions" | "approvals";
 
 const VIEWS: { id: RentalView; label: string }[] = [
   { id: "rentals", label: "All Rentals" },
@@ -70,7 +70,8 @@ export default function RentalPage() {
 
   useEffect(() => subscribeDeurChanges(() => setDeurVersion((value) => value + 1)), []);
 
-  const view = (searchParams.get("view") as RentalView | null) ?? "rentals";
+  const requestedView = (searchParams.get("view") as RentalView | null) ?? "rentals";
+  const view = requestedView === "approvals" && hasPermission("rental.approval.decide") ? requestedView : requestedView === "engagements" || requestedView === "deur-exceptions" ? requestedView : "rentals";
   const setView = (next: RentalView) => {
     const params = new URLSearchParams(searchParams);
     if (next === "rentals") params.delete("view");
@@ -90,6 +91,9 @@ export default function RentalPage() {
   const filteredRentals = useMemo(() => {
     return filterRentalList({ rentals, lines: rentalEquipmentLines, equipment: equipmentRecords, operators, query });
   }, [equipmentRecords, operators, query, rentalEquipmentLines, rentals]);
+  const displayedRentals = view === "approvals"
+    ? filteredRentals.filter((rental) => rental.status === "Reserved" && rental.approvalStatus === "Pending")
+    : filteredRentals;
 
   return (
     <div className="app-page">
@@ -164,8 +168,9 @@ export default function RentalPage() {
         </section>
       )}
 
-      {rentalList.status === "loaded" && view === "rentals" && (
+      {rentalList.status === "loaded" && (view === "rentals" || view === "approvals") && (
         <>
+          {view === "approvals" && <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status"><strong>Manager approvals</strong><p className="mt-1">Reserved Rentals awaiting your decision.</p></section>}
           <FilterBar onClear={() => setQuery("")} canClear={Boolean(query)}>
             <input
               aria-label="Search rentals"
@@ -177,9 +182,9 @@ export default function RentalPage() {
           </FilterBar>
 
           <div className="space-y-3 lg:hidden">
-            {filteredRentals.length === 0 ? (
-              <EmptyDataState title="No rental transactions found" description="Try a different search term or clear the filters." />
-            ) : filteredRentals.map((rental) => {
+            {displayedRentals.length === 0 ? (
+              <EmptyDataState title={view === "approvals" ? "No pending approvals" : "No rental transactions found"} description={view === "approvals" ? "There are no Reserved Rentals awaiting your decision." : "Try a different search term or clear the filters."} />
+            ) : displayedRentals.map((rental) => {
               const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
               const rentalDeurs = deurRepository.getByRentalId(rental.id);
               const effectiveDeur = rentalDeurs.at(-1);
@@ -222,9 +227,9 @@ export default function RentalPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRentals.length === 0 ? (
-                    <tr><td colSpan={9} className="p-4"><EmptyDataState title="No rental transactions found" description="Try a different search term or clear the filters." /></td></tr>
-                  ) : filteredRentals.map((rental) => {
+                  {displayedRentals.length === 0 ? (
+                    <tr><td colSpan={9} className="p-4"><EmptyDataState title={view === "approvals" ? "No pending approvals" : "No rental transactions found"} description={view === "approvals" ? "There are no Reserved Rentals awaiting your decision." : "Try a different search term or clear the filters."} /></td></tr>
+                  ) : displayedRentals.map((rental) => {
                     const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
                     const rentalDeurs = deurRepository.getByRentalId(rental.id);
                     const effectiveDeur = rentalDeurs.at(-1);

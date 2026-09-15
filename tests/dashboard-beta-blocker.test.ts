@@ -37,11 +37,14 @@ describe("Dashboard beta blocker", () => {
   it("keeps the remote boundary and loading/error/empty distinction explicit", () => {
     const hook = readFileSync("src/features/dashboard/hooks/useDashboardViewModel.ts", "utf8");
     const page = readFileSync("src/pages/Dashboard/index.tsx", "utf8");
+    const rentalsPage = readFileSync("src/pages/Rental/index.tsx", "utf8");
     expect(hook).toContain("readRepositories.equipment.list()");
     expect(hook).toContain("readRepositories.rentals.list()");
     expect(hook).toContain('status: "loading" | "loaded" | "error"');
     expect(page).toContain("Loading canonical dashboard data");
     expect(page).toContain("ErrorState");
     expect(page).toContain("No equipment in the system yet");
+    expect(rentalsPage).toContain('requestedView === "approvals"');
+    expect(rentalsPage).toContain('rental.status === "Reserved" && rental.approvalStatus === "Pending"');
   });
 });
