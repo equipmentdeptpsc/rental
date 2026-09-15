@@ -2,6 +2,7 @@ import type { CanonicalBookingListItem, CanonicalBookingStatus } from "./canonic
 
 export type BookingPresentationStatus = "Requested" | "Confirmed" | "Checked out" | "Returned";
 export interface BookingPresentationRow extends CanonicalBookingListItem { presentationStatus: BookingPresentationStatus; endDate: string; overdue: boolean; conflict: boolean; }
+export const bookingRentalWorkspacePath = (rentalId: string) => `/rentals/${encodeURIComponent(rentalId)}/workspace`;
 const operational = new Set<CanonicalBookingStatus>(["Draft", "Assigned", "Reserved", "Released", "Active"]);
 export const bookingEndDate = (row: CanonicalBookingListItem) => (row.actualReturn ?? row.expectedReturn ?? row.dateOut).slice(0, 10);
 export function bookingPresentationStatus(status: CanonicalBookingStatus): BookingPresentationStatus { if (["Draft", "Assigned"].includes(status)) return "Requested"; if (status === "Reserved") return "Confirmed"; if (["Released", "Active"].includes(status)) return "Checked out"; return "Returned"; }

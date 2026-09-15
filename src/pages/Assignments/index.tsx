@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, ChevronRight, Columns3, List, Rows3 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Button from "@/components/ui/Button";
 import PageHeader from "@/components/ui/PageHeader";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
@@ -40,14 +40,13 @@ function RemoteBookingTabs({ data }: { data: CanonicalAssignmentData }) {
 
 function RemoteAssignmentSections({ data }: { data: CanonicalAssignmentData }) {
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<AssignmentView>("list");
   const current = data.assignments.filter((item) => item.status === "Active");
   const overdue = current.filter((item) => assignmentViewStatus(item) === "Overdue");
   const history = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return data.assignments.filter((item) => item.status !== "Active").filter((item) => remoteSearchText(item, data).includes(normalized));
   }, [data, query]);
-  return <><AssignmentToolbar view={view} setView={setView} /><section className="space-y-3"><h2 className="font-display text-lg font-semibold">Current Bookings ({current.length})</h2>{overdue.length > 0 && <div className="flex items-start gap-3 rounded-lg border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 p-3 text-sm text-amber-900"><span>⚠</span><p><strong>{overdue.length} {overdue.length === 1 ? "booking is" : "bookings are"} overdue for return.</strong> Review the highlighted records below.</p></div>}{view === "list" ? remoteTable(current, data, "No current Bookings.") : <AssignmentBoard records={current} data={data} view={view} />}</section><section className="space-y-3"><div><h2 className="font-display text-lg font-semibold">Completed / History ({history.length})</h2><p className="text-sm text-slate-500">Completed and cancelled canonical records remain available for audit.</p></div><FilterBar onClear={()=>setQuery("")} canClear={Boolean(query)}><label className="min-w-[16rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Search history</span><input aria-label="Search completed assignments" className="app-control mt-1 w-full" onChange={(event) => setQuery(event.target.value)} placeholder="Assignment, equipment, operator, or project" value={query} /></label></FilterBar>{remoteTable(history, data, "No completed or cancelled Bookings match.")}</section></>;
+  return <><section className="space-y-3"><h2 className="font-display text-lg font-semibold">Current Bookings ({current.length})</h2>{overdue.length > 0 && <div className="flex items-start gap-3 rounded-lg border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 p-3 text-sm text-amber-900"><span>⚠</span><p><strong>{overdue.length} {overdue.length === 1 ? "booking is" : "bookings are"} overdue for return.</strong> Review the highlighted records below.</p></div>}{remoteTable(current, data, "No current Bookings.")}</section><section className="space-y-3"><div><h2 className="font-display text-lg font-semibold">Completed / History ({history.length})</h2><p className="text-sm text-slate-500">Completed and cancelled canonical records remain available for audit.</p></div><FilterBar onClear={()=>setQuery("")} canClear={Boolean(query)}><label className="min-w-[16rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Search history</span><input aria-label="Search completed assignments" className="app-control mt-1 w-full" onChange={(event) => setQuery(event.target.value)} placeholder="Assignment, equipment, operator, or project" value={query} /></label></FilterBar>{remoteTable(history, data, "No completed or cancelled Bookings match.")}</section></>;
 }
 
 function remoteSearchText(assignment: AssignmentRecord, data: CanonicalAssignmentData) {
@@ -61,24 +60,6 @@ function remoteTable(records: AssignmentRecord[], data: CanonicalAssignmentData,
     const state = assignmentViewStatus(assignment);
     return <tr key={assignment.id} className="hover:bg-amber-50/60 dark:hover:bg-amber-950/20"><td className="px-4 py-3 font-semibold text-blue-600">{getAssignmentNumber(assignment.id, data.assignments)}</td><td className="px-4 py-3"><span className="block font-medium">{equipment?.equipmentName ?? "—"}</span><span className="block text-xs text-slate-500">{equipment?.assetNo ?? "—"}</span></td><td className="px-4 py-3">{operator?.name || "—"}</td><td className="px-4 py-3">{project?.name || "—"}</td><td className="px-4 py-3">{displayAssignmentDate(assignment.assignedDate)}</td><td className="px-4 py-3">{displayAssignmentExpectedReturn(assignment.expectedReturn)}</td><td className="px-4 py-3">{displayAssignmentDate(assignment.returnedDate)}</td><td className="px-4 py-3"><StatusBadge className={state === "Overdue" ? "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300" : state === "Active" ? "bg-[#f0a93a] text-[#071a33]" : ""} tone={state === "Completed" ? "success" : "neutral"}>{state}</StatusBadge></td><td className="px-4 py-3"><Link aria-label={`View ${getAssignmentNumber(assignment.id, data.assignments)}`} className="inline-flex rounded p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" to={`/assignments/${assignment.id}`}><ChevronRight size={17} aria-hidden="true" /></Link></td></tr>;
   })}</tbody></table></div></ResponsiveTable>;
-}
-
-type AssignmentView = "timeline" | "kanban" | "calendar" | "list";
-
-function assignmentViewStatus(assignment: AssignmentRecord): "Active" | "Overdue" | "Completed" | "Cancelled" {
-  if (assignment.status === "Completed" || assignment.status === "Cancelled") return assignment.status;
-  const expected = assignment.expectedReturn && !assignment.expectedReturn.startsWith("1970-01-01") ? assignment.expectedReturn.slice(0, 10) : "";
-  const today = new Date().toISOString().slice(0, 10);
-  return expected && expected < today && !assignment.returnedDate ? "Overdue" : "Active";
-}
-
-function AssignmentToolbar({ view, setView }: { view: AssignmentView; setView: (view: AssignmentView) => void }) {
-  const options: Array<[AssignmentView, string, typeof Rows3]> = [["timeline", "Timeline", Rows3], ["kanban", "Kanban", Columns3], ["calendar", "Calendar", CalendarDays], ["list", "List", List]];
-  return <div className="app-card flex flex-wrap items-center justify-between gap-3 p-3"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">View</span><div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">{options.map(([key, label, Icon]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition ${view === key ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"}`}><Icon size={15} aria-hidden="true" />{label}</button>)}</div></div>;
-}
-
-function AssignmentBoard({ records, data, view }: { records: AssignmentRecord[]; data: CanonicalAssignmentData; view: Exclude<AssignmentView, "list"> }) {
-  return <div className={`grid gap-3 ${view === "kanban" ? "md:grid-cols-3" : "md:grid-cols-2"}`}>{records.length === 0 ? <div className="app-card p-6 text-sm text-slate-500">No current Bookings.</div> : records.map((assignment) => { const equipment = data.equipment.find((item) => item.id === assignment.equipmentId); const operator = data.operators.find((item) => item.id === assignment.operatorId); const project = data.projects.find((item) => item.id === assignment.projectId); const state = assignmentViewStatus(assignment); return <article key={assignment.id} className="app-card space-y-2 p-4"><div className="flex items-start justify-between gap-3"><h3 className="font-display font-semibold">{getAssignmentNumber(assignment.id, data.assignments)}</h3><StatusBadge tone={state === "Completed" ? "success" : "neutral"} className={state === "Overdue" ? "bg-rose-100 text-rose-800" : state === "Active" ? "bg-[#f0a93a] text-[#071a33]" : ""}>{state}</StatusBadge></div><p className="font-medium">{equipment?.equipmentName ?? "—"}</p><p className="text-sm text-slate-500">{operator?.name ?? "—"} · {project?.name ?? "—"}</p><p className="text-xs text-slate-500">{displayAssignmentDate(assignment.assignedDate)} → {displayAssignmentExpectedReturn(assignment.expectedReturn)}</p></article>; })}</div>;
 }
 
 function LocalAssignments() {
