@@ -14,8 +14,16 @@ export function displayAssignmentDate(value: string | undefined): string {
 }
 
 export function getAssignmentNumber(assignmentId: string, assignments: readonly AssignmentRecord[]): string {
-  const index = assignments.findIndex((assignment) => assignment.id === assignmentId);
-  return index < 0 ? "ASN-UNAVAILABLE" : `ASN-${String(index + 1).padStart(6, "0")}`;
+  void assignments;
+  if (!assignmentId) return "ASN-UNAVAILABLE";
+
+  // Canonical legacy/UAT records may already use an authoritative ASN identity.
+  if (/^ASN-/i.test(assignmentId)) return assignmentId;
+
+  // UUID-backed canonical records have no persisted business number yet. Keep
+  // their display identity stable without changing the routing identity.
+  const stableIdentity = assignmentId.replace(/-/g, "").slice(0, 8).toUpperCase();
+  return stableIdentity ? `ASN-${stableIdentity}` : "ASN-UNAVAILABLE";
 }
 
 export function getAssignmentDisplayName(input: { assignment: AssignmentRecord; equipment?: EquipmentRecord; operator?: Operator; project?: ProjectRecord; displayName?: string }): string {
