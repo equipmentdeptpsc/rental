@@ -1,0 +1,9 @@
+import { describe, expect, it } from "vitest";
+import { filterBookingOperations, normalizeBookingOperations } from "@/features/booking/bookingOperationsPresentation";
+
+const row = (id: string, overrides: Record<string, unknown> = {}) => ({ rentalId: `r-${id}`, rentalNumber: `R-${id}`, rentalStatus: "Reserved" as const, rentalEquipmentLineId: id, equipmentId: "eq-1", equipmentAssetNumber: "EQ-1", equipmentName: "Excavator", customerName: "Customer", projectName: "Project", dateOut: "2026-09-10", expectedReturn: "2026-09-12", createdAt: "2026-09-01", ...overrides });
+describe("booking operations presentation", () => {
+  it("feeds every presentation from the same canonical normalized rows with independently accessible conflicts", () => { const result = normalizeBookingOperations([row("a"), row("b", { dateOut: "2026-09-11" })], "2026-09-16"); expect(result).toHaveLength(2); expect(result.every((item) => item.conflict)).toBe(true); expect(new Set(result.map((item) => item.rentalEquipmentLineId)).size).toBe(2); });
+  it("uses canonical interval and operational state for overdue, never marking returned bookings overdue", () => { const result = normalizeBookingOperations([row("open", { rentalStatus: "Active" }), row("returned", { rentalStatus: "Returned", actualReturn: "2026-09-11" })], "2026-09-16"); expect(result.find((item) => item.rentalEquipmentLineId === "open")?.overdue).toBe(true); expect(result.find((item) => item.rentalEquipmentLineId === "returned")?.overdue).toBe(false); });
+  it("applies shared status, equipment, and customer/project search filters", () => { const result = normalizeBookingOperations([row("a"), row("b", { equipmentId: "eq-2", customerName: "Other" })], "2026-09-01"); expect(filterBookingOperations(result, { equipmentId: "eq-2", search: "other", status: "Confirmed" })).toHaveLength(1); });
+});

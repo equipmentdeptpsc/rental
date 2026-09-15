@@ -17,6 +17,8 @@ import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { canonicalBookingStatuses, type CanonicalBookingListItem, type CanonicalBookingPage, type CanonicalBookingSearchInput, type CanonicalBookingOperationalSearchInput } from "@/features/booking/canonical";
+import CanonicalBookingOperationsWorkspace from "@/features/booking/components/CanonicalBookingOperationsWorkspace";
+import { canUseCanonicalRemoteRentalCreation } from "@/features/rental/services/rentalRuntimeCapability";
 
 export default function Assignments() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -29,13 +31,13 @@ function RemoteAssignments() {
   const state = useCanonicalAssignmentData();
   if (state.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Assignments…</div>;
   if (state.status === "error") return <div className="p-8" role="alert">{state.message}<button className="ml-3 underline" onClick={state.retry}>Retry</button></div>;
-  const canCreate = getAssignmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalAssignment)).canonicalCreation && hasPermission("assignment.create");
-  return <div className="app-page"><PageHeader title="Bookings" description="Coordinate equipment, operators, and projects across assignments and rental lines." actions={canCreate ? <Link to="/assignments/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">New Booking</Button></Link> : undefined} />{!canCreate && <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p>}{state.status === "empty" ? <div className="app-card p-10 text-center text-slate-500">No canonical Bookings found.</div> : <RemoteBookingTabs data={state.data} />}</div>;
+  const canCreate = canUseCanonicalRemoteRentalCreation(configuration) && Boolean(commandRepositories.canonicalRental) && hasPermission("rental.create");
+  return <div className="app-page"><PageHeader title="Bookings" description="Every reservation and deployment across the fleet, with conflicts and overdue returns surfaced automatically." actions={canCreate ? <Link to="/rentals/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">+ New Booking</Button></Link> : undefined} />{!canCreate && <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p>}<RemoteBookingTabs data={state.data} /></div>;
 }
 
 function RemoteBookingTabs({ data }: { data: CanonicalAssignmentData }) {
   const [tab, setTab] = useState<"assignments" | "rentals">("assignments");
-  return <div className="space-y-4"><div className="app-card flex flex-wrap gap-1 p-2" role="tablist" aria-label="Booking views"><button type="button" role="tab" aria-selected={tab === "assignments"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "assignments" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("assignments")}>Assignments</button><button type="button" role="tab" aria-selected={tab === "rentals"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "rentals" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("rentals")}>Rental Bookings</button></div>{tab === "assignments" ? <RemoteAssignmentSections data={data} /> : <RentalBookingsView />}</div>;
+  return <div className="space-y-4"><div className="app-card flex flex-wrap gap-1 p-2" role="tablist" aria-label="Booking views"><button type="button" role="tab" aria-selected={tab === "assignments"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "assignments" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("assignments")}>Assignments</button><button type="button" role="tab" aria-selected={tab === "rentals"} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === "rentals" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setTab("rentals")}>Rental Bookings</button></div>{tab === "assignments" ? <RemoteAssignmentSections data={data} /> : <CanonicalBookingOperationsWorkspace />}</div>;
 }
 
 type RentalBookingView = "list" | "calendar" | "agenda" | "operations";
@@ -47,7 +49,7 @@ const operationWindow = (horizon: OperationsHorizon) => {
   return { start, end: shiftDate(start, days) };
 };
 
-function RentalBookingsView() {
+export function RentalBookingsView() {
   const { readRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const canReadCustomer = hasPermission("customer.read"), canReadProject = hasPermission("project.read"), canReadEquipment = hasPermission("equipment.read");
