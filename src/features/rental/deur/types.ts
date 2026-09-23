@@ -113,6 +113,14 @@ export interface DeurRecord {
 
   closingMeter?: number;
 
+  /** Canonical independent meter evidence. Generic fields above are legacy aliases only. */
+  meterRequirement?: "none" | "hourMeter" | "odometer" | "both";
+  openingHourMeter?: number;
+  closingHourMeter?: number;
+  openingOdometer?: number;
+  closingOdometer?: number;
+  legacyMeterEvidenceState?: "LEGACY_AMBIGUOUS_DUAL_METER";
+
   meterReadingType?: "HOUR_METER" | "ODOMETER";
 
   totalOperatingMinutes: number;

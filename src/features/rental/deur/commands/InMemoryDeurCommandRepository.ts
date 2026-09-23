@@ -1,6 +1,7 @@
 import { applyDigitalDeurOperatorAction } from "../operator/applyDigitalDeurOperatorAction";
 import { submitDeur as applySubmission } from "../services/reviewLifecycle";
 import type { DeurRecord } from "../types";
+import { canonicalMeterEvidence } from "../services/canonicalMeterEvidence";
 import { DEUR_COMMAND_MESSAGES } from "./errorPresentation";
 import type {
   ActivityTransitionInput, CompleteDeurShiftInput, DeurCommandActor, DeurCommandFailureCode,
@@ -26,7 +27,11 @@ export class InMemoryDeurCommandRepository implements DeurCommandRepository {
       const invalid = this.validateScope(input); if (invalid) return invalid;
       const duplicate = [...this.records.values()].find(({ record }) => record.rentalEquipmentLineId === input.rentalLineId && record.workDate === input.draft.workDate && record.shift === input.draft.shift && ["Draft", "In Progress"].includes(record.status));
       if (duplicate) return failure("DUPLICATE_ACTIVE_DEUR", duplicate.record.id);
-      const at = this.now(), record: DeurRecord = structuredClone({ ...input.draft, id: input.draft.id, rentalId: input.rentalId, rentalEquipmentLineId: input.rentalLineId, equipmentId: input.equipmentId, operatorId: input.operatorId, assignmentId: input.assignmentId, status: "In Progress" as const, createdAt: at, updatedAt: at });
+      const policy=input.draft.meterRequirement ?? (input.draft.meterReadingType === "HOUR_METER" ? "hourMeter" : input.draft.meterReadingType === "ODOMETER" ? "odometer" : "none");
+      const openingHourMeter=input.draft.openingHourMeter ?? (policy === "hourMeter" ? input.draft.openingMeter : undefined);
+      const openingOdometer=input.draft.openingOdometer ?? (policy === "odometer" ? input.draft.openingMeter : undefined);
+      if ((policy === "hourMeter" && (!Number.isFinite(openingHourMeter) || openingOdometer !== undefined)) || (policy === "odometer" && (!Number.isFinite(openingOdometer) || openingHourMeter !== undefined)) || (policy === "both" && (!Number.isFinite(openingHourMeter) || !Number.isFinite(openingOdometer))) || [openingHourMeter,openingOdometer].some((value)=>value !== undefined && value < 0)) return failure("VALIDATION_REJECTED", input.draft.id);
+      const at = this.now(), record: DeurRecord = structuredClone({ ...input.draft, id: input.draft.id, rentalId: input.rentalId, rentalEquipmentLineId: input.rentalLineId, equipmentId: input.equipmentId, operatorId: input.operatorId, assignmentId: input.assignmentId, status: "In Progress" as const, createdAt: at, updatedAt: at, meterRequirement:policy, openingHourMeter, openingOdometer, openingMeter:policy === "hourMeter" ? openingHourMeter : policy === "odometer" ? openingOdometer : undefined });
       const started = applyDigitalDeurOperatorAction({ deur: record, action: "START_OPERATION", actionTimestamp: at, actor: { id: this.actor()!.userId, name: this.actor()!.userId } });
       const persisted = started.success ? started.record : record; this.records.set(persisted.id, { record: persisted, version: 1 });
       return success(persisted, 1, at);
@@ -37,11 +42,16 @@ export class InMemoryDeurCommandRepository implements DeurCommandRepository {
   completeShift(input: CompleteDeurShiftInput) {
     return this.execute("COMPLETE_SHIFT", input, () => {
       const current = this.current(input); if (!current.success) return current.result;
-      if (input.meterRequirement && input.meterRequirement !== "none" && (!Number.isFinite(input.closingMeter) || input.closingMeter! < 0)) return failure("VALIDATION_REJECTED", input.deurId);
-      const at = this.now(), completionRecord = input.closingMeter === undefined ? current.value.record : { ...current.value.record, closingMeter: input.closingMeter };
-      const applied = applyDigitalDeurOperatorAction({ deur: completionRecord, action: "END_SHIFT", actionTimestamp: at, actor: { id: this.actor()!.userId, name: this.actor()!.userId }, meterRequirement: input.meterRequirement });
+      // Legacy test/local callers may still provide a single-meter declaration;
+      // remote authority always replaces it with the frozen snapshot.
+      const policy=input.meterRequirement ?? current.value.record.meterRequirement ?? "none";
+      const closingHourMeter=input.closingHourMeter ?? (policy === "hourMeter" ? input.closingMeter : undefined);
+      const closingOdometer=input.closingOdometer ?? (policy === "odometer" ? input.closingMeter : undefined);
+      if ((policy === "hourMeter" && (!Number.isFinite(closingHourMeter) || closingOdometer !== undefined)) || (policy === "odometer" && (!Number.isFinite(closingOdometer) || closingHourMeter !== undefined)) || (policy === "both" && (!Number.isFinite(closingHourMeter) || !Number.isFinite(closingOdometer))) || (closingHourMeter !== undefined && (closingHourMeter < 0 || (current.value.record.openingHourMeter !== undefined && closingHourMeter < current.value.record.openingHourMeter))) || (closingOdometer !== undefined && (closingOdometer < 0 || (current.value.record.openingOdometer !== undefined && closingOdometer < current.value.record.openingOdometer)))) return failure("VALIDATION_REJECTED", input.deurId);
+      const at = this.now(), completionRecord: DeurRecord = { ...current.value.record, meterRequirement:policy, closingHourMeter, closingOdometer, closingMeter:policy === "hourMeter" ? closingHourMeter : policy === "odometer" ? closingOdometer : undefined };
+      const applied = applyDigitalDeurOperatorAction({ deur: completionRecord, action: "END_SHIFT", actionTimestamp: at, actor: { id: this.actor()!.userId, name: this.actor()!.userId }, meterRequirement: policy });
       if (!applied.success) return failure("INVALID_TRANSITION", input.deurId);
-      const record = { ...applied.record, updatedAt: at, ...(input.closingMeter === undefined ? {} : { closingMeter: input.closingMeter }) };
+      const record = { ...applied.record, ...canonicalMeterEvidence(completionRecord), updatedAt: at };
       return this.persist(record, current.value.version + 1, at);
     });
   }

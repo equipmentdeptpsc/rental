@@ -38,6 +38,10 @@ export interface CustomerReviewBatchItemSnapshot {
   breakdownMinutes?: number;
   openingMeter?: number;
   closingMeter?: number;
+  meterRequirement?: "none" | "hourMeter" | "odometer" | "both";
+  openingHourMeter?: number; closingHourMeter?: number;
+  openingOdometer?: number; closingOdometer?: number;
+  legacyMeterEvidenceState?: "LEGACY_AMBIGUOUS_DUAL_METER";
   timeline?: readonly PublicReviewTimelineEntry[];
   reviewState: CustomerReviewBatchItemState;
 }
