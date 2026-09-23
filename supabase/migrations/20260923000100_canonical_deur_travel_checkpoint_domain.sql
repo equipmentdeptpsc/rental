@@ -122,7 +122,7 @@ BEGIN
     SELECT checkpoint.sequence_no,jsonb_build_object('checkpointId',checkpoint.id,'sequence',checkpoint.sequence_no,
       'displayLabel','Point '||checkpoint.sequence_no,'odometer',checkpoint.reading,'clientOccurredAt',checkpoint.client_occurred_at,
       'serverAcceptedAt',checkpoint.server_accepted_at,'locationName',checkpoint.location_name,
-      'latitude',checkpoint.location->>'latitude','longitude',checkpoint.location->>'longitude,
+      'latitude',checkpoint.location->>'latitude','longitude',checkpoint.location->>'longitude',
       'distanceFromPrevious',checkpoint.reading-coalesce(lag(checkpoint.reading) over (ORDER BY checkpoint.sequence_no),
         CASE WHEN (SELECT operational_metadata#>>'{deurExpectationSnapshot,meterRequirement}' FROM erp.rental_equipment_lines WHERE id=target.rental_equipment_line_id)='odometer' THEN coalesce(target.opening_odometer,target.opening_meter) ELSE target.opening_odometer END),
       'custodianOperatorId',checkpoint.custodian_operator_id,'source','TRAVEL_ODOMETER') AS payload

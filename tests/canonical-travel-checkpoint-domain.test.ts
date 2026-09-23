@@ -19,6 +19,7 @@ describe("canonical travel checkpoint domain migration", () => {
 
   it("exposes an ordered authorized read model with derived, non-persisted distance", () => {
     for (const marker of ["erp.read_deur_travel_checkpoint_history", "jsonb_agg(history.payload ORDER BY history.sequence_no)", "lag(checkpoint.reading)", "distanceFromPrevious", "OWNERSHIP_MISMATCH", "current_user_has_any_read_permission"]) expect(sql).toContain(marker);
+    expect(sql).toContain("checkpoint.location->>'longitude'");
     expect(sql).not.toMatch(/\b(?:INSERT|UPDATE)\s+erp\.equipment_history\b/i);
   });
 });
