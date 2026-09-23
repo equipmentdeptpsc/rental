@@ -114,7 +114,11 @@ BEGIN
   IF actor.operator_id IS NOT NULL AND erp.current_deur_authorized_operator(target.id) IS DISTINCT FROM actor.operator_id THEN
     RETURN jsonb_build_object('success',false,'code','OWNERSHIP_MISMATCH');
   END IF;
-  IF actor.operator_id IS NULL AND NOT erp.current_user_has_any_read_permission(ARRAY['deur.read','deur.review','deur.acknowledge']) THEN
+  IF actor.operator_id IS NULL AND NOT (
+    erp.current_user_has_permission('deur.read')
+    OR erp.current_user_has_permission('deur.review')
+    OR erp.current_user_has_permission('deur.acknowledge')
+  ) THEN
     RETURN jsonb_build_object('success',false,'code','FORBIDDEN');
   END IF;
   SELECT coalesce(jsonb_agg(history.payload ORDER BY history.sequence_no),'[]'::jsonb) INTO checkpoints
