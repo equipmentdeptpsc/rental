@@ -54,6 +54,7 @@ interface RentalWorkspaceContextValue {
     costCodes: CanonicalReferenceCode[];
     activityCodes: CanonicalReferenceCode[];
     workDescriptions: WorkDescriptionRecord[];
+    customers: import("@/features/customer/types").CustomerRecord[];
     equipment: EquipmentRecord[];
     operators: Operator[];
     assignments: AssignmentRecord[];
@@ -229,7 +230,7 @@ export default function RentalWorkspaceProvider({
       value={{
         aggregate,
         billingStatements: remote ? remoteStatements : billingStatementRepository.getByRentalId(rentalId),
-        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, equipment: equipmentRecords, operators, assignments },
+        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, customers: list.data.customers, equipment: equipmentRecords, operators, assignments },
       }}
     >
       {children}
