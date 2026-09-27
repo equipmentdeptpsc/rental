@@ -30,10 +30,14 @@ import {
   import { createCustomerReviewRequestForSubmittedDeur } from "@/features/rental/customer-review/createCustomerReviewRequestForSubmittedDeur";
   import { useAuth } from "@/features/auth/AuthContext";
   import { rentalAuditRepository } from "@/features/rental/audit/rentalAuditRepository";
-  import RentalLineOperationsGrid from "./RentalLineOperationsGrid";
+import RentalLineOperationsGrid from "./RentalLineOperationsGrid";
+import RemoteManualDeurAction from "./RemoteManualDeurAction";
+import RemoteManualDeurWorkspace from "./RemoteManualDeurWorkspace";
+import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/composition";
   
   export default function DeurPanel() {
     const aggregate = useRentalWorkspaceAggregate();
+    const dependencies=useApplicationDependenciesCompatibility();
     const {equipment,operators}=useRentalWorkspacePresentationData(); const {user}=useAuth(); const [reviewMessage,setReviewMessage]=useState("");
     const summary =
       useDailyOperations();
@@ -81,7 +85,7 @@ import {
     if (aggregate.rentalEquipmentLines.length > 1) {
       return <div className="space-y-6">
         <RentalLineOperationsGrid aggregate={aggregate} equipment={equipment} operators={operators} evaluatedAt={evaluatedAt.toISOString()} />
-        {operationalOpen && <><CreateDeurAction /><ManualDeurAction /><ManualOdometerDeurAction /></>}
+        {operationalOpen && <>{dependencies.configuration.persistenceMode===PersistenceMode.Remote?<RemoteManualDeurAction />:<><CreateDeurAction /><ManualDeurAction /><ManualOdometerDeurAction /></>}</>}
         <p className="rounded border bg-slate-50 p-3 text-sm text-slate-600">Open a specific Equipment Line to continue its DEUR, customer-review, correction, and submission workflow. No combined Rental-level DEUR is selected.</p>
       </div>;
     }
@@ -96,8 +100,9 @@ import {
         </div>
 
         {previewRecord && presentation && <p className="rounded border bg-white p-3 text-xs text-slate-600">Equipment: {presentation.equipment} · Line: {presentation.line} · Operator: {presentation.operator} · DEUR: {previewRecord.deurNumber ?? "Number unavailable"} · Work Date: {previewRecord.workDate}{previewRecord.shift ? ` · ${previewRecord.shift}` : ""} · Status: {previewRecord.status}</p>}
-        {operationalOpen && <><CreateDeurAction /><ManualDeurAction /><ManualOdometerDeurAction /></>}
+        {operationalOpen && <>{dependencies.configuration.persistenceMode===PersistenceMode.Remote?<RemoteManualDeurAction />:<><CreateDeurAction /><ManualDeurAction /><ManualOdometerDeurAction /></>}</>}
         {operationalOpen && previewRecord && <CreateDeurCorrectionAction deur={previewRecord} />}
+        {previewRecord?.creationSource === "MANUAL_WEB" && <RemoteManualDeurWorkspace deur={previewRecord} />}
         {previewRecord?.status === "Submitted" && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4"><p className="font-semibold">Awaiting Customer review</p><p className="text-sm text-amber-900">A Customer acknowledgement is required before Billing.</p>{!developmentCustomerReviewOutbox.getAll().some(item=>item.deurId===previewRecord.id&&item.revisionNumber===(previewRecord.revision?.revisionNumber??1))&&<button className="mt-3 rounded bg-amber-700 px-4 py-2 font-medium text-white" onClick={sendReview}>Generate Missing Acknowledgement Request</button>}{reviewMessage&&<p className="mt-2 text-sm">{reviewMessage}</p>}</div>}
   
         {timelineMode && <OperationSummaryCard

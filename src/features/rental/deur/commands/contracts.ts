@@ -36,6 +36,14 @@ export interface DeurCommandRepository {
   submitDeur(input: SubmitDeurInput): Promise<DeurLifecycleCommandResult>;
 }
 
+export interface ManualDeurCreateInput { commandId: string; idempotencyKey: string; rentalLineId: string; reason: string; notes?: string; physicalDeurReference?: string; openingHourMeter?: number; openingOdometer?: number; shift?: string; operationalRemarks?: string; clientCreatedAt?: string; deviceId?: string }
+export interface ManualDeurVersionedInput { commandId: string; idempotencyKey: string; deurId: string; expectedVersion: number }
+export interface ManualDeurActivityInput extends ManualDeurVersionedInput { action: "START_OPERATION" | "RESUME_OPERATION" | "START_IDLE" | "START_MEAL_BREAK" | "START_BREAKDOWN" | "END_ACTIVITY"; clientOccurredAt?: string; clientCreatedAt?: string; deviceId?: string }
+export interface ManualDeurTravelInput extends ManualDeurVersionedInput { odometer: number; locationName?: string; latitude?: number; longitude?: number; clientOccurredAt?: string }
+export interface ManualDeurRefuelInput extends ManualDeurVersionedInput { odometer: number; liters: number; locationName?: string; clientOccurredAt?: string }
+export interface ManualDeurCompleteInput extends ManualDeurVersionedInput { closingHourMeter?: number; closingOdometer?: number; clientOccurredAt?: string; clientCreatedAt?: string; deviceId?: string }
+export interface ManualDeurCommandRepository { createManualDeur(input: ManualDeurCreateInput): Promise<DeurLifecycleCommandResult>; recordManualActivity(input: ManualDeurActivityInput): Promise<DeurLifecycleCommandResult>; recordManualTravel(input: ManualDeurTravelInput): Promise<DeurLifecycleCommandResult>; recordManualRefuel(input: ManualDeurRefuelInput): Promise<DeurLifecycleCommandResult>; completeManualShift(input: ManualDeurCompleteInput): Promise<DeurLifecycleCommandResult>; submitManualDeur(input: ManualDeurVersionedInput): Promise<DeurLifecycleCommandResult> }
+
 export interface DeurCommandActor {
   userId: string; operatorId?: string; permissions: readonly string[]; status: "active" | "inactive";
 }

@@ -167,7 +167,7 @@ export interface DeurRecord {
   updatedAt: string;
 }
 
-export type DeurCreationSource = "OPERATOR_DIGITAL" | "RENTAL_COMPANY_MANUAL";
+export type DeurCreationSource = "OPERATOR_DIGITAL" | "RENTAL_COMPANY_MANUAL" | "MANUAL_WEB";
 export type DeurCorrectionReasonCode="INCORRECT_TIME_ENTRY"|"MISSING_TIME_ENTRY"|"INCORRECT_ACTIVITY"|"INCORRECT_WORK_DESCRIPTION"|"INCORRECT_COST_CODE"|"INCORRECT_ODOMETER"|"INCORRECT_TRIP_CHECKPOINT"|"INCORRECT_QUANTITY"|"INCORRECT_OPERATOR"|"INCORRECT_PROJECT"|"INCORRECT_EQUIPMENT"|"INCORRECT_COMMERCIAL_REFERENCE"|"CUSTOMER_REQUESTED_CORRECTION"|"DATA_ENCODING_ERROR"|"OTHER";
 export interface DeurRevisionMetadata{chainId:string;revisionNumber:number;originalDeurId:string;previousRevisionId?:string;correctionReasonCode?:DeurCorrectionReasonCode;correctionReasonDetails?:string;correctedByName?:string;correctedByUserId?:string;correctedAt?:string;supersedesRevisionId?:string;supersededByRevisionId?:string;supersededAt?:string;supersededByName?:string}
 export type DeurEvidenceMode = "TIME_TIMELINE" | "ODOMETER_TRIP" | "QUANTITY" | "COMPLETION";

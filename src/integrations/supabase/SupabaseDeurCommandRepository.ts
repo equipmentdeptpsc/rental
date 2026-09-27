@@ -1,18 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DeurCommandRepository, DeurLifecycleCommandResult, StartDeurShiftInput, ActivityTransitionInput, CompleteDeurShiftInput, SubmitDeurInput } from "@/features/rental/deur/commands/contracts";
+import type { DeurCommandRepository, ManualDeurCommandRepository, DeurLifecycleCommandResult, StartDeurShiftInput, ActivityTransitionInput, CompleteDeurShiftInput, SubmitDeurInput, ManualDeurCreateInput, ManualDeurActivityInput, ManualDeurTravelInput, ManualDeurRefuelInput, ManualDeurCompleteInput, ManualDeurVersionedInput } from "@/features/rental/deur/commands/contracts";
 import { DEUR_COMMAND_MESSAGES } from "@/features/rental/deur/commands/errorPresentation";
 import { mapCanonicalRow } from "./SupabaseReadRepository";
 import type { ReadOnlyRepository } from "@/core/remote";
 import type { DeurRecord } from "@/features/rental/deur/types";
 
-type RpcName = "command_start_deur_shift" | "command_transition_deur_activity" | "command_complete_deur_shift" | "command_submit_deur";
-export class SupabaseDeurCommandRepository implements DeurCommandRepository {
+type RpcName = "command_start_deur_shift" | "command_transition_deur_activity" | "command_complete_deur_shift" | "command_submit_deur" | "command_create_manual_deur" | "command_record_manual_deur_activity" | "command_record_manual_deur_travel_checkpoint" | "command_record_manual_deur_refuel" | "command_complete_manual_deur_shift" | "command_submit_manual_deur";
+export class SupabaseDeurCommandRepository implements DeurCommandRepository, ManualDeurCommandRepository {
   constructor(private readonly client: SupabaseClient, private readonly deurs?: ReadOnlyRepository<DeurRecord>) {}
   startShift(input: StartDeurShiftInput) { return this.execute("command_start_deur_shift", input); }
   startOrChangeActivity(input: ActivityTransitionInput) { return this.execute("command_transition_deur_activity", input); }
   stopCurrentActivity(input: ActivityTransitionInput) { return this.execute("command_transition_deur_activity", { ...input, action: "END_ACTIVITY" }); }
   completeShift(input: CompleteDeurShiftInput) { return this.execute("command_complete_deur_shift", input); }
   submitDeur(input: SubmitDeurInput) { return this.execute("command_submit_deur", input); }
+  createManualDeur(input: ManualDeurCreateInput) { return this.execute("command_create_manual_deur", input); }
+  recordManualActivity(input: ManualDeurActivityInput) { return this.execute("command_record_manual_deur_activity", input); }
+  recordManualTravel(input: ManualDeurTravelInput) { return this.execute("command_record_manual_deur_travel_checkpoint", input); }
+  recordManualRefuel(input: ManualDeurRefuelInput) { return this.execute("command_record_manual_deur_refuel", input); }
+  completeManualShift(input: ManualDeurCompleteInput) { return this.execute("command_complete_manual_deur_shift", input); }
+  submitManualDeur(input: ManualDeurVersionedInput) { return this.execute("command_submit_manual_deur", input); }
   private async execute(name: RpcName, input: unknown): Promise<DeurLifecycleCommandResult> {
     try {
       const response = await this.client.schema("erp").rpc(name, { command: input });
