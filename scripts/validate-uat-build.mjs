@@ -1,17 +1,22 @@
 const expectedProjectRef = "jtkctarqbwmqdcewthkn";
 const required = ["VITE_SUPABASE_URL"];
-const expectedFlags = {
-  VITE_PERSISTENCE_MODE: "remote",
-  VITE_REMOTE_RENTAL_CREATE_ENABLED: "true",
-  VITE_REMOTE_RENTAL_CANCEL_ENABLED: "true",
-  VITE_REMOTE_ASSIGNMENT_CREATE_ENABLED: "true",
-  VITE_REMOTE_ASSIGNMENT_CANCEL_ENABLED: "true",
-  VITE_REMOTE_OPERATOR_CREATE_ENABLED: "true",
-  VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "false",
+const profile = process.env.UAT_BUILD_PROFILE?.trim() || "manual-deur";
+const profileRequirements = {
+  "manual-deur": {
+    VITE_PERSISTENCE_MODE: "remote",
+    VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "false",
+    VITE_REMOTE_MANUAL_DEUR_CREATE_ENABLED: "true",
+    VITE_REMOTE_MANUAL_DEUR_RECORD_ENABLED: "true",
+  },
 };
+const expectedFlags = profileRequirements[profile];
 const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.SUPABASE_PUBLISHABLE_KEY?.trim();
 const supportedPublishableKey = /^(?:sb_publishable_[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.test(publishableKey ?? "");
 const missing = required.filter((key) => !process.env[key]?.trim());
+if (!expectedFlags) {
+  console.error(`UAT build configuration invalid: unsupported UAT_BUILD_PROFILE ${profile}.`);
+  process.exit(1);
+}
 const invalidFlags = Object.entries(expectedFlags).filter(([key, expected]) => process.env[key] !== expected);
 if (!publishableKey) missing.push("VITE_SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEY");
 else if (!supportedPublishableKey) missing.push("a supported Supabase publishable-key shape");
