@@ -33,6 +33,7 @@ import {
 import RentalLineOperationsGrid from "./RentalLineOperationsGrid";
 import RemoteManualDeurAction from "./RemoteManualDeurAction";
 import RemoteManualDeurWorkspace from "./RemoteManualDeurWorkspace";
+import SubmitDeurCorrectionAction from "./SubmitDeurCorrectionAction";
 import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/composition";
   
   export default function DeurPanel() {
@@ -84,7 +85,7 @@ import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/
 
     if (aggregate.rentalEquipmentLines.length > 1) {
       return <div className="space-y-6">
-        <RentalLineOperationsGrid aggregate={aggregate} equipment={equipment} operators={operators} evaluatedAt={evaluatedAt.toISOString()} renderSelectedDeurAction={(deur) => operationalOpen ? <CreateDeurCorrectionAction deur={deur} /> : undefined} />
+        <RentalLineOperationsGrid aggregate={aggregate} equipment={equipment} operators={operators} evaluatedAt={evaluatedAt.toISOString()} renderSelectedDeurAction={(deur) => operationalOpen ? <>{<CreateDeurCorrectionAction deur={deur} />}<SubmitDeurCorrectionAction deur={deur} /></> : undefined} />
         {operationalOpen && <>{dependencies.configuration.persistenceMode===PersistenceMode.Remote?<RemoteManualDeurAction />:<><CreateDeurAction /><ManualDeurAction /><ManualOdometerDeurAction /></>}</>}
         <p className="rounded border bg-slate-50 p-3 text-sm text-slate-600">Open a specific Equipment Line to continue its DEUR, customer-review, correction, and submission workflow. No combined Rental-level DEUR is selected.</p>
       </div>;
