@@ -21,6 +21,12 @@ export const DEUR_COMMAND_MESSAGES: Readonly<Record<DeurCommandFailureCode, stri
   CONFLICT: "The shift was updated from another session. Refreshing the latest record.",
   NOT_FOUND: "The requested shift could not be found.",
   VALIDATION_REJECTED: "The shift information is incomplete or invalid.",
+  PHYSICAL_ACTIVITY_INCOMPLETE: "The corrected DEUR still has an incomplete physical activity interval.",
+  PHYSICAL_ACTIVITY_OVERLAP: "The corrected DEUR has overlapping physical activity intervals.",
+  PHYSICAL_ACTIVITY_MISMATCH: "The corrected DEUR has mismatched physical activity boundaries.",
+  PHYSICAL_SHIFT_END_REQUIRED: "The corrected DEUR requires one physical shift-end event.",
+  PHYSICAL_METER_ROLLBACK: "The corrected DEUR has a physical meter rollback.",
+  PHYSICAL_CLOSING_METER_REQUIRED: "The corrected DEUR requires a physical closing meter.",
   TRANSPORT_FAILURE: "The command could not reach the server. No confirmation was received.",
   PERSISTENCE_FAILURE: "The server could not persist this command.",
 };
