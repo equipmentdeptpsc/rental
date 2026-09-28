@@ -22,7 +22,7 @@ export interface OperationalCommandMetadata {
 
 export type OperationalCommandResult<T> =
   | { success: true; disposition: "ACCEPTED" | "REPLAYED" | "ALREADY_COMPLETED"; value: T; serverOccurredAt: string; refresh: readonly string[] }
-  | { success: false; code: OperationalCommandFailureCode; message: string; retryable: boolean; refreshRequired: boolean; currentVersion?: number };
+  | { success: false; code: OperationalCommandFailureCode | (string & {}); message: string; retryable: boolean; refreshRequired: boolean; currentVersion?: number; details?: unknown };
 
 export interface CreateCustomerReviewRequestInput extends OperationalCommandMetadata {
   deurId: string; rentalLineId: string; revisionId: string;
