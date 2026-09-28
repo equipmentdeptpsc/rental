@@ -7,7 +7,7 @@ import type { Operator } from "@/features/operators/types";
 import type { CustomerRecord } from "@/features/customer/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
-import type { CanonicalDeurEvent, DeurRecord } from "@/features/rental/deur/types";
+import type { CanonicalDeurEvent, DeurRecord, DeurRevisionMetadata } from "@/features/rental/deur/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
 import type { CanonicalAuditEvent } from "@/features/administration/domain/canonicalAudit";
@@ -63,7 +63,32 @@ export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurReco
     return [{ id:event.id, activityType:event.activity_type as CanonicalDeurEvent["activityType"], action:event.action as CanonicalDeurEvent["action"], timestamp:event.occurred_at, sequence:event.sequence, source:event.source === "legacy" ? "legacy" : event.source === "automatic" ? "automatic" : "user", actorId:typeof event.actor_id === "string" ? event.actor_id : undefined, deurId:typeof event.deur_id === "string" ? event.deur_id : undefined, idleReasonId:typeof event.idle_reason_id === "string" ? event.idle_reason_id : undefined, idleReasonLabelSnapshot:typeof event.idle_reason_label_snapshot === "string" ? event.idle_reason_label_snapshot : undefined, idleReasonRemarks:typeof event.idle_reason_remarks === "string" ? event.idle_reason_remarks : undefined }];
   }).sort((left,right)=>left.sequence-right.sequence);
   const logs = Array.isArray(base.value.logs) ? base.value.logs : [];
-  return repositorySuccess({ ...base.value, events, logs } as unknown as DeurRecord);
+  const value = base.value;
+  const existingRevision = value.revision && typeof value.revision === "object" && !Array.isArray(value.revision)
+    ? value.revision as DeurRevisionMetadata
+    : undefined;
+  const revision = existingRevision ?? (
+    typeof value.revisionChainId === "string" &&
+    typeof value.revisionNumber === "number" &&
+    typeof value.originalDeurId === "string"
+      ? {
+          chainId: value.revisionChainId,
+          revisionNumber: value.revisionNumber,
+          originalDeurId: value.originalDeurId,
+          ...(typeof value.previousRevisionId === "string" ? { previousRevisionId: value.previousRevisionId } : {}),
+          ...(typeof value.correctionReasonCode === "string" ? { correctionReasonCode: value.correctionReasonCode as DeurRevisionMetadata["correctionReasonCode"] } : {}),
+          ...(typeof value.correctionReasonDetails === "string" ? { correctionReasonDetails: value.correctionReasonDetails } : {}),
+          ...(typeof value.correctedByName === "string" ? { correctedByName: value.correctedByName } : {}),
+          ...(typeof value.correctedByUserId === "string" ? { correctedByUserId: value.correctedByUserId } : {}),
+          ...(typeof value.correctedAt === "string" ? { correctedAt: value.correctedAt } : {}),
+          ...(typeof value.supersedesRevisionId === "string" ? { supersedesRevisionId: value.supersedesRevisionId } : {}),
+          ...(typeof value.supersededByRevisionId === "string" ? { supersededByRevisionId: value.supersededByRevisionId } : {}),
+          ...(typeof value.supersededAt === "string" ? { supersededAt: value.supersededAt } : {}),
+          ...(typeof value.supersededByName === "string" ? { supersededByName: value.supersededByName } : {}),
+        } satisfies DeurRevisionMetadata
+      : undefined
+  );
+  return repositorySuccess({ ...value, ...(revision ? { revision } : {}), events, logs } as unknown as DeurRecord);
 }
 export function mapBillingStatement(row: Record<string, unknown>): RepositoryResult<BillingStatement> {
   const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const action = readFileSync(resolve(process.cwd(), "src/features/rental/workspace/deur/SubmitDeurCorrectionAction.tsx"), "utf8");
 const panel = readFileSync(resolve(process.cwd(), "src/features/rental/workspace/deur/DeurPanel.tsx"), "utf8");
+const readRepositories = readFileSync(resolve(process.cwd(), "src/integrations/supabase/readRepositories.ts"), "utf8");
 
 describe("hosted correction resubmission action", () => {
   it("submits only an existing manual correction revision", () => {
@@ -23,5 +24,13 @@ describe("hosted correction resubmission action", () => {
   it("exposes the action in the multi-line selected equipment workflow", () => {
     expect(panel).toContain("SubmitDeurCorrectionAction");
     expect(panel).toContain("renderSelectedDeurAction");
+  });
+
+  it("maps canonical revision lineage into the remote DEUR read model", () => {
+    expect(readRepositories).toContain("value.revisionChainId");
+    expect(readRepositories).toContain("value.revisionNumber");
+    expect(readRepositories).toContain("value.originalDeurId");
+    expect(readRepositories).toContain("value.previousRevisionId");
+    expect(readRepositories).toContain("...(revision ? { revision } : {})");
   });
 });
