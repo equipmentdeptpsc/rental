@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 const guard = path.resolve("scripts/validate-uat-build.mjs");
-const base = { UAT_BUILD_PROFILE: "manual-deur", VITE_PERSISTENCE_MODE: "remote", VITE_SUPABASE_URL: "https://jtkctarqbwmqdcewthkn.supabase.co", VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_12345678901234567890", VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "false", VITE_REMOTE_MANUAL_DEUR_CREATE_ENABLED: "true", VITE_REMOTE_MANUAL_DEUR_RECORD_ENABLED: "true", VITE_REMOTE_RENTAL_CREATE_ENABLED: "false", VITE_REMOTE_RENTAL_CANCEL_ENABLED: "false", VITE_REMOTE_ASSIGNMENT_CREATE_ENABLED: "false", VITE_REMOTE_ASSIGNMENT_CANCEL_ENABLED: "false", VITE_REMOTE_OPERATOR_CREATE_ENABLED: "false" };
+const base = { UAT_BUILD_PROFILE: "manual-deur", VITE_PERSISTENCE_MODE: "remote", VITE_SUPABASE_URL: "https://jtkctarqbwmqdcewthkn.supabase.co", VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_12345678901234567890", VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "false", VITE_REMOTE_MANUAL_DEUR_CREATE_ENABLED: "true", VITE_REMOTE_MANUAL_DEUR_RECORD_ENABLED: "true", VITE_REMOTE_DEUR_CORRECTION_ENABLED: "true", VITE_REMOTE_RENTAL_CREATE_ENABLED: "false", VITE_REMOTE_RENTAL_CANCEL_ENABLED: "false", VITE_REMOTE_ASSIGNMENT_CREATE_ENABLED: "false", VITE_REMOTE_ASSIGNMENT_CANCEL_ENABLED: "false", VITE_REMOTE_OPERATOR_CREATE_ENABLED: "false" };
 
 describe("UAT build configuration guard", () => {
   it("accepts the alternate process key name", () => {
@@ -14,12 +14,13 @@ describe("UAT build configuration guard", () => {
     expect(() => execFileSync(process.execPath, [guard], { env: { ...process.env, ...base }, stdio: "pipe" })).not.toThrow();
   });
   it.each([
-    ["missing key", { VITE_SUPABASE_PUBLISHABLE_KEY: "" }],
+    ["missing key", { VITE_SUPABASE_PUBLISHABLE_KEY: "", SUPABASE_PUBLISHABLE_KEY: "" }],
     ["invalid key shape", { VITE_SUPABASE_PUBLISHABLE_KEY: "\u0016" }],
     ["wrong URL", { VITE_SUPABASE_URL: "https://other.supabase.co" }],
     ["non-remote mode", { VITE_PERSISTENCE_MODE: "local" }],
     ["manual DEUR create disabled", { VITE_REMOTE_MANUAL_DEUR_CREATE_ENABLED: "false" }],
     ["manual DEUR record disabled", { VITE_REMOTE_MANUAL_DEUR_RECORD_ENABLED: "false" }],
+    ["DEUR correction disabled", { VITE_REMOTE_DEUR_CORRECTION_ENABLED: "false" }],
     ["unsupported profile", { UAT_BUILD_PROFILE: "unknown" }],
     ["broad writes enabled", { VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "true" }],
   ])("fails closed for %s", (_label, override) => {

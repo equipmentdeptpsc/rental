@@ -7,6 +7,7 @@ const profileRequirements = {
     VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "false",
     VITE_REMOTE_MANUAL_DEUR_CREATE_ENABLED: "true",
     VITE_REMOTE_MANUAL_DEUR_RECORD_ENABLED: "true",
+    VITE_REMOTE_DEUR_CORRECTION_ENABLED: "true",
   },
 };
 const expectedFlags = profileRequirements[profile];
