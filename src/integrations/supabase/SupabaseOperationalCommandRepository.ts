@@ -20,6 +20,42 @@ import { isOperationalCommandResult } from "@/features/rental/operations/command
 
 interface RpcClient { schema(name: string): { rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string } | null }> } }
 
+const correctionFailureMessages: Record<string, string> = {
+  FORBIDDEN: "You do not have permission to create a DEUR correction.",
+  VALIDATION_REJECTED: "The DEUR correction request is incomplete or invalid.",
+  NOT_FOUND: "The source DEUR is unavailable.",
+  CONFLICT: "The source DEUR changed. Refresh before retrying.",
+  INVALID_TRANSITION: "The DEUR cannot be corrected in its current state.",
+  IDEMPOTENCY_MISMATCH: "This correction request conflicts with an earlier submission.",
+};
+
+function safeCorrectionDetails(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const allowed = new Set(["reason", "validationCode", "phase", "field", "value", "constraint", "sqlstate", "schema", "table"]);
+  const details: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (!allowed.has(key) || (typeof item !== "string" && typeof item !== "number" && typeof item !== "boolean" && item !== null)) continue;
+    details[key] = item;
+  }
+  return Object.keys(details).length ? details : undefined;
+}
+
+function normalizeCorrectionResponse(data: unknown): unknown {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const source = data as Record<string, unknown>;
+  if (source.success !== false || typeof source.code !== "string") return data;
+  const normalized: Record<string, unknown> = {
+    ...source,
+    message: typeof source.message === "string" ? source.message : correctionFailureMessages[source.code] ?? "The DEUR correction was rejected.",
+    retryable: typeof source.retryable === "boolean" ? source.retryable : false,
+    refreshRequired: typeof source.refreshRequired === "boolean" ? source.refreshRequired : source.code === "CONFLICT",
+  };
+  const details = safeCorrectionDetails(source.details);
+  if (details) normalized.details = details;
+  else delete normalized.details;
+  return normalized;
+}
+
 type Repository = CustomerReviewCommandRepository & DeurRevisionCommandRepository &
   MeterCheckpointCommandRepository & RentalReturnCommandRepository & RentalClosureCommandRepository &
   RentalLifecycleCommandRepository & BillingFinancialCommandRepository & RecoveryCommandRepository;
@@ -54,7 +90,7 @@ export class SupabaseOperationalCommandRepository implements Repository {
   createRequest = (input: CreateCustomerReviewRequestInput) => this.rpc<CustomerReviewRequestResult>("command_create_customer_review_request", input);
   acknowledge = (input: PublicReviewDecisionInput) => this.rpc<PublicReviewConfirmation>("public_acknowledge_customer_review", input);
   reject = (input: PublicReviewDecisionInput & { comment: string }) => this.rpc<PublicReviewConfirmation>("public_reject_customer_review", input);
-  createCorrection = (input: CreateDeurRevisionInput) => this.rpc<DeurRevisionResult>("command_create_deur_correction", input);
+  createCorrection = (input: CreateDeurRevisionInput) => this.rpc<DeurRevisionResult>("command_create_deur_correction", input, normalizeCorrectionResponse);
   record = (input: RecordMeterCheckpointInput) => this.rpc<MeterCheckpointResult>("command_record_meter_checkpoint", input);
   returnLine = (input: ReturnRentalLineInput) => this.rpc<RentalLineReturnProjection>("command_return_rental_line", input);
   reserveLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_reserve_rental_line", input);
