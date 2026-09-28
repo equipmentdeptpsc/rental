@@ -90,7 +90,7 @@ export function normalizeDeur(record: DeurRecord): DeurRecord {
     shift: record.shift === "Day" || record.shift === "Night" ? record.shift : undefined,
     operationalMetadata: normalizeOperationalMetadata(record.operationalMetadata),
     operationalRemarks: typeof record.operationalRemarks === "string" && record.operationalRemarks.trim() ? record.operationalRemarks.trim() : undefined,
-    creationSource: record.creationSource === "OPERATOR_DIGITAL" || record.creationSource === "RENTAL_COMPANY_MANUAL" ? record.creationSource : undefined,
+    creationSource: record.creationSource === "OPERATOR_DIGITAL" || record.creationSource === "RENTAL_COMPANY_MANUAL" || record.creationSource === "MANUAL_WEB" ? record.creationSource : undefined,
     manualMetadata: record.creationSource === "RENTAL_COMPANY_MANUAL" ? normalizeManualMetadata(record.manualMetadata) : undefined,
     evidenceMode: ["TIME_TIMELINE","ODOMETER_TRIP","QUANTITY","COMPLETION"].includes(String(record.evidenceMode)) ? record.evidenceMode : undefined,
     billingMethodSnapshot: typeof record.billingMethodSnapshot==="string"&&record.billingMethodSnapshot.trim()?record.billingMethodSnapshot.trim():undefined,

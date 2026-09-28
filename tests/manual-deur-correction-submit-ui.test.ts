@@ -15,6 +15,11 @@ describe("hosted correction resubmission action", () => {
     expect(action).not.toContain("createCorrection");
   });
 
+  it("preserves the MANUAL_WEB source required by the hosted workspace", () => {
+    const canonical = readFileSync(resolve(process.cwd(), "src/features/rental/deur/services/canonicalDeur.ts"), "utf8");
+    expect(canonical).toContain('record.creationSource === "MANUAL_WEB"');
+  });
+
   it("exposes the action in the multi-line selected equipment workflow", () => {
     expect(panel).toContain("SubmitDeurCorrectionAction");
     expect(panel).toContain("renderSelectedDeurAction");
