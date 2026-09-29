@@ -42,7 +42,7 @@ function mapResult(value: unknown): DeurLifecycleCommandResult {
   const code = rawCode && rawCode in DEUR_COMMAND_MESSAGES ? rawCode as keyof typeof DEUR_COMMAND_MESSAGES : "VALIDATION_REJECTED";
   const serverMessage = safeDiagnosticMessage(result.message);
   const details = safeDetails(result.details);
-  return { success: false, code, message: serverMessage ?? DEUR_COMMAND_MESSAGES[code], retryable: result.retryable === true, refreshRequired: result.refreshRequired === true, aggregateId: string(result.aggregateId), expectedVersion: number(result.expectedVersion), currentVersion: number(result.currentVersion), ...(rawCode && rawCode !== code ? { canonicalCode: rawCode } : {}), ...(details ? { details } : {}) };
+  return { success: false, code, message: serverMessage ?? (rawCode && rawCode !== code ? rawCode : DEUR_COMMAND_MESSAGES[code]), retryable: result.retryable === true, refreshRequired: result.refreshRequired === true, aggregateId: string(result.aggregateId), expectedVersion: number(result.expectedVersion), currentVersion: number(result.currentVersion), ...(rawCode && rawCode !== code ? { canonicalCode: rawCode } : {}), ...(details ? { details } : {}) };
 }
 function transportFailure(cause: unknown): DeurLifecycleCommandResult { return { success: false, code: "TRANSPORT_FAILURE", message: DEUR_COMMAND_MESSAGES.TRANSPORT_FAILURE, retryable: true, refreshRequired: false, ...(cause ? {} : {}) }; }
 function persistenceFailure(): DeurLifecycleCommandResult { return { success: false, code: "PERSISTENCE_FAILURE", message: DEUR_COMMAND_MESSAGES.PERSISTENCE_FAILURE, retryable: false, refreshRequired: false }; }

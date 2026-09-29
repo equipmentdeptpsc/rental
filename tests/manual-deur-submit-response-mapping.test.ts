@@ -28,6 +28,12 @@ describe("manual DEUR submit response mapping", () => {
     expect(result).toMatchObject({ success: false, code: "VALIDATION_REJECTED", canonicalCode: "CORRECTION_TIMELINE_DIAGNOSTIC", message: "CORRECTION_TIMELINE_DIAGNOSTIC" });
   });
 
+  it("surfaces an unknown canonical code when the server omits a message", async () => {
+    const client = { schema: vi.fn(() => ({ rpc: vi.fn(async () => ({ error: null, data: { success: false, code: "SCOPE_MISMATCH", retryable: false, refreshRequired: false } })) })) } as never;
+    const result = await new SupabaseDeurCommandRepository(client).submitManualDeur({ commandId: "command", idempotencyKey: "idempotency", deurId: "deur", expectedVersion: 1 });
+    expect(result).toMatchObject({ success: false, code: "VALIDATION_REJECTED", canonicalCode: "SCOPE_MISMATCH", message: "SCOPE_MISMATCH" });
+  });
+
   it("fails safely when the response is malformed", async () => {
     const client = { schema: vi.fn(() => ({ rpc: vi.fn(async () => ({ error: null, data: { success: false, code: { unsafe: true }, message: "select * from secrets" } })) })) } as never;
     const result = await new SupabaseDeurCommandRepository(client).submitManualDeur({ commandId: "command", idempotencyKey: "idempotency", deurId: "deur", expectedVersion: 1 });
