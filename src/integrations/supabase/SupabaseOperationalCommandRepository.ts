@@ -16,6 +16,7 @@ import type {
   CreateBillingStatementInput, GenerateBillingEvidenceInput, UpdateInvoiceInput,
   DeurConsumptionRecoveryInput, FinancialRecoveryInput, RecoveryCommandRepository,
   RecoveryProjection, RentalRecoveryInput,
+  OperationalCommandPhaseObserver,
 } from "@/features/rental/operations/commands/contracts";
 import { isOperationalCommandResult } from "@/features/rental/operations/commands/contracts";
 
@@ -73,10 +74,14 @@ function normalizeRemoteFailure<T>(data: unknown): OperationalCommandResult<T> |
 
 export class SupabaseOperationalCommandRepository implements Repository {
   constructor(private readonly client: RpcClient) {}
-  private async rpc<T>(name: string, input: unknown): Promise<OperationalCommandResult<T>> {
+  private async rpc<T>(name: string, input: unknown, observe?: OperationalCommandPhaseObserver): Promise<OperationalCommandResult<T>> {
+    const startedAt = Date.now();
+    observe?.("RPC_STARTED");
     try {
       const { data, error } = await this.client.schema("erp").rpc(name, { command: input as Record<string, unknown> });
+      const elapsedMilliseconds = Date.now() - startedAt;
       if (error) {
+        observe?.("RPC_ERROR_RECEIVED", elapsedMilliseconds);
         const details = safeRpcErrorDetails(error);
         return {
           success: false,
@@ -87,6 +92,7 @@ export class SupabaseOperationalCommandRepository implements Repository {
           ...(details ? { details } : {}),
         };
       }
+      observe?.("RPC_DATA_RECEIVED", elapsedMilliseconds);
       if (!isOperationalCommandResult<T>(data)) {
         const remoteFailure = normalizeRemoteFailure<T>(data);
         if (remoteFailure) return remoteFailure;
@@ -94,6 +100,7 @@ export class SupabaseOperationalCommandRepository implements Repository {
       }
       return data;
     } catch {
+      observe?.("RPC_THROWN", Date.now() - startedAt);
       return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
     }
   }
@@ -101,7 +108,7 @@ export class SupabaseOperationalCommandRepository implements Repository {
   acknowledge = (input: PublicReviewDecisionInput) => this.rpc<PublicReviewConfirmation>("public_acknowledge_customer_review", input);
   reject = (input: PublicReviewDecisionInput & { comment: string }) => this.rpc<PublicReviewConfirmation>("public_reject_customer_review", input);
   createCorrection = (input: CreateDeurRevisionInput) => this.rpc<DeurRevisionResult>("command_create_deur_correction", input);
-  repairCorrectionPhysicalOccurrence = (input: RepairDeurCorrectionPhysicalOccurrenceInput) => this.rpc<RepairDeurCorrectionPhysicalOccurrenceResult>("command_repair_manual_deur_correction_physical_occurrence", input);
+  repairCorrectionPhysicalOccurrence = (input: RepairDeurCorrectionPhysicalOccurrenceInput, observe?: OperationalCommandPhaseObserver) => this.rpc<RepairDeurCorrectionPhysicalOccurrenceResult>("command_repair_manual_deur_correction_physical_occurrence", input, observe);
   record = (input: RecordMeterCheckpointInput) => this.rpc<MeterCheckpointResult>("command_record_meter_checkpoint", input);
   returnLine = (input: ReturnRentalLineInput) => this.rpc<RentalLineReturnProjection>("command_return_rental_line", input);
   reserveLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_reserve_rental_line", input);

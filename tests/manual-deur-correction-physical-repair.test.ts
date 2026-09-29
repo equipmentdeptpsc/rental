@@ -65,7 +65,8 @@ describe("manual DEUR correction physical-occurrence repair", () => {
       },
     });
     const repository = new SupabaseOperationalCommandRepository({ schema: () => ({ rpc }) } as never);
-    const result = await repository.repairCorrectionPhysicalOccurrence({ commandId: "cmd-1", idempotencyKey: "idem-1", deurId: "deur-1", expectedVersion: 4 });
+    const phases: string[] = [];
+    const result = await repository.repairCorrectionPhysicalOccurrence({ commandId: "cmd-1", idempotencyKey: "idem-1", deurId: "deur-1", expectedVersion: 4 }, (phase, elapsed) => phases.push(elapsed === undefined ? phase : `${phase}:${elapsed}`));
     expect(result).toMatchObject({
       success: false,
       code: "TRANSPORT_FAILURE",
@@ -76,6 +77,8 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(result.message).toContain("Could not find function");
     expect(result.details).toMatchObject({ remoteDetails: "schema cache lookup failed", remoteHint: "Refresh the API schema" });
     expect(rpc).toHaveBeenCalledTimes(1);
+    expect(phases[0]).toBe("RPC_STARTED");
+    expect(phases[1]).toMatch(/^RPC_ERROR_RECEIVED:\d+$/);
   });
 
   it("redacts sensitive transport text and never maps it to success", async () => {
