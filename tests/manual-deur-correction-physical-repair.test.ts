@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SupabaseOperationalCommandRepository } from "@/integrations/supabase/SupabaseOperationalCommandRepository";
 
 const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260930000200_manual_deur_correction_physical_occurrence_repair.sql"), "utf8");
+const aliasMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260930000300_manual_deur_correction_repair_source_alias.sql"), "utf8");
 const action = readFileSync(resolve(process.cwd(), "src/features/rental/workspace/deur/RepairDeurCorrectionAction.tsx"), "utf8");
 const contracts = readFileSync(resolve(process.cwd(), "src/features/rental/operations/commands/contracts.ts"), "utf8");
 const repository = readFileSync(resolve(process.cwd(), "src/integrations/supabase/SupabaseOperationalCommandRepository.ts"), "utf8");
@@ -42,6 +43,14 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(migration).not.toMatch(/UPDATE\s+erp\.deur_events\s+SET\s+(?!occurred_at)/i);
     expect(migration).toContain("source_event.id");
     expect(migration).toContain("target_event.id");
+  });
+
+  it("qualifies the source DEUR record to avoid source-column ambiguity", () => {
+    expect(aliasMigration).toContain("source_deur erp.deurs%ROWTYPE");
+    expect(aliasMigration).toContain("erp.is_manual_deur_encoding_bootstrap_event(source_deur,event_record)");
+    expect(aliasMigration).toContain("event_record.deur_id=source_deur.id");
+    expect(aliasMigration).not.toContain("is_manual_deur_encoding_bootstrap_event(source,event_record)");
+    expect(aliasMigration).toContain("REPAIR_DEUR_CORRECTION_PHYSICAL_OCCURRENCE");
   });
 
   it("preserves a sanitized PostgREST transport diagnostic without implying success", async () => {
