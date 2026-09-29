@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { SupabaseOperationalCommandRepository } from "@/integrations/supabase/SupabaseOperationalCommandRepository";
 
 const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260930000200_manual_deur_correction_physical_occurrence_repair.sql"), "utf8");
 const action = readFileSync(resolve(process.cwd(), "src/features/rental/workspace/deur/RepairDeurCorrectionAction.tsx"), "utf8");
@@ -41,5 +42,39 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(migration).not.toMatch(/UPDATE\s+erp\.deur_events\s+SET\s+(?!occurred_at)/i);
     expect(migration).toContain("source_event.id");
     expect(migration).toContain("target_event.id");
+  });
+
+  it("preserves a sanitized PostgREST transport diagnostic without implying success", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "PGRST202",
+        status: 404,
+        message: "Could not find function erp.command_repair_manual_deur_correction_physical_occurrence(jsonb) in the schema cache",
+        details: "schema cache lookup failed",
+        hint: "Refresh the API schema",
+      },
+    });
+    const repository = new SupabaseOperationalCommandRepository({ schema: () => ({ rpc }) } as never);
+    const result = await repository.repairCorrectionPhysicalOccurrence({ commandId: "cmd-1", idempotencyKey: "idem-1", deurId: "deur-1", expectedVersion: 4 });
+    expect(result).toMatchObject({
+      success: false,
+      code: "TRANSPORT_FAILURE",
+      retryable: true,
+      refreshRequired: true,
+      details: { remoteCode: "PGRST202", httpStatus: 404, remoteMessage: expect.stringContaining("Could not find function") },
+    });
+    expect(result.message).toContain("Could not find function");
+    expect(result.details).toMatchObject({ remoteDetails: "schema cache lookup failed", remoteHint: "Refresh the API schema" });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("redacts sensitive transport text and never maps it to success", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: "XX000", message: "password=super-secret token=abc123" } });
+    const repository = new SupabaseOperationalCommandRepository({ schema: () => ({ rpc }) } as never);
+    const result = await repository.repairCorrectionPhysicalOccurrence({ commandId: "cmd-2", idempotencyKey: "idem-2", deurId: "deur-1", expectedVersion: 4 });
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result)).not.toContain("super-secret");
+    expect(JSON.stringify(result)).not.toContain("abc123");
   });
 });

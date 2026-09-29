@@ -19,7 +19,26 @@ import type {
 } from "@/features/rental/operations/commands/contracts";
 import { isOperationalCommandResult } from "@/features/rental/operations/commands/contracts";
 
-interface RpcClient { schema(name: string): { rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string } | null }> } }
+interface RpcError { message: string; code?: string; details?: string; hint?: string; status?: number }
+interface RpcClient { schema(name: string): { rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: RpcError | null }> } }
+
+function safeRemoteText(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  return value.replace(/(?:password|secret|token|authorization)\s*[:=]\s*\S+/gi, "[REDACTED]").replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
+function safeRpcErrorDetails(error: RpcError): Record<string, unknown> | undefined {
+  const details: Record<string, unknown> = {};
+  if (typeof error.code === "string" && error.code.trim()) details.remoteCode = error.code.trim().slice(0, 80);
+  if (typeof error.status === "number" && Number.isInteger(error.status)) details.httpStatus = error.status;
+  const message = safeRemoteText(error.message);
+  const remoteDetails = safeRemoteText(error.details);
+  const hint = safeRemoteText(error.hint);
+  if (message) details.remoteMessage = message;
+  if (remoteDetails) details.remoteDetails = remoteDetails;
+  if (hint) details.remoteHint = hint;
+  return Object.keys(details).length ? details : undefined;
+}
 
 function safeOperationalDetails(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
@@ -56,7 +75,17 @@ export class SupabaseOperationalCommandRepository implements Repository {
   constructor(private readonly client: RpcClient) {}
   private async rpc<T>(name: string, input: unknown): Promise<OperationalCommandResult<T>> {
     const { data, error } = await this.client.schema("erp").rpc(name, { command: input as Record<string, unknown> });
-    if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
+    if (error) {
+      const details = safeRpcErrorDetails(error);
+      return {
+        success: false,
+        code: "TRANSPORT_FAILURE",
+        message: details?.remoteMessage ? `Remote command request failed: ${details.remoteMessage}` : "Confirmation was not received from the remote service. Refresh before retrying.",
+        retryable: true,
+        refreshRequired: true,
+        ...(details ? { details } : {}),
+      };
+    }
     if (!isOperationalCommandResult<T>(data)) {
       const remoteFailure = normalizeRemoteFailure<T>(data);
       if (remoteFailure) return remoteFailure;
