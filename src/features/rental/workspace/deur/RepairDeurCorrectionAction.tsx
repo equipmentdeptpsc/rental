@@ -23,7 +23,6 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
   async function repair() {
     if (busy) return;
     setBusy(true);
-    advance("CLICK_RECEIVED");
     advance("CONFIRMATION_ACCEPTED");
     try {
       const fresh = await dependencies.readRepositories.deurs.getById(deur.id);
@@ -57,7 +56,7 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
   }
 
   return <div>
-    <Button type="button" disabled={busy} onClick={() => void repair()}>{busy ? "Repairing correction timeline…" : "Repair Correction Timeline"}</Button>
+    <Button type="button" disabled={busy} onClick={() => { advance("CLICK_RECEIVED"); void repair(); }}>{busy ? "Repairing correction timeline…" : "Repair Correction Timeline"}</Button>
     <span aria-live="polite">Repair diagnostic phase: {phaseTrail[phaseTrail.length - 1]} (trail: {phaseTrail.join(" → ")})</span>
   </div>;
 }
