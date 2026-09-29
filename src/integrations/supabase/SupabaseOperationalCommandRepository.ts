@@ -2,6 +2,7 @@ import type {
   CloseRentalInput, CreateCustomerReviewRequestInput, CreateDeurRevisionInput,
   CustomerReviewCommandRepository, CustomerReviewRequestResult, DeurRevisionCommandRepository,
   DeurRevisionResult, MeterCheckpointCommandRepository, MeterCheckpointResult,
+  RepairDeurCorrectionPhysicalOccurrenceInput, RepairDeurCorrectionPhysicalOccurrenceResult,
   OperationalCommandRepositories, OperationalCommandResult, PublicReviewConfirmation,
   PublicReviewDecisionInput, RecordMeterCheckpointInput, RentalClosureCommandRepository,
   RentalClosureProjection, RentalClosureReadiness, RentalClosureReadinessInput,
@@ -67,6 +68,7 @@ export class SupabaseOperationalCommandRepository implements Repository {
   acknowledge = (input: PublicReviewDecisionInput) => this.rpc<PublicReviewConfirmation>("public_acknowledge_customer_review", input);
   reject = (input: PublicReviewDecisionInput & { comment: string }) => this.rpc<PublicReviewConfirmation>("public_reject_customer_review", input);
   createCorrection = (input: CreateDeurRevisionInput) => this.rpc<DeurRevisionResult>("command_create_deur_correction", input);
+  repairCorrectionPhysicalOccurrence = (input: RepairDeurCorrectionPhysicalOccurrenceInput) => this.rpc<RepairDeurCorrectionPhysicalOccurrenceResult>("command_repair_manual_deur_correction_physical_occurrence", input);
   record = (input: RecordMeterCheckpointInput) => this.rpc<MeterCheckpointResult>("command_record_meter_checkpoint", input);
   returnLine = (input: ReturnRentalLineInput) => this.rpc<RentalLineReturnProjection>("command_return_rental_line", input);
   reserveLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_reserve_rental_line", input);

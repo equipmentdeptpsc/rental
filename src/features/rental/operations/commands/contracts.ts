@@ -47,8 +47,13 @@ export interface CreateDeurRevisionInput extends OperationalCommandMetadata {
   reasonCode: string; reasonDetails?: string;
 }
 export interface DeurRevisionResult { deurId: string; sourceRevisionId: string; revisionId: string; revisionNumber: number; version: number }
+export interface RepairDeurCorrectionPhysicalOccurrenceInput extends OperationalCommandMetadata { deurId: string }
+export interface RepairDeurCorrectionPhysicalOccurrenceResult {
+  deurId: string; eventId: string; sourceEventId: string; restoredOccurredAt: string; version: number;
+}
 export interface DeurRevisionCommandRepository {
   createCorrection(input: CreateDeurRevisionInput): Promise<OperationalCommandResult<DeurRevisionResult>>;
+  repairCorrectionPhysicalOccurrence(input: RepairDeurCorrectionPhysicalOccurrenceInput): Promise<OperationalCommandResult<RepairDeurCorrectionPhysicalOccurrenceResult>>;
 }
 
 export interface RecordMeterCheckpointInput extends OperationalCommandMetadata {
