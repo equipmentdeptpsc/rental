@@ -13,6 +13,10 @@ const recalculateSql = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20260729002200_phase_c4c_deur_completeness.sql"),
   "utf8",
 );
+const manualCreationSql = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260927000100_canonical_manual_deur_create_foundation.sql"),
+  "utf8",
+);
 const cloneSql = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20260928000800_rebuild_manual_deur_correction_source_alias.sql"),
   "utf8",
@@ -21,12 +25,20 @@ const bootstrapSql = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20260927000400_preserve_manual_deur_bootstrap_history.sql"),
   "utf8",
 );
+const physicalTimelineSql = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260928000300_manual_deur_bootstrap_shift_marker_exclusion.sql"),
+  "utf8",
+);
 const pairingDiagnosticSql = readFileSync(
   resolve(process.cwd(), "supabase/diagnostics/20260929000500_manual_deur_event_pairing_diagnostic.sql"),
   "utf8",
 );
 const remediationSql = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20260929000600_manual_deur_bootstrap_classifier_fix.sql"),
+  "utf8",
+);
+const occurrenceFixSql = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260930000100_manual_deur_correction_preserve_physical_occurrence.sql"),
   "utf8",
 );
 
@@ -129,6 +141,47 @@ describe("manual DEUR event pairing root cause", () => {
     expect(recalculateSql).toContain("extract(epoch FROM (ended_at-occurred_at))/60");
     expect(recalculateSql).toContain("::integer");
     expect(Date.parse("2026-09-28T05:36:00Z") - Date.parse("2026-09-28T17:48:00Z")).toBe(-732 * 60_000);
+  });
+
+  it("preserves physical occurrence time while retaining correction bootstrap provenance", () => {
+    expect(occurrenceFixSql).toContain("occurrence_marker");
+    expect(occurrenceFixSql).toContain("definition := replace(definition, occurrence_marker, 'e.occurred_at')");
+    expect(occurrenceFixSql).toContain("definition := replace(definition, server_marker, 'now_at')");
+    expect(occurrenceFixSql).toContain("occurrence_marker text := 'CASE WHEN erp.is_manual_deur_encoding_bootstrap_event(source_deur,e) THEN revision.created_at ELSE e.occurred_at END'");
+    expect(occurrenceFixSql).toContain("server_marker text := 'CASE WHEN erp.is_manual_deur_encoding_bootstrap_event(source_deur,e) THEN revision.created_at ELSE now_at END'");
+
+    const replacementCreatedAt = "2026-09-29T02:33:58Z";
+    const correctedClone = sourceEvents.map((event) => ({
+      ...event,
+      occurredAt: event.occurredAt,
+    }));
+    expect(correctedClone[0].occurredAt).toBe(sourceCreatedAt);
+    expect(correctedClone[1].occurredAt).toBe(sourceCreatedAt);
+    expect(correctedClone[2].occurredAt).toBe("2026-09-28T05:36:00Z");
+    expect(correctedClone[3].occurredAt).toBe("2026-09-28T05:36:00Z");
+    expect(replacementCreatedAt).not.toBe(correctedClone[0].occurredAt);
+    expect(operationMinutes(correctedClone)).toBe(1);
+  });
+
+  it("leaves initial manual bootstrap creation semantics unchanged", () => {
+    expect(manualCreationSql).toContain("'shift','start',now_at,1");
+    expect(manualCreationSql).toContain("'operation','start',now_at,2");
+    expect(occurrenceFixSql).not.toContain("command_create_manual_deur");
+  });
+
+  it("keeps the physical overlap guard and correction side effects bounded", () => {
+    expect(physicalTimelineSql).toContain("RETURN 'PHYSICAL_ACTIVITY_OVERLAP'");
+    expect(occurrenceFixSql).not.toContain("customer_review_requests");
+    expect(occurrenceFixSql).not.toContain("audit_log");
+    expect(occurrenceFixSql).not.toContain("billing");
+  });
+
+  it("keeps the existing corrected revision repair boundary explicit", () => {
+    expect(occurrenceFixSql).toContain("p.proname = 'command_create_deur_correction'");
+    expect(occurrenceFixSql).not.toMatch(/UPDATE\s+erp\.deur_events/i);
+    expect(occurrenceFixSql).not.toMatch(/DELETE\s+FROM\s+erp\.deur_events/i);
+    expect(occurrenceFixSql).not.toMatch(/INSERT\s+INTO\s+erp\.deurs/i);
+    expect(occurrenceFixSql).not.toContain("DISABLE TRIGGER");
   });
 
   it("prepares a single aborting pairing diagnostic without changing normal totals", () => {
