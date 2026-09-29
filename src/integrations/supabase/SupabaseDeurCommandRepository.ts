@@ -38,10 +38,16 @@ function mapResult(value: unknown): DeurLifecycleCommandResult {
     if (!mapped.success) return persistenceFailure();
     return { success: true, disposition: result.disposition === "REPLAYED" ? "REPLAYED" : "ACCEPTED", record: mapped.value, version: result.version, serverOccurredAt: result.serverOccurredAt, refreshRequired: false };
   }
-  const code = typeof result.code === "string" && result.code in DEUR_COMMAND_MESSAGES ? result.code as keyof typeof DEUR_COMMAND_MESSAGES : "PERSISTENCE_FAILURE";
-  return { success: false, code, message: DEUR_COMMAND_MESSAGES[code], retryable: result.retryable === true, refreshRequired: result.refreshRequired === true, aggregateId: string(result.aggregateId), expectedVersion: number(result.expectedVersion), currentVersion: number(result.currentVersion) };
+  const rawCode = safeCanonicalCode(result.code);
+  const code = rawCode && rawCode in DEUR_COMMAND_MESSAGES ? rawCode as keyof typeof DEUR_COMMAND_MESSAGES : "VALIDATION_REJECTED";
+  const serverMessage = safeDiagnosticMessage(result.message);
+  const details = safeDetails(result.details);
+  return { success: false, code, message: serverMessage ?? DEUR_COMMAND_MESSAGES[code], retryable: result.retryable === true, refreshRequired: result.refreshRequired === true, aggregateId: string(result.aggregateId), expectedVersion: number(result.expectedVersion), currentVersion: number(result.currentVersion), ...(rawCode && rawCode !== code ? { canonicalCode: rawCode } : {}), ...(details ? { details } : {}) };
 }
 function transportFailure(cause: unknown): DeurLifecycleCommandResult { return { success: false, code: "TRANSPORT_FAILURE", message: DEUR_COMMAND_MESSAGES.TRANSPORT_FAILURE, retryable: true, refreshRequired: false, ...(cause ? {} : {}) }; }
 function persistenceFailure(): DeurLifecycleCommandResult { return { success: false, code: "PERSISTENCE_FAILURE", message: DEUR_COMMAND_MESSAGES.PERSISTENCE_FAILURE, retryable: false, refreshRequired: false }; }
 function string(value: unknown) { return typeof value === "string" ? value : undefined; }
 function number(value: unknown) { return typeof value === "number" ? value : undefined; }
+function safeCanonicalCode(value: unknown) { return typeof value === "string" && /^[A-Z][A-Z0-9_]{2,79}$/.test(value) ? value : undefined; }
+function safeDiagnosticMessage(value: unknown) { return typeof value === "string" && value.length > 0 && value.length <= 240 && /^[A-Z0-9_ .,:;()/-]+$/.test(value) ? value : undefined; }
+function safeDetails(value: unknown): Record<string, unknown> | undefined { return value && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value).filter(([key]) => /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(key)).slice(0, 20)) : undefined; }

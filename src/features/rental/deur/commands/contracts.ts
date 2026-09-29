@@ -28,7 +28,7 @@ export interface SubmitDeurInput extends VersionedDeurCommandIdentity {}
 
 export type DeurLifecycleCommandResult =
   | { success: true; disposition: "ACCEPTED" | "REPLAYED"; record: DeurRecord; version: number; serverOccurredAt: string; refreshRequired: false }
-  | { success: false; code: DeurCommandFailureCode; message: string; retryable: boolean; refreshRequired: boolean; aggregateId?: string; expectedVersion?: number; currentVersion?: number; submissionIssues?: readonly DeurSubmissionIssue[] };
+  | { success: false; code: DeurCommandFailureCode; message: string; retryable: boolean; refreshRequired: boolean; aggregateId?: string; expectedVersion?: number; currentVersion?: number; submissionIssues?: readonly DeurSubmissionIssue[]; canonicalCode?: string; details?: Record<string, unknown> };
 
 export interface DeurCommandRepository {
   startShift(input: StartDeurShiftInput): Promise<DeurLifecycleCommandResult>;
