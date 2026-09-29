@@ -3,7 +3,7 @@ import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/composition";
 import type { DeurRecord } from "@/features/rental/deur/types";
-import type { OperationalCommandPhase } from "@/features/rental/operations/commands/contracts";
+import type { OperationalCommandPhase, OperationalCommandTransportDiagnostic } from "@/features/rental/operations/commands/contracts";
 
 type RepairPhase = "READY" | "CLICK_RECEIVED" | "CONFIRMATION_ACCEPTED" | "REPOSITORY_INVOKED" | OperationalCommandPhase | "ACTION_COMPLETED";
 
@@ -12,6 +12,7 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
   const dependencies = useApplicationDependenciesCompatibility();
   const [busy, setBusy] = useState(false);
   const [phaseTrail, setPhaseTrail] = useState<RepairPhase[]>(["READY"]);
+  const [transportDiagnostic, setTransportDiagnostic] = useState<OperationalCommandTransportDiagnostic>();
   const advance = (phase: RepairPhase) => setPhaseTrail((trail) => [...trail, phase]);
   const candidate = deur.creationSource === "MANUAL_WEB"
     && deur.status === "In Progress"
@@ -39,8 +40,9 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
         idempotencyKey: crypto.randomUUID(),
         deurId: deur.id,
         expectedVersion,
-      }, (rpcPhase, elapsedMilliseconds) => {
+      }, (rpcPhase, elapsedMilliseconds, diagnostic) => {
         advance(rpcPhase);
+        if (rpcPhase === "RPC_ERROR_RECEIVED") setTransportDiagnostic(diagnostic);
         if (elapsedMilliseconds !== undefined) {
           setPhaseTrail((trail) => [...trail, `${rpcPhase}:${elapsedMilliseconds}ms` as RepairPhase]);
         }
@@ -58,5 +60,14 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
   return <div>
     <Button type="button" disabled={busy} onClick={() => { advance("CLICK_RECEIVED"); void repair(); }}>{busy ? "Repairing correction timeline…" : "Repair Correction Timeline"}</Button>
     <span aria-live="polite">Repair diagnostic phase: {phaseTrail[phaseTrail.length - 1]} (trail: {phaseTrail.join(" → ")})</span>
+    {transportDiagnostic && <div role="status" aria-label="Repair transport diagnostic">
+      <span>RPC: command_repair_manual_deur_correction_physical_occurrence</span>
+      <span>Schema: erp</span>
+      {transportDiagnostic.code && <span>PostgREST code: {transportDiagnostic.code}</span>}
+      {transportDiagnostic.message && <span>PostgREST message: {transportDiagnostic.message}</span>}
+      {transportDiagnostic.details && <span>PostgREST details: {transportDiagnostic.details}</span>}
+      {transportDiagnostic.hint && <span>PostgREST hint: {transportDiagnostic.hint}</span>}
+      {transportDiagnostic.status !== undefined && <span>HTTP status: {transportDiagnostic.status}</span>}
+    </div>}
   </div>;
 }

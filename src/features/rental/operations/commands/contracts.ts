@@ -52,7 +52,8 @@ export interface RepairDeurCorrectionPhysicalOccurrenceResult {
   deurId: string; eventId: string; sourceEventId: string; restoredOccurredAt: string; version: number;
 }
 export type OperationalCommandPhase = "RPC_STARTED" | "RPC_DATA_RECEIVED" | "RPC_ERROR_RECEIVED" | "RPC_THROWN";
-export type OperationalCommandPhaseObserver = (phase: OperationalCommandPhase, elapsedMilliseconds?: number) => void;
+export interface OperationalCommandTransportDiagnostic { code?: string; message?: string; details?: string; hint?: string; status?: number }
+export type OperationalCommandPhaseObserver = (phase: OperationalCommandPhase, elapsedMilliseconds?: number, diagnostic?: OperationalCommandTransportDiagnostic) => void;
 export interface DeurRevisionCommandRepository {
   createCorrection(input: CreateDeurRevisionInput): Promise<OperationalCommandResult<DeurRevisionResult>>;
   repairCorrectionPhysicalOccurrence(input: RepairDeurCorrectionPhysicalOccurrenceInput, observe?: OperationalCommandPhaseObserver): Promise<OperationalCommandResult<RepairDeurCorrectionPhysicalOccurrenceResult>>;

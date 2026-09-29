@@ -66,7 +66,8 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     });
     const repository = new SupabaseOperationalCommandRepository({ schema: () => ({ rpc }) } as never);
     const phases: string[] = [];
-    const result = await repository.repairCorrectionPhysicalOccurrence({ commandId: "cmd-1", idempotencyKey: "idem-1", deurId: "deur-1", expectedVersion: 4 }, (phase, elapsed) => phases.push(elapsed === undefined ? phase : `${phase}:${elapsed}`));
+    let diagnostic: Record<string, unknown> | undefined;
+    const result = await repository.repairCorrectionPhysicalOccurrence({ commandId: "cmd-1", idempotencyKey: "idem-1", deurId: "deur-1", expectedVersion: 4 }, (phase, elapsed, received) => { phases.push(elapsed === undefined ? phase : `${phase}:${elapsed}`); if (received) diagnostic = received; });
     expect(result).toMatchObject({
       success: false,
       code: "TRANSPORT_FAILURE",
@@ -79,6 +80,7 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(phases[0]).toBe("RPC_STARTED");
     expect(phases[1]).toMatch(/^RPC_ERROR_RECEIVED:\d+$/);
+    expect(diagnostic).toMatchObject({ code: "PGRST202", message: expect.stringContaining("Could not find function"), details: "schema cache lookup failed", hint: "Refresh the API schema", status: 404 });
   });
 
   it("redacts sensitive transport text and never maps it to success", async () => {
@@ -88,6 +90,15 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(result.success).toBe(false);
     expect(JSON.stringify(result)).not.toContain("super-secret");
     expect(JSON.stringify(result)).not.toContain("abc123");
+  });
+
+  it("keeps transport diagnostics safe and does not retry", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: "XX000", message: "password=super-secret", details: "token=abc123", hint: "refresh", status: 500 } });
+    const phases: string[] = [];
+    const repository = new SupabaseOperationalCommandRepository({ schema: () => ({ rpc }) } as never);
+    await repository.repairCorrectionPhysicalOccurrence({ commandId: "cmd-safe", idempotencyKey: "idem-safe", deurId: "deur-1", expectedVersion: 4 }, (phase, elapsed, diagnostic) => { if (phase === "RPC_ERROR_RECEIVED") { phases.push(`${phase}:${elapsed}`); expect(diagnostic?.message).not.toContain("super-secret"); expect(diagnostic?.details).not.toContain("abc123"); } });
+    expect(phases).toHaveLength(1);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 
   it("recognizes accepted, validation, and version-conflict repair contracts", async () => {

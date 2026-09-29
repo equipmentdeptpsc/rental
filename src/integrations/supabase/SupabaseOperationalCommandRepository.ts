@@ -16,7 +16,7 @@ import type {
   CreateBillingStatementInput, GenerateBillingEvidenceInput, UpdateInvoiceInput,
   DeurConsumptionRecoveryInput, FinancialRecoveryInput, RecoveryCommandRepository,
   RecoveryProjection, RentalRecoveryInput,
-  OperationalCommandPhaseObserver,
+  OperationalCommandPhaseObserver, OperationalCommandTransportDiagnostic,
 } from "@/features/rental/operations/commands/contracts";
 import { isOperationalCommandResult } from "@/features/rental/operations/commands/contracts";
 
@@ -81,7 +81,14 @@ export class SupabaseOperationalCommandRepository implements Repository {
       const { data, error } = await this.client.schema("erp").rpc(name, { command: input as Record<string, unknown> });
       const elapsedMilliseconds = Date.now() - startedAt;
       if (error) {
-        observe?.("RPC_ERROR_RECEIVED", elapsedMilliseconds);
+        const diagnostic: OperationalCommandTransportDiagnostic = {
+          ...(typeof error.code === "string" && error.code.trim() ? { code: error.code.trim().slice(0, 80) } : {}),
+          ...(safeRemoteText(error.message) ? { message: safeRemoteText(error.message) } : {}),
+          ...(safeRemoteText(error.details) ? { details: safeRemoteText(error.details) } : {}),
+          ...(safeRemoteText(error.hint) ? { hint: safeRemoteText(error.hint) } : {}),
+          ...(typeof error.status === "number" && Number.isInteger(error.status) ? { status: error.status } : {}),
+        };
+        observe?.("RPC_ERROR_RECEIVED", elapsedMilliseconds, diagnostic);
         const details = safeRpcErrorDetails(error);
         return {
           success: false,
