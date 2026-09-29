@@ -44,10 +44,26 @@ function mapResult(value: unknown): DeurLifecycleCommandResult {
   const details = safeDetails(result.details);
   return { success: false, code, message: serverMessage ?? (rawCode && rawCode !== code ? rawCode : DEUR_COMMAND_MESSAGES[code]), retryable: result.retryable === true, refreshRequired: result.refreshRequired === true, aggregateId: string(result.aggregateId), expectedVersion: number(result.expectedVersion), currentVersion: number(result.currentVersion), ...(rawCode && rawCode !== code ? { canonicalCode: rawCode } : {}), ...(details ? { details } : {}) };
 }
-function transportFailure(cause: unknown): DeurLifecycleCommandResult { return { success: false, code: "TRANSPORT_FAILURE", message: DEUR_COMMAND_MESSAGES.TRANSPORT_FAILURE, retryable: true, refreshRequired: false, ...(cause ? {} : {}) }; }
-function persistenceFailure(): DeurLifecycleCommandResult { return { success: false, code: "PERSISTENCE_FAILURE", message: DEUR_COMMAND_MESSAGES.PERSISTENCE_FAILURE, retryable: false, refreshRequired: false }; }
+function transportFailure(cause: unknown): DeurLifecycleCommandResult {
+  const error = safeError(cause);
+  const rawCode = safeRpcCode(error?.code);
+  const message = safeDiagnosticMessage(error?.message);
+  const details = error ? safeTransportDetails(error) : undefined;
+  return { success: false, code: "TRANSPORT_FAILURE", message: message ?? (rawCode ?? DEUR_COMMAND_MESSAGES.TRANSPORT_FAILURE), retryable: true, refreshRequired: false, ...(rawCode ? { canonicalCode: rawCode } : {}), ...(details ? { details } : {}) };
+}
+function persistenceFailure(): DeurLifecycleCommandResult { return { success: false, code: "PERSISTENCE_FAILURE", message: DEUR_COMMAND_MESSAGES.PERSISTENCE_FAILURE, retryable: false, refreshRequired: false, canonicalCode: "MALFORMED_RPC_RESPONSE" }; }
 function string(value: unknown) { return typeof value === "string" ? value : undefined; }
 function number(value: unknown) { return typeof value === "number" ? value : undefined; }
 function safeCanonicalCode(value: unknown) { return typeof value === "string" && /^[A-Z][A-Z0-9_]{2,79}$/.test(value) ? value : undefined; }
-function safeDiagnosticMessage(value: unknown) { return typeof value === "string" && value.length > 0 && value.length <= 240 && /^[A-Z0-9_ .,:;()/-]+$/.test(value) ? value : undefined; }
+function safeDiagnosticMessage(value: unknown) { return typeof value === "string" && value.length > 0 && value.length <= 240 && /^[A-Za-z0-9_ .,:;()/-]+$/.test(value) ? value : undefined; }
 function safeDetails(value: unknown): Record<string, unknown> | undefined { return value && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value).filter(([key]) => /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(key)).slice(0, 20)) : undefined; }
+function safeRpcCode(value: unknown) { return typeof value === "string" && /^[A-Z0-9_]{2,80}$/.test(value) ? value : undefined; }
+function safeError(value: unknown): { code?: unknown; message?: unknown; details?: unknown; hint?: unknown } | undefined { return value && typeof value === "object" && !Array.isArray(value) ? value as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown } : undefined; }
+function safeTransportDetails(error: { code?: unknown; details?: unknown; hint?: unknown }): Record<string, unknown> | undefined {
+  const details: Record<string, unknown> = {};
+  const code = safeRpcCode(error.code); const rawDetails = safeDiagnosticMessage(error.details); const hint = safeDiagnosticMessage(error.hint);
+  if (code) details.errorCode = code;
+  if (rawDetails) details.errorDetails = rawDetails;
+  if (hint) details.errorHint = hint;
+  return Object.keys(details).length ? details : undefined;
+}

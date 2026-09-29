@@ -40,4 +40,15 @@ describe("manual DEUR submit response mapping", () => {
     expect(result).toMatchObject({ success: false, code: "VALIDATION_REJECTED", message: "The shift information is incomplete or invalid." });
     expect(result).not.toHaveProperty("canonicalCode");
   });
+
+  it("preserves sanitized PostgREST error diagnostics without exposing SQL", async () => {
+    const client = { schema: vi.fn(() => ({ rpc: vi.fn(async () => ({ data: null, error: {
+      code: "23514",
+      message: "new row violates check constraint ck_deur_minutes",
+      details: "row rejected",
+      hint: "refresh the corrected DEUR",
+    } })) })) } as never;
+    const result = await new SupabaseDeurCommandRepository(client).submitManualDeur({ commandId: "command", idempotencyKey: "idempotency", deurId: "deur", expectedVersion: 1 });
+    expect(result).toMatchObject({ success: false, code: "TRANSPORT_FAILURE", canonicalCode: "23514", message: "new row violates check constraint ck_deur_minutes", details: { errorCode: "23514", errorDetails: "row rejected", errorHint: "refresh the corrected DEUR" } });
+  });
 });
