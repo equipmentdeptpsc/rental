@@ -74,24 +74,28 @@ function normalizeRemoteFailure<T>(data: unknown): OperationalCommandResult<T> |
 export class SupabaseOperationalCommandRepository implements Repository {
   constructor(private readonly client: RpcClient) {}
   private async rpc<T>(name: string, input: unknown): Promise<OperationalCommandResult<T>> {
-    const { data, error } = await this.client.schema("erp").rpc(name, { command: input as Record<string, unknown> });
-    if (error) {
-      const details = safeRpcErrorDetails(error);
-      return {
-        success: false,
-        code: "TRANSPORT_FAILURE",
-        message: details?.remoteMessage ? `Remote command request failed: ${details.remoteMessage}` : "Confirmation was not received from the remote service. Refresh before retrying.",
-        retryable: true,
-        refreshRequired: true,
-        ...(details ? { details } : {}),
-      };
+    try {
+      const { data, error } = await this.client.schema("erp").rpc(name, { command: input as Record<string, unknown> });
+      if (error) {
+        const details = safeRpcErrorDetails(error);
+        return {
+          success: false,
+          code: "TRANSPORT_FAILURE",
+          message: details?.remoteMessage ? `Remote command request failed: ${details.remoteMessage}` : "Confirmation was not received from the remote service. Refresh before retrying.",
+          retryable: true,
+          refreshRequired: true,
+          ...(details ? { details } : {}),
+        };
+      }
+      if (!isOperationalCommandResult<T>(data)) {
+        const remoteFailure = normalizeRemoteFailure<T>(data);
+        if (remoteFailure) return remoteFailure;
+        return { success: false, code: "VALIDATION_REJECTED", message: "The remote command returned an invalid response.", retryable: false, refreshRequired: true };
+      }
+      return data;
+    } catch {
+      return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
     }
-    if (!isOperationalCommandResult<T>(data)) {
-      const remoteFailure = normalizeRemoteFailure<T>(data);
-      if (remoteFailure) return remoteFailure;
-      return { success: false, code: "VALIDATION_REJECTED", message: "The remote command returned an invalid response.", retryable: false, refreshRequired: true };
-    }
-    return data;
   }
   createRequest = (input: CreateCustomerReviewRequestInput) => this.rpc<CustomerReviewRequestResult>("command_create_customer_review_request", input);
   acknowledge = (input: PublicReviewDecisionInput) => this.rpc<PublicReviewConfirmation>("public_acknowledge_customer_review", input);

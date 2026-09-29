@@ -18,24 +18,28 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
   async function repair() {
     if (busy) return;
     setBusy(true);
-    const fresh = await dependencies.readRepositories.deurs.getById(deur.id);
-    const expectedVersion = fresh.success && fresh.value
-      ? Number((fresh.value as unknown as { rowVersion?: number }).rowVersion)
-      : Number.NaN;
-    if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    try {
+      const fresh = await dependencies.readRepositories.deurs.getById(deur.id);
+      const expectedVersion = fresh.success && fresh.value
+        ? Number((fresh.value as unknown as { rowVersion?: number }).rowVersion)
+        : Number.NaN;
+      if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+        showToast("The corrected DEUR version could not be read. Refresh before retrying.", "error");
+        return;
+      }
+      const result = await dependencies.commandRepositories.deurRevisionCommands.repairCorrectionPhysicalOccurrence({
+        commandId: crypto.randomUUID(),
+        idempotencyKey: crypto.randomUUID(),
+        deurId: deur.id,
+        expectedVersion,
+      });
+      showToast(result.success ? "Correction timeline repaired from immutable source history." : result.message, result.success ? "success" : "error");
+      if (result.success) window.location.reload();
+    } catch {
+      showToast("Confirmation was not received from the remote service. Refresh before retrying.", "error");
+    } finally {
       setBusy(false);
-      showToast("The corrected DEUR version could not be read. Refresh before retrying.", "error");
-      return;
     }
-    const result = await dependencies.commandRepositories.deurRevisionCommands.repairCorrectionPhysicalOccurrence({
-      commandId: crypto.randomUUID(),
-      idempotencyKey: crypto.randomUUID(),
-      deurId: deur.id,
-      expectedVersion,
-    });
-    setBusy(false);
-    showToast(result.success ? "Correction timeline repaired from immutable source history." : result.message, result.success ? "success" : "error");
-    if (result.success) window.location.reload();
   }
 
   return <Button type="button" disabled={busy} onClick={() => void repair()}>{busy ? "Repairing correction timeline…" : "Repair Correction Timeline"}</Button>;

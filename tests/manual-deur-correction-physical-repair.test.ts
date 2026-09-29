@@ -86,4 +86,30 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(JSON.stringify(result)).not.toContain("super-secret");
     expect(JSON.stringify(result)).not.toContain("abc123");
   });
+
+  it("recognizes accepted, validation, and version-conflict repair contracts", async () => {
+    const acceptedRpc = vi.fn().mockResolvedValue({ data: { success: true, disposition: "ACCEPTED", serverOccurredAt: "2026-09-30T00:00:00Z", refresh: ["deur-1"], value: { deurId: "deur-1", eventId: "event-1", sourceEventId: "source-1", restoredOccurredAt: "2026-09-28T13:35:00Z", version: 5 } }, error: null });
+    const accepted = await new SupabaseOperationalCommandRepository({ schema: () => ({ rpc: acceptedRpc }) } as never).repairCorrectionPhysicalOccurrence({ commandId: "cmd-3", idempotencyKey: "idem-3", deurId: "deur-1", expectedVersion: 4 });
+    expect(accepted).toMatchObject({ success: true, disposition: "ACCEPTED", value: { restoredOccurredAt: "2026-09-28T13:35:00Z", version: 5 } });
+
+    const rejectedRpc = vi.fn().mockResolvedValue({ data: { success: false, code: "CORRECTION_REPAIR_NOT_ELIGIBLE", message: "Only an In Progress correction revision can be repaired.", retryable: false, refreshRequired: false }, error: null });
+    const rejected = await new SupabaseOperationalCommandRepository({ schema: () => ({ rpc: rejectedRpc }) } as never).repairCorrectionPhysicalOccurrence({ commandId: "cmd-4", idempotencyKey: "idem-4", deurId: "deur-1", expectedVersion: 4 });
+    expect(rejected).toMatchObject({ success: false, code: "CORRECTION_REPAIR_NOT_ELIGIBLE", retryable: false, refreshRequired: false });
+
+    const conflictRpc = vi.fn().mockResolvedValue({ data: { success: false, code: "CONFLICT", message: "The correction revision changed. Refresh before retrying.", retryable: false, refreshRequired: true, currentVersion: 5 }, error: null });
+    const conflict = await new SupabaseOperationalCommandRepository({ schema: () => ({ rpc: conflictRpc }) } as never).repairCorrectionPhysicalOccurrence({ commandId: "cmd-5", idempotencyKey: "idem-5", deurId: "deur-1", expectedVersion: 4 });
+    expect(conflict).toMatchObject({ success: false, code: "CONFLICT", currentVersion: 5, refreshRequired: true });
+  });
+
+  it("fails closed for thrown, empty, and malformed transport responses without retrying", async () => {
+    const thrownRpc = vi.fn().mockRejectedValue(new Error("network interrupted"));
+    const thrown = await new SupabaseOperationalCommandRepository({ schema: () => ({ rpc: thrownRpc }) } as never).repairCorrectionPhysicalOccurrence({ commandId: "cmd-6", idempotencyKey: "idem-6", deurId: "deur-1", expectedVersion: 4 });
+    expect(thrown).toMatchObject({ success: false, code: "TRANSPORT_FAILURE", retryable: true, refreshRequired: true });
+    expect(thrownRpc).toHaveBeenCalledTimes(1);
+
+    const malformedRpc = vi.fn().mockResolvedValue({ data: { accepted: true }, error: null });
+    const malformed = await new SupabaseOperationalCommandRepository({ schema: () => ({ rpc: malformedRpc }) } as never).repairCorrectionPhysicalOccurrence({ commandId: "cmd-7", idempotencyKey: "idem-7", deurId: "deur-1", expectedVersion: 4 });
+    expect(malformed).toMatchObject({ success: false, code: "VALIDATION_REJECTED", refreshRequired: true });
+    expect(malformedRpc).toHaveBeenCalledTimes(1);
+  });
 });
