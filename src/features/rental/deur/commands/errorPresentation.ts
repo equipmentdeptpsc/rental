@@ -15,6 +15,8 @@ export const DEUR_COMMAND_MESSAGES: Readonly<Record<DeurCommandFailureCode, stri
   ASSIGNMENT_MISMATCH: "The Assignment no longer matches this Rental Line.",
   DEUR_EXPECTATION_REQUIRED: "This Rental Equipment Line does not have a frozen DEUR expectation snapshot.",
   SNAPSHOT_STALE: "The frozen DEUR expectation is stale. Regenerate it before starting the shift.",
+  MANUAL_DEUR_REQUIRED: "This command is only available for a manual DEUR.",
+  SCOPE_MISMATCH: "The DEUR does not match its Rental, Assignment, or equipment scope.",
   DUPLICATE_ACTIVE_DEUR: "This shift has already been started.",
   INVALID_TRANSITION: "This activity transition is no longer valid.",
   IDEMPOTENCY_MISMATCH: "This command identifier was already used for different data.",
