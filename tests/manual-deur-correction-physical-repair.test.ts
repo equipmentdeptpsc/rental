@@ -5,6 +5,8 @@ import { SupabaseOperationalCommandRepository } from "@/integrations/supabase/Su
 
 const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260930000200_manual_deur_correction_physical_occurrence_repair.sql"), "utf8");
 const aliasMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260930000300_manual_deur_correction_repair_source_alias.sql"), "utf8");
+const openShiftRepairMigration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260930000600_manual_deur_append_only_repair_open_shift_state.sql"), "utf8");
+const openShiftRepairProof = readFileSync(resolve(process.cwd(), "tests/integration/manual-deur-append-only-repair-open-shift.sql"), "utf8");
 const action = readFileSync(resolve(process.cwd(), "src/features/rental/workspace/deur/RepairDeurCorrectionAction.tsx"), "utf8");
 const contracts = readFileSync(resolve(process.cwd(), "src/features/rental/operations/commands/contracts.ts"), "utf8");
 const repository = readFileSync(resolve(process.cwd(), "src/integrations/supabase/SupabaseOperationalCommandRepository.ts"), "utf8");
@@ -49,6 +51,21 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(action).toContain("void repair();");
     expect(action).toContain("if (busy) return;");
     expect(action).not.toContain("no mutation");
+  });
+
+  it("keeps the raw live open-shift invariant while inserting an append-only historical replacement as closed", () => {
+    expect(openShiftRepairMigration).toContain("target_event.device_id,false,tenant");
+    expect(openShiftRepairMigration).not.toContain("DROP INDEX");
+    expect(openShiftRepairMigration).not.toContain("uq_deur_open_shift");
+    expect(openShiftRepairMigration).toContain("link.replacement_event_id=candidate.id");
+    expect(openShiftRepairMigration).toContain("candidate.sequence=1 AND candidate.is_open");
+    expect(openShiftRepairProof).toContain("current_setting('erp.repair_expectation'");
+    expect(openShiftRepairProof).toContain("uq_deur_open_shift");
+    expect(openShiftRepairProof).toContain("raw_count<>5 OR effective_count<>4");
+    expect(openShiftRepairProof).toContain("effective_open_count<>0");
+    expect(openShiftRepairProof).toContain("rejected_shift");
+    expect(openShiftRepairProof).toContain("rejected_operation");
+    expect(openShiftRepairProof).toContain("ROLLBACK");
   });
 
   it("does not provide a generic event editor or destructive fallback", () => {
