@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/composition";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { OperationalCommandPhase, OperationalCommandTransportDiagnostic } from "@/features/rental/operations/commands/contracts";
 
-type RepairPhase = "READY" | "CLICK_RECEIVED" | "CONFIRMATION_ACCEPTED" | "REPOSITORY_INVOKED" | OperationalCommandPhase | "ACTION_COMPLETED";
-type RepairProbePhase = "PROBE_READY" | "POINTER_DOWN_CAPTURE" | "POINTER_DOWN" | "MOUSE_DOWN_CAPTURE" | "MOUSE_DOWN" | "CLICK_CAPTURE" | "CLICK_HANDLER_ENTERED" | "KEY_DOWN_ENTER" | "KEY_DOWN_SPACE" | "PROBE_COMPLETED";
+type RepairPhase = "READY" | "KEY_DOWN_ENTER" | "KEY_DOWN_SPACE" | "CLICK_CAPTURE" | "CLICK_HANDLER_ENTERED" | "CONFIRMATION_ACCEPTED" | "REPOSITORY_INVOKED" | OperationalCommandPhase | "ACTION_COMPLETED";
 
 export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord }) {
   const { showToast } = useToast();
@@ -14,24 +13,7 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
   const [busy, setBusy] = useState(false);
   const [phaseTrail, setPhaseTrail] = useState<RepairPhase[]>(["READY"]);
   const [transportDiagnostic, setTransportDiagnostic] = useState<OperationalCommandTransportDiagnostic>();
-  const [probeTrail, setProbeTrail] = useState<RepairProbePhase[]>([]);
-  const probeSequence = useRef(0);
-  const renderGeneration = useRef(0);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const probeMode = typeof window !== "undefined"
-    && /(^|\.)uat\.pscequipment\.online$/.test(window.location.hostname)
-    && new URLSearchParams(window.location.search).get("repairProbe") === "1";
-  renderGeneration.current += 1;
   const advance = (phase: RepairPhase) => setPhaseTrail((trail) => [...trail, phase]);
-  const recordProbe = (phase: RepairProbePhase) => {
-    probeSequence.current += 1;
-    setProbeTrail((trail) => [...trail, phase]);
-  };
-  useEffect(() => {
-    if (!probeMode) return;
-    recordProbe("PROBE_READY");
-    return () => { console.debug("UAT repair probe unmounted", { renderGeneration: renderGeneration.current }); };
-  }, [probeMode]);
   const candidate = deur.creationSource === "MANUAL_WEB"
     && deur.status === "In Progress"
     && Boolean(deur.revision?.previousRevisionId);
@@ -76,46 +58,24 @@ export default function RepairDeurCorrectionAction({ deur }: { deur: DeurRecord 
   }
 
   const handleClick = () => {
-    if (probeMode) {
-      recordProbe("CLICK_HANDLER_ENTERED");
-      recordProbe("PROBE_COMPLETED");
-      return;
-    }
-    advance("CLICK_RECEIVED");
+    advance("CLICK_HANDLER_ENTERED");
     void repair();
   };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (!probeMode) return;
-    if (event.key === "Enter") recordProbe("KEY_DOWN_ENTER");
-    if (event.key === " ") recordProbe("KEY_DOWN_SPACE");
+    if (event.key === "Enter") advance("KEY_DOWN_ENTER");
+    if (event.key === " ") advance("KEY_DOWN_SPACE");
   };
 
   return <div
-    data-uat-repair-probe={probeMode ? "enabled" : undefined}
-    onPointerDownCapture={() => probeMode && recordProbe("POINTER_DOWN_CAPTURE")}
-    onMouseDownCapture={() => probeMode && recordProbe("MOUSE_DOWN_CAPTURE")}
-    onClickCapture={() => probeMode && recordProbe("CLICK_CAPTURE")}
+    onClickCapture={() => advance("CLICK_CAPTURE")}
   >
     <Button
-      ref={buttonRef}
       type="button"
       disabled={busy}
-      onPointerDown={() => probeMode && recordProbe("POINTER_DOWN")}
-      onMouseDown={() => probeMode && recordProbe("MOUSE_DOWN")}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
     >{busy ? "Repairing correction timeline…" : "Repair Correction Timeline"}</Button>
     <span aria-live="polite">Repair diagnostic phase: {phaseTrail[phaseTrail.length - 1]} (trail: {phaseTrail.join(" → ")})</span>
-    {probeMode && <div role="status" aria-label="Repair UI probe diagnostic">
-      <span>Repair UI probe mode: ENABLED (no mutation)</span>
-      <span>Probe trail: {probeTrail.join(" → ") || "PROBE_READY"}</span>
-      <span>Event sequence: {probeSequence.current}</span>
-      <span>Render generation: {renderGeneration.current}</span>
-      <span>Button DOM identity: {buttonRef.current ? "present" : "missing"}</span>
-      <span>Busy: {busy ? "YES" : "NO"}</span>
-      <span>Eligible: YES</span>
-      <span>Status: {deur.status}</span>
-    </div>}
     {transportDiagnostic && <div role="status" aria-label="Repair transport diagnostic">
       <span>RPC: command_repair_manual_deur_correction_physical_occurrence</span>
       <span>Schema: erp</span>
