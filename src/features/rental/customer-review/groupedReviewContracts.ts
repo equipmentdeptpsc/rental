@@ -92,7 +92,7 @@ export interface GeneratedCustomerReviewBatchValue {
 }
 
 export type GenerateCustomerReviewBatchResult =
-  | { success: true; disposition: "CREATED" | "EXISTING" | "REPLAYED"; value: GeneratedCustomerReviewBatchValue }
+  | { success: true; disposition: "CREATED" | "EXISTING" | "REPLAYED" | "NO_ACTIONABLE_REVIEWS"; value: GeneratedCustomerReviewBatchValue }
   | { success: false; code: "UNAUTHENTICATED" | "FORBIDDEN" | "VALIDATION_REJECTED" | "NOT_FOUND" |
       "INVALID_TIMEZONE" | "INVALID_BUSINESS_DATE" | "INVALID_TRANSITION" | "IDEMPOTENCY_MISMATCH" | "TRANSPORT_FAILURE" };
 
