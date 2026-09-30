@@ -38,6 +38,26 @@ describe("manual DEUR correction physical-occurrence repair", () => {
     expect(action).not.toContain("clientOccurredAt");
   });
 
+  it("provides a UAT-only non-mutating probe for pointer, keyboard, and handler delivery", () => {
+    expect(action).toContain("repairProbe");
+    expect(action).toContain("PROBE_READY");
+    expect(action).toContain("POINTER_DOWN_CAPTURE");
+    expect(action).toContain("POINTER_DOWN");
+    expect(action).toContain("MOUSE_DOWN_CAPTURE");
+    expect(action).toContain("MOUSE_DOWN");
+    expect(action).toContain("CLICK_CAPTURE");
+    expect(action).toContain("CLICK_HANDLER_ENTERED");
+    expect(action).toContain("KEY_DOWN_ENTER");
+    expect(action).toContain("KEY_DOWN_SPACE");
+    expect(action).toContain("PROBE_COMPLETED");
+    expect(action).toContain("if (probeMode)");
+    expect(action).toContain("return;");
+    expect(action).toContain("data-uat-repair-probe");
+    expect(action).toContain("onPointerDownCapture");
+    expect(action).toContain("onClickCapture");
+    expect(action).toContain("no mutation");
+  });
+
   it("does not provide a generic event editor or destructive fallback", () => {
     expect(migration).not.toMatch(/DELETE\s+FROM\s+erp\.deur_events/i);
     expect(migration).not.toMatch(/UPDATE\s+erp\.deur_events\s+SET\s+(?!occurred_at)/i);
