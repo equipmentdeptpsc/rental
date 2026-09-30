@@ -3,6 +3,37 @@ import type { RemoteErrorDescriptor, RemoteFailureKind } from "./types";
 
 export interface RemoteErrorContext { repository: string; operation: string; aborted?: boolean; timedOut?: boolean }
 
+export interface SafeRemoteDiagnostic {
+  code?: string;
+  status?: number;
+  message?: string;
+  details?: string;
+  hint?: string;
+}
+
+function safeRemoteText(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  return value
+    .replace(/(?:password|secret|token|authorization)\s*[:=]\s*\S+/gi, "[REDACTED]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
+export function getSafeRemoteDiagnostic(error: RepositoryError): SafeRemoteDiagnostic | undefined {
+  const cause = error.cause;
+  if (!cause || typeof cause !== "object" || Array.isArray(cause)) return undefined;
+  const value = cause as Record<string, unknown>;
+  const diagnostic: SafeRemoteDiagnostic = {
+    ...(typeof value.code === "string" && value.code.trim() ? { code: value.code.trim().slice(0, 80) } : {}),
+    ...(typeof value.status === "number" && Number.isInteger(value.status) ? { status: value.status } : {}),
+    ...(safeRemoteText(value.message) ? { message: safeRemoteText(value.message) } : {}),
+    ...(safeRemoteText(value.details) ? { details: safeRemoteText(value.details) } : {}),
+    ...(safeRemoteText(value.hint) ? { hint: safeRemoteText(value.hint) } : {}),
+  };
+  return Object.keys(diagnostic).length ? diagnostic : undefined;
+}
+
 export function mapRemoteError(error: RemoteErrorDescriptor | null | undefined, context: RemoteErrorContext): RepositoryError {
   const sqlState = error?.code;
   const message = error?.message ?? "";
@@ -17,7 +48,7 @@ export function mapRemoteError(error: RemoteErrorDescriptor | null | undefined, 
   else if (sqlState === "23503" || sqlState === "23514" || sqlState?.startsWith("22")) { failureKind = "ValidationError"; code = "REPOSITORY_VALIDATION_FAILED"; }
   else if (sqlState === "40001" || error?.status === 429 || error?.status === 503 || (!sqlState && /fetch|network|connection/i.test(message))) { failureKind = "TransientFailure"; code = "REPOSITORY_NETWORK_FAILED"; }
   const retryable = failureKind === "TransientFailure" || failureKind === "Timeout" || failureKind === "Cancelled";
-  return { code, message: remoteErrorMessage(failureKind), context: { repository: context.repository, operation: context.operation, sqlState, status: error?.status, failureKind }, recoverability: retryable ? "RETRYABLE" : "USER_ACTION_REQUIRED", recommendedAction: remoteRecommendedAction(failureKind), cause: error ? { code: error.code, message: error.message, status: error.status } : undefined };
+  return { code, message: remoteErrorMessage(failureKind), context: { repository: context.repository, operation: context.operation, sqlState, status: error?.status, failureKind }, recoverability: retryable ? "RETRYABLE" : "USER_ACTION_REQUIRED", recommendedAction: remoteRecommendedAction(failureKind), cause: error ? { code: error.code, message: error.message, details: error.details, hint: error.hint, status: error.status } : undefined };
 }
 
 export function isRetryableRemoteError(error: RepositoryError): boolean { return error.context.failureKind === "TransientFailure" || error.context.failureKind === "Timeout"; }

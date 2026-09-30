@@ -39,6 +39,7 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
 import { projectCanonicalDeurCommercialSnapshots, projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
 import { resolveRentalWorkspaceDeurs } from "./resolveRentalWorkspaceDeurs";
+import { getSafeRemoteDiagnostic, type SafeRemoteDiagnostic } from "@/core/remote/errorMapper";
 
 interface RentalWorkspaceProviderProps {
   rentalId: string;
@@ -59,6 +60,25 @@ interface RentalWorkspaceContextValue {
     operators: Operator[];
     assignments: AssignmentRecord[];
   };
+}
+
+type WorkspaceReadFailure = { source: string; diagnostic?: SafeRemoteDiagnostic };
+
+function workspaceReadFailure(source: string, error: import("@/core/persistence").RepositoryError): WorkspaceReadFailure {
+  return { source, diagnostic: getSafeRemoteDiagnostic(error) };
+}
+
+function WorkspaceReadDiagnostic({ failure }: { failure?: WorkspaceReadFailure }) {
+  if (!failure) return <>Canonical Rental workspace could not be loaded.</>;
+  const diagnostic = failure.diagnostic;
+  return <span aria-label="Canonical workspace read diagnostic">
+    Canonical Rental workspace could not be loaded. Read: {failure.source}.
+    {diagnostic?.code && <> PostgREST code: {diagnostic.code}.</>}
+    {diagnostic?.status !== undefined && <> HTTP status: {diagnostic.status}.</>}
+    {diagnostic?.message && <> Message: {diagnostic.message}.</>}
+    {diagnostic?.details && <> Details: {diagnostic.details}.</>}
+    {diagnostic?.hint && <> Hint: {diagnostic.hint}.</>}
+  </span>;
 }
 
 const RentalWorkspaceContext =
@@ -89,6 +109,7 @@ export default function RentalWorkspaceProvider({
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const [remoteDeurs, setRemoteDeurs] = useState<DeurRecord[]>([]);
   const [remoteDeursStatus, setRemoteDeursStatus] = useState<"loading" | "loaded" | "error">(remote ? "loading" : "loaded");
+  const [remoteDeursFailure, setRemoteDeursFailure] = useState<WorkspaceReadFailure>();
   const [remoteStatements, setRemoteStatements] = useState<BillingStatement[]>([]);
   const [remoteStatementsStatus, setRemoteStatementsStatus] = useState<"loading" | "loaded" | "error">(remote ? "loading" : "loaded");
 
@@ -104,13 +125,13 @@ export default function RentalWorkspaceProvider({
   }, [dependencies.readRepositories.workDescriptions, remote, workspaceVersion]);
 
   useEffect(() => {
-    if (!remote) { setRemoteDeurs([]); setRemoteDeursStatus("loaded"); return; }
-    let active = true; setRemoteDeursStatus("loading");
+    if (!remote) { setRemoteDeurs([]); setRemoteDeursStatus("loaded"); setRemoteDeursFailure(undefined); return; }
+    let active = true; setRemoteDeursStatus("loading"); setRemoteDeursFailure(undefined);
     void Promise.resolve(dependencies.readRepositories.deurs.list({ filters: { rental_id: rentalId } })).then((result) => {
       if (!active) return;
       if (result.success) { setRemoteDeurs(result.value.items); setRemoteDeursStatus("loaded"); }
-      else setRemoteDeursStatus("error");
-    }).catch(() => { if (active) setRemoteDeursStatus("error"); });
+      else { setRemoteDeursFailure(workspaceReadFailure("erp.deurs with effective-timeline relation", result.error)); setRemoteDeursStatus("error"); }
+    }).catch(() => { if (active) { setRemoteDeursFailure({ source: "erp.deurs with effective-timeline relation" }); setRemoteDeursStatus("error"); } });
     return () => { active = false; };
   }, [dependencies.readRepositories.deurs, remote, rentalId, workspaceVersion]);
 
@@ -216,7 +237,7 @@ export default function RentalWorkspaceProvider({
   }, [rentalId, rentals, contracts, rentalEquipmentLines, assignments, equipmentRecords, operators, projects, workspaceVersion, billingStatementRepository, deurRepository, remote, remoteDeurs, remoteStatements, workspace]);
 
   if (remote && (list.status === "loading" || workspace.status === "loading" || workDescriptionsStatus === "loading" || remoteDeursStatus === "loading" || remoteStatementsStatus === "loading")) return <div className="rounded-xl border bg-white p-8">Loading canonical Rental workspace…</div>;
-  if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error" || remoteDeursStatus === "error" || remoteStatementsStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{"message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
+  if (remote && (list.status === "error" || workspace.status === "error" || workDescriptionsStatus === "error" || remoteDeursStatus === "error" || remoteStatementsStatus === "error")) return <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-800" role="alert">{remoteDeursStatus === "error" ? <WorkspaceReadDiagnostic failure={remoteDeursFailure} /> : "message" in list ? list.message : "message" in workspace ? workspace.message : "Canonical Rental workspace could not be loaded."}<button className="ml-3 underline" onClick={() => { list.retry(); workspace.retry(); setWorkspaceVersion(value => value + 1); }}>Retry</button></div>;
   if (!aggregate) {
     return (
       <div className="rounded-xl border bg-white p-8">
