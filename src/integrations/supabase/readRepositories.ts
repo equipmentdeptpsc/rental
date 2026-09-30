@@ -33,7 +33,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", columns: "*,billing_statement_lines(*)", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"], mapRow: mapBillingStatement }, core),
-    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*)", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
+    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*,deur_event_supersessions!deur_event_supersessions_original_event_id_fkey(id))", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     canonicalBookings: new SupabaseCanonicalBookingReadRepository(client),
     equipmentAvailability: new SupabaseEquipmentAvailabilityRepository(client),
@@ -59,6 +59,9 @@ export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurReco
   const events = eventRows.flatMap((value): CanonicalDeurEvent[] => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [];
     const event = value as Record<string, unknown>;
+    // The raw immutable event remains available through audit/history.  The
+    // normal DEUR projection excludes only a superseded original event.
+    if (Array.isArray(event.deur_event_supersessions) && event.deur_event_supersessions.length>0) return [];
     if (typeof event.id !== "string" || typeof event.activity_type !== "string" || typeof event.action !== "string" || typeof event.occurred_at !== "string" || typeof event.sequence !== "number") return [];
     return [{ id:event.id, activityType:event.activity_type as CanonicalDeurEvent["activityType"], action:event.action as CanonicalDeurEvent["action"], timestamp:event.occurred_at, sequence:event.sequence, source:event.source === "legacy" ? "legacy" : event.source === "automatic" ? "automatic" : "user", actorId:typeof event.actor_id === "string" ? event.actor_id : undefined, deurId:typeof event.deur_id === "string" ? event.deur_id : undefined, idleReasonId:typeof event.idle_reason_id === "string" ? event.idle_reason_id : undefined, idleReasonLabelSnapshot:typeof event.idle_reason_label_snapshot === "string" ? event.idle_reason_label_snapshot : undefined, idleReasonRemarks:typeof event.idle_reason_remarks === "string" ? event.idle_reason_remarks : undefined }];
   }).sort((left,right)=>left.sequence-right.sequence);
