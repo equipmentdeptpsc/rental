@@ -19,6 +19,7 @@ describe("UAT billing approval control", () => {
     expect(panel).toContain("window.confirm");
     expect(panel).toContain("approvalAttempted");
     expect(panel).toContain("finalizeStatement");
+    expect(panel).toContain("onClick={() => void approveUatStatement()}");
     expect(panel).not.toContain("createInvoice");
     expect(panel).not.toContain("recordCollection");
   });
