@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveRentalBillingReadiness } from "@/features/rental/billing/resolveRentalBillingReadiness";
+import { mapDeur } from "@/integrations/supabase/readRepositories";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
 
@@ -17,6 +18,33 @@ const completedZeroEvents = [
 ];
 
 describe("rental billing readiness", () => {
+  it("supplies the effective event stream while preserving the raw audit input", () => {
+    const rawEvents = [
+      { id: "replacement-start", deur_id: "deur-1", activity_type: "shift", action: "start", occurred_at: "2026-09-01T00:00:00.000Z", sequence: 1, source: "manual-web", deur_event_supersessions: [] },
+      { id: "raw-bootstrap", deur_id: "deur-1", activity_type: "shift", action: "start", occurred_at: "2026-09-01T00:00:01.000Z", sequence: 2, source: "manual-web", deur_event_supersessions: [{ id: "supersession-1" }] },
+      { id: "operation-start", deur_id: "deur-1", activity_type: "operation", action: "start", occurred_at: "2026-09-01T01:00:00.000Z", sequence: 3, source: "manual-web", deur_event_supersessions: [] },
+      { id: "operation-end", deur_id: "deur-1", activity_type: "operation", action: "end", occurred_at: "2026-09-01T02:00:00.000Z", sequence: 4, source: "manual-web", deur_event_supersessions: [] },
+      { id: "shift-end", deur_id: "deur-1", activity_type: "shift", action: "end", occurred_at: "2026-09-01T03:00:00.000Z", sequence: 5, source: "manual-web", deur_event_supersessions: [] },
+    ];
+    const before = structuredClone(rawEvents);
+    const mapped = mapDeur({ id: "deur-1", rental_id: "rental-1", status: "Acknowledged", created_at: "2026-09-01T00:00:00.000Z", updated_at: "2026-09-01T00:00:00.000Z", deur_events: rawEvents });
+    expect(mapped).toMatchObject({ success: true, value: { events: [{ id: "replacement-start" }, { id: "operation-start" }, { id: "operation-end" }, { id: "shift-end" }] } });
+    expect(rawEvents).toEqual(before);
+    if (!mapped.success) throw new Error("expected canonical DEUR mapping");
+    const result = resolveRentalBillingReadiness({ rentalEquipmentLines: [line("line-1")], deurs: [deur("deur-1", "line-1", { events: mapped.value.events })] });
+    expect(result).toMatchObject({ ready: true, issues: [] });
+  });
+
+  it("keeps genuinely invalid effective history invalid", () => {
+    const invalid = [
+      { id: "shift-start", activityType: "shift" as const, action: "start", timestamp: "2026-09-01T00:00:00.000Z", sequence: 1, source: "user" as const },
+      { id: "shift-start-duplicate", activityType: "shift" as const, action: "start", timestamp: "2026-09-01T00:01:00.000Z", sequence: 2, source: "user" as const },
+      { id: "shift-end", activityType: "shift" as const, action: "end", timestamp: "2026-09-01T00:02:00.000Z", sequence: 3, source: "user" as const },
+    ];
+    const result = resolveRentalBillingReadiness({ rentalEquipmentLines: [line("line-1")], deurs: [deur("invalid", "line-1", { events: invalid })] });
+    expect(result.issues[0]).toMatchObject({ code: "INVALID_EVENT_HISTORY" });
+  });
+
   it("blocks when one acknowledged effective DEUR has no billable activity", () => {
     const result = resolveRentalBillingReadiness({ rentalEquipmentLines: [line("line-1"), line("line-2")], deurs: [deur("ready", "line-1", { events: eligibleEvents }), deur("zero", "line-2", { deurNumber: "DEUR-2026-000023", events: completedZeroEvents })] });
     expect(result.ready).toBe(false);
