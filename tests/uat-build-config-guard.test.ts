@@ -14,7 +14,7 @@ describe("UAT build configuration guard", () => {
     expect(() => execFileSync(process.execPath, [guard], { env: { ...process.env, ...base }, stdio: "pipe" })).not.toThrow();
   });
   it.each([
-    ["missing key", { VITE_SUPABASE_PUBLISHABLE_KEY: "" }],
+    ["missing key", { VITE_SUPABASE_PUBLISHABLE_KEY: "", SUPABASE_PUBLISHABLE_KEY: "" }],
     ["invalid key shape", { VITE_SUPABASE_PUBLISHABLE_KEY: "\u0016" }],
     ["wrong URL", { VITE_SUPABASE_URL: "https://other.supabase.co" }],
     ["non-remote mode", { VITE_PERSISTENCE_MODE: "local" }],
