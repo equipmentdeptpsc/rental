@@ -7,7 +7,7 @@ const record = (events: CanonicalDeurEvent[]): DeurRecord => ({ id: "d1", rental
 
 describe("canonical DEUR event read boundary", () => {
   it("applies database logical order while retaining physical sequence", () => {
-    const raw = [{ ...event("original", 1, "start", "shift"), superseded: true }, event("operation-start", 2, "start", "operation"), event("operation-end", 3, "end", "operation"), event("shift-end", 4, "end", "shift"), event("replacement", 5, "start", "shift")];
+    const raw = [event("original", 1, "start", "shift"), event("operation-start", 2, "start", "operation"), event("operation-end", 3, "end", "operation"), event("shift-end", 4, "end", "shift"), event("replacement", 5, "start", "shift")];
     const result = applyCanonicalDeurEventOrder(record(raw), [
       { event_id: "replacement", physical_sequence: 5, logical_sequence: 1, lineage_root_event_id: "original" },
       { event_id: "operation-start", physical_sequence: 2, logical_sequence: 2, lineage_root_event_id: "operation-start" },
@@ -17,8 +17,14 @@ describe("canonical DEUR event read boundary", () => {
     expect(result).toMatchObject({ success: true, value: { events: [{ id: "replacement", sequence: 1, physicalSequence: 5 }, { id: "operation-start", sequence: 2 }, { id: "operation-end", sequence: 3 }, { id: "shift-end", sequence: 4 }] } });
     expect(raw.map((item) => item.sequence)).toEqual([1, 2, 3, 4, 5]);
   });
-  it("fails closed when the projection does not cover the effective raw stream", () => {
+  it("fails closed when the projection omits every raw event", () => {
     const result = applyCanonicalDeurEventOrder(record([event("event", 1, "start", "shift")]), []);
+    expect(result).toMatchObject({ success: false, error: { code: "REMOTE_ROW_MALFORMED" } });
+  });
+  it("fails closed when the projection names an event absent from raw evidence", () => {
+    const result = applyCanonicalDeurEventOrder(record([event("event", 1, "start", "shift")]), [
+      { event_id: "missing", physical_sequence: 1, logical_sequence: 1, lineage_root_event_id: "missing" },
+    ]);
     expect(result).toMatchObject({ success: false, error: { code: "REMOTE_ROW_MALFORMED" } });
   });
 });

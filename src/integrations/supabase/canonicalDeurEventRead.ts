@@ -11,14 +11,24 @@ interface CanonicalOrderRow {
 
 /** Applies the database-owned logical order without changing raw event fields. */
 export function applyCanonicalDeurEventOrder(record: DeurRecord, rows: readonly CanonicalOrderRow[]): RepositoryResult<DeurRecord> {
-  const effectiveEvents = (record.events ?? []).filter((event) => event.superseded !== true);
-  const byId = new Map(effectiveEvents.map((event) => [event.id, event]));
+  const rawEvents = record.events ?? [];
+  const byId = new Map(rawEvents.map((event) => [event.id, event]));
+  const canonicalIds = new Set(rows.map((row) => row.event_id));
   const events = rows.map((row) => {
     const event = byId.get(row.event_id);
     if (!event || !Number.isInteger(row.logical_sequence) || !Number.isInteger(row.physical_sequence)) return undefined;
     return { ...event, sequence: row.logical_sequence, physicalSequence: row.physical_sequence };
   });
-  if (events.length !== effectiveEvents.length || events.some((event) => !event)) {
+  // Superseded originals may still be present in the browser's raw nested
+  // relation when its link projection is unavailable. The database projection
+  // is authoritative about their exclusion, so validate its IDs against raw
+  // evidence instead of requiring identical raw and effective row counts.
+  if (
+    (rawEvents.length > 0 && rows.length === 0)
+    || rows.length > rawEvents.length
+    || canonicalIds.size !== rows.length
+    || events.some((event) => !event)
+  ) {
     return repositoryFailure("REMOTE_ROW_MALFORMED", "Canonical DEUR event order did not cover the complete effective event stream.", {
       context: { repository: "DEUR", deurId: record.id }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Reconcile the canonical DEUR event projection.",
     });
