@@ -27,6 +27,7 @@ import type { Operator } from "@/features/operators/types";
 import type { CustomerRecord } from "@/features/customer/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
+import type { CollectionTransaction } from "@/features/rental/collections/types";
 import type { DeurRecord } from "@/features/rental/deur/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
@@ -73,6 +74,7 @@ export interface ApplicationReadRepositories {
   users: ReadOnlyRepository<User>; equipment: ReadOnlyRepository<EquipmentRecord>; rentals: ReadOnlyRepository<RentalRecord>;
   assignments: ReadOnlyRepository<AssignmentRecord>; operators: ReadOnlyRepository<Operator>; customers: ReadOnlyRepository<CustomerRecord>;
   projects: ReadOnlyRepository<ProjectRecord>; billing: ReadOnlyRepository<BillingStatement>; deurs: ReadOnlyRepository<DeurRecord>;
+  collections: ReadOnlyRepository<CollectionTransaction>;
   rentalEquipmentLines: ReadOnlyRepository<RentalEquipmentLine>;
   workDescriptions: ReadOnlyRepository<WorkDescriptionRecord>;
   canonicalAudit: ReadOnlyRepository<CanonicalAuditEvent>;
@@ -112,5 +114,5 @@ export interface AuthenticationDependencies {
   operatorPinCredentialService?: OperatorPinCredentialService;
   remoteUserAdministration?: RemoteUserAdministration;
 }
-export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; readRepositories: ApplicationReadRepositories; commandRepositories: ApplicationCommandRepositories; changeNotifications: ApplicationChangeNotifications; synchronization: OperationalSynchronizationDependencies; authentication: AuthenticationDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource;persistenceMode:PersistenceMode;remoteOperationalWritesEnabled:boolean;remoteEquipmentCreateEnabled?:boolean;remoteRentalCreateEnabled?:boolean;remoteRentalCommercialTermsEnabled?:boolean;remoteRentalApprovalEnabled?:boolean;remoteRentalReserveEnabled?:boolean;remoteRentalReleaseEnabled?:boolean;remoteRentalActivateEnabled?:boolean;remoteRentalReturnEnabled?:boolean;remoteRentalCancelEnabled?:boolean;remoteAssignmentCreateEnabled?:boolean;remoteAssignmentCancelEnabled?:boolean;remoteProjectCustomerLinkEnabled?:boolean}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
+export interface ApplicationDependencies { persistence: PersistenceAdapter; repositories: RepositoryDependencies; readRepositories: ApplicationReadRepositories; commandRepositories: ApplicationCommandRepositories; changeNotifications: ApplicationChangeNotifications; synchronization: OperationalSynchronizationDependencies; authentication: AuthenticationDependencies; configuration:{equipmentStatusSource:EquipmentStatusSource;persistenceMode:PersistenceMode;remoteOperationalWritesEnabled:boolean;remoteCollectionEnabled?:boolean;remoteEquipmentCreateEnabled?:boolean;remoteRentalCreateEnabled?:boolean;remoteRentalCommercialTermsEnabled?:boolean;remoteRentalApprovalEnabled?:boolean;remoteRentalReserveEnabled?:boolean;remoteRentalReleaseEnabled?:boolean;remoteRentalActivateEnabled?:boolean;remoteRentalReturnEnabled?:boolean;remoteRentalCancelEnabled?:boolean;remoteAssignmentCreateEnabled?:boolean;remoteAssignmentCancelEnabled?:boolean;remoteProjectCustomerLinkEnabled?:boolean}; compatibility: { sharedLegacySingletons: readonly (keyof RepositoryDependencies)[] } }
 export type ApplicationDependencyOverrides = { persistence?: PersistenceAdapter; repositories?: Partial<RepositoryDependencies>; synchronization?: OperationalSynchronizationDependencies; authentication?: Partial<AuthenticationDependencies> };

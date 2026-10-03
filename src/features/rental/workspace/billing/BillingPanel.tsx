@@ -47,7 +47,7 @@ export default function BillingPanel() {
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [approvalAttempted, setApprovalAttempted] = useState(false);
   const [approvalMessage, setApprovalMessage] = useState("");
-  const approvalIdentity = useRef<{ commandId: string; idempotencyKey: string }>();
+  const approvalIdentity = useRef<{ commandId: string; idempotencyKey: string } | undefined>(undefined);
 
   const billingReadiness = resolveRentalBillingReadiness({ rentalEquipmentLines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, contract: aggregate.contract });
   const commercialTermsAvailable = aggregate.rentalEquipmentLines.length > 0 && aggregate.rentalEquipmentLines.every((line) => Boolean(line.commercialSnapshot));

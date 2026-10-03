@@ -117,6 +117,14 @@ export interface CreateBillingStatementInput extends OperationalCommandMetadata 
 export interface UpdateInvoiceInput extends BillingCommandInput {
   invoiceStatus: "Partially Collected" | "Fully Collected";
 }
+export interface RecordCollectionInput extends OperationalCommandMetadata {
+  statementId: string;
+  amount: number;
+  paymentDate: string;
+  reference: string;
+  paymentMethod?: string;
+  remarks?: string;
+}
 export interface BillingEvidenceProjection {
   deurId: string; rentalId: string; rentalLineId?: string; equipmentId: string; operatorId: string;
   workDate: string; billingMethod: string; quantity: number; unit: string; unitRate: number;
@@ -129,6 +137,10 @@ export interface BillingLifecycleProjection {
   statementId: string; statementNumber?: string; invoiceNumber?: string;
   approvalStatus: BillingApprovalStatus; invoiceStatus: BillingInvoiceStatus; version: number;
 }
+export interface CollectionLifecycleProjection {
+  collectionId: string; statementId: string; invoiceStatus: BillingInvoiceStatus;
+  collectedTotal: number; outstandingBalance: number; version: number;
+}
 export type BillingApprovalStatus = "Draft" | "Pending Approval" | "Approved" | "Rejected";
 export type BillingInvoiceStatus = "Not Invoiced" | "Invoiced" | "Partially Collected" | "Fully Collected" | "Cancelled";
 export interface BillingFinancialCommandRepository {
@@ -138,6 +150,7 @@ export interface BillingFinancialCommandRepository {
   finalizeStatement(input: BillingCommandInput): Promise<OperationalCommandResult<BillingLifecycleProjection>>;
   createInvoice(input: BillingCommandInput): Promise<OperationalCommandResult<BillingLifecycleProjection>>;
   updateInvoice(input: UpdateInvoiceInput): Promise<OperationalCommandResult<BillingLifecycleProjection>>;
+  recordCollection?(input: RecordCollectionInput): Promise<OperationalCommandResult<CollectionLifecycleProjection>>;
 }
 
 export interface RecoveryCommandMetadata extends OperationalCommandMetadata {

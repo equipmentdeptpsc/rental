@@ -12,6 +12,7 @@ import type {
   BillingCommandInput, BillingConsumptionProjection, BillingEvidenceProjection,
   BillingFinancialCommandRepository, BillingLifecycleProjection, ConsumeDeurInput,
   CreateBillingStatementInput, GenerateBillingEvidenceInput, UpdateInvoiceInput,
+  CollectionLifecycleProjection, RecordCollectionInput,
   DeurConsumptionRecoveryInput, FinancialRecoveryInput, RecoveryCommandRepository,
   RecoveryProjection, RentalRecoveryInput,
 } from "@/features/rental/operations/commands/contracts";
@@ -53,6 +54,7 @@ export class SupabaseOperationalCommandRepository implements Repository {
   finalizeStatement = (input: BillingCommandInput) => this.rpc<BillingLifecycleProjection>("command_finalize_billing_statement", input);
   createInvoice = (input: BillingCommandInput) => this.rpc<BillingLifecycleProjection>("command_create_invoice", input);
   updateInvoice = (input: UpdateInvoiceInput) => this.rpc<BillingLifecycleProjection>("command_update_invoice", input);
+  recordCollection = (input: RecordCollectionInput) => this.rpc<CollectionLifecycleProjection>("command_record_collection", input);
   reopenRental = (input: RentalRecoveryInput) => this.rpc<RecoveryProjection>("command_reopen_rental", input);
   reverseRentalReturn = (input: RentalRecoveryInput) => this.rpc<RecoveryProjection>("command_reverse_rental_return", input);
   voidBillingStatement = (input: FinancialRecoveryInput) => this.rpc<RecoveryProjection>("command_void_billing_statement", input);

@@ -37,6 +37,7 @@ export class UnavailableOperationalCommandRepository implements AllRepositories 
   finalizeStatement = () => this.unavailable<never>();
   createInvoice = () => this.unavailable<never>();
   updateInvoice = () => this.unavailable<never>();
+  recordCollection = () => this.unavailable<never>();
   reopenRental = () => this.unavailable<never>();
   reverseRentalReturn = () => this.unavailable<never>();
   voidBillingStatement = () => this.unavailable<never>();

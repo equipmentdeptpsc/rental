@@ -31,7 +31,7 @@ export const PERMISSIONS = {
   maintenance: ["maintenance.read", "maintenance.manage"],
   dailyLog: ["dailyLog.read", "dailyLog.manage"],
   billing: ["billing.read", "billing.create", "billing.update"],
-  collections: ["collections.read", "collections.manage"],
+  collections: ["collections.read", "collections.create", "collections.manage"],
   reports: ["reports.read", "reports.view"],
   administration: [
     "users.read",

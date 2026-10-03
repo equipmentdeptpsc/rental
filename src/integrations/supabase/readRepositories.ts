@@ -7,6 +7,7 @@ import type { Operator } from "@/features/operators/types";
 import type { CustomerRecord } from "@/features/customer/types";
 import type { ProjectRecord } from "@/features/project/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
+import type { CollectionTransaction } from "@/features/rental/collections/types";
 import type { CanonicalDeurEvent, DeurRecord } from "@/features/rental/deur/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { WorkDescriptionRecord } from "@/features/masters/work-description/types";
@@ -35,6 +36,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", columns: "*,billing_statement_lines(*)", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"], mapRow: mapBillingStatement }, core),
+    collections: new SupabaseReadRepository<CollectionTransaction>(client, { repositoryName: "Collection", table: "collections", searchColumns: ["reference_no"], mapRow: mapCollection }, core),
     // The business projection mirrors the database-owned effective logical
     // order. Both lineage directions are embedded without changing raw audit
     // rows, so terminal replacements can inherit the original logical slot.
@@ -51,6 +53,12 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     lifecycleSummary: new SupabaseEquipmentLifecycleSummaryRepository(client),
     operatorCertifications: new SupabaseOperatorCertificationRepository(client),
   };
+}
+export function mapCollection(row: Record<string, unknown>): RepositoryResult<CollectionTransaction> {
+  const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
+  const value = base.value;
+  if (typeof value.id !== "string" || typeof value.billingStatementId !== "string" || typeof value.rentalId !== "string" || typeof value.amount !== "number" || typeof value.collectedAt !== "string") return repositoryFailure("REMOTE_ROW_MALFORMED", "Remote Collection requires canonical identity, amount, rental, and date fields.", { context: { repository: "Collection" }, recoverability: "MANUAL_RECONCILIATION", recommendedAction: "Repair the canonical Collection row." });
+  return repositorySuccess({ id: value.id, statementId: value.billingStatementId, rentalId: value.rentalId, amount: value.amount, paymentDate: value.collectedAt.slice(0, 10), referenceNumber: typeof value.referenceNo === "string" ? value.referenceNo : "", recordedBy: typeof value.createdBy === "string" ? value.createdBy : "Unknown", recordedByUserId: typeof value.createdBy === "string" ? value.createdBy : undefined, recordedAt: typeof value.createdAt === "string" ? value.createdAt : value.collectedAt } as CollectionTransaction);
 }
 export function mapCanonicalAudit(row: Record<string, unknown>): RepositoryResult<CanonicalAuditEvent> {
   const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
