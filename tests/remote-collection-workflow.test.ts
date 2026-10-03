@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const migration = readFileSync("supabase/migrations/20261003000700_canonical_remote_collection_workflow.sql", "utf8");
+const readGrantMigration = readFileSync("supabase/migrations/20261004000100_canonical_remote_collection_read_grant.sql", "utf8");
 const commands = readFileSync("src/integrations/supabase/SupabaseOperationalCommandRepository.ts", "utf8");
 const provider = readFileSync("src/features/rental/workspace/RentalWorkspaceProvider.tsx", "utf8");
 const page = readFileSync("src/pages/Billing/index.tsx", "utf8");
@@ -16,6 +17,13 @@ describe("canonical remote collection workflow", () => {
     expect(migration).toContain("RECORD_COLLECTION");
     expect(migration).toContain("greatest(coalesce(statement_row.grand_total, statement_row.subtotal) - collected_total, 0)");
     expect(migration).toContain("REVOKE INSERT, UPDATE, DELETE ON erp.collections");
+  });
+
+  it("grants only authenticated read access for the remote collection projection", () => {
+    expect(readGrantMigration).toContain("GRANT SELECT ON TABLE erp.collections TO authenticated");
+    expect(readGrantMigration).not.toContain("GRANT INSERT");
+    expect(readGrantMigration).not.toContain("GRANT UPDATE");
+    expect(readGrantMigration).not.toContain("GRANT DELETE");
   });
 
   it("exposes the command and reads collections from the remote canonical projection", () => {
