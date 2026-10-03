@@ -23,6 +23,7 @@ import { SupabaseEquipmentAvailabilityRepository } from "./SupabaseEquipmentAvai
 import { SupabaseEquipmentRentalLifecycleHistoryRepository } from "./SupabaseEquipmentRentalLifecycleHistoryRepository";
 import { SupabaseEquipmentLifecycleSummaryRepository } from "./SupabaseEquipmentLifecycleSummaryRepository";
 import { orderEffectiveDeurEvents } from "@/features/rental/deur/services/effectiveDeurEventOrder";
+import { readCanonicalDeurEventOrder } from "./canonicalDeurEventRead";
 
 export function createSupabaseReadRepositories(client: SupabaseClient, core: RemoteCore) {
   return {
@@ -37,7 +38,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     // The business projection mirrors the database-owned effective logical
     // order. Both lineage directions are embedded without changing raw audit
     // rows, so terminal replacements can inherit the original logical slot.
-    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*,supersession_as_original:deur_event_supersessions!deur_event_supersessions_original_event_id_fkey(replacement_event_id),supersession_as_replacement:deur_event_supersessions!deur_event_supersessions_replacement_event_id_fkey(original_event_id))", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
+    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*,supersession_as_original:deur_event_supersessions!deur_event_supersessions_original_event_id_fkey(replacement_event_id),supersession_as_replacement:deur_event_supersessions!deur_event_supersessions_replacement_event_id_fkey(original_event_id))", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur, postMap: (record, signal) => readCanonicalDeurEventOrder(client, record, signal) }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     canonicalBookings: new SupabaseCanonicalBookingReadRepository(client),
     equipmentAvailability: new SupabaseEquipmentAvailabilityRepository(client),
