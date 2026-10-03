@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const migration = readFileSync("supabase/migrations/20261003000700_canonical_remote_collection_workflow.sql", "utf8");
 const readGrantMigration = readFileSync("supabase/migrations/20261004000100_canonical_remote_collection_read_grant.sql", "utf8");
+const readGrantRepairMigration = readFileSync("supabase/migrations/20261004000200_reassert_authenticated_collection_read_grant.sql", "utf8");
 const commands = readFileSync("src/integrations/supabase/SupabaseOperationalCommandRepository.ts", "utf8");
 const provider = readFileSync("src/features/rental/workspace/RentalWorkspaceProvider.tsx", "utf8");
 const page = readFileSync("src/pages/Billing/index.tsx", "utf8");
@@ -26,6 +27,13 @@ describe("canonical remote collection workflow", () => {
     expect(readGrantMigration).not.toContain("GRANT INSERT");
     expect(readGrantMigration).not.toContain("GRANT UPDATE");
     expect(readGrantMigration).not.toContain("GRANT DELETE");
+  });
+
+  it("reasserts the complete authenticated collection-read chain without business writes", () => {
+    expect(readGrantRepairMigration).toContain("GRANT USAGE ON SCHEMA erp TO authenticated");
+    expect(readGrantRepairMigration).toContain("GRANT SELECT ON TABLE erp.collections TO authenticated");
+    expect(readGrantRepairMigration).toContain("NOTIFY pgrst, 'reload schema'");
+    expect(readGrantRepairMigration).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\b/i);
   });
 
   it("exposes the command and reads collections from the remote canonical projection", () => {
