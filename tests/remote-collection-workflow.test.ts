@@ -42,7 +42,7 @@ describe("canonical remote collection workflow", () => {
 
   it("keeps UAT read diagnostics metadata-only and opt-in", () => {
     expect(dependencies).toContain("VITE_UAT_REMOTE_READ_DIAGNOSTICS");
-    expect(dependencies).toContain('console.warn("UAT_REMOTE_READ_DIAGNOSTIC",event)');
+    expect(dependencies).toContain("UAT_REMOTE_READ_DIAGNOSTIC repository=");
     expect(remoteBase).toContain('message: "Remote read failed."');
     expect(remoteBase).toContain("sqlState");
     expect(remoteBase).not.toContain("accessToken");

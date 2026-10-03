@@ -50,7 +50,7 @@ export function createApplicationDependencies(configuration:ApplicationRuntimeCo
   const source:EquipmentStatusSource=configuration.persistenceMode==="remote"||configuration.equipmentStatusSource==="supabase"?"supabase":"local";
   if(source==="local")return createLocalApplicationDependencies(overrides);
   const remoteConfiguration:RemoteRuntimeConfiguration={source:"supabase",supabaseUrl:configuration.supabaseUrl,supabasePublishableKey:configuration.supabasePublishableKey};
-  const validated=validateSupabaseConfiguration(remoteConfiguration);const remoteCore=createRemoteCore(configuration.uatRemoteReadDiagnostics?{logger:createRemoteLogger({development:true,sink:event=>console.warn("UAT_REMOTE_READ_DIAGNOSTIC",event)})}:{});
+  const validated=validateSupabaseConfiguration(remoteConfiguration);const remoteCore=createRemoteCore(configuration.uatRemoteReadDiagnostics?{logger:createRemoteLogger({development:true,sink:event=>{const context=event.context??{};console.warn(`UAT_REMOTE_READ_DIAGNOSTIC repository=${String(context.repository??"unknown")} operation=${String(context.operation??"unknown")} code=${String(context.code??"unknown")} status=${String(context.status??"unknown")} postgrest=${String(context.sqlState??"unknown")} failure=${String(context.failureKind??"unknown")}`);}})}:{});
   const client=validated.success?getSupabaseBrowserClient(validated.value):undefined;
   const equipmentStatusRead=client?new SupabaseEquipmentStatusReadRepository(client,remoteCore):new MissingRemoteConfigurationRepository();
   const dependencies=createLocalApplicationDependencies({...overrides,repositories:{...overrides.repositories,equipmentStatusRead}});
