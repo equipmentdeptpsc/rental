@@ -44,7 +44,8 @@ async function render(input = dependencies()) {
   return container;
 }
 
-beforeEach(() => { vi.clearAllMocks(); auth.permissions = new Set(["rental.return"]); });
+beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T18:00:00.000Z")); auth.permissions = new Set(["rental.return"]); });
+afterEach(() => { vi.useRealTimers(); });
 afterEach(async () => { while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical remote Rental Return remediation", () => {
@@ -72,14 +73,19 @@ describe("canonical remote Rental Return remediation", () => {
     expect(rpc).toHaveBeenCalledWith("command_return_all_rental_lines", { command: { commandId: "c", idempotencyKey: "i", rentalId: active.id, actualReturnDate: "2026-09-06" } });
   });
 
-  it("shows Return only for authorized Active Rentals and dispatches once", async () => {
+  it("uses the automatic Asia/Manila business date after explicit confirmation and dispatches once", async () => {
     const returnAll = vi.fn(async () => ({ success: true, disposition: "ACCEPTED", value: { rentalId: active.id, lines: [], version: 1 } } as const));
     const container = await render(dependencies(returnAll)); await act(async () => { await Promise.resolve(); }); const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return Equipment")!;
     expect(button).toBeTruthy();
-    const date = container.querySelector<HTMLInputElement>('input[aria-label="Return business date"]')!;
-    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(date, "2026-09-06"); date.dispatchEvent(new Event("input", { bubbles: true })); button.click(); button.click(); await Promise.resolve(); });
+    expect(container.textContent).toContain("October 4, 2026");
+    expect(container.querySelector('input[aria-label="Return business date"]')).toBeNull();
+    await act(async () => { button.click(); await Promise.resolve(); });
+    expect(returnAll).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Return all rental equipment effective October 4, 2026?");
+    const confirm = [...container.querySelectorAll("button")].filter((item) => item.textContent === "Return Equipment")[1]!;
+    await act(async () => { confirm.click(); confirm.click(); await Promise.resolve(); });
     expect(returnAll).toHaveBeenCalledTimes(1);
-    expect(returnAll).toHaveBeenCalledWith({ commandId: expect.any(String), idempotencyKey: expect.any(String), rentalId: active.id, actualReturnDate: "2026-09-06", expectedVersion: 8 });
+    expect(returnAll).toHaveBeenCalledWith({ commandId: expect.any(String), idempotencyKey: expect.any(String), rentalId: active.id, actualReturnDate: "2026-10-04", expectedVersion: 8 });
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
 
@@ -100,4 +106,5 @@ describe("canonical remote Rental Return remediation", () => {
     const input = dependencies(); input.configuration.remoteRentalReturnEnabled = false;
     expect((await render(input)).textContent).not.toContain("Return Equipment");
   });
+
 });
