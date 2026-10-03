@@ -212,6 +212,15 @@ export interface CanonicalDeurEvent {
   action: DeurEventAction;
   timestamp: string;
   sequence: number;
+  /**
+   * Immutable append order as stored by the event ledger. `sequence` is the
+   * canonical effective order exposed to business-rule consumers.
+   */
+  physicalSequence?: number;
+  /** The immediate immutable event this event replaces, when applicable. */
+  replacesEventId?: string;
+  /** True only on an immutable raw event superseded by a later replacement. */
+  superseded?: boolean;
   source: "user" | "automatic" | "legacy";
   actionGroupId?: string;
   logicalActionId?: string;

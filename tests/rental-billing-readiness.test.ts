@@ -20,15 +20,15 @@ const completedZeroEvents = [
 describe("rental billing readiness", () => {
   it("supplies the effective event stream while preserving the raw audit input", () => {
     const rawEvents = [
-      { id: "replacement-start", deur_id: "deur-1", activity_type: "shift", action: "start", occurred_at: "2026-09-01T00:00:00.000Z", sequence: 1, source: "manual-web", deur_event_supersessions: [] },
-      { id: "raw-bootstrap", deur_id: "deur-1", activity_type: "shift", action: "start", occurred_at: "2026-09-01T00:00:01.000Z", sequence: 2, source: "manual-web", deur_event_supersessions: [{ id: "supersession-1" }] },
-      { id: "operation-start", deur_id: "deur-1", activity_type: "operation", action: "start", occurred_at: "2026-09-01T01:00:00.000Z", sequence: 3, source: "manual-web", deur_event_supersessions: [] },
-      { id: "operation-end", deur_id: "deur-1", activity_type: "operation", action: "end", occurred_at: "2026-09-01T02:00:00.000Z", sequence: 4, source: "manual-web", deur_event_supersessions: [] },
-      { id: "shift-end", deur_id: "deur-1", activity_type: "shift", action: "end", occurred_at: "2026-09-01T03:00:00.000Z", sequence: 5, source: "manual-web", deur_event_supersessions: [] },
+      { id: "raw-bootstrap", deur_id: "deur-1", activity_type: "shift", action: "start", occurred_at: "2026-09-01T00:00:00.000Z", sequence: 1, source: "manual-web", supersession_as_original: [{ replacement_event_id: "replacement-start" }], supersession_as_replacement: [] },
+      { id: "operation-start", deur_id: "deur-1", activity_type: "operation", action: "start", occurred_at: "2026-09-01T01:00:00.000Z", sequence: 2, source: "manual-web", supersession_as_original: [], supersession_as_replacement: [] },
+      { id: "operation-end", deur_id: "deur-1", activity_type: "operation", action: "end", occurred_at: "2026-09-01T02:00:00.000Z", sequence: 3, source: "manual-web", supersession_as_original: [], supersession_as_replacement: [] },
+      { id: "shift-end", deur_id: "deur-1", activity_type: "shift", action: "end", occurred_at: "2026-09-01T03:00:00.000Z", sequence: 4, source: "manual-web", supersession_as_original: [], supersession_as_replacement: [] },
+      { id: "replacement-start", deur_id: "deur-1", activity_type: "shift", action: "start", occurred_at: "2026-09-01T00:00:00.000Z", sequence: 5, source: "manual-web", supersession_as_original: [], supersession_as_replacement: [{ original_event_id: "raw-bootstrap" }] },
     ];
     const before = structuredClone(rawEvents);
-    const mapped = mapDeur({ id: "deur-1", rental_id: "rental-1", status: "Acknowledged", created_at: "2026-09-01T00:00:00.000Z", updated_at: "2026-09-01T00:00:00.000Z", deur_events: rawEvents });
-    expect(mapped).toMatchObject({ success: true, value: { events: [{ id: "replacement-start" }, { id: "operation-start" }, { id: "operation-end" }, { id: "shift-end" }] } });
+    const mapped = mapDeur({ id: "deur-1", rental_id: "rental-1", creation_source: "MANUAL_WEB", status: "Acknowledged", created_at: "2026-09-01T00:00:00.000Z", updated_at: "2026-09-01T00:00:00.000Z", deur_events: rawEvents });
+    expect(mapped).toMatchObject({ success: true, value: { events: [{ id: "replacement-start", sequence: 1, physicalSequence: 5 }, { id: "operation-start", sequence: 2 }, { id: "operation-end", sequence: 3 }, { id: "shift-end", sequence: 4 }] } });
     expect(rawEvents).toEqual(before);
     if (!mapped.success) throw new Error("expected canonical DEUR mapping");
     const result = resolveRentalBillingReadiness({ rentalEquipmentLines: [line("line-1")], deurs: [deur("deur-1", "line-1", { events: mapped.value.events })] });

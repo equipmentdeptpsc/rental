@@ -22,6 +22,7 @@ import { SupabaseCanonicalBookingReadRepository } from "./SupabaseCanonicalBooki
 import { SupabaseEquipmentAvailabilityRepository } from "./SupabaseEquipmentAvailabilityRepository";
 import { SupabaseEquipmentRentalLifecycleHistoryRepository } from "./SupabaseEquipmentRentalLifecycleHistoryRepository";
 import { SupabaseEquipmentLifecycleSummaryRepository } from "./SupabaseEquipmentLifecycleSummaryRepository";
+import { orderEffectiveDeurEvents } from "@/features/rental/deur/services/effectiveDeurEventOrder";
 
 export function createSupabaseReadRepositories(client: SupabaseClient, core: RemoteCore) {
   return {
@@ -33,11 +34,10 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", columns: "*,billing_statement_lines(*)", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"], mapRow: mapBillingStatement }, core),
-    // The DEUR operational projection is backed by the database-owned
-    // effective_deur_events contract.  Supersession links are embedded so the
-    // mapper can omit only the immutable raw event that the canonical
-    // projection marks as superseded; raw audit history remains untouched.
-    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*,deur_event_supersessions!deur_event_supersessions_original_event_id_fkey(id))", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
+    // The business projection mirrors the database-owned effective logical
+    // order. Both lineage directions are embedded without changing raw audit
+    // rows, so terminal replacements can inherit the original logical slot.
+    deurs: new SupabaseReadRepository<DeurRecord>(client, { repositoryName: "DEUR", table: "deurs", columns: "*,deur_events(*,supersession_as_original:deur_event_supersessions!deur_event_supersessions_original_event_id_fkey(replacement_event_id),supersession_as_replacement:deur_event_supersessions!deur_event_supersessions_replacement_event_id_fkey(original_event_id))", searchColumns: ["deur_number", "operational_remarks"], mapRow: mapDeur }, core),
     rentalEquipmentLines: new SupabaseReadRepository<RentalEquipmentLine>(client, { repositoryName: "RentalEquipmentLine", table: "rental_equipment_lines", mapRow: mapRentalEquipmentLine }, core),
     canonicalBookings: new SupabaseCanonicalBookingReadRepository(client),
     equipmentAvailability: new SupabaseEquipmentAvailabilityRepository(client),
@@ -60,16 +60,16 @@ export function mapCanonicalAudit(row: Record<string, unknown>): RepositoryResul
 export function mapDeur(row: Record<string, unknown>): RepositoryResult<DeurRecord> {
   const base = mapCanonicalRow<Record<string, unknown>>(row); if (!base.success) return base;
   const eventRows = Array.isArray(row.deur_events) ? row.deur_events : [];
-  const events = eventRows.flatMap((value): CanonicalDeurEvent[] => {
+  const rawEvents = eventRows.flatMap((value): CanonicalDeurEvent[] => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [];
     const event = value as Record<string, unknown>;
-    // This is intentionally driven by the canonical database supersession
-    // relation rather than by client-side revision heuristics.  The original
-    // immutable row remains queryable through the audit/raw history boundary.
-    if (Array.isArray(event.deur_event_supersessions) && event.deur_event_supersessions.length > 0) return [];
     if (typeof event.id !== "string" || typeof event.activity_type !== "string" || typeof event.action !== "string" || typeof event.occurred_at !== "string" || typeof event.sequence !== "number") return [];
-    return [{ id:event.id, activityType:event.activity_type as CanonicalDeurEvent["activityType"], action:event.action as CanonicalDeurEvent["action"], timestamp:event.occurred_at, sequence:event.sequence, source:event.source === "legacy" ? "legacy" : event.source === "automatic" ? "automatic" : "user", actorId:typeof event.actor_id === "string" ? event.actor_id : undefined, deurId:typeof event.deur_id === "string" ? event.deur_id : undefined, idleReasonId:typeof event.idle_reason_id === "string" ? event.idle_reason_id : undefined, idleReasonLabelSnapshot:typeof event.idle_reason_label_snapshot === "string" ? event.idle_reason_label_snapshot : undefined, idleReasonRemarks:typeof event.idle_reason_remarks === "string" ? event.idle_reason_remarks : undefined }];
-  }).sort((left,right)=>left.sequence-right.sequence);
+    const outgoing = Array.isArray(event.supersession_as_original) ? event.supersession_as_original : [];
+    const incoming = Array.isArray(event.supersession_as_replacement) ? event.supersession_as_replacement : [];
+    const replacesEventId = incoming.find((link): link is Record<string, unknown> => Boolean(link) && typeof link === "object" && !Array.isArray(link) && typeof (link as Record<string, unknown>).original_event_id === "string") as Record<string, unknown> | undefined;
+    return [{ id:event.id, activityType:event.activity_type as CanonicalDeurEvent["activityType"], action:event.action as CanonicalDeurEvent["action"], timestamp:event.occurred_at, sequence:event.sequence, physicalSequence:event.sequence, superseded:outgoing.length>0, ...(replacesEventId ? { replacesEventId: replacesEventId.original_event_id as string } : {}), source:event.source === "legacy" ? "legacy" : event.source === "automatic" ? "automatic" : "user", actorId:typeof event.actor_id === "string" ? event.actor_id : undefined, deurId:typeof event.deur_id === "string" ? event.deur_id : undefined, idleReasonId:typeof event.idle_reason_id === "string" ? event.idle_reason_id : undefined, idleReasonLabelSnapshot:typeof event.idle_reason_label_snapshot === "string" ? event.idle_reason_label_snapshot : undefined, idleReasonRemarks:typeof event.idle_reason_remarks === "string" ? event.idle_reason_remarks : undefined }];
+  });
+  const events = orderEffectiveDeurEvents({ creationSource: typeof base.value.creationSource === "string" ? base.value.creationSource : undefined, events: rawEvents });
   const logs = Array.isArray(base.value.logs) ? base.value.logs : [];
   return repositorySuccess({ ...base.value, events, logs } as unknown as DeurRecord);
 }
