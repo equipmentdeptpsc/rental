@@ -6,6 +6,8 @@ const readGrantMigration = readFileSync("supabase/migrations/20261004000100_cano
 const commands = readFileSync("src/integrations/supabase/SupabaseOperationalCommandRepository.ts", "utf8");
 const provider = readFileSync("src/features/rental/workspace/RentalWorkspaceProvider.tsx", "utf8");
 const page = readFileSync("src/pages/Billing/index.tsx", "utf8");
+const dependencies = readFileSync("src/app/composition/createApplicationDependencies.ts", "utf8");
+const remoteBase = readFileSync("src/core/remote/RemoteRepositoryBase.ts", "utf8");
 
 describe("canonical remote collection workflow", () => {
   it("uses a tenant-safe atomic command with idempotency, version, duplicate reference, audit, and balance guards", () => {
@@ -36,5 +38,13 @@ describe("canonical remote collection workflow", () => {
     expect(page).toContain("readRepositories.billing.list");
     expect(page).toContain("readRepositories.rentals.list");
     expect(page).toContain("PersistenceMode.Remote");
+  });
+
+  it("keeps UAT read diagnostics metadata-only and opt-in", () => {
+    expect(dependencies).toContain("VITE_UAT_REMOTE_READ_DIAGNOSTICS");
+    expect(dependencies).toContain('console.warn("UAT_REMOTE_READ_DIAGNOSTIC",event)');
+    expect(remoteBase).toContain('message: "Remote read failed."');
+    expect(remoteBase).toContain("sqlState");
+    expect(remoteBase).not.toContain("accessToken");
   });
 });

@@ -44,7 +44,10 @@ export class SupabaseReadRepository<T, TFilter extends RemoteReadFilter = Remote
     const items: T[] = [];
     for (const row of result.value ?? []) {
       const mapped = this.map(row);
-      if (!mapped.success) return mapped;
+      if (!mapped.success) {
+        this.remoteCore.logger.log({ category: "mapping", message: "Remote row mapping failed.", context: { repository: this.definition.repositoryName, operation: "list", code: mapped.error.code } });
+        return mapped;
+      }
       const postMapped = this.definition.postMap ? await this.definition.postMap(mapped.value, normalized.signal) : mapped;
       if (!postMapped.success) return postMapped;
       items.push(postMapped.value);
