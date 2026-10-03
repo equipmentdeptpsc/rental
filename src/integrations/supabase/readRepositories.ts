@@ -16,6 +16,7 @@ import { SupabaseCertificationReadRepository } from "./SupabaseCertificationRepo
 import type { RemoteCore } from "@/core/remote";
 import { repositoryFailure, repositorySuccess, type RepositoryResult } from "@/core/persistence";
 import { SupabaseReadRepository, mapCanonicalRow } from "./SupabaseReadRepository";
+import { SupabaseCollectionReadRepository } from "./SupabaseCollectionReadRepository";
 import { SupabaseOperatorCertificationRepository } from "@/features/operators/certifications/repository";
 import { SupabaseEquipmentSubcategoryRepository } from "./SupabaseEquipmentSubcategoryRepository";
 import { SupabaseEquipmentMaintenanceSnapshotRepository } from "./SupabaseEquipmentMaintenanceSnapshotRepository";
@@ -36,7 +37,7 @@ export function createSupabaseReadRepositories(client: SupabaseClient, core: Rem
     customers: new SupabaseReadRepository<CustomerRecord>(client, { repositoryName: "Customer", table: "customers", searchColumns: ["customer_code", "name", "email", "phone"], mapRow: mapCustomer }, core),
     projects: new SupabaseReadRepository<ProjectRecord>(client, { repositoryName: "Project", table: "projects", searchColumns: ["project_code", "name", "location"], mapRow: mapProject }, core),
     billing: new SupabaseReadRepository<BillingStatement>(client, { repositoryName: "BillingStatement", table: "billing_statements", columns: "*,billing_statement_lines(*)", searchColumns: ["statement_no", "invoice_number", "customer_snapshot", "project_snapshot"], mapRow: mapBillingStatement }, core),
-    collections: new SupabaseReadRepository<CollectionTransaction>(client, { repositoryName: "Collection", table: "collections", searchColumns: ["reference_no"], mapRow: mapCollection }, core),
+    collections: new SupabaseCollectionReadRepository(client),
     // The business projection mirrors the database-owned effective logical
     // order. Both lineage directions are embedded without changing raw audit
     // rows, so terminal replacements can inherit the original logical slot.
