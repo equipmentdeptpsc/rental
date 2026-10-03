@@ -18,6 +18,7 @@ import {
 import { useRentalWorkspaceAggregate, useRentalWorkspacePresentationData } from "..";
 import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
 import { resolveRentalBillingBlockers } from "@/features/rental/billing/resolveRentalBillingBlockers";
+import { resolveRentalBillingReadiness } from "@/features/rental/billing/resolveRentalBillingReadiness";
 import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
 import { useSearchParams } from "react-router-dom";
 import { PersistenceMode, useApplicationDependencies } from "@/app/composition";
@@ -36,8 +37,9 @@ export default function BillingPanel() {
   const drafts =
     useBillingDrafts();
 
-  const hasDeurEvidence = aggregate.deurs.some((deur) => !deur.billingLocked && deur.status === "Acknowledged");
-  const workflow=resolveRentalWorkflowStatus({rental:aggregate.rental,effectiveDeur:aggregate.deurs.at(-1),commercialTermsAvailable:Boolean(aggregate.contract||aggregate.deurs.at(-1)?.commercialSnapshot),billableEvidence:hasDeurEvidence});
+  const billingReadiness = resolveRentalBillingReadiness({ rentalEquipmentLines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, contract: aggregate.contract });
+  const commercialTermsAvailable = aggregate.rentalEquipmentLines.length > 0 && aggregate.rentalEquipmentLines.every((line) => Boolean(line.commercialSnapshot));
+  const workflow=resolveRentalWorkflowStatus({rental:aggregate.rental,effectiveDeurs:billingReadiness.effectiveDeurs,commercialTermsAvailable,billableEvidence:billingReadiness.ready});
   const lineBlockers = resolveRentalBillingBlockers({
     lines: aggregate.rentalEquipmentLines,
     deurs: aggregate.deurs,
@@ -47,7 +49,7 @@ export default function BillingPanel() {
   const prerequisites = [
     [!["Cancelled", "Closed"].includes(aggregate.rental.status), "Rental is Cancelled or Closed."],
     [aggregate.rentalEquipmentLines.length > 0, "At least one Rental Equipment Line is required."],
-    [lineBlockers.length === 0, "Resolve Rental Equipment Line billing blockers."],
+    [lineBlockers.length === 0 && billingReadiness.ready, "Resolve Rental Equipment Line billing blockers."],
   ] as const;
   const eligibilityMessage = prerequisites.find(([valid]) => !valid)?.[1];
   const canGenerate = !eligibilityMessage;
@@ -74,6 +76,7 @@ export default function BillingPanel() {
           <h2 className="text-lg font-semibold">Billing prerequisites</h2>
           <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
             {lineBlockers.map((blocker) => <li key={blocker.rentalEquipmentLineId}><b>{blocker.label}</b><br/>{blocker.message} Next: {blocker.nextAction}.</li>)}
+            {billingReadiness.issues.map((issue) => <li key={`${issue.rentalEquipmentLineId}-${issue.code}`}><b>{issue.deurNumber ? `${issue.deurNumber}${issue.revisionNumber ? ` R${issue.revisionNumber}` : ""}` : issue.equipmentId ?? "DEUR"}</b><br/>{issue.message}</li>)}
             {prerequisites.filter(([valid, message]) => !valid && message !== "Resolve Rental Equipment Line billing blockers.").map(([, message]) => (
               <li key={message}>{message}</li>
             ))}
