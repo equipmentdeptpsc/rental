@@ -93,12 +93,28 @@ const legacyRentalLineReturnFailureMessages: Record<string, string> = {
   PERSISTENCE_FAILURE: "The Rental Equipment Line return could not be persisted. Refresh before retrying.",
 };
 
+const rentalLineReturnReasonMessages: Record<string, string> = {
+  INVALID_RETURN_DATE: "Return business date is invalid.",
+  RETURN_DATE_BEFORE_RENTAL_START: "Return business date cannot be before Rental start.",
+  RENTAL_NOT_FOUND: "Rental was not found.",
+  LINE_NOT_FOUND: "Rental Equipment Line was not found.",
+  LINE_EQUIPMENT_MISMATCH: "Rental Equipment Line does not match the selected equipment.",
+  LINE_ASSIGNMENT_MISMATCH: "Rental Equipment Line does not match the selected assignment.",
+  COMMAND_INVALID: "Return command is invalid.",
+  VERSION_MISMATCH: "Rental Equipment Line version is stale. Refresh before retrying.",
+  RETURN_DATE_CONFLICT: "Authoritative Return business date is already recorded and cannot be overwritten.",
+  INVALID_LINE_TRANSITION: "Only an Active Rental Equipment Line can be returned.",
+  OPEN_DEUR_WORK: "Open DEUR work must be completed before Return.",
+  AVAILABLE_EQUIPMENT_STATUS_MISSING: "Available Equipment status is unavailable.",
+};
+
 function normalizeLegacyRentalLineReturnFailure(value: unknown): unknown {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const candidate = value as Record<string, unknown>;
   if (candidate.success !== false || "message" in candidate || typeof candidate.code !== "string"
     || typeof candidate.retryable !== "boolean" || typeof candidate.refreshRequired !== "boolean") return value;
-  const message = legacyRentalLineReturnFailureMessages[candidate.code];
+  const reasonCode = typeof candidate.reasonCode === "string" ? candidate.reasonCode : undefined;
+  const message = (reasonCode ? rentalLineReturnReasonMessages[reasonCode] : undefined) ?? legacyRentalLineReturnFailureMessages[candidate.code];
   return message ? { ...candidate, message } : value;
 }
 
