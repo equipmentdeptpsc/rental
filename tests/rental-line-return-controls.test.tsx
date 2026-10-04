@@ -7,6 +7,7 @@ import { PersistenceMode, type ApplicationDependencies } from "@/app/composition
 import RentalEquipmentLineReturnActions from "@/features/rental/components/RentalEquipmentLineReturnActions";
 import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
+import type { Operator } from "@/features/operators/types";
 import type { RentalRecord } from "@/features/rental/types";
 
 const mocks = vi.hoisted(() => ({ toast: vi.fn(), refresh: vi.fn() }));
@@ -38,7 +39,9 @@ async function render(input = dependencies()) {
       { id: "equipment-3", assetNo: "EQ-003", equipmentName: "Crane" },
     ] as unknown as EquipmentRecord[], assignments: [
       { id: "assignment-1", status: "Active" }, { id: "assignment-2", status: "Active" }, { id: "assignment-3", status: "Completed" },
-    ] as unknown as AssignmentRecord[],
+    ] as unknown as AssignmentRecord[], operators: [
+      { id: "operator-1", name: "Juan Dela Cruz" }, { id: "operator-3", name: "Pedro Santos" },
+    ] as unknown as Operator[],
   }))));
   return container;
 }
@@ -48,6 +51,24 @@ afterEach(() => { vi.useRealTimers(); });
 afterEach(async () => { while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical per-line return controls", () => {
+  it("renders business equipment and operator identifiers without exposing UUIDs", async () => {
+    const container = await render();
+    expect(container.textContent).toContain("Excavator");
+    expect(container.textContent).toContain("EQ-001");
+    expect(container.textContent).toContain("Juan Dela Cruz");
+    expect(container.textContent).toContain("Loader");
+    expect(container.textContent).toContain("Unassigned");
+    expect(container.textContent).toContain("Crane");
+    expect(container.textContent).toContain("EQ-003");
+    expect(container.textContent).toContain("Pedro Santos");
+    expect(container.textContent).toContain("Line status: Active");
+    expect(container.textContent).toContain("Assignment: Active");
+    expect(container.textContent).toContain("Line status: Returned");
+    expect(container.textContent).toContain("Actual return date: 2026-10-03");
+    expect(container.textContent).not.toContain("equipment-1");
+    expect(container.textContent).not.toContain("operator-1");
+  });
+
   it("confirms one selected active line, sends its versioned canonical command, and keeps other lines untouched", async () => {
     const returnLine = vi.fn(async () => ({ success: true, disposition: "ACCEPTED", serverOccurredAt: "2026-10-04T00:00:00.000Z", refresh: [], value: { rentalId: rental.id, rentalLineId: "line-return", status: "Returned", version: 10, actualReturnDate: "2026-10-04" } } as const));
     const container = await render(dependencies(returnLine));

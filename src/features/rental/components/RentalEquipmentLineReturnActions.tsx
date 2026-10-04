@@ -8,6 +8,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
+import type { Operator } from "@/features/operators/types";
 import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import { canUseCanonicalRemoteRentalReturnMutation } from "@/features/rental/services/rentalRuntimeCapability";
 import { resolveRentalReturnBusinessDate } from "@/features/rental/services/resolveRentalReturnBusinessDate";
@@ -19,11 +20,12 @@ export function isReturnableRentalEquipmentLine(line: RentalEquipmentLine) {
   return line.status === "Active";
 }
 
-export default function RentalEquipmentLineReturnActions({ rental, lines, equipment, assignments }: {
+export default function RentalEquipmentLineReturnActions({ rental, lines, equipment, assignments, operators }: {
   rental: RentalRecord;
   lines: RentalEquipmentLine[];
   equipment: EquipmentRecord[];
   assignments: AssignmentRecord[];
+  operators: Operator[];
 }) {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
@@ -85,10 +87,17 @@ export default function RentalEquipmentLineReturnActions({ rental, lines, equipm
       {lines.map((line) => {
         const machine = equipment.find((item) => item.id === line.equipmentId);
         const assignment = assignments.find((item) => item.id === line.assignmentId);
-        const label = machine ? `${machine.assetNo} — ${machine.equipmentName}` : line.equipmentId;
+        const operator = operators.find((item) => item.id === line.operatorId);
+        const equipmentName = machine?.equipmentName?.trim();
+        const equipmentCode = machine?.assetNo?.trim();
+        const operatorName = operator?.name?.trim() || "Unassigned";
         const isTerminal = terminal.has(line.status);
         return <article key={line.id} className="rounded border p-3 text-sm">
-          <p className="font-medium">{label}</p>
+          <dl className="space-y-1">
+            <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Equipment Name</dt><dd className="font-medium">{equipmentName || equipmentCode || "Equipment information unavailable"}</dd></div>
+            <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Equipment Code</dt><dd>{equipmentCode || "Unavailable"}</dd></div>
+            <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Operator</dt><dd>{operatorName}</dd></div>
+          </dl>
           <p className="mt-1 text-slate-600">Line status: {line.status}</p>
           <p className="text-slate-600">Assignment: {assignment?.status ?? (line.assignmentId ? "Unavailable" : "None")}</p>
           {line.actualReturnDate && <p className="text-slate-600">Actual return date: {line.actualReturnDate}</p>}

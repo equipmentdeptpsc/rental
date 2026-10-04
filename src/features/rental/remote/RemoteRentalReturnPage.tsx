@@ -52,7 +52,7 @@ export default function RemoteRentalReturnPage({ rentalId }: { rentalId: string 
       <Detail label="Expected return" value={rental.expectedReturn ?? "Not specified"} />
     </section>
     <RentalQuickActions rental={rental} hideClose returnableLineCount={lines.filter(isReturnableRentalEquipmentLine).length} />
-    <RentalEquipmentLineReturnActions rental={rental} lines={lines} equipment={list.data.equipment} assignments={list.data.assignments} />
+    <RentalEquipmentLineReturnActions rental={rental} lines={lines} equipment={list.data.equipment} assignments={list.data.assignments} operators={list.data.operators} />
   </main>;
 }
 
