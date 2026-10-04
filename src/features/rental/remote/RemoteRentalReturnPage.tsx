@@ -7,6 +7,7 @@ import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
 import { useProject } from "@/features/project/context/ProjectContext";
 import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
+import RentalEquipmentLineReturnActions, { isReturnableRentalEquipmentLine } from "@/features/rental/components/RentalEquipmentLineReturnActions";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useRentalListData } from "@/features/rental/hooks/useRentalListData";
 
@@ -50,7 +51,8 @@ export default function RemoteRentalReturnPage({ rentalId }: { rentalId: string 
       <Detail label="Equipment" value={equipment.map((item) => item ? `${item.assetNo} — ${item.equipmentName}` : undefined).filter(Boolean).join(", ") || "Unavailable"} />
       <Detail label="Expected return" value={rental.expectedReturn ?? "Not specified"} />
     </section>
-    <RentalQuickActions rental={rental} hideClose />
+    <RentalQuickActions rental={rental} hideClose returnableLineCount={lines.filter(isReturnableRentalEquipmentLine).length} />
+    <RentalEquipmentLineReturnActions rental={rental} lines={lines} equipment={list.data.equipment} assignments={list.data.assignments} />
   </main>;
 }
 

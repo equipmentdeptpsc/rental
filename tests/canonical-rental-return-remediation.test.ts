@@ -73,16 +73,16 @@ describe("canonical remote Rental Return remediation", () => {
     expect(rpc).toHaveBeenCalledWith("command_return_all_rental_lines", { command: { commandId: "c", idempotencyKey: "i", rentalId: active.id, actualReturnDate: "2026-09-06" } });
   });
 
-  it("uses the automatic Asia/Manila business date after explicit confirmation and dispatches once", async () => {
+  it("resolves the business date only on final confirmation and dispatches Return All once", async () => {
     const returnAll = vi.fn(async () => ({ success: true, disposition: "ACCEPTED", value: { rentalId: active.id, lines: [], version: 1 } } as const));
-    const container = await render(dependencies(returnAll)); await act(async () => { await Promise.resolve(); }); const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return Equipment")!;
+    const container = await render(dependencies(returnAll)); await act(async () => { await Promise.resolve(); }); const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return All Equipment")!;
     expect(button).toBeTruthy();
-    expect(container.textContent).toContain("October 4, 2026");
+    expect(container.textContent).not.toContain("October 4, 2026");
     expect(container.querySelector('input[aria-label="Return business date"]')).toBeNull();
     await act(async () => { button.click(); await Promise.resolve(); });
     expect(returnAll).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Return all rental equipment effective October 4, 2026?");
-    const confirm = [...container.querySelectorAll("button")].filter((item) => item.textContent === "Return Equipment")[1]!;
+    expect(container.textContent).toContain("Return all eligible equipment in this rental?");
+    const confirm = [...container.querySelectorAll("button")].filter((item) => item.textContent === "Return All Equipment")[1]!;
     await act(async () => { confirm.click(); confirm.click(); await Promise.resolve(); });
     expect(returnAll).toHaveBeenCalledTimes(1);
     expect(returnAll).toHaveBeenCalledWith({ commandId: expect.any(String), idempotencyKey: expect.any(String), rentalId: active.id, actualReturnDate: "2026-10-04", expectedVersion: 8 });
@@ -91,7 +91,7 @@ describe("canonical remote Rental Return remediation", () => {
 
   it("fails closed when the server reports an unresolved historical expectation", async () => {
     const returnAll = vi.fn(); const container = await render(dependencies(returnAll, false)); await act(async () => { await Promise.resolve(); });
-    const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return Equipment")!;
+    const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Return All Equipment")!;
     expect(button.disabled).toBe(true);
     expect(button.title).toContain("historical DEUR expectation");
     button.click(); expect(returnAll).not.toHaveBeenCalled();
@@ -99,12 +99,12 @@ describe("canonical remote Rental Return remediation", () => {
 
   it("hides Return without rental.return", async () => {
     auth.permissions.clear();
-    expect((await render()).textContent).not.toContain("Return Equipment");
+    expect((await render()).textContent).not.toContain("Return All Equipment");
   });
 
   it("keeps Return hidden when the dedicated capability is disabled", async () => {
     const input = dependencies(); input.configuration.remoteRentalReturnEnabled = false;
-    expect((await render(input)).textContent).not.toContain("Return Equipment");
+    expect((await render(input)).textContent).not.toContain("Return All Equipment");
   });
 
 });

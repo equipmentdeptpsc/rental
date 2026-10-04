@@ -1,5 +1,6 @@
 import {
   useRentalWorkspaceAggregate,
+  useRentalWorkspacePresentationData,
 } from "..";
 import { aggregateRentalEquipmentLineDeurCompliance, evaluateRentalDeurCompliance, evaluateRentalEquipmentLineDeurCompliance, type RentalDeurComplianceResult } from "@/features/rental/deur/compliance/evaluateRentalDeurCompliance";
 import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
@@ -25,6 +26,7 @@ import { resolveRentalWorkspaceDeurPolicy } from "@/features/rental/services/res
 import { useState } from "react";
 import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import RentalReturnEvidence from "./RentalReturnEvidence";
+import RentalEquipmentLineReturnActions, { isReturnableRentalEquipmentLine } from "@/features/rental/components/RentalEquipmentLineReturnActions";
 
 export default function RentalWorkspaceHeader({ activeTab }: { activeTab: WorkspaceTab }) {
   const dependencies = useApplicationDependenciesCompatibility();
@@ -34,6 +36,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
   const aggregate =
     useRentalWorkspaceAggregate();
   const {equipment}=useEquipment();
+  const { assignments } = useRentalWorkspacePresentationData();
   const {hasPermission}=useAuth();
   const [waiverMessage,setWaiverMessage]=useState("");
   const [waiverTarget,setWaiverTarget]=useState<RentalDeurComplianceResult["expectations"][number]>();
@@ -77,7 +80,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       {legacyMutationsAvailable&&aggregate.rental.status!=="Closed"&&<RentalDeurExpectationPolicyCard rental={aggregate.rental} />}
       {!mutationsAvailable && aggregate.rental.status !== "Closed" && <p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p>}
       {legacyMutationsAvailable&&["Draft","Assigned","Reserved"].includes(aggregate.rental.status)&&<DeurReleaseReadinessPanel rentalId={aggregate.rental.id} />}
-      {aggregate.rental.status!=="Closed"&&<div className="mt-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} hideClose={activeTab==="closing"} /></div>}
+      {aggregate.rental.status!=="Closed"&&<div className="mt-4 space-y-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} hideClose={activeTab==="closing"} returnableLineCount={aggregate.rentalEquipmentLines.filter(isReturnableRentalEquipmentLine).length} /><RentalEquipmentLineReturnActions rental={aggregate.rental} lines={aggregate.rentalEquipmentLines} equipment={equipment} assignments={assignments} /></div>}
       {mutationsAvailable&&aggregate.rental.status!=="Closed"&&hasPermission("rental.customerContact.update")&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
       <ApprovalInvalidationNotice rental={aggregate.rental} />
       {workflow.blockingReasons.length > 0 && (

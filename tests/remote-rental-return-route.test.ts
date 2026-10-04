@@ -10,7 +10,8 @@ describe("remote Rental return route", () => {
     expect(legacyReturnPage).toContain("<RemoteRentalReturnPage rentalId={id ?? \"\"} />");
     expect(remoteReturnPage).toContain("useRentalListData(fallback)");
     expect(remoteReturnPage).toContain("item.id === rentalId");
-    expect(remoteReturnPage).toContain("<RentalQuickActions rental={rental} hideClose />");
+    expect(remoteReturnPage).toContain("<RentalQuickActions rental={rental} hideClose returnableLineCount={lines.filter(isReturnableRentalEquipmentLine).length} />");
+    expect(remoteReturnPage).toContain("<RentalEquipmentLineReturnActions rental={rental} lines={lines}");
   });
 
   it("fails closed when the canonical tenant-scoped list does not contain the requested UUID", () => {

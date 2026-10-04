@@ -37,6 +37,8 @@ export function evaluateRentalEquipmentLineDeurCompliance(input: EvaluateRentalD
       rental: { ...input.rental, equipmentId: line.equipmentId, assignmentId: line.assignmentId, operatorId: line.operatorId },
       assignment: undefined,
       rentalEquipmentLineId: line.id,
+      lineActualReturnDate: line.actualReturnDate,
+      lineOperationalAtEvaluation: ["Released", "Active"].includes(line.status),
       expectationFingerprint:line.deurExpectationSnapshot?.sourceFingerprint,
       dispositions:input.dispositions?.filter(item=>item.rentalEquipmentLineId===line.id),
       deurs: input.deurs.filter((record) => record.rentalEquipmentLineId === line.id || (
@@ -93,7 +95,7 @@ function groupRevisionChains(records: DeurRecord[]) {
 }
 
 /** Read-only operational compliance. It deliberately does not inspect billing calculations or infer dates. */
-export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipmentLineId, expectationFingerprint, deurs, dispositions=[], evaluationTimestamp, liveShiftWindows }: EvaluateRentalDeurComplianceInput): RentalDeurComplianceResult {
+export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipmentLineId, expectationFingerprint, deurs, dispositions=[], evaluationTimestamp, liveShiftWindows, lineActualReturnDate, lineOperationalAtEvaluation }: EvaluateRentalDeurComplianceInput & { lineActualReturnDate?: string; lineOperationalAtEvaluation?: boolean }): RentalDeurComplianceResult {
   const records = structuredClone(deurs.filter((record) => record.rentalId === rental.id));
   const required = requiringStatuses.has(rental.status);
   let effective = 0, pendingCorrections = 0, superseded = 0;
@@ -116,7 +118,7 @@ export function evaluateRentalDeurCompliance({ rental, assignment, rentalEquipme
   const base = { rentalId: rental.id, ...(assignment?.id ? { assignmentId: assignment.id } : {}), required, counts, issues, ...legacyBase };
 
   if (rental.deurExpectationPolicy || rental.deurExpectationPolicyRequired) {
-    const generated = generateRentalDeurExpectations({ rental, evaluationTimestamp: evaluationTimestamp ?? "", liveShiftWindows });
+    const generated = generateRentalDeurExpectations({ rental, evaluationTimestamp: evaluationTimestamp ?? "", liveShiftWindows, actualEndDate: lineActualReturnDate, operationalAtEvaluation: lineOperationalAtEvaluation });
     const scopedExpectations = rentalEquipmentLineId ? generated.expectations.map((expectation) => ({ ...expectation, expectationId: `${rentalEquipmentLineId}:${expectation.expectationId}`, rentalEquipmentLineId, equipmentId: rental.equipmentId, operatorId: rental.operatorId, expectationFingerprint })) : generated.expectations;
     const matched = matchDeursToExpectations({ expectations: scopedExpectations, deurs: records, dispositions });
     const explicitIssues = [...generated.issues, ...matched.issues];

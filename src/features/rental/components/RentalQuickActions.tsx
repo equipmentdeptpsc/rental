@@ -12,9 +12,9 @@ import { canUseCanonicalRemoteRentalActivateMutation, canUseCanonicalRemoteRenta
 import { requestCanonicalRentalRefresh } from "../remote/canonicalRentalRefresh";
 import { getRentalApprovalStatus } from "../approval/rentalApproval";
 import { evaluateCanonicalApprovalDecisionEligibility } from "../approval/canonicalApprovalDecisionEligibility";
-import { resolveRentalReturnBusinessDate, type RentalReturnBusinessDate } from "../services/resolveRentalReturnBusinessDate";
+import { resolveRentalReturnBusinessDate } from "../services/resolveRentalReturnBusinessDate";
 
-export default function RentalQuickActions({ rental, hideClose = false }: { rental: RentalRecord; hideClose?: boolean }) {
+export default function RentalQuickActions({ rental, hideClose = false, returnableLineCount }: { rental: RentalRecord; hideClose?: boolean; returnableLineCount?: number }) {
   const { user, hasPermission } = useAuth();
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const legacyMutations = canUseLegacyRentalMutations(configuration);
@@ -31,12 +31,11 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
   const [remoteReturnReady, setRemoteReturnReady] = useState(false);
   const [remoteReturnMessage, setRemoteReturnMessage] = useState("Checking canonical Return readiness…");
   const [remoteReleaseReadiness, setRemoteReleaseReadiness] = useState<{ status: "inactive" | "loading" | "ready" | "error"; eligible: boolean; message: string }>({ status: "inactive", eligible: false, message: "Release readiness could not be verified." });
-  const [returnConfirmation, setReturnConfirmation] = useState<RentalReturnBusinessDate>();
+  const [returnConfirmation, setReturnConfirmation] = useState(false);
   const submissionPending = useRef(false);
   const commandIdentity = useRef<Partial<Record<RentalQuickActionId, { commandId: string; idempotencyKey: string }>>>({});
   const permissions = { reserve: hasPermission("rental.update"), manage: hasPermission("rental.manage"), cancel: hasPermission("rental.update"), activate: hasPermission("rental.activate"), approve: hasPermission("rental.approval.decide"), submit: hasPermission("rental.approval.submit"), release: hasPermission("rental.release"), return: hasPermission("rental.return") };
   const approval = getRentalApprovalStatus(rental);
-  const returnDatePreview = canonicalReturnMutations ? resolveRentalReturnBusinessDate(rental) : undefined;
   const decisionEligibility = evaluateCanonicalApprovalDecisionEligibility(rental, user?.id, permissions.approve);
   useEffect(() => {
     let current = true;
@@ -72,15 +71,13 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
           : { actions: canonicalApprovalMutations && permissions.submit ? [{ id: "submit" as const, label: approval === "Rejected" ? "Resubmit for Approval" : "Submit for Approval" }] : [], message: approval === "Rejected" ? rental.approvalDecisionRemarks ? `Rejected: ${rental.approvalDecisionRemarks}` : "Rejected" : undefined }
       : rental.status === "Reserved" ? { actions: (canonicalOperationalMutations || canonicalReleaseMutations) && permissions.release ? [{ id: "release" as const, label: "Release Equipment" }] : [], message: "Approved and reserved" }
         : rental.status === "Released" ? { actions: canonicalActivateMutations && permissions.activate ? [{ id: "activate" as const, label: "Activate Rental" }] : [], message: "Released" }
-        : rental.status === "Active" ? { actions: canonicalReturnMutations && permissions.return ? [{ id: "return" as const, label: "Return Equipment" }] : [], message: "Active" }
+        : rental.status === "Active" ? { actions: canonicalReturnMutations && permissions.return && (returnableLineCount === undefined || returnableLineCount > 0) ? [{ id: "return" as const, label: "Return All Equipment" }] : [], message: "Active" }
         : { actions: [], message: undefined }
     : deriveRentalQuickActions(rental, permissions);
   async function run(id: RentalQuickActionId) {
     if (submissionPending.current) return;
     if (id === "return" && canonicalReturnMutations) {
-      const resolved = resolveRentalReturnBusinessDate(rental);
-      if (!resolved) { showToast("The authoritative Return business date could not be resolved. Refresh and try again.", "error"); return; }
-      setReturnConfirmation(resolved);
+      setReturnConfirmation(true);
       return;
     }
     if (canonicalOperationalMutations || canonicalApprovalMutations || canonicalReserveMutations || canonicalReleaseMutations || canonicalActivateMutations || canonicalReturnMutations || canonicalCancelMutations) {
@@ -131,9 +128,9 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
   }
   async function confirmReturn() {
     const resolved = resolveRentalReturnBusinessDate(rental);
-    if (!returnConfirmation || !resolved || resolved.value !== returnConfirmation.value || submissionPending.current) {
-      setReturnConfirmation(undefined);
-      showToast("The authoritative Return business date changed or could not be resolved. Confirm again.", "error");
+    if (!returnConfirmation || !resolved || submissionPending.current) {
+      setReturnConfirmation(false);
+      showToast("The authoritative Return business date could not be resolved. Refresh and try again.", "error");
       return;
     }
     const expectedVersion = rental.rowVersion;
@@ -143,8 +140,8 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
     setPending("return");
     try {
       const result = await commandRepositories.rentalReturnCommands.returnAll({ ...identity, rentalId: rental.id, actualReturnDate: resolved.value, expectedVersion });
-      if (result.success) { delete commandIdentity.current.return; setReturnConfirmation(undefined); requestCanonicalRentalRefresh(); }
-      showToast(result.success ? "Return Equipment completed." : result.message, result.success ? "success" : "error");
+      if (result.success) { delete commandIdentity.current.return; setReturnConfirmation(false); requestCanonicalRentalRefresh(); }
+      showToast(result.success ? "All eligible equipment returned." : result.message, result.success ? "success" : "error");
     } catch {
       showToast("Confirmation was not received from the remote service. Refresh before retrying.", "error");
     } finally {
@@ -157,5 +154,5 @@ export default function RentalQuickActions({ rental, hideClose = false }: { rent
   const actions = visibleRentalQuickActions(modelWithCancellation, hideClose).filter((action) => legacyMutations || canonicalOperationalMutations || (canonicalReserveMutations && action.id === "reserve") || (canonicalReleaseMutations && action.id === "release") || (canonicalActivateMutations && action.id === "activate") || (canonicalReturnMutations && action.id === "return") || (canonicalCancelMutations && action.id === "cancel") || (canonicalApprovalMutations && ["submit", "approve", "reject"].includes(action.id)));
   const releaseReady = canonicalReleaseMutations ? remoteReleaseReadiness.status === "ready" && remoteReleaseReadiness.eligible : rental.status === "Reserved" ? getReleaseReadiness(rental.id).eligible : true;
   if (!mutationsAvailable) return null;
-  return <><div className="flex flex-wrap items-center gap-2">{modelWithCancellation.message && <span className="text-sm text-slate-600">{modelWithCancellation.message}</span>}{canonicalReturnMutations && rental.status === "Active" && permissions.return && <span className="text-sm text-slate-600">Return date: <strong>{returnDatePreview?.label ?? "Unavailable"}</strong></span>}{canEditTerms && <Link className="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700" to={`/rentals/${rental.id}/commercial-terms`}>Edit Commercial Terms</Link>}{actions.map((action) => <Button key={action.id} variant="secondary" disabled={Boolean(pending) || (action.id === "release" && !releaseReady) || ((canonicalOperationalMutations || canonicalReturnMutations) && action.id === "return" && (!remoteReturnReady || !returnDatePreview))} title={action.id === "release" && !releaseReady ? canonicalReleaseMutations ? remoteReleaseReadiness.message : "Complete every DEUR release-readiness requirement first." : (canonicalOperationalMutations || canonicalReturnMutations) && action.id === "return" && !remoteReturnReady ? remoteReturnMessage : (canonicalOperationalMutations || canonicalReturnMutations) && action.id === "return" && !returnDatePreview ? "The authoritative Return business date could not be resolved." : undefined} onClick={() => run(action.id)}>{pending === action.id ? "Working…" : action.label}</Button>)}</div><ConfirmModal open={Boolean(returnConfirmation)} title="Confirm equipment return" message={returnConfirmation ? `Return all rental equipment effective ${returnConfirmation.label}?` : ""} confirmText="Return Equipment" loading={pending === "return"} onConfirm={() => { void confirmReturn(); }} onCancel={() => setReturnConfirmation(undefined)} /></>;
+  return <><div className="flex flex-wrap items-center gap-2">{modelWithCancellation.message && <span className="text-sm text-slate-600">{modelWithCancellation.message}</span>}{canEditTerms && <Link className="rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700" to={`/rentals/${rental.id}/commercial-terms`}>Edit Commercial Terms</Link>}{actions.map((action) => <Button key={action.id} variant="secondary" disabled={Boolean(pending) || (action.id === "release" && !releaseReady) || ((canonicalOperationalMutations || canonicalReturnMutations) && action.id === "return" && !remoteReturnReady)} title={action.id === "release" && !releaseReady ? canonicalReleaseMutations ? remoteReleaseReadiness.message : "Complete every DEUR release-readiness requirement first." : (canonicalOperationalMutations || canonicalReturnMutations) && action.id === "return" && !remoteReturnReady ? remoteReturnMessage : undefined} onClick={() => run(action.id)}>{pending === action.id ? "Working…" : action.label}</Button>)}</div><ConfirmModal open={returnConfirmation} title="Confirm equipment return" message={returnConfirmation ? "Return all eligible equipment in this rental?" : ""} confirmText="Return All Equipment" loading={pending === "return"} onConfirm={() => { void confirmReturn(); }} onCancel={() => setReturnConfirmation(false)} /></>;
 }

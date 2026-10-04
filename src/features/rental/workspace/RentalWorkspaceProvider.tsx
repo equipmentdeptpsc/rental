@@ -37,6 +37,7 @@ import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
 import type { BillingStatement } from "@/features/rental/billingstatement/types";
 import type { CollectionTransaction } from "@/features/rental/collections/types";
+import type { AssignmentRecord } from "@/features/assignment/types";
 import { projectCanonicalDeurCommercialSnapshots, projectCanonicalRentalWorkspace } from "./projectCanonicalRentalWorkspace";
 import { resolveRentalWorkspaceDeurs } from "./resolveRentalWorkspaceDeurs";
 
@@ -57,6 +58,7 @@ interface RentalWorkspaceContextValue {
     workDescriptions: WorkDescriptionRecord[];
     equipment: EquipmentRecord[];
     operators: Operator[];
+    assignments: AssignmentRecord[];
   };
 }
 
@@ -244,7 +246,7 @@ export default function RentalWorkspaceProvider({
         aggregate,
         billingStatements: remote ? remoteStatements : billingStatementRepository.getByRentalId(rentalId),
         collections: remote ? remoteCollections : collectionRepository.getByRentalId(rentalId),
-        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, equipment: equipmentRecords, operators },
+        presentation: { contracts, costCodes: list.data.costCodes, activityCodes: list.data.activityCodes, workDescriptions, equipment: equipmentRecords, operators, assignments },
       }}
     >
       {children}

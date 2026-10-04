@@ -7,6 +7,10 @@ export interface RentalEquipmentLine {
   assignmentId?: string;
   operatorId: string;
   status: RentalLifecycleStatus;
+  /** Canonical business date recorded when this individual line returned. */
+  actualReturnDate?: string;
+  /** Canonical optimistic-concurrency version from the remote projection. */
+  rowVersion?: number;
   operationalMetadata?: RentalOperationalMetadataSnapshot;
   /** Editable source selection before release; the frozen snapshot is authoritative afterward. */
   deurWorkDescriptionId?: string;
