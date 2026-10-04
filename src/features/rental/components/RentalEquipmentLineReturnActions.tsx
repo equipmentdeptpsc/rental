@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
-import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
+import { toRentalEquipmentLineReturnTarget, type RentalEquipmentLine, type RentalEquipmentLineReturnTarget } from "@/features/rental/equipment-line";
 import type { Operator } from "@/features/operators/types";
 import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import { canUseCanonicalRemoteRentalReturnMutation } from "@/features/rental/services/rentalRuntimeCapability";
@@ -30,7 +30,7 @@ export default function RentalEquipmentLineReturnActions({ rental, lines, equipm
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const { showToast } = useToast();
-  const [target, setTarget] = useState<RentalEquipmentLine>();
+  const [target, setTarget] = useState<(RentalEquipmentLine & RentalEquipmentLineReturnTarget)>();
   const [pending, setPending] = useState(false);
   const submissionPending = useRef(false);
   const identity = useRef<{ commandId: string; idempotencyKey: string } | undefined>(undefined);
@@ -55,16 +55,17 @@ export default function RentalEquipmentLineReturnActions({ rental, lines, equipm
       return;
     }
     const command = identity.current ??= { commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() };
+    const returnTarget = toRentalEquipmentLineReturnTarget(target);
     submissionPending.current = true;
     setPending(true);
     try {
       const result = await commandRepositories.rentalReturnCommands.returnLine({
         ...command,
         rentalId: rental.id,
-        rentalLineId: target.id,
-        equipmentId: target.equipmentId,
-        assignmentId: target.assignmentId,
-        expectedVersion: target.rowVersion,
+        rentalLineId: returnTarget.rentalLineId,
+        equipmentId: returnTarget.equipmentId,
+        assignmentId: returnTarget.assignmentId,
+        expectedVersion: returnTarget.rowVersion,
         actualReturnDate,
       });
       if (result.success) {
@@ -101,7 +102,7 @@ export default function RentalEquipmentLineReturnActions({ rental, lines, equipm
           <p className="mt-1 text-slate-600">Line status: {line.status}</p>
           <p className="text-slate-600">Assignment: {assignment?.status ?? (line.assignmentId ? "Unavailable" : "None")}</p>
           {line.actualReturnDate && <p className="text-slate-600">Actual return date: {line.actualReturnDate}</p>}
-          {isReturnableRentalEquipmentLine(line) && <Button className="mt-3" size="sm" variant="secondary" disabled={pending} onClick={() => setTarget(line)}>{pending && target?.id === line.id ? "Working…" : "Return Equipment"}</Button>}
+          {isReturnableRentalEquipmentLine(line) && <Button className="mt-3" size="sm" variant="secondary" disabled={pending} onClick={() => setTarget({ ...line, ...toRentalEquipmentLineReturnTarget(line) })}>{pending && target?.id === line.id ? "Working…" : "Return Equipment"}</Button>}
           {isTerminal && !line.actualReturnDate && <p className="mt-2 text-slate-500">No return action is available for this final line.</p>}
         </article>;
       })}

@@ -9,6 +9,7 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 import type { EquipmentRecord } from "@/features/equipment/types";
 import type { Operator } from "@/features/operators/types";
 import type { RentalRecord } from "@/features/rental/types";
+import { toRentalEquipmentLineReturnTarget } from "@/features/rental/equipment-line";
 
 const mocks = vi.hoisted(() => ({ toast: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => permission === "rental.return" }) }));
@@ -51,6 +52,15 @@ afterEach(() => { vi.useRealTimers(); });
 afterEach(async () => { while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical per-line return controls", () => {
+  it("projects line, equipment, and assignment identities into distinct command fields", () => {
+    expect(toRentalEquipmentLineReturnTarget(lines[0])).toEqual({
+      rentalLineId: "line-return",
+      equipmentId: "equipment-1",
+      assignmentId: "assignment-1",
+      rowVersion: 9,
+    });
+  });
+
   it("renders business equipment and operator identifiers without exposing UUIDs", async () => {
     const container = await render();
     expect(container.textContent).toContain("Excavator");
