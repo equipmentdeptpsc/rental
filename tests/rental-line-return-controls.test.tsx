@@ -83,5 +83,6 @@ describe("canonical per-line return controls", () => {
     expect(returnLine).toHaveBeenCalledTimes(1);
     expect(returnLine).toHaveBeenCalledWith(expect.objectContaining({ rentalId: rental.id, rentalLineId: "line-return", equipmentId: "equipment-1", assignmentId: "assignment-1", expectedVersion: 9, actualReturnDate: "2026-10-04" }));
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect(mocks.toast).toHaveBeenCalledWith("Equipment line returned.", "success");
   });
 });
