@@ -1,0 +1,93 @@
+BEGIN;
+SET LOCAL search_path=erp,auth,extensions,pg_catalog;
+-- The two events created with a MANUAL_WEB DEUR are immutable system history:
+-- they record the encoding transaction, not the physical operational timeline.
+CREATE OR REPLACE FUNCTION erp.is_manual_deur_encoding_bootstrap_event(
+  target erp.deurs,
+  candidate erp.deur_events
+)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=erp,auth,extensions,pg_catalog AS $$
+  SELECT target.creation_source='MANUAL_WEB'
+     AND candidate.deur_id=target.id
+     AND candidate.source='manual-web'
+     AND candidate.action='start'
+     AND candidate.is_open
+     AND candidate.activity_type IN ('shift','operation')
+     AND candidate.occurred_at=target.created_at
+     AND candidate.server_accepted_at=target.created_at;
+$$;
+-- Bootstrap operation events remain open permanently as historical markers.
+-- Excluding only that recognizable marker from the open-operation uniqueness
+-- index allows the separate operational timeline to begin without a rewrite.
+DROP INDEX IF EXISTS erp.uq_deur_open_primary_activity;
+CREATE UNIQUE INDEX uq_deur_open_primary_activity
+  ON erp.deur_events(deur_id)
+  WHERE is_open AND activity_type <> 'shift'
+    AND NOT (source='manual-web' AND action='start' AND activity_type='operation'
+             AND occurred_at=server_accepted_at);
+CREATE OR REPLACE FUNCTION erp.command_record_manual_deur_activity(command jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=erp,auth,extensions,pg_catalog AS $$
+DECLARE
+  tenant text:=erp.current_company_id(); scope jsonb; idem jsonb; payload_hash text;
+  now_at timestamptz:=erp.deur_operational_clock(); target erp.deurs%ROWTYPE;
+  open_activity text; next_activity text; next_sequence integer; client_at timestamptz;
+  predecessor timestamptz; response jsonb; chronology_code text;
+BEGIN
+  IF erp.reject_manual_transcription_authority(command,ARRAY['commandId','idempotencyKey','deurId','expectedVersion','action','clientOccurredAt','clientCreatedAt','deviceId']) OR nullif(btrim(command->>'commandId'),'') IS NULL OR nullif(btrim(command->>'idempotencyKey'),'') IS NULL OR nullif(btrim(command->>'expectedVersion'),'') IS NULL THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF;
+  scope:=erp.validate_manual_deur_transcription_scope(command); IF scope->>'code'<>'OK' THEN RETURN jsonb_build_object('success',false,'code',scope->>'code'); END IF;
+  idem:=erp.begin_deur_command(command,'MANUAL_ACTIVITY_TRANSITION'); IF idem->>'state'='MISMATCH' THEN RETURN jsonb_build_object('success',false,'code','IDEMPOTENCY_MISMATCH'); END IF; IF idem->>'state'='REPLAY' THEN RETURN (idem->'response')||jsonb_build_object('disposition','REPLAYED'); END IF; payload_hash:=idem->>'payloadHash';
+  SELECT * INTO target FROM erp.deurs WHERE id=command->>'deurId' AND company_id=tenant FOR UPDATE;
+  IF target.creation_source<>'MANUAL_WEB' THEN RETURN jsonb_build_object('success',false,'code','MANUAL_DEUR_REQUIRED'); END IF;
+  IF target.row_version<>(command->>'expectedVersion')::bigint THEN RETURN jsonb_build_object('success',false,'code','CONFLICT','aggregateId',target.id,'expectedVersion',(command->>'expectedVersion')::bigint,'currentVersion',target.row_version,'refreshRequired',true); END IF;
+  IF target.status<>'In Progress' THEN RETURN jsonb_build_object('success',false,'code','INVALID_TRANSITION'); END IF;
+  BEGIN client_at:=nullif(command->>'clientOccurredAt','')::timestamptz; EXCEPTION WHEN invalid_text_representation OR datetime_field_overflow THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END;
+  chronology_code:=erp.validate_manual_deur_physical_occurrence(target,client_at,now_at); IF chronology_code IS NOT NULL THEN RETURN jsonb_build_object('success',false,'code',chronology_code); END IF;
+  next_activity:=CASE command->>'action' WHEN 'START_OPERATION' THEN 'operation' WHEN 'RESUME_OPERATION' THEN 'operation' WHEN 'START_IDLE' THEN 'idle' WHEN 'START_STANDBY' THEN 'standby' WHEN 'START_MEAL_BREAK' THEN 'mealBreak' WHEN 'START_BREAKDOWN' THEN 'breakdown' WHEN 'END_ACTIVITY' THEN NULL ELSE 'INVALID' END;
+  IF next_activity='INVALID' THEN RETURN jsonb_build_object('success',false,'code','INVALID_TRANSITION'); END IF;
+  SELECT activity_type INTO open_activity FROM erp.deur_events e WHERE e.deur_id=target.id AND e.is_open AND e.activity_type<>'shift' AND NOT erp.is_manual_deur_encoding_bootstrap_event(target,e) FOR UPDATE;
+  IF next_activity IS NOT DISTINCT FROM open_activity THEN RETURN jsonb_build_object('success',false,'code','INVALID_TRANSITION'); END IF;
+  IF next_activity IS NULL AND open_activity IS NULL THEN RETURN jsonb_build_object('success',false,'code','INVALID_TRANSITION'); END IF;
+  SELECT max(e.occurred_at) INTO predecessor FROM erp.deur_events e WHERE e.deur_id=target.id AND NOT erp.is_manual_deur_encoding_bootstrap_event(target,e);
+  IF predecessor IS NOT NULL AND client_at<predecessor THEN RETURN jsonb_build_object('success',false,'code','CLIENT_OCCURRENCE_BEFORE_PREDECESSOR'); END IF;
+  UPDATE erp.deur_events e SET is_open=false WHERE e.deur_id=target.id AND e.is_open AND e.activity_type<>'shift' AND NOT erp.is_manual_deur_encoding_bootstrap_event(target,e);
+  SELECT coalesce(max(sequence),0)+1 INTO next_sequence FROM erp.deur_events WHERE deur_id=target.id;
+  IF open_activity IS NOT NULL THEN INSERT INTO erp.deur_events(id,deur_id,activity_type,action,occurred_at,sequence,source,actor_id,server_accepted_at,client_created_at,command_id,idempotency_key,device_id,is_open,company_id) VALUES(extensions.gen_random_uuid()::text,target.id,open_activity,'end',client_at,next_sequence,'manual-web',auth.uid()::text,now_at,client_at,command->>'commandId',command->>'idempotencyKey',command->>'deviceId',false,tenant); next_sequence:=next_sequence+1; END IF;
+  IF next_activity IS NOT NULL THEN INSERT INTO erp.deur_events(id,deur_id,activity_type,action,occurred_at,sequence,source,actor_id,server_accepted_at,client_created_at,command_id,idempotency_key,device_id,is_open,company_id) VALUES(extensions.gen_random_uuid()::text,target.id,next_activity,'start',client_at,next_sequence,'manual-web',auth.uid()::text,now_at,client_at,command->>'commandId',command->>'idempotencyKey',command->>'deviceId',true,tenant); END IF;
+  UPDATE erp.deurs SET updated_at=now_at,updated_by=auth.uid()::text WHERE id=target.id RETURNING * INTO target;
+  INSERT INTO erp.audit_log(id,company_id,aggregate_type,aggregate_id,action,actor_id,occurred_at,correlation_id,new_values) VALUES(extensions.gen_random_uuid()::text,tenant,'DEUR',target.id,'ACTIVITY_TRANSITION',auth.uid()::text,now_at,command->>'commandId',jsonb_build_object('manualWeb',true,'encoderUserId',auth.uid()::text,'operatorId',target.operator_id,'action',command->>'action','clientOccurredAt',client_at));
+  response:=jsonb_build_object('success',true,'disposition','ACCEPTED','record',to_jsonb(target),'version',target.row_version,'serverOccurredAt',now_at); RETURN erp.finish_deur_command(command,'MANUAL_ACTIVITY_TRANSITION',target.id,payload_hash,response);
+END $$;
+-- Travel and refuel have no deur_events rewrite; their independent canonical
+-- rows already retain physical occurrence and server-acceptance timestamps.
+-- End-shift must, however, close only operational events and leave bootstrap
+-- system history untouched.
+CREATE OR REPLACE FUNCTION erp.command_complete_manual_deur_shift(command jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=erp,auth,extensions,pg_catalog AS $$
+DECLARE tenant text:=erp.current_company_id(); scope jsonb; idem jsonb; payload_hash text; now_at timestamptz:=erp.deur_operational_clock(); target erp.deurs%ROWTYPE; policy text; closing_hour numeric; closing_odo numeric; latest_odo numeric; open_activity text; next_sequence integer; client_at timestamptz; predecessor timestamptz; response jsonb; chronology_code text;
+BEGIN
+  IF erp.reject_manual_transcription_authority(command,ARRAY['commandId','idempotencyKey','deurId','expectedVersion','closingHourMeter','closingOdometer','clientOccurredAt','clientCreatedAt','deviceId']) OR nullif(btrim(command->>'commandId'),'') IS NULL OR nullif(btrim(command->>'idempotencyKey'),'') IS NULL OR nullif(btrim(command->>'expectedVersion'),'') IS NULL THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF; scope:=erp.validate_manual_deur_transcription_scope(command); IF scope->>'code'<>'OK' THEN RETURN jsonb_build_object('success',false,'code',scope->>'code'); END IF; idem:=erp.begin_deur_command(command,'MANUAL_COMPLETE_SHIFT'); IF idem->>'state'='MISMATCH' THEN RETURN jsonb_build_object('success',false,'code','IDEMPOTENCY_MISMATCH'); END IF; IF idem->>'state'='REPLAY' THEN RETURN (idem->'response')||jsonb_build_object('disposition','REPLAYED'); END IF; payload_hash:=idem->>'payloadHash'; SELECT * INTO target FROM erp.deurs WHERE id=command->>'deurId' AND company_id=tenant FOR UPDATE;
+  IF target.creation_source<>'MANUAL_WEB' THEN RETURN jsonb_build_object('success',false,'code','MANUAL_DEUR_REQUIRED'); END IF; IF target.row_version<>(command->>'expectedVersion')::bigint THEN RETURN jsonb_build_object('success',false,'code','CONFLICT','currentVersion',target.row_version,'refreshRequired',true); END IF; IF target.status<>'In Progress' THEN RETURN jsonb_build_object('success',false,'code','INVALID_TRANSITION'); END IF; SELECT operational_metadata#>>'{deurExpectationSnapshot,meterRequirement}' INTO policy FROM erp.rental_equipment_lines WHERE id=target.rental_equipment_line_id AND company_id=tenant; BEGIN closing_hour:=nullif(trim(command->>'closingHourMeter'),'')::numeric; closing_odo:=nullif(trim(command->>'closingOdometer'),'')::numeric; client_at:=nullif(command->>'clientOccurredAt','')::timestamptz; EXCEPTION WHEN invalid_text_representation OR numeric_value_out_of_range THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END; chronology_code:=erp.validate_manual_deur_physical_occurrence(target,client_at,now_at); IF chronology_code IS NOT NULL THEN RETURN jsonb_build_object('success',false,'code',chronology_code); END IF;
+  SELECT max(reading) INTO latest_odo FROM erp.deur_meter_checkpoints WHERE company_id=tenant AND deur_id=target.id AND meter_dimension='odometer'; latest_odo:=greatest(coalesce(target.opening_odometer,target.opening_meter),coalesce(latest_odo,0)); IF (closing_hour IS NOT NULL AND (closing_hour<0 OR (target.opening_hour_meter IS NOT NULL AND closing_hour<target.opening_hour_meter))) OR (closing_odo IS NOT NULL AND (closing_odo<0 OR closing_odo<latest_odo)) THEN RETURN jsonb_build_object('success',false,'code','CLOSING_METER_BELOW_OPENING'); END IF; IF ((policy IN ('odometer','both')) AND closing_odo IS NULL) OR (policy='odometer' AND closing_hour IS NOT NULL) OR (policy='hourMeter' AND closing_odo IS NOT NULL) OR (policy='none' AND (closing_hour IS NOT NULL OR closing_odo IS NOT NULL)) THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF;
+  SELECT activity_type INTO open_activity FROM erp.deur_events e WHERE e.deur_id=target.id AND e.is_open AND e.activity_type<>'shift' AND NOT erp.is_manual_deur_encoding_bootstrap_event(target,e) FOR UPDATE; IF open_activity IS NULL THEN RETURN jsonb_build_object('success',false,'code','INVALID_TRANSITION'); END IF; SELECT max(e.occurred_at) INTO predecessor FROM erp.deur_events e WHERE e.deur_id=target.id AND NOT erp.is_manual_deur_encoding_bootstrap_event(target,e); IF predecessor IS NOT NULL AND client_at<predecessor THEN RETURN jsonb_build_object('success',false,'code','CLIENT_OCCURRENCE_BEFORE_PREDECESSOR'); END IF;
+  UPDATE erp.deur_events e SET is_open=false WHERE e.deur_id=target.id AND e.is_open AND NOT erp.is_manual_deur_encoding_bootstrap_event(target,e); SELECT coalesce(max(sequence),0)+1 INTO next_sequence FROM erp.deur_events WHERE deur_id=target.id; INSERT INTO erp.deur_events(id,deur_id,activity_type,action,occurred_at,sequence,source,actor_id,server_accepted_at,client_created_at,command_id,idempotency_key,device_id,is_open,company_id) VALUES(extensions.gen_random_uuid()::text,target.id,open_activity,'end',client_at,next_sequence,'manual-web',auth.uid()::text,now_at,client_at,command->>'commandId',command->>'idempotencyKey',command->>'deviceId',false,tenant); next_sequence:=next_sequence+1; INSERT INTO erp.deur_events(id,deur_id,activity_type,action,occurred_at,sequence,source,actor_id,server_accepted_at,client_created_at,command_id,idempotency_key,device_id,is_open,company_id) VALUES(extensions.gen_random_uuid()::text,target.id,'shift','end',client_at,next_sequence,'manual-web',auth.uid()::text,now_at,client_at,command->>'commandId',command->>'idempotencyKey',command->>'deviceId',false,tenant);
+  UPDATE erp.deurs SET closing_hour_meter=CASE WHEN closing_hour IS NOT NULL THEN closing_hour ELSE closing_hour_meter END,closing_odometer=CASE WHEN policy IN ('odometer','both') THEN closing_odo ELSE NULL END,closing_meter=CASE WHEN policy='hourMeter' THEN closing_hour WHEN policy='odometer' THEN closing_odo ELSE NULL END,updated_at=now_at,updated_by=auth.uid()::text WHERE id=target.id RETURNING * INTO target; INSERT INTO erp.audit_log(id,company_id,aggregate_type,aggregate_id,action,actor_id,occurred_at,correlation_id,new_values) VALUES(extensions.gen_random_uuid()::text,tenant,'DEUR',target.id,'COMPLETE_SHIFT',auth.uid()::text,now_at,command->>'commandId',jsonb_build_object('manualWeb',true,'encoderUserId',auth.uid()::text,'operatorId',target.operator_id,'clientOccurredAt',client_at)); response:=jsonb_build_object('success',true,'disposition','ACCEPTED','record',to_jsonb(target)||erp.canonical_deur_meter_evidence(policy,target.opening_hour_meter,target.closing_hour_meter,target.opening_odometer,target.closing_odometer,target.opening_meter,target.closing_meter),'version',target.row_version,'serverOccurredAt',now_at); RETURN erp.finish_deur_command(command,'MANUAL_COMPLETE_SHIFT',target.id,payload_hash,response);
+END $$;
+CREATE OR REPLACE FUNCTION erp.command_submit_manual_deur(command jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=erp,auth,extensions,pg_catalog AS $$
+DECLARE tenant text:=erp.current_company_id(); scope jsonb; idem jsonb; payload_hash text; now_at timestamptz:=erp.deur_operational_clock(); target erp.deurs%ROWTYPE; policy text; response jsonb;
+BEGIN
+  IF erp.reject_manual_transcription_authority(command,ARRAY['commandId','idempotencyKey','deurId','expectedVersion']) OR nullif(btrim(command->>'commandId'),'') IS NULL OR nullif(btrim(command->>'idempotencyKey'),'') IS NULL OR nullif(btrim(command->>'expectedVersion'),'') IS NULL THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF; scope:=erp.validate_manual_deur_transcription_scope(command); IF scope->>'code'<>'OK' THEN RETURN jsonb_build_object('success',false,'code',scope->>'code'); END IF; idem:=erp.begin_deur_command(command,'MANUAL_SUBMIT_DEUR'); IF idem->>'state'='MISMATCH' THEN RETURN jsonb_build_object('success',false,'code','IDEMPOTENCY_MISMATCH'); END IF; IF idem->>'state'='REPLAY' THEN RETURN (idem->'response')||jsonb_build_object('disposition','REPLAYED'); END IF; payload_hash:=idem->>'payloadHash'; SELECT * INTO target FROM erp.deurs WHERE id=command->>'deurId' AND company_id=tenant FOR UPDATE;
+  IF target.creation_source<>'MANUAL_WEB' THEN RETURN jsonb_build_object('success',false,'code','MANUAL_DEUR_REQUIRED'); END IF; IF target.row_version<>(command->>'expectedVersion')::bigint THEN RETURN jsonb_build_object('success',false,'code','CONFLICT','currentVersion',target.row_version,'refreshRequired',true); END IF; SELECT operational_metadata#>>'{deurExpectationSnapshot,meterRequirement}' INTO policy FROM erp.rental_equipment_lines WHERE id=target.rental_equipment_line_id AND company_id=tenant; IF policy IN ('odometer','both') AND (target.opening_odometer IS NULL OR target.closing_odometer IS NULL) THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF; IF target.status<>'In Progress' OR EXISTS(SELECT 1 FROM erp.deur_events e WHERE e.deur_id=target.id AND e.is_open AND NOT erp.is_manual_deur_encoding_bootstrap_event(target,e)) OR NOT EXISTS(SELECT 1 FROM erp.deur_events WHERE deur_id=target.id AND activity_type='shift' AND action='end') THEN RETURN jsonb_build_object('success',false,'code','INVALID_TRANSITION'); END IF;
+  UPDATE erp.deurs SET status='Submitted',submitted_at=now_at,submitted_by=auth.uid()::text,updated_at=now_at,updated_by=auth.uid()::text WHERE id=target.id RETURNING * INTO target; INSERT INTO erp.audit_log(id,company_id,aggregate_type,aggregate_id,action,actor_id,occurred_at,correlation_id,new_values) VALUES(extensions.gen_random_uuid()::text,tenant,'DEUR',target.id,'SUBMIT_DEUR',auth.uid()::text,now_at,command->>'commandId',jsonb_build_object('manualWeb',true,'encoderUserId',auth.uid()::text,'operatorId',target.operator_id)); response:=jsonb_build_object('success',true,'disposition','ACCEPTED','record',to_jsonb(target)||erp.canonical_deur_meter_evidence(policy,target.opening_hour_meter,target.closing_hour_meter,target.opening_odometer,target.closing_odometer,target.opening_meter,target.closing_meter),'version',target.row_version,'serverOccurredAt',now_at); RETURN erp.finish_deur_command(command,'MANUAL_SUBMIT_DEUR',target.id,payload_hash,response);
+END $$;
+ALTER FUNCTION erp.is_manual_deur_encoding_bootstrap_event(erp.deurs,erp.deur_events) OWNER TO postgres;
+ALTER FUNCTION erp.command_record_manual_deur_activity(jsonb) OWNER TO postgres;
+ALTER FUNCTION erp.command_complete_manual_deur_shift(jsonb) OWNER TO postgres;
+ALTER FUNCTION erp.command_submit_manual_deur(jsonb) OWNER TO postgres;
+REVOKE ALL ON FUNCTION erp.is_manual_deur_encoding_bootstrap_event(erp.deurs,erp.deur_events) FROM PUBLIC,anon,authenticated,service_role;
+REVOKE ALL ON FUNCTION erp.command_record_manual_deur_activity(jsonb),erp.command_complete_manual_deur_shift(jsonb),erp.command_submit_manual_deur(jsonb) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION erp.command_record_manual_deur_activity(jsonb),erp.command_complete_manual_deur_shift(jsonb),erp.command_submit_manual_deur(jsonb) TO authenticated;
+COMMENT ON FUNCTION erp.command_record_manual_deur_activity(jsonb) IS 'Office-only MANUAL_WEB activity transcription. Bootstrap system history is immutable and excluded from operational chronology.';
+COMMENT ON FUNCTION erp.command_complete_manual_deur_shift(jsonb) IS 'Office-only MANUAL_WEB completion. Bootstrap system history remains immutable.';
+COMMIT;
