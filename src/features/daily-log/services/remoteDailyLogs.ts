@@ -1,6 +1,7 @@
 import type { ApplicationDependencies } from "@/app/composition";
 import { readAllCanonicalPages } from "@/features/dashboard/services/canonicalDashboardRead";
-import { canonicalMeterEvidence } from "@/features/rental/deur/services/canonicalMeterEvidence";
+import { canonicalMeterEvidence, deurShiftDistanceKilometers } from "@/features/rental/deur/services/canonicalMeterEvidence";
+import { calculateShiftHourMeterSeconds } from "@/features/rental/deur/services/calculateShiftHourMeter";
 import { resolveEffectiveDeurRevision } from "@/features/rental/deur/services/correction/resolveEffectiveDeurRevision";
 import type { DeurRecord } from "@/features/rental/deur/types";
 
@@ -73,6 +74,7 @@ function meterSummary(deur: DeurRecord): string {
   if (["hourMeter", "both"].includes(evidence.meterRequirement)) {
     const value = reading(evidence.openingHourMeter, evidence.closingHourMeter);
     if (value) parts.push(`Hour meter ${value}`);
+    else parts.push(`Hour meter (shift) ${(calculateShiftHourMeterSeconds(deur.events ?? [], deur.updatedAt, deur.creationSource) / 3600).toFixed(2)} h`);
   }
   if (["odometer", "both"].includes(evidence.meterRequirement)) {
     const value = reading(evidence.openingOdometer, evidence.closingOdometer);
@@ -86,6 +88,7 @@ function meterSummary(deur: DeurRecord): string {
     }
     parts.push(`Distance ${trip.totalDistance} km`);
   }
+  else { const distance = deurShiftDistanceKilometers(deur); if (distance !== undefined) parts.push(`Distance ${distance} km`); }
   return parts.join(" · ") || "—";
 }
 

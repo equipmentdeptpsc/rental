@@ -68,6 +68,20 @@ describe("remote Daily Logs read model", () => {
     expect(model.rows[0].meter).not.toContain("Hour meter");
   });
 
+  it("shows automatic shift hours and distance for Both without manual hour readings", async () => {
+    const events = [
+      { id: "1", activityType: "shift", action: "start", timestamp: "2026-10-04T08:00:00Z", sequence: 1, source: "user" },
+      { id: "2", activityType: "operation", action: "start", timestamp: "2026-10-04T08:00:00Z", sequence: 2, source: "user" },
+      { id: "3", activityType: "operation", action: "end", timestamp: "2026-10-04T09:00:00Z", sequence: 3, source: "user" },
+      { id: "4", activityType: "idle", action: "start", timestamp: "2026-10-04T09:00:00Z", sequence: 4, source: "user" },
+      { id: "5", activityType: "idle", action: "end", timestamp: "2026-10-04T09:30:00Z", sequence: 5, source: "user" },
+      { id: "6", activityType: "shift", action: "end", timestamp: "2026-10-04T09:30:00Z", sequence: 6, source: "user" },
+    ] as DeurRecord["events"];
+    const both = deur("both", { meterRequirement: "both", openingHourMeter: undefined, closingHourMeter: undefined, openingOdometer: 100, closingOdometer: 130, events, updatedAt: "2026-10-04T10:00:00Z" });
+    const model = await readRemoteDailyLogs(input([both]).dependencies, { today: "2026-10-05" });
+    expect(model.rows[0].meter).toBe("Hour meter (shift) 1.50 h · Odometer 100 → 130 · Distance 30 km");
+  });
+
   it("fails closed for duplicate pages, conflicting current revisions, and reader errors", async () => {
     const duplicate = input();
     duplicate.reads.deurs.list.mockImplementation(async () => repositorySuccess({ items: [deur("d1")] }) as never);

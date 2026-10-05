@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const remoteForm = readFileSync("src/features/equipment/components/RemoteEquipmentForm.tsx", "utf8");
 const details = readFileSync("src/pages/Equipment/Details.tsx", "utf8");
 const edit = readFileSync("src/pages/Equipment/Edit.tsx", "utf8");
+const maintenanceEdit = readFileSync("src/features/equipment/components/RemoteEquipmentMaintenanceEdit.tsx", "utf8");
 const drawer = readFileSync("src/features/masters/equipment-subcategory/EquipmentSubcategoryDrawer.tsx", "utf8");
 
 describe("Milestone 11.3B2 Equipment Sub-Category selector cutover", () => {
@@ -23,8 +24,10 @@ describe("Milestone 11.3B2 Equipment Sub-Category selector cutover", () => {
     expect(remoteForm).toContain("Create or activate an Equipment Category before creating Equipment.");
   });
 
-  it("keeps remote edit read-only and renders historical canonical detail state", () => {
-    expect(edit).toContain("Remote Equipment sub-category edit is pending a canonical Equipment update command.");
+  it("keeps remote sub-category editing unavailable while allowing scoped Maintenance Type edits", () => {
+    expect(edit).toContain("RemoteEquipmentMaintenanceEdit");
+    expect(maintenanceEdit).toContain("updateMaintenanceType");
+    expect(maintenanceEdit).not.toContain("subcategoryId");
     expect(details).toContain("Sub-Category");
     expect(details).toContain("— Inactive");
     expect(details).toContain('subcategoryName ?');

@@ -17,6 +17,8 @@ export function projectOfflineDeurCommand(
   const candidate = structuredClone(current);
   if (command.type === "DEUR_COMPLETE_SHIFT") {
     candidate.closingMeter = command.input.closingMeter;
+    candidate.closingOdometer = command.input.closingOdometer;
+    candidate.closingHourMeter = command.input.closingHourMeter;
     const result = applyDigitalDeurOperatorAction({
       deur: candidate,
       action: "END_SHIFT",

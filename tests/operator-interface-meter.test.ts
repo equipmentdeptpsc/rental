@@ -66,10 +66,10 @@ describe("operator interface meter readings", () => {
     ]));
   });
 
-  it("prevents shift completion until a configured meter has an ending reading", () => {
+  it("prevents shift completion until a required odometer has an ending reading", () => {
     const result = applyDigitalDeurOperatorAction({
       deur: deur({
-        meterReadingType: "HOUR_METER",
+        meterReadingType: "ODOMETER",
         openingMeter: 100,
         events: [{ id: "shift", activityType: "shift", action: "start", timestamp: "2026-07-28T01:00:00Z", sequence: 1, source: "user" }],
         status: "In Progress",
@@ -79,6 +79,14 @@ describe("operator interface meter readings", () => {
       actor: { id: "user-1", name: "Operator User" },
     });
     expect(result).toMatchObject({ success: false, code: "DEUR_CLOSING_METER_REQUIRED" });
+  });
+
+  it("ends an Hour Meter shift without manual hour readings", () => {
+    const result = applyDigitalDeurOperatorAction({
+      deur: deur({ meterRequirement: "hourMeter", events: [{ id: "shift", activityType: "shift", action: "start", timestamp: "2026-07-28T01:00:00Z", sequence: 1, source: "user" }], status: "In Progress" }),
+      action: "END_SHIFT", actionTimestamp: "2026-07-28T09:00:00Z", actor: { id: "user-1", name: "Operator User" },
+    });
+    expect(result).toMatchObject({ success: true });
   });
 
   it("does not keep an old equipment-derived meter requirement when current terms require none", () => {

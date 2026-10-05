@@ -24,3 +24,12 @@ export function canonicalMeterEvidence(deur: Pick<DeurRecord,
     ...(legacyAmbiguous ? { legacyMeterEvidenceState: "LEGACY_AMBIGUOUS_DUAL_METER" as const } : {}),
   };
 }
+
+export function deurShiftDistanceKilometers(deur: Pick<DeurRecord,
+  "meterRequirement" | "openingHourMeter" | "closingHourMeter" | "openingOdometer" | "closingOdometer" | "openingMeter" | "closingMeter" | "odometerTripEvidence"
+>): number | undefined {
+  if (deur.odometerTripEvidence?.totalDistance !== undefined) return deur.odometerTripEvidence.totalDistance;
+  const evidence = canonicalMeterEvidence(deur);
+  if (evidence.openingOdometer === undefined || evidence.closingOdometer === undefined) return undefined;
+  return Math.max(0, evidence.closingOdometer - evidence.openingOdometer);
+}

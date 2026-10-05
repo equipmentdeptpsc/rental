@@ -24,6 +24,7 @@ export interface CanonicalEquipmentProjection {
   model?: string;
   serialNumber?: string;
   maintenanceType?: string;
+  rowVersion?: number;
   currentReading?: number;
   engineNumber?: string;
   chassisNumber?: string;

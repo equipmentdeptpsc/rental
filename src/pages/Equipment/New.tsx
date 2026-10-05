@@ -57,7 +57,7 @@ function LocalNewEquipment() {
 
     category: "",
 
-    maintenanceType: "Engine Hours",
+    maintenanceType: "Hour Meter",
 
     currentReading: "",
 
