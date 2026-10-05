@@ -5,10 +5,11 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useCanonicalEquipmentDetail } from "../hooks/useCanonicalEquipmentDetail";
 import { requestCanonicalEquipmentRefresh } from "../remote/canonicalEquipmentRefresh";
 import { BETA_MAINTENANCE_TYPES, meterRequirementForMaintenanceType, normalizeMaintenanceType, type BetaMaintenanceType, type EquipmentMaintenanceType } from "../services/maintenanceMeterPolicy";
+import { getEquipmentRuntimeCapability } from "../services/equipmentRuntimeCapability";
 
 export default function RemoteEquipmentMaintenanceEdit() {
   const { id } = useParams();
-  const { commandRepositories } = useApplicationDependenciesCompatibility();
+  const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const { equipment, retry } = useCanonicalEquipmentDetail(id);
   const [selected, setSelected] = useState<BetaMaintenanceType>("Hour Meter");
@@ -18,7 +19,8 @@ export default function RemoteEquipmentMaintenanceEdit() {
   const row = equipment.status === "ready" ? equipment.value : null;
   const maintenance = row?.maintenanceType as EquipmentMaintenanceType | undefined;
   const knownType = meterRequirementForMaintenanceType(maintenance) !== undefined;
-  const editable = Boolean(commandRepositories.canonicalEquipment && hasPermission("equipment.update") && row?.rowVersion !== undefined && knownType);
+  const capability = getEquipmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalEquipment));
+  const editable = Boolean(capability.canonicalMaintenanceUpdate && hasPermission("equipment.update") && row?.rowVersion !== undefined && knownType);
 
   useEffect(() => { if (maintenance && knownType) setSelected(normalizeMaintenanceType(maintenance)); }, [maintenance, knownType]);
 
@@ -53,7 +55,7 @@ export default function RemoteEquipmentMaintenanceEdit() {
           {BETA_MAINTENANCE_TYPES.map((value) => <option key={value} value={value}>{value}</option>)}
         </select>
       </label>
-      {!editable && <p role="status" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">Maintenance Type editing requires the canonical Equipment command, update permission, and a current Equipment version.</p>}
+      {!editable && <p role="status" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">Maintenance Type editing is currently unavailable.</p>}
       {message && <p role="status">{message}</p>}
       <div className="flex gap-3"><button type="button" className="rounded bg-blue-700 px-4 py-2 text-white disabled:bg-slate-400" disabled={!editable || busy} onClick={() => void save()}>{busy ? "Saving…" : "Save Maintenance Type"}</button><Link className="px-4 py-2 text-blue-700 underline" to={`/equipment/${id}`}>View Equipment</Link></div>
     </>}
