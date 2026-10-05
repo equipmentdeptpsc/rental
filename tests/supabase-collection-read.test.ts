@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { SupabaseCollectionReadRepository } from "@/integrations/supabase/SupabaseCollectionReadRepository";
 import { reconcileStatementCollections } from "@/features/rental/collections/collectionService";
@@ -28,6 +28,20 @@ describe("canonical remote collection reads", () => {
   it("fails closed for unscoped and remote-error reads", async () => {
     await expect(repository([]).list()).resolves.toMatchObject({ success: false, error: { code: "REPOSITORY_QUERY_FAILED" } });
     await expect(repository(null, { code: "42501" }).list({ filters: { rental_id: rentalId } })).resolves.toMatchObject({ success: false, error: { code: "REMOTE_READ_FAILED" } });
+  });
+
+  it("applies stable server paging to the rental-scoped RPC", async () => {
+    const range = vi.fn(async (from: number, to: number) => ({ data: from === 0 ? [row] : [], error: null, to }));
+    const order = vi.fn();
+    const request = { order, range };
+    order.mockReturnValue(request);
+    const rpc = vi.fn(() => request);
+    const reader = new SupabaseCollectionReadRepository({ schema: () => ({ rpc }) } as never);
+    await expect(reader.list({ filters: { rental_id: rentalId }, paging: { offset: 0, limit: 1 } })).resolves.toMatchObject({ success: true, value: { items: [{ id: "collection-1" }] } });
+    await expect(reader.list({ filters: { rental_id: rentalId }, paging: { offset: 1, limit: 1 } })).resolves.toMatchObject({ success: true, value: { items: [] } });
+    expect(rpc).toHaveBeenCalledWith("read_collections_for_rental", { target_rental_id: rentalId });
+    expect(order.mock.calls.map(([field]) => field)).toEqual(["collected_at", "id", "collected_at", "id"]);
+    expect(range.mock.calls.map(([from, to]) => [from, to])).toEqual([[0, 0], [1, 1]]);
   });
 
   it("uses a tenant-scoped read-only RPC and no direct browser table grant", () => {

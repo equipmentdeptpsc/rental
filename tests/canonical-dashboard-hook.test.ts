@@ -25,6 +25,6 @@ describe("canonical dashboard hook", () => {
     expect(node.textContent).toBe("loaded");
     await act(async () => { root.render(createElement(Probe, { refreshKey: 1 })); await Promise.resolve(); });
     expect(mocked.read).toHaveBeenCalledTimes(2);
-    expect(mocked.read.mock.calls[1]?.[1]).toMatchObject({ canReadAudit: false, signal: expect.any(AbortSignal) });
+    expect(mocked.read.mock.calls[1]?.[1]).toMatchObject({ canReadAudit: false, canReadFinancial: false, signal: expect.any(AbortSignal) });
   });
 });

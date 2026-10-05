@@ -28,11 +28,6 @@ export function buildDashboardActionQueue(input: {
   const rejectedDeur = input.deurs.filter(
     (item) => !item.revision?.supersededByRevisionId && item.status === "Rejected",
   ).length;
-  const pendingReview = input.deurs.filter(
-    (item) =>
-      !item.revision?.supersededByRevisionId &&
-      ["Submitted", "Pending Acknowledgement"].includes(item.status),
-  ).length;
 
   const items: DashboardActionItem[] = [];
   if (missingDeur) {
@@ -55,17 +50,6 @@ export function buildDashboardActionQueue(input: {
       permission: "rental.read",
       tone: "danger",
       count: rejectedDeur,
-    });
-  }
-  if (pendingReview) {
-    items.push({
-      id: "deur-review",
-      title: "DEUR awaiting acknowledgement",
-      description: "Submitted DEURs need customer or manager review.",
-      href: "/rentals?view=deur-exceptions",
-      permission: "rental.read",
-      tone: "info",
-      count: pendingReview,
     });
   }
   if (input.pendingManagerApprovals) {

@@ -9,15 +9,16 @@ const state = vi.hoisted(() => ({
   localReads: vi.fn(),
   billingReads: vi.fn(),
   remoteStatus: "loaded",
+  financialPermission: false,
 }));
 
 vi.mock("@/app/composition", () => ({
   PersistenceMode: { Local: "local", Remote: "remote" },
   useApplicationDependenciesCompatibility: () => ({ configuration: { persistenceMode: state.mode } }),
 }));
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => permission !== "billing.read" && permission !== "users.manage" }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => permission === "billing.read" || permission === "collections.read" ? state.financialPermission : permission !== "users.manage" }) }));
 vi.mock("@/features/dashboard/hooks/useDashboardViewModel", () => ({ useDashboardViewModel: (key: number) => { state.localReads(key); return model; } }));
-vi.mock("@/features/dashboard/hooks/useCanonicalDashboardViewModel", () => ({ useCanonicalDashboardViewModel: (key: number) => { state.remoteReads(key); return state.remoteStatus === "loaded" ? { status: "loaded", model: { ...model, activityAvailable: false }, loadedAt: new Date("2026-10-05T00:00:00Z") } : state.remoteStatus === "error" ? { status: "error", message: "Canonical read failed" } : { status: "loading" }; } }));
+vi.mock("@/features/dashboard/hooks/useCanonicalDashboardViewModel", () => ({ useCanonicalDashboardViewModel: (key: number, audit: boolean, finance: boolean) => { state.remoteReads(key, audit, finance); return state.remoteStatus === "loaded" ? { status: "loaded", model: { ...model, financialAvailable: finance, activityAvailable: false }, loadedAt: new Date("2026-10-05T00:00:00Z") } : state.remoteStatus === "error" ? { status: "error", message: "Dashboard read failed" } : { status: "loading" }; } }));
 vi.mock("@/features/dashboard/hooks/useCanonicalBillingVisibility", () => ({ useCanonicalBillingVisibility: (enabled: boolean) => { state.billingReads(enabled); return { status: "unavailable", retry: vi.fn() }; } }));
 
 import Dashboard from "@/pages/Dashboard";
@@ -30,7 +31,7 @@ const model = {
 };
 
 const roots: Root[] = [];
-afterEach(async () => { while (roots.length) await act(async () => roots.pop()?.unmount()); vi.clearAllMocks(); state.mode = "remote"; state.remoteStatus = "loaded"; });
+afterEach(async () => { while (roots.length) await act(async () => roots.pop()?.unmount()); vi.clearAllMocks(); state.mode = "remote"; state.remoteStatus = "loaded"; state.financialPermission = false; });
 
 async function render() {
   const node = document.createElement("div");
@@ -42,12 +43,22 @@ async function render() {
 describe("dashboard mode and refresh", () => {
   it("uses the remote path and refreshes the canonical read key", async () => {
     const node = await render();
-    expect(state.remoteReads).toHaveBeenCalledWith(0);
+    expect(state.remoteReads).toHaveBeenCalledWith(0, false, false);
     expect(state.localReads).not.toHaveBeenCalled();
     expect(state.billingReads).toHaveBeenCalledWith(false);
     await act(async () => (node.querySelector('[aria-label="Refresh dashboard"]') as HTMLButtonElement).click());
-    expect(state.remoteReads).toHaveBeenCalledWith(1);
+    expect(state.remoteReads).toHaveBeenCalledWith(1, false, false);
     expect(node.textContent).toContain("Recent activity is unavailable for this account.");
+    expect(node.textContent?.toLowerCase()).not.toContain("canonical");
+    expect(node.textContent).not.toContain("Financial / Revenue");
+  });
+
+  it("shows financial totals only with billing and collection read permissions", async () => {
+    state.financialPermission = true;
+    const node = await render();
+    expect(state.remoteReads).toHaveBeenCalledWith(0, false, true);
+    expect(node.textContent).toContain("Financial / Revenue");
+    expect(node.textContent).toContain("Billed / invoiced");
   });
 
   it("retains the legacy local view model", async () => {
@@ -60,11 +71,13 @@ describe("dashboard mode and refresh", () => {
   it("shows loading and read errors without rendering zero metrics", async () => {
     state.remoteStatus = "loading";
     const node = await render();
-    expect(node.textContent).toContain("Loading canonical Dashboard");
+    expect(node.textContent).toContain("Loading dashboard");
+    expect(node.textContent?.toLowerCase()).not.toContain("canonical");
     expect(node.textContent).not.toContain("Active rentals");
     state.remoteStatus = "error";
     await act(async () => roots[roots.length - 1].render(createElement(MemoryRouter, null, createElement(Dashboard))));
-    expect(node.querySelector('[role="alert"]')?.textContent).toContain("Canonical read failed");
+    expect(node.querySelector('[role="alert"]')?.textContent).toContain("Dashboard read failed");
+    expect(node.textContent?.toLowerCase()).not.toContain("canonical");
     expect(node.textContent).not.toContain("Active rentals");
   });
 });

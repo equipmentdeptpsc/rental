@@ -37,7 +37,15 @@ function dependencies() {
   const statusRows = ["available", "assigned", "rented", "maintenance"].map((id) => ({ id, status: id[0].toUpperCase() + id.slice(1), active: true, deleted: false }));
   const statuses = { list: vi.fn(async ({ paging }: { paging?: { offset?: number; limit?: number } } = {}) => repositorySuccess(statusRows.slice(paging?.offset ?? 0, (paging?.offset ?? 0) + Math.min(paging?.limit ?? 2, 2)))) };
   const audit = paged([{ id: "ev1", action: "EQUIPMENT_CREATED", aggregateType: "Equipment", aggregateId: "e1", occurredAt: "2026-10-01T00:00:00Z" }]);
-  const reads = { equipment, assignments, rentals, deurs, canonicalAudit: audit };
+  const billing = paged([
+    { id: "s1", rentalId: "r1", invoiceStatus: "Invoiced", grandTotal: 1000 },
+    { id: "s2", rentalId: "r4", invoiceStatus: "Partially Collected", grandTotal: 500 },
+  ], 1);
+  const collections = { list: vi.fn(async ({ filters, paging }: { filters?: { rental_id?: string }; paging?: { offset?: number; limit?: number } }) => {
+    const rows = filters?.rental_id === "r1" ? [{ id: "c1", rentalId: "r1", statementId: "s1", amount: 250 }] : filters?.rental_id === "r4" ? [{ id: "c2", rentalId: "r4", statementId: "s2", amount: 100 }] : [];
+    return repositorySuccess({ items: rows.slice(paging?.offset ?? 0, (paging?.offset ?? 0) + Math.min(paging?.limit ?? 1, 1)) });
+  }) };
+  const reads = { equipment, assignments, rentals, deurs, canonicalAudit: audit, billing, collections };
   const writes = { canonicalEquipment: { createEquipment: vi.fn() }, canonicalAssignment: { createAssignment: vi.fn() } };
   return { dependencies: { readRepositories: reads, repositories: { equipmentStatusRead: statuses }, commandRepositories: writes } as unknown as ApplicationDependencies, reads, statuses, writes };
 }
@@ -57,6 +65,9 @@ describe("canonical dashboard reads", () => {
     expect(model.operational).toMatchObject({ activeAssignments: 1, activeRentals: 1 });
     expect(model.pendingDeur).toBe(2);
     expect(model.financial.upcoming).toMatchObject({ scheduledRelease: 1, expectedReturns: 1, pendingManagerApprovals: 1, pendingCustomerAcknowledgements: 1 });
+    expect(model.financialAvailable).toBe(false);
+    expect(input.reads.billing.list).not.toHaveBeenCalled();
+    expect(input.reads.collections.list).not.toHaveBeenCalled();
     expect(input.reads.canonicalAudit.list).not.toHaveBeenCalled();
     expect(input.writes.canonicalEquipment.createEquipment).not.toHaveBeenCalled();
     expect(input.writes.canonicalAssignment.createAssignment).not.toHaveBeenCalled();
@@ -68,11 +79,38 @@ describe("canonical dashboard reads", () => {
     await expect(readCanonicalDashboard(input.dependencies, { canReadAudit: false })).rejects.toThrow("Equipment unavailable");
   });
 
+  it("fails closed when billing statements cannot be read", async () => {
+    const input = dependencies();
+    input.reads.billing.list.mockImplementationOnce(async () => repositoryFailure("REMOTE_READ_FAILED", "Billing unavailable", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" }) as never);
+    await expect(readCanonicalDashboard(input.dependencies, { canReadAudit: false, canReadFinancial: true })).rejects.toThrow("Billing unavailable");
+    expect(input.reads.collections.list).not.toHaveBeenCalled();
+  });
+
   it("loads recent canonical audit only for the allowed dashboard account", async () => {
     const input = dependencies();
     const model = await readCanonicalDashboard(input.dependencies, { canReadAudit: true });
     expect(model.activityAvailable).toBe(true);
     expect(model.activity).toHaveLength(1);
     expect(input.reads.canonicalAudit.list).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles paged billing statements with rental-scoped collection pages", async () => {
+    const input = dependencies();
+    const model = await readCanonicalDashboard(input.dependencies, { canReadAudit: false, canReadFinancial: true });
+    expect(model.financialAvailable).toBe(true);
+    expect(model.financial.revenue).toEqual({ billed: 1500, collected: 350, outstanding: 1150 });
+    expect(model.financial.collectionPerformance.collectionRate).toBe(23.33);
+    expect(input.reads.billing.list.mock.calls.length).toBeGreaterThan(2);
+    expect(input.reads.collections.list.mock.calls.map(([options]) => options?.filters?.rental_id).sort()).toEqual(["r1", "r1", "r2", "r3", "r4", "r4"]);
+    expect(model.fleetUtilization).toMatchObject({ total: 4, available: 1, assigned: 1, deployed: 1, maintenance: 1 });
+  });
+
+  it("fails closed when a scoped collection page fails or returns another rental", async () => {
+    const input = dependencies();
+    input.reads.collections.list.mockImplementationOnce(async () => repositoryFailure("REMOTE_READ_FAILED", "Collections unavailable", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" }) as never);
+    await expect(readCanonicalDashboard(input.dependencies, { canReadAudit: false, canReadFinancial: true })).rejects.toThrow("Collections unavailable");
+    const second = dependencies();
+    second.reads.collections.list.mockImplementationOnce(async () => repositorySuccess({ items: [{ id: "wrong", rentalId: "r4", statementId: "s2", amount: 100 }] }) as never);
+    await expect(readCanonicalDashboard(second.dependencies, { canReadAudit: false, canReadFinancial: true })).rejects.toThrow("outside its Rental scope");
   });
 });

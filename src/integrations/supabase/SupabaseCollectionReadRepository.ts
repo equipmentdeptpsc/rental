@@ -7,13 +7,17 @@ import { mapCanonicalRow } from "./SupabaseReadRepository";
 type RpcClient = Pick<SupabaseClient, "schema">;
 
 export class SupabaseCollectionReadRepository implements ReadOnlyRepository<CollectionTransaction> {
-  readonly capabilities = createRemoteCapabilities("ReadOnly", "SupportsFiltering", "SupportsOrdering");
+  readonly capabilities = createRemoteCapabilities("ReadOnly", "SupportsFiltering", "SupportsOrdering", "SupportsPaging");
   constructor(private readonly client: RpcClient) {}
 
   async list(options: RemoteSearchOptions = {}): Promise<RepositoryResult<Page<CollectionTransaction>>> {
     const rentalId = options.filters?.rental_id;
     if (typeof rentalId !== "string" || !rentalId) return missingRentalFilter();
-    const { data, error } = await this.client.schema("erp").rpc("read_collections_for_rental", { target_rental_id: rentalId });
+    const query = this.client.schema("erp").rpc("read_collections_for_rental", { target_rental_id: rentalId });
+    const offset = options.paging?.offset ?? 0;
+    const limit = options.paging?.limit;
+    const request = limit === undefined ? query : query.order("collected_at", { ascending: true }).order("id", { ascending: true }).range(offset, offset + limit - 1);
+    const { data, error } = await (options.signal ? request.abortSignal(options.signal) : request);
     if (error || !Array.isArray(data)) return remoteFailure();
     const items: CollectionTransaction[] = [];
     for (const row of data) { const mapped = mapCollection(row as Record<string, unknown>); if (!mapped.success) return mapped; items.push(mapped.value); }
