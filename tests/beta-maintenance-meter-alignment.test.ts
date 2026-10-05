@@ -88,3 +88,50 @@ describe("automatic shift Hour Meter", () => {
     expect(calculateShiftHourMeterSeconds(overlapping, "2026-10-06T10:00:00Z")).toBe(5400);
   });
 });
+
+describe("maintenance type command migration safety", () => {
+  const sql = readFileSync("supabase/migrations/20261006000100_beta_maintenance_type_meter_alignment.sql", "utf8");
+  const helper = readFileSync("supabase/migrations/20260729000400_phase_c2h_command_hardening.sql", "utf8");
+  const command = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION erp.command_update_equipment_maintenance_type"));
+
+  it("checks permission, tenant, deletion, and active state before beginning a command", () => {
+    const permission = command.indexOf("erp.current_user_has_permission('equipment.update')");
+    const target = command.indexOf("SELECT * INTO target FROM erp.equipment");
+    const begin = command.indexOf("idem:=erp.begin_operational_command");
+    expect(permission).toBeGreaterThanOrEqual(0);
+    expect(target).toBeGreaterThan(permission);
+    expect(begin).toBeGreaterThan(target);
+    expect(command).toContain("company_id=tenant AND deleted_at IS NULL AND active=true FOR UPDATE");
+    expect(command).toContain("IF target.id IS NULL THEN RETURN jsonb_build_object('success',false,'code','NOT_FOUND')");
+  });
+
+  it("rejects unsupported types and audits only a successful update", () => {
+    expect(command).toContain("desired NOT IN('Hour Meter','Mileage','None','Both')");
+    const update = command.indexOf("UPDATE erp.equipment SET maintenance_type=desired");
+    const audit = command.indexOf("'EQUIPMENT_MAINTENANCE_TYPE_UPDATED'");
+    const finish = command.indexOf("RETURN erp.finish_operational_command");
+    expect(update).toBeGreaterThanOrEqual(0);
+    expect(audit).toBeGreaterThan(update);
+    expect(finish).toBeGreaterThan(audit);
+  });
+
+  it("replays first, then returns a refreshable stale-version conflict without poisoning a retry", () => {
+    const begin = command.indexOf("idem:=erp.begin_operational_command");
+    const replay = command.indexOf("idem->>'state'='REPLAY'");
+    const newState = command.indexOf("idem->>'state'<>'NEW'");
+    const conflict = command.indexOf("target.row_version<>(command->>'expectedVersion')::bigint");
+    const update = command.indexOf("UPDATE erp.equipment SET maintenance_type=desired");
+    const finish = command.indexOf("RETURN erp.finish_operational_command");
+    expect(begin).toBeGreaterThanOrEqual(0);
+    expect(replay).toBeGreaterThan(begin);
+    expect(newState).toBeGreaterThan(replay);
+    expect(conflict).toBeGreaterThan(newState);
+    expect(update).toBeGreaterThan(conflict);
+    expect(finish).toBeGreaterThan(update);
+    expect(command.slice(conflict, update)).toContain("'code','CONFLICT','refreshRequired',true,'currentVersion',target.row_version");
+    const beginBody = helper.split("CREATE OR REPLACE FUNCTION begin_operational_command(")[1]?.split("CREATE OR REPLACE FUNCTION finish_operational_command(")[0] ?? "";
+    expect(beginBody).toContain("IF existing.id IS NULL THEN RETURN jsonb_build_object('state','NEW','payloadHash',payload_hash)");
+    expect(beginBody).not.toMatch(/INSERT INTO operational_command_idempotency/i);
+    expect(helper.split("CREATE OR REPLACE FUNCTION finish_operational_command(")[1]).toMatch(/INSERT INTO operational_command_idempotency/i);
+  });
+});

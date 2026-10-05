@@ -42,12 +42,14 @@ BEGIN
     OR nullif(btrim(command->>'equipmentId'),'') IS NULL OR desired IS NULL OR desired NOT IN('Hour Meter','Mileage','None','Both')
     OR nullif(btrim(command->>'expectedVersion'),'') IS NULL OR (command->>'expectedVersion') !~ '^[0-9]+$'
   THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF;
-  SELECT * INTO target FROM erp.equipment WHERE id=command->>'equipmentId' AND company_id=tenant AND deleted_at IS NULL FOR UPDATE;
+  SELECT * INTO target FROM erp.equipment WHERE id=command->>'equipmentId' AND company_id=tenant AND deleted_at IS NULL AND active=true FOR UPDATE;
   IF target.id IS NULL THEN RETURN jsonb_build_object('success',false,'code','NOT_FOUND'); END IF;
   idem:=erp.begin_operational_command(command,'UPDATE_EQUIPMENT_MAINTENANCE_TYPE','EQUIPMENT',target.id,tenant,actor::text);
   IF idem->>'state'='MISMATCH' THEN RETURN jsonb_build_object('success',false,'code','IDEMPOTENCY_MISMATCH'); END IF;
   IF idem->>'state'='REPLAY' THEN RETURN (idem->'response')||jsonb_build_object('disposition','REPLAYED'); END IF;
+  IF idem->>'state'<>'NEW' THEN RETURN jsonb_build_object('success',false,'code','VALIDATION_REJECTED'); END IF;
   payload_hash:=idem->>'payloadHash';
+  -- begin_operational_command does not insert on NEW; a stale version leaves no idempotency record.
   IF target.row_version<>(command->>'expectedVersion')::bigint THEN RETURN jsonb_build_object('success',false,'code','CONFLICT','refreshRequired',true,'currentVersion',target.row_version); END IF;
   now_at:=clock_timestamp();
   UPDATE erp.equipment SET maintenance_type=desired,updated_at=now_at,updated_by=actor::text,row_version=row_version+1 WHERE id=target.id RETURNING row_version INTO next_version;
