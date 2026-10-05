@@ -50,7 +50,7 @@ import MaintenancePage from "@/pages/Maintenance";
 import NewMaintenance from "@/pages/Maintenance/New";
 import MaintenanceDetails from "@/pages/Maintenance/Details";
 import DailyLogs from "@/pages/DailyLogs";
-import NewDailyLog from "@/pages/DailyLogs/New";
+import DailyLogNewRoute from "@/pages/DailyLogs/NewRoute";
 import Billing from "@/pages/Billing";
 import Reports from "@/pages/Reports";
 import ReportPreview from "@/pages/Reports/Preview";
@@ -142,7 +142,7 @@ export const router = createBrowserRouter([
       { path: "maintenance/new", element: permitted("maintenance.manage", <NewMaintenance />) },
       { path: "maintenance/:id", element: permitted("maintenance.read", <MaintenanceDetails />) },
       { path: "daily-logs", element: permitted("dailyLog.read", <DailyLogs />) },
-      { path: "daily-logs/new", element: permitted("dailyLog.manage", <NewDailyLog />) },
+      { path: "daily-logs/new", element: permitted("dailyLog.manage", <DailyLogNewRoute />) },
       { path: "billing", element: permitted("billing.read", <Billing />) },
       { path: "reports", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.reports, <Reports />) },
       { path: "reports/preview", element: permitted(CANONICAL_NAVIGATION_PERMISSIONS.reports, <ReportPreview />) },
