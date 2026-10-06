@@ -26,7 +26,7 @@ export const PERMISSIONS = {
   ],
   deur: ["deur.read", "deur.create", "deur.review", "deur.correct", "deur.expectation.waive"],
   customer: ["customer.read", "customer.create", "customer.manage"],
-  project: ["project.read", "project.update", "project.manage"],
+  project: ["project.read", "project.create", "project.update", "project.manage"],
   operator: ["operator.read", "operator.create", "operator.update", "operator.manage"],
   maintenance: ["maintenance.read", "maintenance.manage"],
   dailyLog: ["dailyLog.read", "dailyLog.manage"],
