@@ -147,13 +147,18 @@ function RentalBookingTable({ rows }: { rows: readonly CanonicalBookingListItem[
 function RemoteAssignmentSections({ data }: { data: CanonicalAssignmentData }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<AssignmentView>("list");
-  const current = data.assignments.filter((item) => item.status === "Active");
+  const current = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return data.assignments
+      .filter((item) => item.status === "Active")
+      .filter((item) => remoteSearchText(item, data).includes(normalized));
+  }, [data, query]);
   const overdue = current.filter((item) => assignmentViewStatus(item) === "Overdue");
   const history = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return data.assignments.filter((item) => item.status !== "Active").filter((item) => remoteSearchText(item, data).includes(normalized));
   }, [data, query]);
-  return <><AssignmentToolbar view={view} setView={setView} /><section className="space-y-3"><h2 className="font-display text-lg font-semibold">Current Bookings ({current.length})</h2>{overdue.length > 0 && <div className="flex items-start gap-3 rounded-lg border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 p-3 text-sm text-amber-900"><span>⚠</span><p><strong>{overdue.length} {overdue.length === 1 ? "booking is" : "bookings are"} overdue for return.</strong> Review the highlighted records below.</p></div>}{view === "list" ? remoteTable(current, data, "No current Bookings.") : <AssignmentBoard records={current} data={data} view={view} />}</section><section className="space-y-3"><div><h2 className="font-display text-lg font-semibold">Completed / History ({history.length})</h2><p className="text-sm text-slate-500">Completed and cancelled canonical records remain available for audit.</p></div><FilterBar onClear={()=>setQuery("")} canClear={Boolean(query)}><label className="min-w-[16rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Search history</span><input aria-label="Search completed assignments" className="app-control mt-1 w-full" onChange={(event) => setQuery(event.target.value)} placeholder="Assignment, equipment, operator, or project" value={query} /></label></FilterBar>{remoteTable(history, data, "No completed or cancelled Bookings match.")}</section></>;
+  return <><AssignmentToolbar view={view} setView={setView} /><FilterBar onClear={()=>setQuery("")} canClear={Boolean(query)}><label className="min-w-[16rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Search bookings</span><input aria-label="Search assignments" className="app-control mt-1 w-full" onChange={(event) => setQuery(event.target.value)} placeholder="Assignment, equipment, operator, or project" value={query} /></label></FilterBar><section className="space-y-3"><h2 className="font-display text-lg font-semibold">Current Bookings ({current.length})</h2>{overdue.length > 0 && <div className="flex items-start gap-3 rounded-lg border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 p-3 text-sm text-amber-900"><span>⚠</span><p><strong>{overdue.length} {overdue.length === 1 ? "booking is" : "bookings are"} overdue for return.</strong> Review the highlighted records below.</p></div>}{view === "list" ? remoteTable(current, data, "No current Bookings.") : <AssignmentBoard records={current} data={data} view={view} />}</section><section className="space-y-3"><div><h2 className="font-display text-lg font-semibold">Completed / History ({history.length})</h2><p className="text-sm text-slate-500">Completed and cancelled canonical records remain available for audit.</p></div>{remoteTable(history, data, "No completed or cancelled Bookings match.")}</section></>;
 }
 
 function remoteSearchText(assignment: AssignmentRecord, data: CanonicalAssignmentData) {
