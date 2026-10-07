@@ -98,10 +98,23 @@ jobs:
           [[ "$one" == 1 ]] || { echo 'SELECT_1=FAIL'; exit 1; }
           echo 'SELECT_1=PASS'
 
-          if ! remote_versions="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version;' 2>/dev/null)"; then
-            echo 'LEDGER=UNREADABLE'
+          ledger_error="$(mktemp)"
+          if ! remote_versions="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version;' 2>"$ledger_error")"; then
+            if grep -Eqi 'timed out|timeout' "$ledger_error"; then
+              echo 'LEDGER=TIMEOUT'
+            elif grep -Eqi 'permission denied' "$ledger_error"; then
+              echo 'LEDGER=PERMISSION_DENIED'
+            elif grep -Eqi 'does not exist|undefined table' "$ledger_error"; then
+              echo 'LEDGER=TABLE_MISSING'
+            elif grep -Eqi 'authentication failed' "$ledger_error"; then
+              echo 'LEDGER=AUTH_FAILED'
+            else
+              echo 'LEDGER=QUERY_FAILED'
+            fi
+            rm -f "$ledger_error"
             exit 1
           fi
+          rm -f "$ledger_error"
 
           export REMOTE_VERSIONS="$remote_versions"
           python3 - <<'PY'
