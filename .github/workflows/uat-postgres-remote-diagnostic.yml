@@ -1,0 +1,161 @@
+name: UAT Postgres Remote Diagnostic
+
+on:
+  push:
+    branches:
+      - codex/uat-postgres-remote-diagnostic
+    paths:
+      - .github/workflows/uat-postgres-remote-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      UAT_PROJECT_REF: jtkctarqbwmqdcewthkn
+      UAT_POOLER_HOST: aws-0-ap-southeast-1.pooler.supabase.com
+    steps:
+      - name: Check out pinned release
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: 5e474e81a6f0c8a046eac0400e17da869c5f1b2a
+          persist-credentials: false
+
+      - name: Install diagnostic clients
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+        with:
+          version: 2.110.0
+
+      - name: Verify release, connectivity, ledger, and dry-run
+        shell: bash
+        env:
+          UAT_SUPABASE_DB_PASSWORD: ${{ secrets.UAT_SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          expected_sha=5e474e81a6f0c8a046eac0400e17da869c5f1b2a
+          expected_migration_sha=BA24EA87C361CBAB6AFF165709115D6CD25B7080B66C030DAB98D745AB920165
+          migration=supabase/migrations/20261007000100_canonical_idle_discount_vat_billing.sql
+
+          [[ "$UAT_PROJECT_REF" == jtkctarqbwmqdcewthkn ]] || { echo 'PROJECT_REF=FAIL'; exit 1; }
+          [[ "$UAT_POOLER_HOST" == aws-0-ap-southeast-1.pooler.supabase.com ]] || { echo 'POOLER_HOST=FAIL'; exit 1; }
+          [[ -n "$UAT_SUPABASE_DB_PASSWORD" ]] || { echo 'UAT_SECRET=ABSENT'; exit 1; }
+          [[ "$(git rev-parse HEAD)" == "$expected_sha" ]] || { echo 'PINNED_SHA=FAIL'; exit 1; }
+          echo 'PINNED_SHA=PASS'
+          [[ "$(sha256sum "$migration" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')" == "$expected_migration_sha" ]] || { echo 'MIGRATION_SHA=FAIL'; exit 1; }
+          echo 'MIGRATION_SHA=PASS'
+
+          [[ "$(supabase --version)" == 2.110.0 ]] || { echo 'SUPABASE_CLI=FAIL'; exit 1; }
+          supabase db push --help | grep -q -- '--db-url' || { echo 'DRY_RUN_SYNTAX=FAIL'; exit 1; }
+          supabase db push --help | grep -q -- '--dry-run' || { echo 'DRY_RUN_SYNTAX=FAIL'; exit 1; }
+
+          timeout 10s getent ahostsv4 "$UAT_POOLER_HOST" >/dev/null || { echo 'REMOTE_DNS=FAIL'; exit 1; }
+          echo 'REMOTE_DNS=PASS'
+          if ! python3 - <<'PY' 2>/dev/null
+          import os, socket
+          with socket.create_connection((os.environ['UAT_POOLER_HOST'], 5432), timeout=8):
+              pass
+          PY
+          then
+            echo 'REMOTE_TCP_5432=FAIL'
+            exit 1
+          fi
+          echo 'REMOTE_TCP_5432=PASS'
+
+          export PGHOST="$UAT_POOLER_HOST"
+          export PGPORT=5432
+          export PGUSER="postgres.$UAT_PROJECT_REF"
+          export PGDATABASE=postgres
+          export PGPASSWORD="$UAT_SUPABASE_DB_PASSWORD"
+          export PGSSLMODE=require
+          export PGCONNECT_TIMEOUT=10
+
+          pg_error="$(mktemp)"
+          if ! one="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 -c 'SELECT 1;' 2>"$pg_error")"; then
+            if grep -Eqi 'timed out|timeout' "$pg_error"; then
+              echo 'POSTGRES_SSL_NATIVE=TIMEOUT'
+            elif grep -Eqi 'password authentication failed|authentication failed' "$pg_error"; then
+              echo 'POSTGRES_SSL_NATIVE=AUTH_FAILED'
+            elif grep -Eqi 'SSL|certificate|TLS' "$pg_error"; then
+              echo 'POSTGRES_SSL_NATIVE=TLS_FAILED'
+            else
+              echo 'POSTGRES_SSL_NATIVE=FAILED_OTHER'
+            fi
+            rm -f "$pg_error"
+            exit 1
+          fi
+          rm -f "$pg_error"
+          echo 'POSTGRES_SSL_NATIVE=CONNECTED'
+          [[ "$one" == 1 ]] || { echo 'SELECT_1=FAIL'; exit 1; }
+          echo 'SELECT_1=PASS'
+
+          if ! remote_versions="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version;' 2>/dev/null)"; then
+            echo 'LEDGER=UNREADABLE'
+            exit 1
+          fi
+
+          export REMOTE_VERSIONS="$remote_versions"
+          python3 - <<'PY'
+          import os, pathlib, re, sys
+          expected = '20261007000100'
+          remote = [v for v in os.environ['REMOTE_VERSIONS'].splitlines() if v]
+          files = list(pathlib.Path('supabase/migrations').glob('*.sql'))
+          local = [p.name.split('_', 1)[0] for p in files]
+          if not all(re.fullmatch(r'\d{14}', v) for v in remote + local):
+              print('LEDGER=INVALID_VERSION')
+              sys.exit(1)
+          if len(remote) != len(set(remote)) or len(local) != len(set(local)):
+              print('LEDGER=DUPLICATE_VERSION')
+              sys.exit(1)
+          remote_set, local_set = set(remote), set(local)
+          pending = sorted(local_set - remote_set)
+          remote_only = sorted(remote_set - local_set)
+          unexpected = sorted(set(pending) - {expected})
+          print('LATEST_REMOTE=' + (max(remote) if remote else 'NONE'))
+          print('LOCAL_PENDING=' + (','.join(pending) if pending else 'NONE'))
+          print('UNEXPECTED_PENDING=' + (','.join(unexpected) if unexpected else 'NONE'))
+          if remote_only:
+              print('REMOTE_ONLY=' + ','.join(remote_only))
+          if pending != [expected] or remote_only:
+              sys.exit(1)
+          PY
+
+          DB_URL="$(python3 - <<'PY'
+          import os, urllib.parse
+          password = urllib.parse.quote(os.environ['UAT_SUPABASE_DB_PASSWORD'], safe='')
+          print(f"postgresql://postgres.{os.environ['UAT_PROJECT_REF']}:{password}@{os.environ['UAT_POOLER_HOST']}:5432/postgres?sslmode=require")
+          PY
+          )"
+          echo "::add-mask::$DB_URL"
+          dry_run_output="$(mktemp)"
+          trap 'rm -f "$dry_run_output"' EXIT
+          if ! timeout 120s supabase db push --db-url "$DB_URL" --dry-run >"$dry_run_output" 2>&1; then
+            if grep -Eqi 'timed out|timeout' "$dry_run_output"; then
+              echo 'DRY_RUN=TIMEOUT'
+            elif grep -Eqi 'password authentication failed|authentication failed' "$dry_run_output"; then
+              echo 'DRY_RUN=AUTH_FAILED'
+            else
+              echo 'DRY_RUN=FAIL'
+            fi
+            exit 1
+          fi
+          export DRY_RUN_OUTPUT="$dry_run_output"
+          python3 - <<'PY'
+          import os, pathlib, re, sys
+          output = pathlib.Path(os.environ['DRY_RUN_OUTPUT']).read_text(errors='replace')
+          proposed = re.findall(r'\b\d{14}_[a-z0-9_]+\.sql\b', output)
+          if proposed == ['20261007000100_canonical_idle_discount_vat_billing.sql']:
+              print('DRY_RUN=PASS')
+          else:
+              print('DRY_RUN=FAIL')
+              sys.exit(1)
+          PY
