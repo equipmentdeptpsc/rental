@@ -41,17 +41,38 @@ export class SupabaseReadRepository<T, TFilter extends RemoteReadFilter = Remote
       return query.abortSignal(signal);
     });
     if (!result.success) return result;
-    const items: T[] = [];
+    const mappedItems: T[] = [];
+
     for (const row of result.value ?? []) {
       const mapped = this.map(row);
       if (!mapped.success) {
         this.remoteCore.logger.log({ category: "mapping", message: "Remote row mapping failed.", context: { repository: this.definition.repositoryName, operation: "list", code: mapped.error.code } });
         return mapped;
       }
-      const postMapped = this.definition.postMap ? await this.definition.postMap(mapped.value, normalized.signal) : mapped;
-      if (!postMapped.success) return postMapped;
-      items.push(postMapped.value);
+      mappedItems.push(mapped.value);
     }
+
+    const items: T[] = [];
+
+    if (!this.definition.postMap) {
+      items.push(...mappedItems);
+    } else {
+      const POST_MAP_CONCURRENCY = 8;
+
+      for (let offset = 0; offset < mappedItems.length; offset += POST_MAP_CONCURRENCY) {
+        const group = mappedItems.slice(offset, offset + POST_MAP_CONCURRENCY);
+
+        const postMappedItems = await Promise.all(
+          group.map((value) => this.definition.postMap!(value, normalized.signal)),
+        );
+
+        for (const postMapped of postMappedItems) {
+          if (!postMapped.success) return postMapped;
+          items.push(postMapped.value);
+        }
+      }
+    }
+
     const offset = normalized.paging?.offset ?? 0, limit = normalized.paging?.limit;
     return repositorySuccess({ items, nextCursor: limit !== undefined && items.length === limit ? String(offset + limit) : undefined });
   }
