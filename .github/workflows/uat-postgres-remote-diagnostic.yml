@@ -21,7 +21,7 @@ jobs:
       - name: Check out pinned release
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: 5e474e81a6f0c8a046eac0400e17da869c5f1b2a
+          ref: 6c978b40a3688a283443317c2d40e47e19614582
           persist-credentials: false
 
       - name: Install diagnostic clients
@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           set +x
 
-          expected_sha=5e474e81a6f0c8a046eac0400e17da869c5f1b2a
+          expected_sha=6c978b40a3688a283443317c2d40e47e19614582
           expected_migration_sha=BA24EA87C361CBAB6AFF165709115D6CD25B7080B66C030DAB98D745AB920165
           migration=supabase/migrations/20261007000100_canonical_idle_discount_vat_billing.sql
 
