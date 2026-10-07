@@ -6,7 +6,6 @@ import type { Permission } from "@/features/auth/domain/permission";
 import AnonymousRoute from "@/features/auth/guards/AnonymousRoute";
 import RequireAuthentication from "@/features/auth/guards/RequireAuthentication";
 import RequirePermission from "@/features/auth/guards/RequirePermission";
-import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
 import AccessDenied from "@/pages/AccessDenied";
 import Login from "@/pages/Login";
@@ -16,6 +15,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CANONICAL_NAVIGATION_PERMISSIONS } from "./navigation/navigationConfig";
 
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Equipment = lazy(() => import("@/pages/Equipment"));
 const NewEquipment = lazy(() => import("@/pages/Equipment/New"));
 const EditEquipment = lazy(() => import("@/pages/Equipment/Edit"));
@@ -115,8 +115,8 @@ export const router = createBrowserRouter([
     element: <RecoveryRedirect><RequireAuthentication><AppLayout /></RequireAuthentication></RecoveryRedirect>,
     errorElement: <NotFound />,
     children: [
-      { index: true, element: permitted("dashboard.read", <Dashboard />) },
-      { path: "dashboard", element: permitted("dashboard.read", <Dashboard />) },
+      { index: true, element: permitted("dashboard.read", routePage(<Dashboard />)) },
+      { path: "dashboard", element: permitted("dashboard.read", routePage(<Dashboard />)) },
       { path: "access-denied", element: <AccessDenied /> },
       { path: "equipment", element: permitted("equipment.read", routePage(<Equipment />)) },
       { path: "equipment/new", element: permitted("equipment.create", routePage(<NewEquipment />)) },
