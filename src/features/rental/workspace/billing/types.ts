@@ -60,6 +60,8 @@ export interface BillingPreviewLine {
   hourlyRate: number;
 
   amount: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
   operatingCharge?: number;
   idleCharge?: number;
   idleHours?: number;

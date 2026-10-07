@@ -18,7 +18,7 @@ export type RentalBillingTermsNormalization =
   | { valid: false; code: "INVALID_NUMERIC_INPUT" | "INVALID_VAT_APPLICABILITY" | "INVALID_TRANSACTION_RELATIONSHIP"; message: string };
 
 const supportedAutomatedMethods = new Set<RentalBillingMethod>(["Per Hour", "Per Day", "Per Week"]);
-const optionalNumericFields = ["minimumBillableHours", "overtimeRate", "standbyRate", "mobilizationFee", "demobilizationFee", "fuelCharge", "operatorRate", "withholdingTax"] as const satisfies readonly (keyof RentalBillingTerms)[];
+const optionalNumericFields = ["minimumBillableHours", "overtimeRate", "standbyRate", "idleRate", "discountValue", "mobilizationFee", "demobilizationFee", "fuelCharge", "operatorRate", "withholdingTax"] as const satisfies readonly (keyof RentalBillingTerms)[];
 
 function normalizeNumber(value: unknown, field: string): number | undefined | RentalBillingTermsNormalization {
   if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) return undefined;
@@ -37,6 +37,7 @@ export function normalizeRentalBillingTermsInput(input: {
   const vat = raw.vatApplicability;
   if (vat !== undefined && vat !== "Applicable" && vat !== "Not Applicable") return { valid: false, code: "INVALID_VAT_APPLICABILITY", message: "VAT applicability is invalid." };
   const terms: RentalBillingTerms = vat === undefined ? {} : { vatApplicability: vat };
+  if (raw.discountType !== undefined) terms.discountType = raw.discountType as RentalBillingTerms["discountType"];
   for (const field of ["unitRate", ...optionalNumericFields] as const) {
     const normalized = normalizeNumber(raw[field], field);
     if (typeof normalized === "object") return normalized;
@@ -58,7 +59,7 @@ export function validateRentalBillingTerms(input: {
   if (billingTerms.vatApplicability !== "Applicable" && billingTerms.vatApplicability !== "Not Applicable") return { valid: false, code: billingTerms.vatApplicability === undefined ? "VAT_APPLICABILITY_REQUIRED" : "INVALID_VAT_APPLICABILITY", message: "VAT applicability must be specified." };
   if (transactionRelationship === "Affiliate" && billingTerms.vatApplicability !== "Not Applicable") return { valid: false, code: "VAT_NOT_ALLOWED_FOR_AFFILIATE", message: "Affiliate transactions are not subject to VAT." };
   if (transactionRelationship === "Non-Affiliate" && billingTerms.vatApplicability !== "Applicable") return { valid: false, code: "VAT_REQUIRED_FOR_NON_AFFILIATE", message: "Non-affiliate transactions require VAT." };
-  if (supportedAutomatedMethods.has(billingMethod!) && (!Number.isFinite(billingTerms.unitRate) || (billingTerms.unitRate ?? 0) <= 0)) return { valid: false, code: billingTerms.unitRate === undefined ? "UNIT_RATE_REQUIRED" : "UNIT_RATE_MUST_BE_POSITIVE", message: "Unit rate must be a finite positive number." };
+  if (supportedAutomatedMethods.has(billingMethod!) && (!Number.isFinite(billingTerms.unitRate) || ((billingTerms.unitRate ?? 0) <= 0 && !(billingMethod === "Per Hour" && (billingTerms.idleRate ?? 0) > 0)))) return { valid: false, code: billingTerms.unitRate === undefined ? "UNIT_RATE_REQUIRED" : "UNIT_RATE_MUST_BE_POSITIVE", message: "An Operation or Idle rate must be a finite positive number." };
   for (const field of optionalNumericFields) {
     const value = billingTerms[field];
     if (value === undefined) continue;
@@ -66,6 +67,8 @@ export function validateRentalBillingTerms(input: {
     if (value < 0) return { valid: false, code: "FIELD_NEGATIVE", message: `${field} cannot be negative.` };
   }
   if (billingTerms.withholdingTax !== undefined && billingTerms.withholdingTax > 100) return { valid: false, code: "WITHHOLDING_PERCENTAGE_OUT_OF_RANGE", message: "Withholding tax must be between 0 and 100." };
+  if (billingTerms.discountType && !["NONE", "PERCENTAGE", "FIXED_AMOUNT"].includes(billingTerms.discountType)) return { valid: false, code: "FIELD_NEGATIVE", message: "Discount type is invalid." };
+  if (billingTerms.discountType === "PERCENTAGE" && (billingTerms.discountValue ?? 0) > 100) return { valid: false, code: "FIELD_NEGATIVE", message: "Percentage discount cannot exceed 100%." };
   return { valid: true, value: { ...billingTerms } };
 }
 

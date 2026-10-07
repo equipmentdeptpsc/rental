@@ -77,6 +77,14 @@ export class SupabaseAuthenticationProvider implements RemoteAuthenticationProvi
       permissions,
     });
   }
+  async changePassword(currentPassword: string, newPassword: string): Promise<RepositoryResult<void>> {
+    const current = await this.client.auth.getUser();
+    const email = current.data.user?.email;
+    if (current.error || !email) return interactiveAuthFailure();
+    const verified = await this.client.auth.signInWithPassword({ email, password: currentPassword });
+    if (verified.error || !verified.data.session || verified.data.user.id !== current.data.user?.id) return interactiveAuthFailure();
+    return this.updatePassword(newPassword);
+  }
 }
 function isEmail(identifier:string):boolean{return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)}
 function interactiveAuthFailure<T>():RepositoryResult<T>{

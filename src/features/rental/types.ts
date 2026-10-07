@@ -61,6 +61,7 @@ export const rentalBillingMethods = [
 export type RentalBillingMethod = typeof rentalBillingMethods[number];
 
 export type VatApplicability = "Applicable" | "Not Applicable";
+export type DiscountType = "NONE" | "PERCENTAGE" | "FIXED_AMOUNT";
 export type TransactionRelationship = "Affiliate" | "Non-Affiliate";
 
 /** Serializable rental-level commercial inputs. Rental type and method remain on RentalRecord. */
@@ -69,6 +70,9 @@ export interface RentalBillingTerms {
   minimumBillableHours?: number;
   overtimeRate?: number;
   standbyRate?: number;
+  idleRate?: number;
+  discountType?: DiscountType;
+  discountValue?: number;
   mobilizationFee?: number;
   demobilizationFee?: number;
   fuelCharge?: number;
@@ -84,6 +88,10 @@ export interface RentalCommercialSnapshot {
   minimumBillableHours?: number;
   overtimeRate?: number;
   standbyRate?: number;
+  idleRate?: number;
+  discountType?: DiscountType;
+  discountValue?: number;
+  vatApplicability?: VatApplicability;
   mobilizationFee?: number;
   demobilizationFee?: number;
   fuelCharge?: number;

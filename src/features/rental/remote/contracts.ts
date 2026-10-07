@@ -1,9 +1,9 @@
-import type { RentalBillingMethod, RentalType, TransactionRelationship, VatApplicability } from "@/features/rental/types";
+import type { DiscountType, RentalBillingMethod, RentalType, TransactionRelationship, VatApplicability } from "@/features/rental/types";
 
 export interface CanonicalRentalContract {
   id: string; rentalId: string; rentalEquipmentLineId: string; contractNo: string;
   billingMethod: RentalBillingMethod; currency: string; unitRate: number;
-  minimumBillableHours?: number; overtimeRate?: number; standbyRate?: number;
+  minimumBillableHours?: number; overtimeRate?: number; standbyRate?: number; idleRate?: number; discountType?: DiscountType; discountValue?: number;
   mobilizationFee?: number; demobilizationFee?: number; fuelCharge?: number;
   operatorIncluded: boolean; operatorRate?: number; contractAmount?: number;
   taxRate?: number; withholdingTax?: number; transactionRelationship?: TransactionRelationship;
@@ -28,7 +28,7 @@ export interface CanonicalCommandValue { rentalId: string; rentalNumber?: string
 export type CanonicalCommandResult = { success: true; disposition: "ACCEPTED" | "REPLAYED"; value: CanonicalCommandValue } | { success: false; code: CanonicalRentalFailureCode; message: string; details?: unknown; currentVersion?: number };
 
 export interface CreateCanonicalDraftInput { commandId: string; idempotencyKey: string; customerId: string; projectId: string; dateOut: string; expectedReturn?: string; rentalType: RentalType; representativeName: string; representativeEmail: string; lines: { assignmentId: string }[] }
-export interface CanonicalTermsInput { billingMethod: RentalBillingMethod; currency: string; unitRate: number; minimumBillableHours?: number; overtimeRate?: number; standbyRate?: number; mobilizationFee?: number; demobilizationFee?: number; fuelCharge?: number; operatorIncluded: boolean; operatorRate?: number; contractAmount?: number; taxRate?: number; withholdingTax?: number; transactionRelationship?: TransactionRelationship; vatApplicability?: VatApplicability; remarks?: string }
+export interface CanonicalTermsInput { billingMethod: RentalBillingMethod; currency: string; unitRate: number; minimumBillableHours?: number; overtimeRate?: number; standbyRate?: number; idleRate?: number; discountType?: DiscountType; discountValue?: number; mobilizationFee?: number; demobilizationFee?: number; fuelCharge?: number; operatorIncluded: boolean; operatorRate?: number; contractAmount?: number; taxRate?: number; withholdingTax?: number; transactionRelationship?: TransactionRelationship; vatApplicability?: VatApplicability; remarks?: string }
 export interface UpdateCanonicalTermsInput { commandId: string; idempotencyKey: string; rentalId: string; expectedVersion: number; lines: { lineId: string; commercialTerms: CanonicalTermsInput; costCodeId: string; activityCodeId: string; workDescriptionId: string; deurPolicy: Record<string, unknown>; operationalRemarks?: string; shiftWindows?: unknown[]; workDate?: string; meterRequirement?: string }[] }
 export interface CanonicalVersionedInput { commandId: string; idempotencyKey: string; rentalId: string; expectedVersion: number }
 export interface DecideCanonicalApprovalInput extends CanonicalVersionedInput { decision: "Approved" | "Rejected"; remarks?: string }

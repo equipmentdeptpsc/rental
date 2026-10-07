@@ -59,6 +59,8 @@ export interface BillingStatementLine {
   hourlyRate: number;
 
   amount: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
 
   operatingCharge?: number;
   idleCharge?: number;
@@ -107,6 +109,9 @@ export interface BillingStatement {
   billingTo: string;
 
   subtotal: number;
+  discountAmount?: number;
+  subtotalBeforeDiscount?: number;
+  subtotalAfterDiscount?: number;
 
   /** Engine-derived financial totals added by explicit DEUR handoffs. */
   vat?: number;

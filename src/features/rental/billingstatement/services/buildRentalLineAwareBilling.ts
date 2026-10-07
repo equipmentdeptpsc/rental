@@ -18,6 +18,7 @@ export interface RentalLineBillingPreview { lines: BillingPreviewLine[]; issues:
 
 export function buildRentalLineAwareBillingPreview(input: { aggregate: RentalAggregate; from: string; to: string; equipment?: EquipmentRecord[]; operators?: Operator[] }): RentalLineBillingPreview {
   const { aggregate, from, to } = input; const issues: RentalLineBillingIssue[] = []; const notices: BillingConsumedNotice[] = []; const lines: BillingPreviewLine[] = [];
+  const financialGroups = new Map<string, { lineIds: string[]; discountType: "NONE" | "PERCENTAGE" | "FIXED_AMOUNT"; discountValue: number; vatRate: number; vatApplicable: boolean; withholdingRate: number }>();
   const statements = billingStatementRepository.getByRentalId(aggregate.rental.id);
   const candidates = aggregate.deurs.filter((deur) => (deur.reportDate ?? deur.workDate) >= from && (deur.reportDate ?? deur.workDate) <= to);
   for (const deur of candidates) {
@@ -42,6 +43,27 @@ export function buildRentalLineAwareBillingPreview(input: { aggregate: RentalAgg
     if (!calculated.success) { issues.push({ ...identity, code: calculated.code, message: calculated.message }); continue; }
     const machine=input.equipment?.find(item=>item.id===deur.equipmentId),operator=input.operators?.find(item=>item.id===deur.operatorId);
     lines.push({ ...calculated.line, deurReference: deur.deurNumber?.trim()?`${deur.deurNumber}${deur.revision?.revisionNumber?` R${deur.revision.revisionNumber}`:""}`:"DEUR number unavailable",equipmentLabel:machine?`${machine.equipmentName} (${machine.assetNo})`:"Equipment record unavailable",operatorLabel:operator?.name??"Operator not assigned" });
+    const groupKey = matchingLines[0].id;
+    const group = financialGroups.get(groupKey) ?? { lineIds: [], discountType: resolved.terms.discountType ?? "NONE", discountValue: resolved.terms.discountValue ?? 0, vatRate: resolved.terms.taxRate ?? 0, vatApplicable: resolved.terms.vatApplicability === "Applicable" || (resolved.terms.vatApplicability === undefined && (resolved.terms.taxRate ?? 0) > 0), withholdingRate: resolved.terms.withholdingTax ?? 0 };
+    group.lineIds.push(deur.id); financialGroups.set(groupKey, group);
+  }
+  const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 10000) / 10000;
+  for (const [groupKey, group] of financialGroups) {
+    const members = lines.filter(line => group.lineIds.includes(line.deurId)).sort((left, right) => left.deurId.localeCompare(right.deurId));
+    const gross = members.reduce((sum, line) => sum + line.amount, 0);
+    if (group.discountType === "FIXED_AMOUNT" && group.discountValue > gross) issues.push({ code: "FIXED_DISCOUNT_EXCEEDS_SUBTOTAL", rentalEquipmentLineId: groupKey, message: "Fixed discount exceeds the eligible subtotal for this equipment line and billing period." });
+    const discount = group.discountType === "PERCENTAGE" ? roundMoney(gross * group.discountValue / 100) : group.discountType === "FIXED_AMOUNT" ? Math.min(gross, group.discountValue) : 0;
+    let allocated = 0;
+    members.forEach((line, index) => {
+      const amount = index === members.length - 1 ? discount - allocated : gross ? roundMoney(discount * line.amount / gross) : 0;
+      allocated += amount;
+      const net = roundMoney(line.amount - amount);
+      line.discountAmount = amount;
+      line.subtotalAfterDiscount = net;
+      line.vat = group.vatApplicable ? roundMoney(net * group.vatRate / 100) : undefined;
+      line.withholdingTax = group.withholdingRate ? roundMoney(net * group.withholdingRate / 100) : undefined;
+      line.grandTotal = roundMoney(net + (line.vat ?? 0) - (line.withholdingTax ?? 0));
+    });
   }
   return { lines, issues, notices, subtotal: lines.reduce((sum, line) => sum + line.amount, 0), vat: lines.reduce((sum, line) => sum + (line.vat ?? 0), 0), withholdingTax: lines.reduce((sum, line) => sum + (line.withholdingTax ?? 0), 0), grandTotal: lines.reduce((sum, line) => sum + (line.grandTotal ?? line.amount), 0) };
 }

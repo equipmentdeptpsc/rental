@@ -23,9 +23,13 @@ function evidenceMismatches(evidence: BillingEvidenceProjection, preview: Billin
   if (evidence.billingMethod !== preview.billingMethod) mismatches.push(`billing method (${evidence.billingMethod} / ${preview.billingMethod})`);
   if (!sameMoney(evidence.unitRate, previewUnitRate)) mismatches.push(`unit rate (${evidence.unitRate} / ${previewUnitRate})`);
   if (!sameMoney(evidence.subtotal, preview.amount)) mismatches.push(`subtotal (${evidence.subtotal} / ${preview.amount})`);
-  if (!sameMoney(evidence.vat, preview.vat ?? 0)) mismatches.push(`VAT (${evidence.vat} / ${preview.vat ?? 0})`);
-  if (!sameMoney(evidence.withholdingTax, preview.withholdingTax ?? 0)) mismatches.push(`withholding (${evidence.withholdingTax} / ${preview.withholdingTax ?? 0})`);
-  if (!sameMoney(evidence.grandTotal, preview.grandTotal ?? preview.amount)) mismatches.push(`grand total (${evidence.grandTotal} / ${preview.grandTotal ?? preview.amount})`);
+  // Discount and tax are recalculated by the server across all DEURs in the
+  // statement. Per-DEUR client estimates cannot authoritatively match them.
+  if (!evidence.discountType || evidence.discountType === "NONE") {
+    if (!sameMoney(evidence.vat, preview.vat ?? 0)) mismatches.push(`VAT (${evidence.vat} / ${preview.vat ?? 0})`);
+    if (!sameMoney(evidence.withholdingTax, preview.withholdingTax ?? 0)) mismatches.push(`withholding (${evidence.withholdingTax} / ${preview.withholdingTax ?? 0})`);
+    if (!sameMoney(evidence.grandTotal, preview.grandTotal ?? preview.amount)) mismatches.push(`grand total (${evidence.grandTotal} / ${preview.grandTotal ?? preview.amount})`);
+  }
   return mismatches;
 }
 

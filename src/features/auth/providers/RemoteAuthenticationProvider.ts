@@ -16,5 +16,6 @@ export interface RemoteAuthenticationProvider {
   refreshSession(): Promise<RepositoryResult<RemoteAuthenticatedIdentity | null>>;
   getCurrentUser(): Promise<RepositoryResult<User | null>>;
   updatePassword(password: string): Promise<RepositoryResult<void>>;
+  changePassword(currentPassword: string, newPassword: string): Promise<RepositoryResult<void>>;
   establishRecoverySession(callback: RecoveryCallback): Promise<RepositoryResult<RemoteAuthenticatedIdentity | null>>;
 }

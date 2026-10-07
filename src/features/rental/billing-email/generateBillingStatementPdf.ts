@@ -26,9 +26,10 @@ export function billingStatementPdfText(document: InvoiceDocument, preparedBy = 
     `Customer Representative: ${document.customerRepresentativeName ?? "Not provided"}`,
     `Representative Email: ${document.customerRepresentativeEmail ?? "Not provided"}`,
     `Project: ${document.project}`,
-    "DEUR NO. | DATE | EQUIPMENT | SERVICE / ACTIVITY | QTY / HOURS | RATE | AMOUNT",
-    ...document.serviceLines.map((line) => `${line.deurReference} | ${line.workDate} | ${line.equipmentLabel} / ${line.operatorLabel} | ${line.service} | ${line.quantityLabel} | ${line.rate === undefined ? "-" : money(line.rate, document.currency)} | ${money(line.amount, document.currency)}`),
+    "DEUR NO. | DATE | EQUIPMENT CODE | EQUIPMENT | ACTIVITY CODE | SERVICE / ACTIVITY | COST CODE | QTY / HOURS | RATE | AMOUNT",
+    ...document.serviceLines.map((line) => `${line.deurReference} | ${line.workDate} | ${line.equipmentCode} | ${line.equipmentLabel} / ${line.operatorLabel} | ${line.activityCode} | ${line.service} | ${line.costCode} | ${line.quantityLabel} | ${line.rate === undefined ? "-" : money(line.rate, document.currency)} | ${money(line.amount, document.currency)}`),
     `Subtotal: ${money(document.subtotal, document.currency)}`,
+    ...(document.discountAmount ? [`Discount: (${money(document.discountAmount, document.currency)})`, `Net taxable subtotal: ${money(document.subtotalAfterDiscount ?? document.subtotal - document.discountAmount, document.currency)}`] : []),
     ...(document.vatApplicable ? [`VAT: ${money(document.vat ?? 0, document.currency)}`] : []),
     ...(document.withholdingTaxApplicable ? [`Withholding Tax: (${money(document.withholdingTax ?? 0, document.currency)})`] : []),
     `GRAND TOTAL: ${money(document.grandTotal, document.currency)}`,
@@ -130,10 +131,11 @@ function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["serv
     commands.push(text(line.workDate,96,y,6.5));
     commands.push(text(short(`${line.equipmentLabel} / ${line.operatorLabel}`,20),148,y,6.5));
     commands.push(text(short(line.service,24),278,y,6.5));
+    commands.push(text(short(`EQ ${line.equipmentCode}  ACT ${line.activityCode}  COST ${line.costCode}`,58),148,y-8,5.5));
     commands.push(rightText(line.quantityLabel,467,y,6.5));
     commands.push(rightText(line.rate === undefined ? "-" : money(line.rate,document.currency),523,y,6.5));
     commands.push(rightText(money(line.amount,document.currency),574,y,6.5));
-    commands.push(`0.88 G 36 ${y-9} m 576 ${y-9} l S`);
+    commands.push(`0.88 G 36 ${y-12} m 576 ${y-12} l S`);
   });
 
   if (pageIndex === pageCount - 1) {
@@ -142,6 +144,7 @@ function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["serv
       commands.push(text(label,410,y,strong?9:8)); commands.push(rightText(value,574,y,strong?9:8)); y -= 15;
     };
     total("Subtotal", money(document.subtotal,document.currency));
+    if (document.discountAmount) { total("Discount", `(${money(document.discountAmount,document.currency)})`); total("Net subtotal",money(document.subtotalAfterDiscount ?? document.subtotal-document.discountAmount,document.currency)); }
     if (document.vatApplicable) total("VAT", money(document.vat ?? 0,document.currency));
     if (document.withholdingTaxApplicable) total("Withholding Tax", `(${money(document.withholdingTax ?? 0,document.currency)})`);
     commands.push(`0.5 G 408 ${y+8} m 576 ${y+8} l S`);

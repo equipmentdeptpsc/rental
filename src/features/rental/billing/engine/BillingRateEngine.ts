@@ -12,6 +12,10 @@ export class BillingRateEngine {
     deur: DeurRecord,
     terms: BillingCalculationTerms
   ): BillingChargeResult {
+    if (terms.discountType === "PERCENTAGE" && ((terms.discountValue ?? 0) < 0 || (terms.discountValue ?? 0) > 100)) {
+      throw new RangeError("Percentage discount must be between 0 and 100.");
+    }
+    const money = (value: number) => Math.round((value + Number.EPSILON) * 10000) / 10000;
 
     const isQuantityBilling = terms.billingMethod === "Per Kilometer" || terms.billingMethod === "Per Trip" || terms.billingMethod === "Per Cubic Meter";
     let operatingHours = isQuantityBilling ? 0 : deur.totalOperatingMinutes / 60;
@@ -87,7 +91,7 @@ export class BillingRateEngine {
     //
     // Idle Charge
     //
-    const idleCharge = idleHours * (terms.standbyRate ?? 0);
+    const idleCharge = idleHours * (terms.idleRate ?? 0);
     const standbyCharge = standbyHours * (terms.standbyRate ?? 0);
 
     //
@@ -131,22 +135,23 @@ export class BillingRateEngine {
     //
     // VAT
     //
-    const vat =
-      subtotal *
-      ((terms.taxRate ?? 0) / 100);
+    const discountAmount = terms.discountType === "PERCENTAGE"
+      ? money(subtotal * (terms.discountValue ?? 0) / 100)
+      : terms.discountType === "FIXED_AMOUNT" ? Math.min(subtotal, terms.discountValue ?? 0) : 0;
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const vat = terms.vatApplicability === "Not Applicable" ? 0
+      : money(subtotalAfterDiscount * ((terms.taxRate ?? 0) / 100));
 
     //
     // Withholding Tax
     //
-    const withholdingTax =
-      subtotal *
-      ((terms.withholdingTax ?? 0) / 100);
+    const withholdingTax = money(subtotalAfterDiscount * ((terms.withholdingTax ?? 0) / 100));
 
     //
     // Grand Total
     //
     const grandTotal =
-      subtotal +
+      subtotalAfterDiscount +
       vat -
       withholdingTax;
 
@@ -191,6 +196,8 @@ export class BillingRateEngine {
       fuelCharge,
 
       subtotal,
+      discountAmount,
+      subtotalAfterDiscount,
 
       vat,
 

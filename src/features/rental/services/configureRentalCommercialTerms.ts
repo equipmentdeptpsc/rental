@@ -12,6 +12,9 @@ export interface RentalCommercialTermsInput {
   minimumBillableHours?: number;
   overtimeRate?: number;
   standbyRate?: number;
+  idleRate?: number;
+  discountType?: import("../types").DiscountType;
+  discountValue?: number;
   mobilizationFee?: number;
   demobilizationFee?: number;
   fuelCharge?: number;
@@ -87,7 +90,8 @@ export function configureRentalCommercialTerms(input: {
 
   const rawTerms: RentalBillingTerms = {
     unitRate: commercialTerms.unitRate, minimumBillableHours: commercialTerms.minimumBillableHours,
-    overtimeRate: commercialTerms.overtimeRate, standbyRate: commercialTerms.standbyRate,
+    overtimeRate: commercialTerms.overtimeRate, standbyRate: commercialTerms.standbyRate, idleRate: commercialTerms.idleRate,
+    discountType: commercialTerms.discountType, discountValue: commercialTerms.discountValue,
     mobilizationFee: commercialTerms.mobilizationFee, demobilizationFee: commercialTerms.demobilizationFee,
     fuelCharge: commercialTerms.fuelCharge, operatorRate: commercialTerms.operatorRate,
     vatApplicability: commercialTerms.vatApplicability, withholdingTax: commercialTerms.withholdingTax,
@@ -110,7 +114,8 @@ export function configureRentalCommercialTerms(input: {
     billingMethod: commercialTerms.billingMethod,
     currency: commercialTerms.currency.trim().toUpperCase(), unitRate: commercialTerms.unitRate,
     minimumBillableHours: commercialTerms.minimumBillableHours, overtimeRate: commercialTerms.overtimeRate,
-    standbyRate: commercialTerms.standbyRate, mobilizationFee: commercialTerms.mobilizationFee,
+    standbyRate: commercialTerms.standbyRate, idleRate: commercialTerms.idleRate,
+    discountType: commercialTerms.discountType, discountValue: commercialTerms.discountValue, mobilizationFee: commercialTerms.mobilizationFee,
     demobilizationFee: commercialTerms.demobilizationFee, fuelCharge: commercialTerms.fuelCharge,
     operatorIncluded: commercialTerms.operatorIncluded, operatorRate: commercialTerms.operatorRate,
     contractAmount: commercialTerms.contractAmount, taxRate: commercialTerms.taxRate,

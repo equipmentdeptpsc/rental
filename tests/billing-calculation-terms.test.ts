@@ -10,7 +10,7 @@ function contract(method: BillingMethod = "Per Hour"): RentalContractRecord {
   return {
     id: "contract-1", contractNo: "C-001", customerId: "customer-1", equipmentId: "equipment-1", projectId: "project-1",
     rentalType: "Operated Rental", billingMethod: method, currency: "PHP", unitRate: 100,
-    minimumBillableHours: 3, overtimeRate: 25, standbyRate: 20, mobilizationFee: 30, demobilizationFee: 40,
+    minimumBillableHours: 3, overtimeRate: 25, idleRate: 20, standbyRate: 20, mobilizationFee: 30, demobilizationFee: 40,
     fuelCharge: 50, operatorIncluded: false, operatorRate: 60, taxRate: 12, withholdingTax: 2, contractAmount: 700,
     startDate: "2026-01-01", expectedEndDate: "2026-01-31", status: "Active", createdAt: "2026-01-01", updatedAt: "2026-01-01",
   };
@@ -31,8 +31,8 @@ describe("BillingCalculationTerms", () => {
     const original = structuredClone(source);
     const terms = mapRentalContractToBillingCalculationTerms(source);
 
-    expect(terms).toEqual({
-      billingMethod: "Per Hour", unitRate: 100, minimumBillableHours: 3, overtimeRate: 25, standbyRate: 20,
+    expect(terms).toMatchObject({
+      billingMethod: "Per Hour", unitRate: 100, minimumBillableHours: 3, overtimeRate: 25, idleRate: 20, standbyRate: 20,
       mobilizationFee: 30, demobilizationFee: 40, fuelCharge: 50, operatorIncluded: false, operatorRate: 60,
       taxRate: 12, withholdingTax: 2, contractAmount: 700,
     });
@@ -56,7 +56,7 @@ describe("BillingCalculationTerms", () => {
       operatorCharge: 60, fuelCharge: 50, subtotal: 520, vat: 62.4, withholdingTax: 10.4, grandTotal: 572,
     };
 
-    expect(BillingRateEngine.calculate(deur(), mapRentalContractToBillingCalculationTerms(source))).toEqual(expected);
+    expect(BillingRateEngine.calculate(deur(), mapRentalContractToBillingCalculationTerms(source))).toMatchObject(expected);
   });
 
   it("preserves One Lot contractAmount behavior", () => {

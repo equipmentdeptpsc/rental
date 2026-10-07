@@ -80,6 +80,9 @@ export function createBillingStatement(
     billingTo: to,
 
     subtotal,
+    discountAmount: lines.reduce((sum, line) => sum + (line.discountAmount ?? 0), 0),
+    subtotalBeforeDiscount: subtotal,
+    subtotalAfterDiscount: subtotal - lines.reduce((sum, line) => sum + (line.discountAmount ?? 0), 0),
     vatApplicable: lines.some(line=>line.vat!==undefined),
     withholdingTaxApplicable: lines.some(line=>line.withholdingTax!==undefined),
     ...(lines.some(line=>line.vat!==undefined)?{vat:financials?.vat??aggregatedVat}:{}),
@@ -163,6 +166,8 @@ export function createBillingStatement(
 
         amount:
           line.amount,
+        discountAmount: line.discountAmount,
+        subtotalAfterDiscount: line.subtotalAfterDiscount,
         operatingCharge: line.operatingCharge,
         idleCharge: line.idleCharge,
         idleHours: line.idleHours,

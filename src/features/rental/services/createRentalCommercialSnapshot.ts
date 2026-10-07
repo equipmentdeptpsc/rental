@@ -2,7 +2,7 @@ import { normalizeRentalBillingMethod, type RentalCommercialSnapshot } from "../
 
 type Source = Omit<RentalCommercialSnapshot,"capturedAt"|"billingMethod"|"currency"> & { billingMethod:unknown;currency?:unknown };
 export type CreateRentalCommercialSnapshotResult={success:true;snapshot:RentalCommercialSnapshot}|{success:false;issues:Array<{code:string;message:string;field?:string}>};
-const optional=["minimumBillableHours","overtimeRate","standbyRate","mobilizationFee","demobilizationFee","fuelCharge","operatorRate","taxRate","withholdingTax","contractAmount"] as const;
+const optional=["minimumBillableHours","overtimeRate","standbyRate","idleRate","discountValue","mobilizationFee","demobilizationFee","fuelCharge","operatorRate","taxRate","withholdingTax","contractAmount"] as const;
 
 export function createRentalCommercialSnapshot(source:Source,capturedAt:string):CreateRentalCommercialSnapshotResult{
  const issues:Extract<CreateRentalCommercialSnapshotResult,{success:false}>["issues"]=[];
@@ -15,6 +15,8 @@ export function createRentalCommercialSnapshot(source:Source,capturedAt:string):
  const currency=typeof source.currency==="string"?source.currency.trim().toUpperCase():"";if(!currency)issues.push({code:"CURRENCY_INVALID",message:"Currency is required.",field:"currency"});
  if(issues.length)return{success:false,issues};
  const snapshot:RentalCommercialSnapshot={billingMethod:billingMethod!,unitRate:source.unitRate,operatorIncluded:source.operatorIncluded,currency,capturedAt:new Date(capturedAt).toISOString()};
+ if(source.discountType)snapshot.discountType=source.discountType;
+ if(source.vatApplicability)snapshot.vatApplicability=source.vatApplicability;
  optional.forEach(field=>{if(source[field]!==undefined)(snapshot as unknown as Record<string,unknown>)[field]=source[field]});
  if(["none","odometer","hourMeter","both"].includes(String(source.meterEvidenceRequirement)))snapshot.meterEvidenceRequirement=source.meterEvidenceRequirement;
  return{success:true,snapshot:structuredClone(snapshot)};

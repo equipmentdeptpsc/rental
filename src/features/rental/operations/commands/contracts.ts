@@ -141,6 +141,7 @@ export interface BillingEvidenceProjection {
   deurId: string; rentalId: string; rentalLineId?: string; equipmentId: string; operatorId: string;
   workDate: string; billingMethod: string; quantity: number; unit: string; unitRate: number;
   hours: number; hourlyRate: number; subtotal: number; vat: number; withholdingTax: number; grandTotal: number;
+  discountType?: "NONE" | "PERCENTAGE" | "FIXED_AMOUNT"; discountValue?: number;
 }
 export interface BillingConsumptionProjection {
   statementId: string; lineId: string; deurId: string; statementVersion: number; deurVersion: number;

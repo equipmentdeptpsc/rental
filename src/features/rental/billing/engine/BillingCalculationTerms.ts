@@ -18,6 +18,10 @@ export interface BillingCalculationTerms {
   readonly minimumBillableHours?: number;
   readonly overtimeRate?: number;
   readonly standbyRate?: number;
+  readonly idleRate?: number;
+  readonly discountType?: "NONE" | "PERCENTAGE" | "FIXED_AMOUNT";
+  readonly discountValue?: number;
+  readonly vatApplicability?: "Applicable" | "Not Applicable";
   readonly mobilizationFee?: number;
   readonly demobilizationFee?: number;
   readonly fuelCharge?: number;

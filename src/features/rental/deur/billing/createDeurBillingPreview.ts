@@ -27,8 +27,8 @@ export interface DeurBillingPreview {
 export interface CreateDeurBillingPreviewInput { deur: DeurRecord; terms: BillingCalculationTerms; evaluatedAt?: string | Date; revisionChain?: DeurRecord[] }
 
 const provisionalCodes = new Set<DeurBillingEligibilityReasonCode>(["NOT_ACKNOWLEDGED", "SHIFT_NOT_COMPLETED", "OPEN_ACTIVITY"]);
-const numericFields: Array<keyof Omit<BillingCalculationTerms, "billingMethod" | "operatorIncluded">> = [
-  "unitRate", "minimumBillableHours", "overtimeRate", "standbyRate", "mobilizationFee", "demobilizationFee",
+const numericFields: Array<keyof Omit<BillingCalculationTerms, "billingMethod" | "operatorIncluded" | "discountType" | "vatApplicability">> = [
+  "unitRate", "minimumBillableHours", "overtimeRate", "standbyRate", "idleRate", "discountValue", "mobilizationFee", "demobilizationFee",
   "fuelCharge", "operatorRate", "taxRate", "withholdingTax", "contractAmount",
 ];
 
@@ -54,9 +54,10 @@ function configurationIssues(terms: BillingCalculationTerms): DeurBillingPreview
     const value = terms[field];
     if (value !== undefined && (!Number.isFinite(value) || value < 0)) issues.push({ code: "INVALID_RATE", message: `${field} must be a finite non-negative value.`, field });
   });
+  if (terms.discountType === "PERCENTAGE" && (terms.discountValue ?? 0) > 100) issues.push({ code: "INVALID_DISCOUNT", message: "Percentage discount cannot exceed 100%.", field: "discountValue" });
   if (terms.billingMethod === "One Lot") {
     if (!(Number.isFinite(terms.contractAmount) && terms.contractAmount! > 0)) issues.push({ code: "CONTRACT_AMOUNT_REQUIRED", message: "A positive contract amount is required for One Lot billing.", field: "contractAmount" });
-  } else if (!(Number.isFinite(terms.unitRate) && terms.unitRate > 0)) {
+  } else if (!(Number.isFinite(terms.unitRate) && (terms.unitRate > 0 || (terms.billingMethod === "Per Hour" && (terms.idleRate ?? 0) > 0)))) {
     issues.push({ code: "UNIT_RATE_REQUIRED", message: "A positive billing unit rate is required.", field: "unitRate" });
   }
   return issues;
@@ -82,7 +83,7 @@ export function createDeurBillingPreview({ deur, terms, evaluatedAt = new Date()
     },
     rates: structuredClone({
       unitRate: terms.unitRate, minimumBillableHours: terms.minimumBillableHours, overtimeRate: terms.overtimeRate,
-      standbyRate: terms.standbyRate, mobilizationFee: terms.mobilizationFee, demobilizationFee: terms.demobilizationFee,
+      standbyRate: terms.standbyRate, idleRate: terms.idleRate, discountType: terms.discountType, discountValue: terms.discountValue, vatApplicability: terms.vatApplicability, mobilizationFee: terms.mobilizationFee, demobilizationFee: terms.demobilizationFee,
       fuelCharge: terms.fuelCharge, operatorIncluded: terms.operatorIncluded, operatorRate: terms.operatorRate,
       taxRate: terms.taxRate, withholdingTax: terms.withholdingTax, contractAmount: terms.contractAmount,
     }),

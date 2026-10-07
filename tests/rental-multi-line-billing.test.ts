@@ -46,6 +46,24 @@ describe("Rental multi-line billing", () => {
     updatedAt: "",
   };
 
+  it("applies a fixed discount once per frozen equipment line across multiple DEURs", () => {
+    const commercial = { ...snapshot(100), vatApplicability: "Not Applicable" as const, taxRate: undefined, withholdingTax: undefined, discountType: "FIXED_AMOUNT" as const, discountValue: 50 };
+    const result = buildRentalLineAwareBillingPreview({ aggregate: aggregate([deur("a", "line-1", "equipment-1", commercial), deur("b", "line-1", "equipment-1", commercial)]), from: "2026-07-01", to: "2026-07-31" });
+    expect(result.issues).toEqual([]);
+    expect(result.lines.map(line => line.discountAmount)).toEqual([25, 25]);
+    expect(result.subtotal).toBe(400);
+    expect(result.grandTotal).toBe(350);
+    expect(result.vat).toBe(0);
+  });
+
+  it("rejects a fixed discount above the eligible subtotal and keeps distinct equipment groups", () => {
+    const first = { ...snapshot(100), vatApplicability: "Not Applicable" as const, taxRate: undefined, discountType: "FIXED_AMOUNT" as const, discountValue: 250 };
+    const second = { ...snapshot(100), vatApplicability: "Not Applicable" as const, taxRate: undefined, discountType: "FIXED_AMOUNT" as const, discountValue: 10 };
+    const result = buildRentalLineAwareBillingPreview({ aggregate: aggregate([deur("a", "line-1", "equipment-1", first), deur("b", "line-2", "equipment-2", second)]), from: "2026-07-01", to: "2026-07-31" });
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "FIXED_DISCOUNT_EXCEEDS_SUBTOTAL", rentalEquipmentLineId: "line-1" }));
+    expect(result.lines.find(line => line.deurId === "b")?.discountAmount).toBe(10);
+  });
+
   it("calculates every DEUR independently from its embedded immutable snapshot and aggregates taxes", () => {
     const result = buildRentalLineAwareBillingPreview({ aggregate: aggregate([deur("1", "line-1", "equipment-1", snapshot(100)), deur("2", "line-2", "equipment-2", snapshot(250, "Per Day"))]), from: "2026-07-01", to: "2026-07-31" });
     expect(result.issues).toEqual([]);

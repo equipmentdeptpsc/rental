@@ -27,6 +27,8 @@ export interface BillingChargeResult {
   fuelCharge: number;
 
   subtotal: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
 
   vat: number;
 

@@ -57,7 +57,7 @@ describe("Phase C12 review recipients, evidence, and billing",()=>{
 
   it("separates operating, idle, and standby charges without inflating non-operation hours",()=>{
     const deur={id:"d",rentalId:"r",equipmentId:"e",operatorId:"o",workDate:"2026-08-03",logs:[],totalOperatingMinutes:60,totalIdleMinutes:30,totalStandbyMinutes:15,totalMaintenanceMinutes:0,totalMealBreakMinutes:0,totalMobilizationMinutes:0,totalDemobilizationMinutes:0,status:"Acknowledged",createdAt:"",updatedAt:""} satisfies DeurRecord;
-    expect(BillingRateEngine.calculate(deur,{billingMethod:"Per Hour",unitRate:100,minimumBillableHours:4,standbyRate:20,operatorIncluded:true})).toMatchObject({operatingHours:4,idleHours:.5,standbyHours:.25,operatingCharge:400,idleCharge:10,standbyCharge:5,subtotal:415});
+    expect(BillingRateEngine.calculate(deur,{billingMethod:"Per Hour",unitRate:100,minimumBillableHours:4,idleRate:20,standbyRate:20,operatorIncluded:true})).toMatchObject({operatingHours:4,idleHours:.5,standbyHours:.25,operatingCharge:400,idleCharge:10,standbyCharge:5,subtotal:415});
   });
 
   it("adds only a forward migration with narrow manager resolver grants",()=>{

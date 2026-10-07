@@ -32,6 +32,8 @@ export interface CalculatedDeurBillingStatementLine {
   description: string;
   hourlyRate: number;
   amount: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
   operatingCharge: number;
   idleCharge: number;
   idleHours: number;
@@ -70,11 +72,14 @@ function hasNonBlankText(value: unknown): value is string {
 }
 
 function hasValidTermsNumbers(terms: BillingCalculationTerms) {
+  if (terms.discountType === "PERCENTAGE" && (terms.discountValue ?? 0) > 100) return false;
   return [
     terms.unitRate,
     terms.minimumBillableHours,
     terms.overtimeRate,
     terms.standbyRate,
+    terms.idleRate,
+    terms.discountValue,
     terms.mobilizationFee,
     terms.demobilizationFee,
     terms.fuelCharge,
@@ -158,11 +163,13 @@ export function calculateDeurBillingStatementLine(
       idleHours: charges.idleHours,
       standbyCharge: charges.standbyCharge ?? 0,
       standbyHours: charges.standbyHours ?? 0,
+      discountAmount: charges.discountAmount,
+      subtotalAfterDiscount: charges.subtotalAfterDiscount,
       mobilizationCharge: charges.mobilizationCharge,
       demobilizationCharge: charges.demobilizationCharge,
       operatorCharge: charges.operatorCharge,
       fuelCharge: charges.fuelCharge,
-      ...(terms.taxRate !== undefined ? { vat: charges.vat } : {}),
+      ...(terms.vatApplicability !== "Not Applicable" && terms.taxRate !== undefined ? { vat: charges.vat } : {}),
       ...(terms.withholdingTax !== undefined ? { withholdingTax: charges.withholdingTax } : {}),
       grandTotal: charges.grandTotal,
     },

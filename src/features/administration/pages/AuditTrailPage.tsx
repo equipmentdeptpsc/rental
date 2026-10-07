@@ -6,15 +6,16 @@ import { LocalUserRepository } from "@/features/auth/repository/LocalUserReposit
 import { AuthorizationAuditService } from "../services/AuthorizationAuditService";
 import { CanonicalRoleAdministrationService } from "../services/CanonicalRoleAdministrationService";
 import { presentAuditEvent } from "../services/auditPresentation";
+import { loadRemoteAuditIdentities, presentRemoteAuditIdentity, type AuditReference } from "../services/remoteAuditIdentity";
 import type { CanonicalAuditEvent } from "../domain/canonicalAudit";
 
 const localTime = (iso: string) => new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 type Row = { event: CanonicalAuditEvent; actionLabel: string; actor: { primary: string; secondary: string; technicalId: string }; target: { primary: string; secondary: string; technicalId: string }; details: string[]; searchText: string };
 
-function remoteRow(event: CanonicalAuditEvent): Row {
+function remoteRow(event: CanonicalAuditEvent, references: { actors: Map<string, AuditReference>; targets: Map<string, AuditReference> }): Row {
   const actionLabel = event.action.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
-  const actor = event.actorName?.trim() || event.actorId || "System";
-  return { event, actionLabel, actor: { primary: actor, secondary: event.actorId ? "Authenticated actor" : "System actor", technicalId: event.actorId ?? "Unavailable" }, target: { primary: event.aggregateType, secondary: event.aggregateId, technicalId: event.aggregateId }, details: event.correlationId ? [`Correlation: ${event.correlationId}`] : [], searchText: `${actionLabel} ${event.action} ${actor} ${event.aggregateType} ${event.aggregateId}`.toLowerCase() };
+  const { actor, target } = presentRemoteAuditIdentity(event, references);
+  return { event, actionLabel, actor, target, details: event.correlationId ? [`Correlation: ${event.correlationId}`] : [], searchText: `${actionLabel} ${event.action} ${actor.primary} ${actor.secondary} ${target.primary} ${event.aggregateType} ${event.aggregateId}`.toLowerCase() };
 }
 
 export default function AuditTrailPage() {
@@ -29,13 +30,15 @@ export default function AuditTrailPage() {
       const users = new LocalUserRepository();
       const roles = new CanonicalRoleAdministrationService(undefined, users).listRoles();
       const events = new AuthorizationAuditService().all().map((event) => ({ ...event, aggregateType: event.targetType, aggregateId: event.targetId }));
-      setRows(events.map((event) => { const presentation = presentAuditEvent(event as never, users.getUsers(), roles); return { event, actionLabel: presentation.actionLabel, actor: presentation.actor, target: presentation.target, details: presentation.details, searchText: presentation.searchText }; }));
+      void Promise.resolve().then(() => { if (!cancelled) setRows(events.map((event) => { const presentation = presentAuditEvent(event as never, users.getUsers(), roles); return { event, actionLabel: presentation.actionLabel, actor: presentation.actor, target: presentation.target, details: presentation.details, searchText: presentation.searchText }; })); });
       return () => { cancelled = true; };
     }
-    void Promise.resolve(dependencies.readRepositories.canonicalAudit.list({ ordering: [{ field: "occurred_at", ascending: false }] })).then((result) => {
+    void Promise.resolve(dependencies.readRepositories.canonicalAudit.list({ ordering: [{ field: "occurred_at", ascending: false }] })).then(async (result) => {
       if (cancelled) return;
       if (!result.success) { setStatus("error"); setError(result.error.message); return; }
-      setRows(result.value.items.map(remoteRow)); setStatus("loaded");
+      const references = await loadRemoteAuditIdentities(dependencies.readRepositories, result.value.items);
+      if (cancelled) return;
+      setRows(result.value.items.map((event) => remoteRow(event, references))); setStatus("loaded");
     }).catch(() => { if (!cancelled) { setStatus("error"); setError("Canonical audit events could not be loaded."); } });
     return () => { cancelled = true; };
   }, [dependencies, remote]);

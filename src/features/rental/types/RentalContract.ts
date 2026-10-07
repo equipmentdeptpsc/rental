@@ -42,6 +42,9 @@ export interface RentalContractRecord {
   overtimeRate?: number;
 
   standbyRate?: number;
+  idleRate?: number;
+  discountType?: import("../types").DiscountType;
+  discountValue?: number;
 
   mobilizationFee?: number;
 
