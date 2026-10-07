@@ -4,11 +4,8 @@ export type EquipmentCategory =
   | "Aerial Equipment"
   | "Light Equipment";
 
-export type MaintenanceType =
-  | "Engine Hours"
-  | "Kilometers"
-  | "Mileage"
-  | "Calendar Days";
+import type { EquipmentMaintenanceType } from "./services/maintenanceMeterPolicy";
+export type MaintenanceType = EquipmentMaintenanceType;
 
 export type EquipmentStatus =
   | "Available"

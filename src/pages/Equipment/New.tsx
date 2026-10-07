@@ -20,7 +20,7 @@ export default function NewEquipment() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const capability = getEquipmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalEquipment));
-  if (capability.canonicalMutations && hasPermission("equipment.create")) return <RemoteEquipmentForm />;
+  if (capability.canonicalCreate && hasPermission("equipment.create")) return <RemoteEquipmentForm />;
   return capability.legacyMutations ? <LocalNewEquipment /> : <RemoteMutationUnavailable title="New Equipment" message={REMOTE_EQUIPMENT_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 
@@ -57,7 +57,7 @@ function LocalNewEquipment() {
 
     category: "",
 
-    maintenanceType: "Engine Hours",
+    maintenanceType: "Hour Meter",
 
     currentReading: "",
 

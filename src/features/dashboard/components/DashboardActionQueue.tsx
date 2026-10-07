@@ -7,10 +7,8 @@ export default function DashboardActionQueue({ items, hasPermission, title = "At
   const visibleItems = items.filter((item) => hasPermission(item.permission));
   if (!visibleItems.length) {
     return (
-      <section className="dashboard-panel border-l-[3px] border-l-emerald-500 bg-emerald-50 p-4 dark:border-emerald-700 dark:bg-emerald-950/30">
-        <div className="flex items-start gap-3"><CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" size={20} /><div><h2 className="dashboard-panel-title text-emerald-900 dark:text-emerald-100">{title}</h2>
-        <p className="mt-2 text-sm font-medium text-emerald-800 dark:text-emerald-200">All clear — no operational exceptions right now.</p>
-        <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">Overdue returns, maintenance flags, approvals, and DEUR issues will surface here.</p></div></div>
+      <section className="dashboard-panel border-l-[3px] border-l-emerald-500 bg-emerald-50 p-3 dark:border-emerald-700 dark:bg-emerald-950/30">
+        <div className="flex items-center gap-3"><CheckCircle2 aria-hidden="true" className="shrink-0 text-emerald-600 dark:text-emerald-400" size={18} /><h2 className="dashboard-panel-title text-emerald-900 dark:text-emerald-100">{title}</h2><p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">All clear — no operational exceptions right now.</p></div>
       </section>
     );
   }
@@ -22,21 +20,20 @@ export default function DashboardActionQueue({ items, hasPermission, title = "At
   };
 
   return (
-    <section className="dashboard-panel p-4">
-      <div className="mb-3 flex items-center justify-between">
+    <section className="dashboard-panel p-3">
+      <div className="mb-2 flex items-center justify-between">
         <h2 className="dashboard-panel-title">{title}</h2>
         <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white">{visibleItems.length}</span>
       </div>
-      <ul className="space-y-2">
+      <ul className="flex flex-wrap gap-2">
         {visibleItems.map((item) => (
-          <li key={item.id}>
+          <li key={item.id} className="min-w-[11rem] flex-1">
             <Link
               to={item.href}
-              className={`flex items-start justify-between gap-3 rounded-lg border p-3 transition hover:opacity-90 ${tones[item.tone]}`}
+              className={`flex h-full items-center justify-between gap-2 rounded-lg border px-3 py-2 transition hover:opacity-90 ${tones[item.tone]}`}
             >
               <div className="min-w-0">
-                <strong className="block text-sm">{item.title}</strong>
-                <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">{item.description}</span>
+                <strong className="block text-xs leading-tight">{item.title}</strong>
               </div>
               {item.count !== undefined && (
                 <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold dark:bg-slate-900/60">

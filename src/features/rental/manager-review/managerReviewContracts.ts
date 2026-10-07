@@ -32,6 +32,12 @@ export interface ManagerDeurReviewSnapshot {
   breakdownMinutes: number;
   openingMeter?: number;
   closingMeter?: number;
+  meterRequirement?: "none" | "hourMeter" | "odometer" | "both";
+  openingHourMeter?: number;
+  closingHourMeter?: number;
+  openingOdometer?: number;
+  closingOdometer?: number;
+  legacyMeterEvidenceState?: "LEGACY_AMBIGUOUS_DUAL_METER";
   correctionHistory: Array<{ revision: number; reasonCode?: string; reason?: string; correctedAt?: string }>;
   reviewHistory: Array<{ action: string; actor: string; occurredAt: string; reason?: string }>;
   billingEligible: boolean;

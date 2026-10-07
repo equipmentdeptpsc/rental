@@ -7,7 +7,7 @@ export type BillingBlockerCategory =
   | "Pending correction"
   | "Incomplete DEUR"
   | "Billing setup incomplete"
-  | "Other canonical blocking state";
+  | "Other blocking state";
 
 export interface CanonicalBillingVisibility {
   readyForBilling: number;
@@ -20,7 +20,7 @@ const categories: BillingBlockerCategory[] = [
   "Pending correction",
   "Incomplete DEUR",
   "Billing setup incomplete",
-  "Other canonical blocking state",
+  "Other blocking state",
 ];
 
 function blockerCategory(deur: DeurRecord, reasonCode: string): BillingBlockerCategory {
@@ -28,18 +28,34 @@ function blockerCategory(deur: DeurRecord, reasonCode: string): BillingBlockerCa
   if (deur.status === "Rejected" || reasonCode.startsWith("DEUR_CORRECTION") || reasonCode.startsWith("DEUR_REVISION")) return "Pending correction";
   if (["Draft", "In Progress"].includes(deur.status)) return "Incomplete DEUR";
   if (reasonCode.includes("COMMERCIAL") || reasonCode.includes("UNIT_RATE") || reasonCode === "UNKNOWN_BILLING_METHOD") return "Billing setup incomplete";
-  return "Other canonical blocking state";
+  return "Other blocking state";
 }
 
-/** Projects billing readiness from canonical DEUR evidence only. */
+/**
+ * Projects billing readiness from canonical DEUR evidence only. It intentionally
+ * does not calculate receivables: canonical collection reads are not available.
+ */
 export function summarizeCanonicalBillingVisibility(deurs: readonly DeurRecord[]): CanonicalBillingVisibility {
   const blockers = Object.fromEntries(categories.map((category) => [category, 0])) as Record<BillingBlockerCategory, number>;
   let readyForBilling = 0;
+
   for (const deur of deurs) {
-    const revisionChain = deur.revision?.chainId ? deurs.filter((candidate) => candidate.revision?.chainId === deur.revision?.chainId) : undefined;
-    const result = evaluateDeurBillingEligibility({ deur, billingMethod: deur.commercialSnapshot?.billingMethod as BillingMethod | undefined, unitRate: deur.commercialSnapshot?.unitRate, revisionChain });
+    const revisionChain = deur.revision?.chainId
+      ? deurs.filter((candidate) => candidate.revision?.chainId === deur.revision?.chainId)
+      : undefined;
+    const result = evaluateDeurBillingEligibility({
+      deur,
+      billingMethod: deur.commercialSnapshot?.billingMethod as BillingMethod | undefined,
+      unitRate: deur.commercialSnapshot?.unitRate,
+      revisionChain,
+    });
     if (result.eligible) readyForBilling += 1;
     else blockers[blockerCategory(deur, result.reasonCode)] += 1;
   }
-  return { readyForBilling, blockers, blockerCount: Object.values(blockers).reduce((total, count) => total + count, 0) };
+
+  return {
+    readyForBilling,
+    blockers,
+    blockerCount: Object.values(blockers).reduce((total, count) => total + count, 0),
+  };
 }

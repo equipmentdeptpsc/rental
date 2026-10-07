@@ -24,6 +24,7 @@ describe("UX presentation helpers", () => {
       deurs: [
         { status: "In Progress" } as never,
         { status: "Rejected", revision: undefined } as never,
+        { status: "Submitted" } as never,
       ],
       rentals: [],
       pendingManagerApprovals: 2,
@@ -32,6 +33,8 @@ describe("UX presentation helpers", () => {
     });
     expect(items.some((item) => item.id === "deur-missing")).toBe(true);
     expect(items.some((item) => item.id === "manager-approval")).toBe(true);
+    expect(items.filter((item) => item.id === "customer-ack")).toHaveLength(1);
+    expect(items.some((item) => item.id === "deur-review")).toBe(false);
     expect(items.some((item) => item.id === "expected-returns")).toBe(true);
     expect(items.filter((item) => item.id !== "manager-approval").every((item) => item.permission === "rental.read")).toBe(true);
     expect(items.find((item) => item.id === "manager-approval")?.permission).toBe("rental.approval.decide");
@@ -49,6 +52,12 @@ describe("UX presentation helpers", () => {
       createElement(DashboardActionQueue, { items, hasPermission: (permission) => permission === "rental.read" || permission === "rental.approval.decide" }),
     ));
     expect(allowed).toContain('href="/rentals');
+  });
+
+  it("keeps zero manager approvals out of the action summary", () => {
+    const items = buildDashboardActionQueue({ deurs: [{ status: "Submitted" } as never], rentals: [], pendingManagerApprovals: 0, pendingCustomerAcknowledgements: 1, expectedReturns: 0 });
+    expect(items.map((item) => item.id)).toEqual(["customer-ack"]);
+    expect(items[0].count).toBe(1);
   });
 
   it("maps rental workflow stages to stepper and banner tones", () => {

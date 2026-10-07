@@ -17,7 +17,7 @@ export default function ProjectPage() {
   const { hasPermission } = useAuth();
   const capability = getProjectRuntimeCapability(configuration, Boolean(commandRepositories.canonicalProject));
   const canLinkCustomers = canLinkProjectCustomer(configuration, typeof commandRepositories.canonicalProject?.updateProjectCustomer === "function") && hasPermission("project.update");
-  return capability.canonicalReads ? <CanonicalProjectPage canCreate={capability.canonicalMutations && hasPermission("project.manage")} canLinkCustomers={canLinkCustomers} /> : <LocalProjectPage />;
+  return capability.canonicalReads ? <CanonicalProjectPage canCreate={capability.canonicalMutations && hasPermission("project.create")} canLinkCustomers={canLinkCustomers} /> : <LocalProjectPage />;
 }
 
 function CanonicalProjectPage({ canCreate, canLinkCustomers }: { canCreate: boolean; canLinkCustomers: boolean }) {

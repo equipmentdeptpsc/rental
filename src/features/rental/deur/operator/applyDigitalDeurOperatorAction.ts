@@ -11,10 +11,9 @@ export function applyDigitalDeurOperatorAction({ deur, action, actionTimestamp, 
   if (input.creationSource !== "OPERATOR_DIGITAL" || !["Draft", "In Progress"].includes(input.status)) return { success: false as const, code: "DEUR_NOT_EDITABLE", message: "Digital DEUR is not editable." };
   if (input.billingLocked || input.billId || input.billingStatementId || input.status === "Billed") return { success: false as const, code: "DEUR_CONSUMED", message: "Billed or locked DEUR records cannot be changed." };
   if (input.revision?.supersededByRevisionId) return { success: false as const, code: "DEUR_SUPERSEDED", message: "Superseded DEUR records cannot be changed." };
-  const meterRequired = meterRequirement === undefined
-    ? Boolean(input.meterReadingType)
-    : meterRequirement !== "none";
-  if (action === "END_SHIFT" && meterRequired && input.closingMeter === undefined) {
+  const policy = meterRequirement ?? input.meterRequirement;
+  const requiresOdometer = policy === "odometer" || policy === "both" || (policy === undefined && input.meterReadingType === "ODOMETER");
+  if (action === "END_SHIFT" && requiresOdometer && input.closingOdometer === undefined && input.closingMeter === undefined) {
     return { success: false as const, code: "DEUR_CLOSING_METER_REQUIRED", message: "Ending meter reading is required before ending the shift." };
   }
   const latestTimestamp = Math.max(...(input.events ?? []).map((event) => Date.parse(event.timestamp)).filter(Number.isFinite), -Infinity);

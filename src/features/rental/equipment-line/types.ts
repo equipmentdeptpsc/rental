@@ -9,6 +9,8 @@ export interface RentalEquipmentLine {
   status: RentalEquipmentLineLifecycleStatus;
   canonicalLineStatus?: RentalEquipmentLineLifecycleStatus;
   effectiveStartDate?: string;
+  actualReturnDate?: string;
+  rowVersion?: number;
   operationalMetadata?: RentalOperationalMetadataSnapshot;
   /** Editable source selection before release; the frozen snapshot is authoritative afterward. */
   deurWorkDescriptionId?: string;
@@ -18,6 +20,26 @@ export interface RentalEquipmentLine {
   commercialSnapshot?: RentalCommercialSnapshot;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Explicit identity contract for the per-line return command boundary.
+ * Keep the rental-equipment-line identity distinct from its equipment and assignment identities.
+ */
+export interface RentalEquipmentLineReturnTarget {
+  rentalLineId: string;
+  equipmentId: string;
+  assignmentId?: string;
+  rowVersion?: number;
+}
+
+export function toRentalEquipmentLineReturnTarget(line: RentalEquipmentLine): RentalEquipmentLineReturnTarget {
+  return {
+    rentalLineId: line.id,
+    equipmentId: line.equipmentId,
+    assignmentId: line.assignmentId,
+    rowVersion: line.rowVersion,
+  };
 }
 
 export interface NewRentalEquipmentLineInput {

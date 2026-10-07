@@ -28,11 +28,6 @@ export function buildDashboardActionQueue(input: {
   const rejectedDeur = input.deurs.filter(
     (item) => !item.revision?.supersededByRevisionId && item.status === "Rejected",
   ).length;
-  const pendingReview = input.deurs.filter(
-    (item) =>
-      !item.revision?.supersededByRevisionId &&
-      ["Submitted", "Pending Acknowledgement"].includes(item.status),
-  ).length;
 
   const items: DashboardActionItem[] = [];
   if (missingDeur) {
@@ -57,17 +52,6 @@ export function buildDashboardActionQueue(input: {
       count: rejectedDeur,
     });
   }
-  if (pendingReview) {
-    items.push({
-      id: "deur-review",
-      title: "Acknowledgements pending",
-      description: "Submitted DEURs awaiting customer review and acknowledgement.",
-      href: "/rentals?view=deur-exceptions",
-      permission: "rental.read",
-      tone: "info",
-      count: pendingReview,
-    });
-  }
   if (input.pendingManagerApprovals) {
     items.push({
       id: "manager-approval",
@@ -77,6 +61,17 @@ export function buildDashboardActionQueue(input: {
       permission: "rental.approval.decide",
       tone: "warning",
       count: input.pendingManagerApprovals,
+    });
+  }
+  if (input.pendingCustomerAcknowledgements) {
+    items.push({
+      id: "customer-ack",
+      title: "Customer acknowledgements pending",
+      description: "Review requests sent and awaiting response.",
+      href: "/rentals?view=deur-exceptions",
+      permission: "rental.read",
+      tone: "info",
+      count: input.pendingCustomerAcknowledgements,
     });
   }
   if (input.expectedReturns) {

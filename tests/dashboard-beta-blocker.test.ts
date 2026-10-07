@@ -26,8 +26,8 @@ describe("Dashboard beta blocker", () => {
   it("consolidates acknowledgement sources into one action item", () => {
     const items = buildDashboardActionQueue({ deurs: [{ status: "Submitted" } as never], rentals: [], pendingManagerApprovals: 0, pendingCustomerAcknowledgements: 1, expectedReturns: 0 });
     expect(items.filter((item) => item.id.includes("ack") || item.id.includes("review"))).toHaveLength(1);
-    expect(items.find((item) => item.id === "deur-review")).toMatchObject({ title: "Acknowledgements pending", count: 1, href: "/rentals?view=deur-exceptions" });
-    expect(items.some((item) => item.id === "customer-ack")).toBe(false);
+    expect(items.find((item) => item.id === "customer-ack")).toMatchObject({ title: "Customer acknowledgements pending", count: 1, href: "/rentals?view=deur-exceptions" });
+    expect(items.some((item) => item.id === "deur-review")).toBe(false);
   });
 
   it("projects canonical equipment and Rental state into operational KPIs", () => {
@@ -42,14 +42,15 @@ describe("Dashboard beta blocker", () => {
   });
 
   it("keeps the remote boundary and loading/error/empty distinction explicit", () => {
-    const hook = readFileSync("src/features/dashboard/hooks/useDashboardViewModel.ts", "utf8");
+    const hook = readFileSync("src/features/dashboard/hooks/useCanonicalDashboardViewModel.ts", "utf8");
+    const read = readFileSync("src/features/dashboard/services/canonicalDashboardRead.ts", "utf8");
     const page = readFileSync("src/pages/Dashboard/index.tsx", "utf8");
     const rentalsPage = readFileSync("src/pages/Rental/index.tsx", "utf8");
-    expect(hook).toContain("readRepositories.equipment.list()");
-    expect(hook).toContain("readRepositories.rentals.list()");
-    expect(hook).toContain('status: "loading" | "loaded" | "error"');
-    expect(page).toContain("Loading canonical dashboard data");
-    expect(page).toContain("ErrorState");
+    expect(hook).toContain("readCanonicalDashboard");
+    expect(read).toContain("readAllCanonicalPages");
+    expect(hook).toContain('status: "loading"');
+    expect(page).toContain("Loading dashboard");
+    expect(page).toContain("Dashboard data is unavailable");
     expect(page).toContain("No equipment in the system yet");
     expect(rentalsPage).toContain('requestedView === "approvals"');
     expect(rentalsPage).toContain('rental.status === "Reserved" && rental.approvalStatus === "Pending"');

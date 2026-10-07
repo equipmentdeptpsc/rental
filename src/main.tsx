@@ -16,9 +16,9 @@ import { AuditProvider } from "@/features/equipment/audit/AuditContext";
 import MasterProviders from "@/app/MasterProviders";
 
 import { EquipmentProvider } from "@/features/equipment/context/EquipmentContext";
-import { EquipmentHistoryProvider } from "@/features/equipment/history";
+import { EquipmentHistoryProvider } from "@/features/equipment/history/EquipmentHistoryContext";
 
-import { DailyLogProvider } from "@/features/daily-log";
+import { DailyLogProvider } from "@/features/daily-log/context/DailyLogContext";
 
 import { AssignmentProvider } from "@/features/assignment/context/AssignmentContext";
 import { RentalProvider } from "@/features/rental/context/RentalContext";
@@ -27,7 +27,7 @@ import { MaintenanceProvider } from "@/features/maintenance/context/MaintenanceC
 import { OperatorProvider } from "@/features/operators/context/OperatorContext";
 import { CustomerProvider } from "@/features/customer/context/CustomerContext";
 import { ProjectProvider } from "@/features/project/context/ProjectContext";
-import { createDeurSyncLifecycle } from "@/features/rental/deur/synchronization/lifecycle/createDeurSyncLifecycle";
+
 import { ApplicationDependencyProvider, resolveRuntimeEnvironment } from "@/app/composition";
 
 import "./index.css";
@@ -103,9 +103,25 @@ const runtimeEnvironment = resolveRuntimeEnvironment({
 });
 
 if (runtimeEnvironment.kind !== "configuration-error") {
-  const deurSyncLifecycle = createDeurSyncLifecycle();
-  void deurSyncLifecycle.start();
-  if (import.meta.hot) import.meta.hot.dispose(() => deurSyncLifecycle.stop());
+  let stopDeurSync: (() => void) | undefined;
+
+  const startDeurSync = () => {
+    void import("@/features/rental/deur/synchronization/lifecycle/createDeurSyncLifecycle")
+      .then(({ createDeurSyncLifecycle }) => {
+        const lifecycle = createDeurSyncLifecycle();
+        stopDeurSync = () => lifecycle.stop();
+        return lifecycle.start();
+      })
+      .catch((error: unknown) => {
+        console.error("DEUR synchronization could not be started.", error);
+      });
+  };
+
+  window.setTimeout(startDeurSync, 0);
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => stopDeurSync?.());
+  }
 }
 
 function RuntimeConfigurationError() {

@@ -10,7 +10,9 @@ import { useRental } from "@/features/rental/context/RentalContext";
 import { useReturnRental } from "@/features/rental/services/useReturnRental";
 import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
+import { PersistenceMode } from "@/app/composition";
 import { canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
+import RemoteRentalReturnPage from "@/features/rental/remote/RemoteRentalReturnPage";
 
 export default function ReturnRental() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -28,6 +30,10 @@ export default function ReturnRental() {
     (item) => item.id === rental?.equipmentId
   );
   const lines = rentalEquipmentLines.filter((line) => line.rentalId === rental?.id);
+
+  if (configuration.persistenceMode === PersistenceMode.Remote) {
+    return <RemoteRentalReturnPage rentalId={id ?? ""} />;
+  }
 
   function handleLineReturn(lineId: string) {
     if (!rental) return;

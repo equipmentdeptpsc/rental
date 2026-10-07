@@ -114,14 +114,13 @@ export function prepareDeur(request: CreateDeurRequest): CreateDeurResult {
       : createDeurCommercialSnapshot(request.rental);
   if(!commercial.success)return{success:false,message:commercial.message};
   const meterRequirement = getDeurMeterRequirement({
+    frozenMeterRequirement: releaseSnapshot.meterRequirement,
     billingMethod: commercial.snapshot?.billingMethod ?? releaseSnapshot.billingMethod ?? request.billingMethod ?? request.rental.billingMethod,
     commercialTerms: commercial.snapshot,
   });
-  const requiredReadingType = meterRequirement.kind === "odometer"
+  const requiredReadingType = meterRequirement.kind === "odometer" || meterRequirement.kind === "both"
     ? "ODOMETER"
-    : meterRequirement.kind === "hourMeter"
-      ? "HOUR_METER"
-      : undefined;
+    : undefined;
   if (requiredReadingType && (!Number.isFinite(request.openingMeter) || request.openingMeter! < 0)) {
     return { success: false, message: "A valid beginning meter reading is required." };
   }
@@ -158,7 +157,9 @@ export function prepareDeur(request: CreateDeurRequest): CreateDeurResult {
     billingMethodSnapshot:typeof billingMethod==="string"?billingMethod:undefined,
     commercialSnapshot:commercial.snapshot,commercialSnapshotRequired:line.commercialSnapshotRequired,
     odometerTripEvidence,quantityEvidence,completionEvidence,
-    openingMeter: requiredReadingType ? request.openingMeter : undefined,
+    meterRequirement: meterRequirement.kind,
+    openingMeter: meterRequirement.kind === "odometer" ? request.openingMeter : undefined,
+    openingOdometer: requiredReadingType ? request.openingMeter : undefined,
     meterReadingType: requiredReadingType,
     operationalMetadata: metadata.snapshot,
     operationalRemarks: metadata.remarks,

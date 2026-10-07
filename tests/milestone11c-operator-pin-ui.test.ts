@@ -25,6 +25,15 @@ describe("Milestone 11.1C canonical Operator PIN administration UI", () => {
     expect(page).toContain('finally{setNewPassword("");setConfirmNewPassword("");setResetVisible(false)}');
   });
 
+  it("switches Create User into canonical Operator PIN mode and clears incompatible credentials", () => {
+    expect(page).toContain('const usesOperatorPin=(roles:readonly string[])=>roles.includes("operator")');
+    expect(page).toContain('initialPassword:usesOperatorPin(current.roleCodes)===usesOperatorPin(roleCodes)?current.initialPassword:""');
+    expect(page).toContain('{operatorPin?"Operator PIN":"Password"} *');
+    expect(page).toContain('inputMode={operatorPin?"numeric":undefined}');
+    expect(page).toContain('maxLength={operatorPin?6:undefined}');
+    for(const message of ["Operator PIN is required.","Operator PIN must be exactly 6 digits.","Operator PIN must contain numbers only.","Select the operator account this user should be linked to."])expect(page).toContain(message);
+  });
+
   it("sends only the established Operator PIN request shape to its dedicated endpoint", async () => {
     const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200, headers: { "content-type": "application/json" } }));
     const client = { auth: { getSession: async () => ({ data: { session: { access_token: "caller-jwt" } } }) } };

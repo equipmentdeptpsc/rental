@@ -132,8 +132,11 @@ export default function CustomerDeurReviewPage({
           <Item label="Shift" value={snapshot.shift ?? "Not provided"} />
           <Item label="Shift start" value={formatCustomerReviewDateTime(snapshot.shiftStart)} />
           <Item label="Shift end" value={formatCustomerReviewDateTime(snapshot.shiftEnd)} />
-          <Item label="Opening meter" value={snapshot.openingMeter?.toString() ?? "Not applicable"} />
-          <Item label="Closing meter" value={snapshot.closingMeter?.toString() ?? "Not applicable"} />
+          {snapshot.legacyMeterEvidenceState === "LEGACY_AMBIGUOUS_DUAL_METER" ? <Item label="Meter evidence" value="Legacy meter evidence is available, but separate hour-meter and odometer values were not recorded." /> : <>
+            {(snapshot.meterRequirement === "hourMeter" || snapshot.meterRequirement === "both") && <><Item label="Opening hour meter" value={snapshot.openingHourMeter?.toString() ?? "Not recorded"} /><Item label="Closing hour meter" value={snapshot.closingHourMeter?.toString() ?? "Not recorded"} /></>}
+            {(snapshot.meterRequirement === "odometer" || snapshot.meterRequirement === "both") && <><Item label="Opening odometer" value={snapshot.openingOdometer?.toString() ?? "Not recorded"} /><Item label="Closing odometer" value={snapshot.closingOdometer?.toString() ?? "Not recorded"} /></>}
+            {(!snapshot.meterRequirement || snapshot.meterRequirement === "none") && <><Item label="Opening meter" value={snapshot.openingMeter?.toString() ?? "Not applicable"} /><Item label="Closing meter" value={snapshot.closingMeter?.toString() ?? "Not applicable"} /></>}
+          </>}
         </dl>
         <div className="mt-4 grid gap-2 rounded bg-slate-50 p-3 text-sm sm:grid-cols-4">
           <span>Operation: {snapshot.operationMinutes} min</span>

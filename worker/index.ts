@@ -19,6 +19,7 @@ import{inspectUatDeurTurnoverDomain,provisionUatDeurTurnoverDomain}from"./uatDeu
 import{inspectUatDeurOfflineDomain,provisionUatDeurOfflineDomain}from"./uatDeurOfflineDomainProvisioner";
 import{inspectUatDeurOfflineRestartDomain,provisionUatDeurOfflineRestartDomain}from"./uatDeurOfflineRestartDomainProvisioner";
 import{inspectUatDeurNativeRestartDomain,provisionUatDeurNativeRestartDomain}from"./uatDeurNativeRestartDomainProvisioner";
+import{inspectUatSingleBillingFixture,provisionUatSingleBillingFixture}from"./uatSingleBillingFixture";
 import{advanceUatLimitedPilotBusinessDate,inspectUatLimitedOperationalPilot,inspectUatLimitedOperationalPilotIdentities,inspectUatLimitedPilotBusinessDate,inspectUatLimitedPilotDailyEligibility,inspectUatLimitedPilotDeurs,inspectUatLimitedPilotScenario1,inspectUatLimitedPilotScenarios,provisionUatLimitedOperationalPilot}from"./uatLimitedOperationalPilotProvisioner";
 import{uatAdminCorsHeaders}from"./uatAdminCors";
 
@@ -139,6 +140,10 @@ export default{
      if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}});
      if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});
      try{const result=path.endsWith("provision-limited-operational-pilot")?await provisionUatLimitedOperationalPilot(request,environment):await inspectUatLimitedOperationalPilot(request,environment);return Response.json(result.body,{status:result.status,headers:{...cors,"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_LIMITED_PILOT_SCENARIO_FAILED"},{status:503,headers:{...cors,"cache-control":"no-store"}});}
+   }
+   if(path==="/api/admin/uat/provision-single-billing-fixture"||path==="/api/admin/uat/inspect-single-billing-fixture"){
+     if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
+     try{const result=path.endsWith("provision-single-billing-fixture")?await provisionUatSingleBillingFixture(request,environment):await inspectUatSingleBillingFixture(request,environment);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}catch{return Response.json({success:false,code:"UAT_SINGLE_BILLING_FIXTURE_FAILED"},{status:503,headers:{"cache-control":"no-store"}});}
    }
    if(path==="/api/admin/uat/inspect-limited-operational-pilot-identities"){
      const cors=uatAdminCorsHeaders(request,environment); if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"cache-control":"no-store"}}); if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{...cors,allow:"POST","cache-control":"no-store"}});

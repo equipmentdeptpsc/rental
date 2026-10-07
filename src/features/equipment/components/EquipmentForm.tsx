@@ -19,6 +19,7 @@ import { previewCategoryAssetNumber } from "../services/categoryAssetNumber";
 import type { EquipmentCategory, EquipmentFormData } from "../types";
 import { getActiveCostCodeOptions } from "../utils/equipmentCostCode";
 import { useFormSubmission } from "@/components/form/useFormSubmission";
+import { BETA_MAINTENANCE_TYPES, normalizeMaintenanceType } from "../services/maintenanceMeterPolicy";
 
 interface Props { initialData?: EquipmentFormData; mode?: "create" | "edit"; submitLabel?: string; onSubmit(data: EquipmentFormData): void | Promise<void>; onCancel?(): void }
 const Select=(props:ComponentProps<typeof CanonicalSelect>)=><CanonicalSelect searchable clearable {...props}/>;
@@ -30,8 +31,8 @@ export default function EquipmentForm({ initialData, mode = "edit", submitLabel 
   const brands = useEquipmentBrands(); const models = useEquipmentModels(); const locations = useEquipmentLocations();
   const { records: ownerships } = useEquipmentOwnerships(); const { records: statuses } = useEquipmentStatuses(); const { records: conditions } = useEquipmentConditions();
   const [message, setMessage] = useState("");
-  const [form, setForm] = useState<EquipmentFormData>(() => ({ prefixId: "", assetNo: "", equipmentName: "", typeId: "", type: "", brandId: "", brand: "", costCodeId: "", manufacturer: "", model: "", serialNumber: "", engineNumber: "", chassisNumber: "", plateNumber: "", yearModel: "", capacity: "", category: "", categoryId: "", subcategoryId: "", subcategoryName: "", maintenanceType: "Engine Hours", currentReading: "", projectId: "", operatorId: "", ...initialData }));
-  useEffect(() => { if (initialData) setForm(initialData); }, [initialData]);
+  const [form, setForm] = useState<EquipmentFormData>(() => ({ prefixId: "", assetNo: "", equipmentName: "", typeId: "", type: "", brandId: "", brand: "", costCodeId: "", manufacturer: "", model: "", serialNumber: "", engineNumber: "", chassisNumber: "", plateNumber: "", yearModel: "", capacity: "", category: "", categoryId: "", subcategoryId: "", subcategoryName: "", maintenanceType: "Hour Meter", currentReading: "", projectId: "", operatorId: "", ...initialData, ...(initialData ? { maintenanceType: normalizeMaintenanceType(initialData.maintenanceType) } : {}) }));
+  useEffect(() => { if (initialData) setForm({ ...initialData, maintenanceType: normalizeMaintenanceType(initialData.maintenanceType) }); }, [initialData]);
   const update = <K extends keyof EquipmentFormData>(key: K, value: EquipmentFormData[K]) => setForm((current) => ({ ...current, [key]: value }));
   const availableSubcategories = useMemo(() => subcategories.filter((item) => item.active && item.categoryId === form.categoryId), [form.categoryId, subcategories]);
 
@@ -71,7 +72,7 @@ export default function EquipmentForm({ initialData, mode = "edit", submitLabel 
         <Select label="Ownership Type" value={form.ownershipId ?? ""} options={[{ label: "-- Select Ownership Type --", value: "" }, ...ownerships.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.ownership, value: item.id }))]} onChange={(event) => { const selected = ownerships.find((item) => item.id === event.target.value); update("ownershipId", event.target.value); update("ownership", selected?.ownership ?? ""); }} />
         <div><Select label="Initial Location" value={form.locationId ?? ""} options={[{ label: "-- Select Initial Location --", value: "" }, ...locations.records.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.location, value: item.id }))]} onChange={(event) => { const selected = locations.records.find((item) => item.id === event.target.value); update("locationId", event.target.value); update("location", selected?.location ?? ""); }} /><button className="mt-1 text-sm text-blue-700" type="button" onClick={() => addMaster("location")}>+ Add Location</button></div>
         <Input label="Notes" value={form.remarks ?? ""} onChange={(event) => update("remarks", event.target.value)} />
-        <Select label="Maintenance Type" value={form.maintenanceType} options={["Engine Hours", "Kilometers", "Mileage", "Calendar Days"].map((value) => ({ label: value, value }))} onChange={(event) => update("maintenanceType", event.target.value as EquipmentFormData["maintenanceType"])} />
+        <Select label="Maintenance Type" value={form.maintenanceType} options={BETA_MAINTENANCE_TYPES.map((value) => ({ label: value, value }))} onChange={(event) => update("maintenanceType", event.target.value as EquipmentFormData["maintenanceType"])} />
         <Input label="Current Reading" type="number" value={form.currentReading} onChange={(event) => update("currentReading", event.target.value)} />
         {mode === "edit" && <Select label="Equipment Status" value={form.status ?? ""} options={statuses.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.status, value: item.status }))} onChange={(event) => update("status", event.target.value as EquipmentFormData["status"])} />}
         {mode === "edit" && <Select label="Equipment Condition" value={form.conditionId ?? ""} options={[{ label: "-- Select Equipment Condition --", value: "" }, ...conditions.filter((item) => item.active && !item.deleted).map((item) => ({ label: item.condition, value: item.id }))]} onChange={(event) => { const selected = conditions.find((item) => item.id === event.target.value); update("conditionId", event.target.value); update("condition", selected?.condition ?? ""); }} />}

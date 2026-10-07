@@ -14,6 +14,7 @@ import type {
   BillingCommandInput, BillingConsumptionProjection, BillingEvidenceProjection,
   BillingFinancialCommandRepository, BillingLifecycleProjection, ConsumeDeurInput,
   CreateBillingStatementInput, GenerateBillingEvidenceInput, UpdateInvoiceInput,
+  CollectionLifecycleProjection, RecordCollectionInput,
   DeurConsumptionRecoveryInput, FinancialRecoveryInput, RecoveryCommandRepository,
   RecoveryProjection, RentalRecoveryInput,
   OperationalCommandPhaseObserver, OperationalCommandTransportDiagnostic,
@@ -74,7 +75,7 @@ function normalizeRemoteFailure<T>(data: unknown): OperationalCommandResult<T> |
 
 export class SupabaseOperationalCommandRepository implements Repository {
   constructor(private readonly client: RpcClient) {}
-  private async rpc<T>(name: string, input: unknown, observe?: OperationalCommandPhaseObserver): Promise<OperationalCommandResult<T>> {
+  private async rpc<T>(name: string, input: unknown, observe?: OperationalCommandPhaseObserver, normalize?: (value: unknown) => unknown, isValue?: (value: unknown) => value is T): Promise<OperationalCommandResult<T>> {
     const startedAt = Date.now();
     observe?.("RPC_STARTED");
     try {
@@ -100,12 +101,13 @@ export class SupabaseOperationalCommandRepository implements Repository {
         };
       }
       observe?.("RPC_DATA_RECEIVED", elapsedMilliseconds);
-      if (!isOperationalCommandResult<T>(data)) {
-        const remoteFailure = normalizeRemoteFailure<T>(data);
+      const response = normalize?.(data) ?? data;
+      if (!isOperationalCommandResult<T>(response) || (response.success && isValue && !isValue(response.value))) {
+        const remoteFailure = normalizeRemoteFailure<T>(response);
         if (remoteFailure) return remoteFailure;
         return { success: false, code: "VALIDATION_REJECTED", message: "The remote command returned an invalid response.", retryable: false, refreshRequired: true };
       }
-      return data;
+      return response;
     } catch {
       observe?.("RPC_THROWN", Date.now() - startedAt);
       return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
@@ -117,12 +119,12 @@ export class SupabaseOperationalCommandRepository implements Repository {
   createCorrection = (input: CreateDeurRevisionInput) => this.rpc<DeurRevisionResult>("command_create_deur_correction", input);
   repairCorrectionPhysicalOccurrence = (input: RepairDeurCorrectionPhysicalOccurrenceInput, observe?: OperationalCommandPhaseObserver) => this.rpc<RepairDeurCorrectionPhysicalOccurrenceResult>("command_repair_manual_deur_correction_physical_occurrence", input, observe);
   record = (input: RecordMeterCheckpointInput) => this.rpc<MeterCheckpointResult>("command_record_meter_checkpoint", input);
-  returnLine = (input: ReturnRentalLineInput) => this.rpc<RentalLineReturnProjection>("command_return_rental_line", input);
+  returnLine = (input: ReturnRentalLineInput) => this.rpc<RentalLineReturnProjection>("command_return_rental_line", input, undefined, normalizeLegacyRentalLineReturnFailure, isRentalLineReturnProjection);
   reserveLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_reserve_rental_line", input);
   releaseLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_release_rental_line", input);
   activateLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_activate_rental_line", input);
   cancelLine = (input: RentalLineLifecycleInput) => this.rpc<RentalLineLifecycleProjection>("command_cancel_rental_line", input);
-  returnAll = (input: ReturnAllRentalLinesInput) => this.rpc<ReturnAllProjection>("command_return_all_rental_lines", input);
+  returnAll = (input: ReturnAllRentalLinesInput) => this.rpc<ReturnAllProjection>("command_return_all_rental_lines", input, undefined, undefined, isReturnAllProjection);
   getReturnReadiness = (input: { rentalId: string }) => this.rpc<RentalReturnReadiness>("get_rental_return_readiness", input);
   getReadiness = (input: RentalClosureReadinessInput) => this.rpc<RentalClosureReadiness>("get_rental_closure_readiness", input);
   close = (input: CloseRentalInput) => this.rpc<RentalClosureProjection>("command_close_rental", input);
@@ -136,11 +138,67 @@ export class SupabaseOperationalCommandRepository implements Repository {
   finalizeStatement = (input: BillingCommandInput) => this.rpc<BillingLifecycleProjection>("command_finalize_billing_statement", input);
   createInvoice = (input: BillingCommandInput) => this.rpc<BillingLifecycleProjection>("command_create_invoice", input);
   updateInvoice = (input: UpdateInvoiceInput) => this.rpc<BillingLifecycleProjection>("command_update_invoice", input);
+  recordCollection = (input: RecordCollectionInput) => this.rpc<CollectionLifecycleProjection>("command_record_collection", input);
   reopenRental = (input: RentalRecoveryInput) => this.rpc<RecoveryProjection>("command_reopen_rental", input);
   reverseRentalReturn = (input: RentalRecoveryInput) => this.rpc<RecoveryProjection>("command_reverse_rental_return", input);
   voidBillingStatement = (input: FinancialRecoveryInput) => this.rpc<RecoveryProjection>("command_void_billing_statement", input);
   releaseDeurConsumption = (input: DeurConsumptionRecoveryInput) => this.rpc<RecoveryProjection>("command_release_deur_consumption", input);
   cancelInvoice = (input: FinancialRecoveryInput) => this.rpc<RecoveryProjection>("command_cancel_invoice", input);
+}
+
+function isRentalLineReturnProjection(value: unknown): value is RentalLineReturnProjection {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.rentalId === "string"
+    && typeof candidate.rentalLineId === "string"
+    && typeof candidate.status === "string"
+    && typeof candidate.version === "number"
+    && (candidate.actualReturnDate === undefined || typeof candidate.actualReturnDate === "string");
+}
+
+function isReturnAllProjection(value: unknown): value is ReturnAllProjection {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.rentalId === "string"
+    && typeof candidate.version === "number"
+    && Array.isArray(candidate.lines)
+    && candidate.lines.every(isRentalLineReturnProjection);
+}
+
+const legacyRentalLineReturnFailureMessages: Record<string, string> = {
+  FORBIDDEN: "Rental line return is not authorized.",
+  VALIDATION_REJECTED: "The canonical Rental Equipment Line return request was rejected.",
+  NOT_FOUND: "Rental or Rental Equipment Line was not found.",
+  IDEMPOTENCY_MISMATCH: "Idempotency key payload mismatch.",
+  PARENT_READ_ONLY: "Cancelled, Closed, and historical Returned Rentals are read-only.",
+  CONFLICT: "Rental Equipment Line version is stale. Refresh before retrying.",
+  INVALID_TRANSITION: "The Rental Equipment Line cannot be returned from its current state.",
+  PERSISTENCE_FAILURE: "The Rental Equipment Line return could not be persisted. Refresh before retrying.",
+};
+
+const rentalLineReturnReasonMessages: Record<string, string> = {
+  INVALID_RETURN_DATE: "Return business date is invalid.",
+  RETURN_DATE_BEFORE_RENTAL_START: "Return business date cannot be before Rental start.",
+  RENTAL_NOT_FOUND: "Rental was not found.",
+  LINE_NOT_FOUND: "Rental Equipment Line was not found.",
+  LINE_EQUIPMENT_MISMATCH: "Rental Equipment Line does not match the selected equipment.",
+  LINE_ASSIGNMENT_MISMATCH: "Rental Equipment Line does not match the selected assignment.",
+  COMMAND_INVALID: "Return command is invalid.",
+  VERSION_MISMATCH: "Rental Equipment Line version is stale. Refresh before retrying.",
+  RETURN_DATE_CONFLICT: "Authoritative Return business date is already recorded and cannot be overwritten.",
+  INVALID_LINE_TRANSITION: "Only an Active Rental Equipment Line can be returned.",
+  OPEN_DEUR_WORK: "Open DEUR work must be completed before Return.",
+  AVAILABLE_EQUIPMENT_STATUS_MISSING: "Available Equipment status is unavailable.",
+};
+
+function normalizeLegacyRentalLineReturnFailure(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const candidate = value as Record<string, unknown>;
+  if (candidate.success !== false || "message" in candidate || typeof candidate.code !== "string"
+    || typeof candidate.retryable !== "boolean" || typeof candidate.refreshRequired !== "boolean") return value;
+  const reasonCode = typeof candidate.reasonCode === "string" ? candidate.reasonCode : undefined;
+  const message = (reasonCode ? rentalLineReturnReasonMessages[reasonCode] : undefined) ?? legacyRentalLineReturnFailureMessages[candidate.code];
+  return message ? { ...candidate, message } : value;
 }
 
 export function createSupabaseOperationalCommands(client: RpcClient): OperationalCommandRepositories {

@@ -53,6 +53,7 @@ export interface NotificationTemplateInput {
     closingMeter?: number;
   }[];
   activityTotals?: { operationMinutes: number; idleMinutes: number; standbyMinutes: number; breakdownMinutes: number };
+  meterEvidence?: { meterRequirement: "none" | "hourMeter" | "odometer" | "both"; openingHourMeter?: number; closingHourMeter?: number; openingOdometer?: number; closingOdometer?: number; legacyMeterEvidenceState?: "LEGACY_AMBIGUOUS_DUAL_METER" };
 }
 
 export interface NotificationIntent {

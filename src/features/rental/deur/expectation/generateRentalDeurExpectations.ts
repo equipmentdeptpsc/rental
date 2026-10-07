@@ -1,5 +1,5 @@
 import type { DeurExpectationShiftCode, DeurExpectationSource, DeurShiftWindowDefinition, DeurShiftWindowSource, RentalRecord } from "@/features/rental/types";
-import { addCalendarDays, calendarDateAt } from "./dateRules";
+import { addCalendarDays, calendarDateAt, isCalendarDate } from "./dateRules";
 import { normalizeRentalDeurExpectationPolicy } from "./normalizeRentalDeurExpectationPolicy";
 
 export type DeurExpectationPeriodStatus = "DUE" | "CURRENT" | "NOT_YET_DUE";
@@ -8,7 +8,7 @@ export interface GenerateRentalDeurExpectationsResult { source: DeurExpectationS
 const operational = new Set<RentalRecord["status"]>(["Released", "Active", "Returned", "Closed"]);
 export const createDeurExpectationId = ({ rentalId, workDate }: { rentalId: string; workDate: string; shiftCode?: string }) => [rentalId, workDate].join(":");
 
-export function generateRentalDeurExpectations({ rental, evaluationTimestamp }: { rental: RentalRecord; evaluationTimestamp: string; liveShiftWindows?: DeurShiftWindowDefinition[] }): GenerateRentalDeurExpectationsResult {
+export function generateRentalDeurExpectations({ rental, evaluationTimestamp, actualEndDate, operationalAtEvaluation }: { rental: RentalRecord; evaluationTimestamp: string; liveShiftWindows?: DeurShiftWindowDefinition[]; actualEndDate?: string; operationalAtEvaluation?: boolean }): GenerateRentalDeurExpectationsResult {
   const explicit = rental.deurExpectationPolicy;
   if (!explicit) return {
     source: "LEGACY_RENTAL_FALLBACK", expectations: [], issues: rental.deurExpectationPolicyRequired
@@ -23,13 +23,15 @@ export function generateRentalDeurExpectations({ rental, evaluationTimestamp }: 
   const releaseDate = rental.releasedAt ? calendarDateAt(rental.releasedAt, timezone) : undefined;
   if (!evaluationDate) return { source: "EXPLICIT_POLICY", policy, expectations: [], issues: [{ code: "DEUR_EXPECTATION_POLICY_INVALID", message: "Evaluation timestamp is invalid." }] };
   const start = [policy.effectiveFrom, releaseDate].filter(Boolean).sort().at(-1)!;
-  const actualEnd = [rental.returnedAt ? calendarDateAt(rental.returnedAt, timezone) : undefined, rental.closedAt ? calendarDateAt(rental.closedAt, timezone) : undefined].filter(Boolean).sort()[0];
+  // A line-level return date is already a business calendar date.  Do not parse it
+  // as midnight UTC, which could move it backward for a negative-offset timezone.
+  const actualEnd = [isCalendarDate(actualEndDate) ? actualEndDate : undefined, rental.returnedAt ? calendarDateAt(rental.returnedAt, timezone) : undefined, rental.closedAt ? calendarDateAt(rental.closedAt, timezone) : undefined].filter(Boolean).sort()[0];
   const end = [evaluationDate, policy.effectiveUntil, actualEnd].filter(Boolean).sort()[0]!;
   if (start > end) return { source: "EXPLICIT_POLICY", policy, expectations: [], issues: [] };
   const excluded = new Set(policy.excludeDates ?? []), expectations: DeurExpectation[] = [];
   for (let workDate = start; workDate <= end; workDate = addCalendarDays(workDate, 1)) {
     if (excluded.has(workDate)) continue;
-    const dateStatus: DeurExpectationPeriodStatus = workDate === evaluationDate && ["Released", "Active"].includes(rental.status) ? "CURRENT" : "DUE";
+    const dateStatus: DeurExpectationPeriodStatus = workDate === evaluationDate && (operationalAtEvaluation ?? ["Released", "Active"].includes(rental.status)) ? "CURRENT" : "DUE";
     expectations.push({ expectationId: createDeurExpectationId({ rentalId: rental.id, workDate }), rentalId: rental.id, workDate, status: dateStatus, source: "EXPLICIT_POLICY" });
   }
   return { source: "EXPLICIT_POLICY", policy, expectations: structuredClone(expectations), issues: [] };

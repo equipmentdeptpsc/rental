@@ -12,7 +12,7 @@ const rentalList = readFileSync("src/pages/Rental/index.tsx", "utf8");
 
 describe("Catalog 2.0 canonical Rental create authorization", () => {
   it("uses rental.create for the new-rental route and remote entry points", () => {
-    expect(router).toContain('path: "rentals/new", element: permitted("rental.create", <NewRental />)');
+    expect(router).toContain('path: "rentals/new", element: permitted("rental.create", routePage(<NewRental />))');
     expect(newRental).toContain('hasPermission("rental.create")');
     expect(rentalList).toContain('hasPermission("rental.create")');
     expect(newRental).toContain("canUseCanonicalRemoteRentalCreation(configuration)");

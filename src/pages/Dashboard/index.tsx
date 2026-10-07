@@ -1,36 +1,57 @@
 import { useState, type ReactNode } from "react";
-import { CalendarDays, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardActionQueue from "@/features/dashboard/components/DashboardActionQueue";
 import CanonicalBillingVisibilityPanel from "@/features/dashboard/components/CanonicalBillingVisibilityPanel";
 import { useDashboardViewModel } from "@/features/dashboard/hooks/useDashboardViewModel";
+import { useCanonicalDashboardViewModel } from "@/features/dashboard/hooks/useCanonicalDashboardViewModel";
+import type { CanonicalDashboardModel } from "@/features/dashboard/services/canonicalDashboardRead";
 import { useCanonicalBillingVisibility } from "@/features/dashboard/hooks/useCanonicalBillingVisibility";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useApplicationDependenciesCompatibility, PersistenceMode } from "@/app/composition";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import { ErrorState, LoadingState } from "@/components/ui/AsyncState";
 
 const currency = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 const updatedDateTime = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" });
 const time = new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit" });
 
 export default function Dashboard() {
+  const { configuration } = useApplicationDependenciesCompatibility();
+  return configuration.persistenceMode === PersistenceMode.Remote ? <RemoteDashboard /> : <LocalDashboard />;
+}
+
+function LocalDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [updatedAt, setUpdatedAt] = useState(() => new Date());
   const model = useDashboardViewModel(refreshKey);
   const { hasPermission } = useAuth();
-  const { configuration } = useApplicationDependenciesCompatibility();
-  const billingVisibility = useCanonicalBillingVisibility(hasPermission("billing.read"));
+  return <DashboardContent model={model} updatedAt={updatedAt} refresh={() => { setRefreshKey((value) => value + 1); setUpdatedAt(new Date()); }} hasPermission={hasPermission} remote={false} />;
+}
+
+function RemoteDashboard() {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { hasPermission } = useAuth();
+  const state = useCanonicalDashboardViewModel(refreshKey, hasPermission("users.manage"), hasPermission("billing.read") && hasPermission("collections.read"));
+  if (state.status === "loading") return <div className="app-page" role="status">Loading dashboard…</div>;
+  if (state.status === "error") return <div className="app-page"><PageHeader title="Operations Dashboard" description="Dashboard data is unavailable." /><div role="alert" className="dashboard-panel p-4">{state.message} <button className="app-link" onClick={() => setRefreshKey((value) => value + 1)}>Retry</button></div></div>;
+  return <DashboardContent model={state.model} updatedAt={state.loadedAt} refresh={() => setRefreshKey((value) => value + 1)} hasPermission={hasPermission} remote />;
+}
+
+function DashboardContent({ model, updatedAt, refresh, hasPermission, remote }: {
+  model: ReturnType<typeof useDashboardViewModel> | CanonicalDashboardModel;
+  updatedAt: Date;
+  refresh(): void;
+  hasPermission(permission: Parameters<ReturnType<typeof useAuth>["hasPermission"]>[0]): boolean;
+  remote: boolean;
+}) {
+  const billingVisibility = useCanonicalBillingVisibility(remote && hasPermission("billing.read"), updatedAt.getTime());
   const { operational, financial } = model;
+  const showFinancial = !remote || ("financialAvailable" in model && model.financialAvailable);
   const recentActivity = [
     ...model.activity.map((item) => ({ id: `activity-${item.id}`, title: item.title, description: item.description, timestamp: item.timestamp, kind: item.kind })),
     ...model.recentEquipmentActivity.map((item) => ({ id: `equipment-${item.id}`, title: item.title, description: `${item.equipment?.assetNo ?? "Equipment"} · ${item.actor}`, timestamp: item.timestamp, kind: "equipment" as const })),
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 8);
-  const refresh = () => { setRefreshKey((value) => value + 1); setUpdatedAt(new Date()); };
-
-  if (model.status === "loading") return <div className="app-page"><PageHeader title="Operations Dashboard" description="Exception-first visibility across equipment, rentals, assignments, and DEUR work." /><LoadingState label="Loading canonical dashboard data…" /></div>;
-  if (model.status === "error") return <div className="app-page"><PageHeader title="Operations Dashboard" description="Exception-first visibility across equipment, rentals, assignments, and DEUR work." actions={<button aria-label="Refresh dashboard" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium" onClick={refresh}><RefreshCw size={15} /> <span>Refresh</span></button>} /><ErrorState message={model.error ?? "Canonical Dashboard data could not be loaded."} onRetry={refresh} /></div>;
 
   return (
     <div className="app-page">
@@ -40,23 +61,21 @@ export default function Dashboard() {
 
       <DashboardActionQueue items={model.actionQueue} hasPermission={hasPermission} />
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <Panel title="Fleet">
-          {operational.totalEquipment === 0 ? <EmptyState className="!px-4 !py-6" title="No equipment in the system yet" description="Add your fleet to start tracking availability, assignments, and maintenance from this dashboard." action={hasPermission("equipment.create") ? <Link className="app-link" to="/equipment/new">Add equipment</Link> : undefined} /> : <><MetricRows rows={[["Total equipment tracked", model.fleetUtilization.total], ["Available", model.fleetUtilization.available], ["Assigned", model.fleetUtilization.assigned], ["Maintenance", model.fleetUtilization.maintenance]]} /><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Fleet utilization" aria-valuemin={0} aria-valuemax={100} aria-valuenow={model.utilizationRate}><div className="h-full rounded-full bg-[#f0a93a]" style={{ width: `${model.utilizationRate}%` }} /></div></>}
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><Legend label="Available" value={model.fleetUtilization.available} color="bg-blue-600" /><Legend label="Assigned" value={model.fleetUtilization.assigned} color="bg-[#f0a93a]" /><Legend label="Maintenance" value={model.fleetUtilization.maintenance} color="bg-slate-400" /></div>
+          {operational.totalEquipment === 0 ? <EmptyState className="!px-4 !py-6" title="No equipment in the system yet" description="Add your fleet to start tracking availability, assignments, and maintenance from this dashboard." action={!remote && hasPermission("equipment.create") ? <Link className="app-link" to="/equipment/new">Add equipment</Link> : undefined} /> : <><MetricRows rows={[["Total equipment tracked", model.fleetUtilization.total], ["Available", model.fleetUtilization.available], ["Assigned", model.fleetUtilization.assigned], ...(remote ? [["Rented", model.fleetUtilization.deployed] as [string, ReactNode]] : []), ["Maintenance", model.fleetUtilization.maintenance]]} /><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-label="Fleet utilization" aria-valuemin={0} aria-valuemax={100} aria-valuenow={model.utilizationRate}><div className="h-full rounded-full bg-[#f0a93a]" style={{ width: `${model.utilizationRate}%` }} /></div></>}
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><Legend label="Available" value={model.fleetUtilization.available} color="bg-blue-600" /><Legend label="Assigned" value={model.fleetUtilization.assigned} color="bg-[#f0a93a]" />{remote && <Legend label="Rented" value={model.fleetUtilization.deployed} color="bg-slate-800" />}<Legend label="Maintenance" value={model.fleetUtilization.maintenance} color="bg-slate-400" /></div>
         </Panel>
-        <Panel title="Upcoming">
-          <div className="grid grid-cols-[1fr_auto] items-center gap-3"><MetricRows rows={[["Scheduled releases", financial.upcoming.scheduledRelease], ["Expected returns", financial.upcoming.expectedReturns], ["Manager approvals", financial.upcoming.pendingManagerApprovals], ["Customer acknowledgements", financial.upcoming.pendingCustomerAcknowledgements]]} /><div className="grid h-12 w-12 place-items-center rounded-lg bg-blue-50 text-blue-500 dark:bg-blue-950"><CalendarDays size={24} /></div></div>
-        </Panel>
+        <Panel title="Rentals & upcoming"><MetricRows rows={[["Active rentals", operational.activeRentals], ["Pending DEUR", model.pendingDeur], ["Scheduled releases", financial.upcoming.scheduledRelease], ["Expected returns", financial.upcoming.expectedReturns], ["Manager approvals", financial.upcoming.pendingManagerApprovals], ["Customer acknowledgements", financial.upcoming.pendingCustomerAcknowledgements]]} /><Link className="mt-2 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/rentals">View rentals →</Link></Panel>
       </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-2">
-        <Panel title="Rentals"><MetricRows rows={[["Active rentals", operational.activeRentals], ["Pending DEUR", model.pendingDeur]]} /><Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/rentals">View rentals →</Link></Panel>
-        {configuration.persistenceMode === PersistenceMode.Remote ? <CanonicalBillingVisibilityPanel state={billingVisibility} /> : <Panel title="Revenue"><MetricRows rows={[["Billed", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)], ["Outstanding", currency.format(financial.revenue.outstanding)], ["Collection rate", `${financial.collectionPerformance.collectionRate.toFixed(2)}%`]]} />{hasPermission("billing.read") && <Link className="mt-3 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>}</Panel>}
+      <div className={`grid items-start gap-4 ${showFinancial && remote ? "xl:grid-cols-2" : ""}`}>
+        {showFinancial && <Panel title="Financial / Revenue"><div className="grid grid-cols-2 gap-x-4"><MetricRows rows={[["Billed / invoiced", currency.format(financial.revenue.billed)], ["Collected", currency.format(financial.revenue.collected)]]} /><MetricRows rows={[["Outstanding", currency.format(financial.revenue.outstanding)], ["Collection rate", `${financial.collectionPerformance.collectionRate.toFixed(2)}%`]]} /></div>{hasPermission("billing.read") && <Link className="mt-2 inline-flex text-xs font-medium text-blue-600 hover:underline" to="/billing">Open Billing →</Link>}</Panel>}
+        {remote && <CanonicalBillingVisibilityPanel state={billingVisibility} />}
       </div>
 
       <Panel title="Recent activity" action={hasPermission("users.manage") ? <Link to="/audit-trail">View all</Link> : undefined}>
-        <div className="space-y-3">{recentActivity.length ? recentActivity.map((item) => <div key={item.id} className="flex gap-3 text-xs"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.kind === "rental" ? "bg-[#f0a93a]" : "bg-emerald-500"}`} /><div className="min-w-0 flex-1"><strong className="block truncate capitalize">{item.title}</strong><span className="block truncate text-slate-500">{item.description}</span></div><time className="shrink-0 text-slate-500">{time.format(new Date(item.timestamp))}</time></div>) : <EmptyState className="!px-4 !py-6" title="No recent activity" description="Equipment updates, rentals, and assignments will appear here as your team starts working." />}</div>
+        <div className="space-y-3">{remote && "activityAvailable" in model && !model.activityAvailable ? <p className="text-xs text-slate-500">Recent activity is unavailable for this account.</p> : recentActivity.length ? recentActivity.map((item) => <div key={item.id} className="flex gap-3 text-xs"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.kind === "rental" ? "bg-[#f0a93a]" : "bg-emerald-500"}`} /><div className="min-w-0 flex-1"><strong className="block truncate capitalize">{item.title}</strong><span className="block truncate text-slate-500">{item.description}</span></div><time className="shrink-0 text-slate-500">{time.format(new Date(item.timestamp))}</time></div>) : <EmptyState className="!px-4 !py-6" title="No recent activity" description="Equipment updates, rentals, and assignments will appear here as your team starts working." />}</div>
       </Panel>
 
     </div>

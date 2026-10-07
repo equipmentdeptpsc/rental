@@ -93,9 +93,8 @@ function candidateFor(input: Input, line: RentalEquipmentLine): RentalReleaseLin
   if (!normalized(metadata?.costCode?.code) || !normalized(metadata?.costCode?.name) || !normalized(metadata?.activityCode?.code) || !normalized(metadata?.activityCode?.name)) missing.add("operationalMetadata");
   const contract = input.contracts.find((item) => item.rentalEquipmentLineId === line.id && item.status !== "Cancelled");
   if ((input.rental.commercialSnapshotRequired === true || line.commercialSnapshotRequired === true) && !contract) missing.add("billingTerms");
-  const meter = getDeurMeterRequirement({ billingMethod: contract?.billingMethod, commercialTerms: line.commercialSnapshot });
-  if ((meter.kind === "odometer" || meter.kind === "both") && machine && machine.maintenanceType !== "Kilometers" && machine.maintenanceType !== "Mileage") missing.add("meterConfiguration");
-  if ((meter.kind === "hourMeter" || meter.kind === "both") && machine && machine.maintenanceType !== "Engine Hours") missing.add("meterConfiguration");
+  const meter = getDeurMeterRequirement({ billingMethod: contract?.billingMethod, commercialTerms: line.commercialSnapshot, maintenanceType: machine?.maintenanceType });
+  if (contract?.billingMethod === "Per Kilometer" && meter.kind !== "odometer" && meter.kind !== "both") missing.add("meterConfiguration");
 
   let snapshot: RentalLineDeurExpectationSnapshot | undefined;
   const billingMethod = contract?.billingMethod ?? line.commercialSnapshot?.billingMethod ?? input.rental.billingMethod;

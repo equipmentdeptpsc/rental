@@ -35,7 +35,11 @@ export class TrustedUserAdministration {
     const email=text(command.email).toLowerCase(),password=text(command.initialPassword),username=text(command.username),displayName=text(command.displayName);
     const commandId=text(command.commandId),idempotencyKey=text(command.idempotencyKey),roleCodes=Array.isArray(command.systemRoles)?[...new Set(command.systemRoles.filter((x):x is string=>typeof x==="string").map(x=>x.trim()).filter(Boolean))]:[];
     const operatorId=text(command.operatorId)||undefined;
-    if(!displayName||!username||!/^\S+@\S+\.\S+$/.test(email)||password.length<8||!commandId||!idempotencyKey||roleCodes.length===0)return result(400,{success:false,message:"Complete all required user fields with a valid email, password, and role."});
+    if(!displayName||!username||!/^\S+@\S+\.\S+$/.test(email)||!commandId||!idempotencyKey||roleCodes.length===0)return result(400,{success:false,message:"Complete all required user fields with a valid email and role."});
+    const operatorCredential=roleCodes.includes("operator");
+    if(operatorCredential&&!operatorId)return result(400,{success:false,message:"Select the operator account this user should be linked to."});
+    const credentialError=operatorCredential?operatorPinError(password):(password.length<8||!/[A-Za-z]/.test(password)||!/\d/.test(password)?"Password must contain at least 8 characters, including a letter and a number.":undefined);
+    if(credentialError)return result(400,{success:false,message:credentialError});
     const roles=await this.service.schema("erp").from("app_roles").select("code,active,deprecated_at").in("code",roleCodes).eq("active",true).is("deprecated_at",null);
     if(roles.error||roles.data?.length!==roleCodes.length)return result(400,{success:false,message:"One or more selected roles are not available."});
     if(operatorId){const operator=await this.service.schema("erp").from("operators").select("id").eq("id",operatorId).eq("company_id",companyId).eq("status","Active").maybeSingle();if(operator.error||!operator.data)return result(404,{success:false,message:"The selected Operator is not available."});}
@@ -113,4 +117,11 @@ function isValidOperatorPin(pin:string):boolean{
   if(digits.every(value=>value===digits[0]))return false;
   const delta=digits[1]-digits[0];
   return !((delta===1||delta===-1)&&digits.every((value,index)=>index===0||value-digits[index-1]===delta));
+}
+
+function operatorPinError(pin:string):string|undefined{
+  if(!pin)return "Operator PIN is required.";
+  if(!/^\d+$/.test(pin))return "Operator PIN must contain numbers only.";
+  if(pin.length!==6)return "Operator PIN must be exactly 6 digits.";
+  return isValidOperatorPin(pin)?undefined:"Choose a PIN that is not repeated or sequential.";
 }

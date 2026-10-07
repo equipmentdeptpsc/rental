@@ -17,7 +17,7 @@ export function getProjectRuntimeCapability(configuration: Configuration, canoni
     canonicalReads: !local,
     legacyReads: local,
     legacyMutations: local,
-    canonicalMutations: !local && configuration.remoteOperationalWritesEnabled && canonicalRepositoryAvailable,
+    canonicalMutations: !local && canonicalRepositoryAvailable && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteProjectCreateEnabled === true),
   };
 }
 

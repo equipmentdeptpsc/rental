@@ -1,6 +1,7 @@
 import type { OperationalCommandMetadata, OperationalCommandResult } from "@/features/rental/operations/commands/contracts";
 
-export const EQUIPMENT_MAINTENANCE_TYPES = ["Engine Hours", "Kilometers", "Mileage", "Calendar Days"] as const;
+import { BETA_MAINTENANCE_TYPES } from "../services/maintenanceMeterPolicy";
+export const EQUIPMENT_MAINTENANCE_TYPES = BETA_MAINTENANCE_TYPES;
 export type EquipmentMaintenanceType = typeof EQUIPMENT_MAINTENANCE_TYPES[number];
 
 export interface CreateEquipmentCommand extends OperationalCommandMetadata {
@@ -24,6 +25,11 @@ export interface EquipmentCreationProjection {
   createdAt: string; updatedAt: string; rowVersion: number;
 }
 
+export interface UpdateEquipmentMaintenanceTypeCommand extends OperationalCommandMetadata {
+  equipmentId: string; expectedVersion: number; maintenanceType: EquipmentMaintenanceType;
+}
+export interface EquipmentMaintenanceTypeProjection { id: string; maintenanceType: EquipmentMaintenanceType; rowVersion: number }
+
 export interface EquipmentCostCodeReference { id: string; code: string; name: string; active: true; sortOrder: number; }
 export interface EquipmentReferenceData { costCodes: EquipmentCostCodeReference[]; }
 export type EquipmentReferenceDataResult =
@@ -33,4 +39,5 @@ export type EquipmentReferenceDataResult =
 export interface EquipmentCommandRepository {
   readReferenceData(): Promise<EquipmentReferenceDataResult>;
   createEquipment(command: CreateEquipmentCommand): Promise<OperationalCommandResult<EquipmentCreationProjection>>;
+  updateMaintenanceType(command: UpdateEquipmentMaintenanceTypeCommand): Promise<OperationalCommandResult<EquipmentMaintenanceTypeProjection>>;
 }

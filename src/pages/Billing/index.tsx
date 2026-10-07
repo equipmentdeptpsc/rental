@@ -8,12 +8,32 @@ import { EmptyDataState } from "@/components/ui/AsyncState";
 
 import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { useRental } from "@/features/rental/context/RentalContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { billingWorkspaceHref } from "@/features/rental/workspace/routing";
+import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/composition";
+import type { BillingStatement } from "@/features/rental/billingstatement/types";
+import type { RentalRecord } from "@/features/rental/types";
 
 export default function Billing() {
   const { rentals } = useRental();
-  const[query,setQuery]=useState("");const statements = billingStatementRepository.search(query);
+  const dependencies = useApplicationDependenciesCompatibility();
+  const remote = dependencies.configuration.persistenceMode === PersistenceMode.Remote;
+  const [query,setQuery]=useState("");
+  const [remoteStatements,setRemoteStatements]=useState<BillingStatement[]>([]);
+  const [remoteRentals,setRemoteRentals]=useState<RentalRecord[]>([]);
+  const [remoteState,setRemoteState]=useState<"loading"|"ready"|"error">(remote ? "loading" : "ready");
+  useEffect(() => {
+    if (!remote) return;
+    let active = true; setRemoteState("loading");
+    void Promise.all([dependencies.readRepositories.billing.list(), dependencies.readRepositories.rentals.list()]).then(([billing, rental]) => {
+      if (!active) return;
+      if (billing.success && rental.success) { setRemoteStatements(billing.value.items); setRemoteRentals(rental.value.items); setRemoteState("ready"); }
+      else setRemoteState("error");
+    }).catch(() => { if (active) setRemoteState("error"); });
+    return () => { active = false; };
+  }, [dependencies.readRepositories.billing, dependencies.readRepositories.rentals, remote]);
+  const statements = (remote ? remoteStatements : billingStatementRepository.search(query)).filter((statement) => !query || [statement.statementNo, statement.rentalNumber, statement.customer, statement.project].some((value) => value?.toLowerCase().includes(query.toLowerCase())));
+  const displayedRentals = remote ? remoteRentals : rentals;
 
   return (
     <div className="space-y-6 p-4 sm:p-8">
@@ -22,7 +42,7 @@ export default function Billing() {
       <div className="rounded-xl border bg-white p-4 sm:p-6">
         <h2 className="text-xl font-semibold">Billing Statements</h2>
         <FilterBar onClear={() => setQuery("")} canClear={Boolean(query)}><label className="min-w-[min(100%,28rem)] flex-1 text-sm font-medium">Search billing<input aria-label="Search Billing" className="app-control mt-1 w-full" placeholder="Search statement, rental, customer, project, or equipment reference" value={query} onChange={event=>setQuery(event.target.value)}/></label></FilterBar>
-        {statements.length === 0 ? (
+        {remoteState === "loading" ? <p className="mt-4 text-slate-500">Loading canonical billing statements…</p> : remoteState === "error" ? <p className="mt-4 text-red-700">Canonical billing statements could not be loaded.</p> : statements.length === 0 ? (
           <EmptyDataState title={query ? "No billing statements match these filters" : "No billing statements yet"} description="Statements appear here when they are created through the canonical rental billing workflow." />
         ) : (
           <ResponsiveTable>
@@ -60,11 +80,11 @@ export default function Billing() {
 
       <div className="rounded-xl border bg-white p-4 sm:p-6">
         <h2 className="text-xl font-semibold">Rental Billing Workspaces</h2>
-        {rentals.length === 0 ? (
+        {displayedRentals.length === 0 ? (
           <p className="mt-4 text-slate-500">No rental transactions are available.</p>
         ) : (
           <div className="mt-4 flex flex-wrap gap-3">
-            {rentals.map((rental) => (
+            {displayedRentals.map((rental) => (
               <Link
                 key={rental.id}
                 to={`/rentals/${rental.id}/workspace`}

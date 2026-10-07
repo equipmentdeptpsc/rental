@@ -14,7 +14,7 @@ export default function NewProject() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const capability = getProjectRuntimeCapability(configuration, Boolean(commandRepositories.canonicalProject));
-  if (capability.canonicalMutations && hasPermission("project.manage")) return <RemoteProjectForm />;
+  if (capability.canonicalMutations && hasPermission("project.create")) return <RemoteProjectForm />;
   return capability.legacyMutations ? <LocalNewProject /> : <RemoteMutationUnavailable title="New Project" message={REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE} />;
 }
 

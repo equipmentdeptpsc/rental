@@ -2,6 +2,8 @@ import type {
   RentalBillingMethod,
   RentalCommercialSnapshot,
 } from "@/features/rental/types";
+import type { MaintenanceType } from "@/features/equipment/types";
+import { meterRequirementForMaintenanceType } from "@/features/equipment/services/maintenanceMeterPolicy";
 
 export type DeurMeterRequirementKind =
   | "none"
@@ -11,7 +13,7 @@ export type DeurMeterRequirementKind =
 
 export interface DeurMeterRequirement {
   kind: DeurMeterRequirementKind;
-  source: "billing-method" | "explicit-commercial-term" | "not-required";
+  source: "frozen-snapshot" | "maintenance-type" | "billing-method" | "explicit-commercial-term" | "not-required";
   reason: string;
 }
 
@@ -22,7 +24,12 @@ export function getDeurMeterRequirement(input: {
     "billingMethod" | "meterEvidenceRequirement"
   >;
   equipmentMeterCapability?: "odometer" | "hourMeter" | "both" | "none";
+  maintenanceType?: MaintenanceType;
+  frozenMeterRequirement?: DeurMeterRequirementKind;
 }): DeurMeterRequirement {
+  if (input.frozenMeterRequirement !== undefined) return { kind: input.frozenMeterRequirement, source: "frozen-snapshot", reason: "The frozen DEUR expectation remains authoritative." };
+  const maintenance = meterRequirementForMaintenanceType(input.maintenanceType);
+  if (maintenance !== undefined) return { kind: maintenance, source: "maintenance-type", reason: `Equipment Maintenance Type requires ${maintenance} meter behavior.` };
   const method = input.commercialTerms?.billingMethod ?? input.billingMethod;
   const explicit = input.commercialTerms?.meterEvidenceRequirement;
 

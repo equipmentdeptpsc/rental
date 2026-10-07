@@ -23,7 +23,10 @@ export interface VersionedDeurCommandIdentity extends DeurCommandIdentity { deur
 export interface StartDeurShiftInput extends DeurCommandIdentity { draft: DeurRecord }
 export interface ActivityTransitionInput extends VersionedDeurCommandIdentity { action: DeurOperatorAction; idleReasonId?: string; idleReasonLabelSnapshot?: string; idleReasonRemarks?: string }
 export interface CompleteDeurShiftInput extends VersionedDeurCommandIdentity {
+  /** @deprecated Legacy single-meter alias; new callers use explicit fields. */
   closingMeter?: number; closingLocation?: string; meterRequirement?: "none" | "hourMeter" | "odometer" | "both";
+  closingHourMeter?: number;
+  closingOdometer?: number;
 }
 export interface SubmitDeurInput extends VersionedDeurCommandIdentity {}
 

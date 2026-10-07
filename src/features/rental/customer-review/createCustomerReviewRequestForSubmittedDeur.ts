@@ -8,6 +8,7 @@ import type { DeurRecord } from "@/features/rental/deur/types";
 import { developmentCustomerReviewOutbox } from "./developmentCustomerReviewOutbox";
 import { reviewTimelineForDeur } from "./buildCustomerReviewSnapshot";
 import { isValidBusinessEmail, normalizeBusinessEmail } from "@/shared/validation/email";
+import { canonicalMeterEvidence } from "../deur/services/canonicalMeterEvidence";
 
 export function createCustomerReviewRequestForSubmittedDeur(deur: DeurRecord) {
   if (deur.status !== "Submitted") return { success: false as const, message: "Only a Submitted DEUR can create a Customer review request." };
@@ -48,8 +49,7 @@ export function createCustomerReviewRequestForSubmittedDeur(deur: DeurRecord) {
       submittedAt: deur.submittedAt,
       startedAt: deur.events?.find((event) => event.activityType === "shift" && event.action === "start")?.timestamp,
       completedAt: [...(deur.events ?? [])].reverse().find((event) => event.activityType === "shift" && event.action === "end")?.timestamp,
-      openingMeter: deur.openingMeter,
-      closingMeter: deur.closingMeter,
+      ...canonicalMeterEvidence(deur),
       operationMinutes: deur.totals?.operationMinutes ?? deur.totalOperatingMinutes,
       idleMinutes: deur.totals?.idleMinutes ?? deur.totalIdleMinutes,
       standbyMinutes: deur.totals?.mealBreakMinutes ?? deur.totalMealBreakMinutes,

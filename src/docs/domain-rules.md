@@ -173,6 +173,16 @@ Billing records shall remain immutable after finalization unless adjusted throug
 
 ---
 
+# Beta DEUR Meter Policy
+
+For beta field operations, the odometer is physical equipment evidence. Operators record an opening odometer at Start Shift, odometer checkpoints for Travel and Refuel, and a closing odometer at End Shift when the frozen DEUR policy requires odometer evidence.
+
+Operators do not manually record physical hour-meter readings or activity durations. Operating, Idle, Standby, Meal Break, Breakdown, and total shift durations are derived from persisted canonical DEUR activity-transition timestamps. **Operating hours** means only the duration classified as `OPERATING`; it excludes Idle, Standby, Meal Break, and Breakdown.
+
+Historical hour-meter columns and `hourMeter`/`both` snapshots remain readable compatibility evidence. They are not rewritten. A future maintenance feature may aggregate persisted per-DEUR Operating duration by equipment; preventive-maintenance scheduling is outside the beta scope.
+
+---
+
 # Maintenance Rules
 
 Maintenance records are permanent.

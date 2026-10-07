@@ -398,7 +398,7 @@ export default function RentalForm({
         }
 
         if (canonicalData && form.assignmentIds.length === 0) {
-          submission.fail("Select at least one active Assignment for a canonical Rental.");
+          submission.fail("Select at least one active Assignment for a Rental.");
           return;
         }
 
@@ -471,7 +471,7 @@ export default function RentalForm({
 
       <fieldset className="rounded-lg border p-4">
         <legend className="px-1 text-sm font-medium">Equipment Lines from Active Assignments</legend>
-        <p className="mb-3 text-xs text-slate-500">Select one or more Active Assignments from the Rental Project. Canonical remote Rentals must be based on an existing Assignment.</p>
+        <p className="mb-3 text-xs text-slate-500">Select one or more Active Assignments from the Rental Project. remote Rentals must be based on an existing Assignment.</p>
         <div className="space-y-2">
           {assignments.filter((item) => item.status === "Active" && (!form.projectId || item.projectId === form.projectId)).map((item) => {
             const machine = equipment.find((record) => record.id === item.equipmentId);
@@ -531,7 +531,7 @@ export default function RentalForm({
       {form.customerId && projectOptions.length === 1 && (
         <p className="text-sm text-slate-500">
           This Customer has no active Projects. <a className="text-blue-600 underline" href="/projects/new">Create Project</a> before creating a Rental.
-        </p>
+ </p>
       )}
 
       <RentalOperationalMetadataCard

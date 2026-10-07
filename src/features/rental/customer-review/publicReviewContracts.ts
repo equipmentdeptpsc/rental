@@ -40,6 +40,12 @@ export interface PublicDeurReviewSnapshot {
   breakdownMinutes: number;
   openingMeter?: number;
   closingMeter?: number;
+  meterRequirement?: "none" | "hourMeter" | "odometer" | "both";
+  openingHourMeter?: number;
+  closingHourMeter?: number;
+  openingOdometer?: number;
+  closingOdometer?: number;
+  legacyMeterEvidenceState?: "LEGACY_AMBIGUOUS_DUAL_METER";
   submittedRevision: string;
   submittedAt?: string;
   timeline: PublicReviewTimelineEntry[];
