@@ -95,9 +95,9 @@ function readPng(bytes?: Uint8Array): PngImage | undefined {
 const text = (value: string, x: number, y: number, size = 8) => `BT /F1 ${size} Tf ${x} ${y} Td (${escapePdf(short(value, 90))}) Tj ET`;
 const rightText = (value: string, right: number, y: number, size = 8) => text(value, right - ascii(value).length * size * .48, y, size);
 
-function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["serviceLines"], pageIndex: number, pageCount: number, preparedBy: string, hasLogo: boolean) {
+function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["serviceLines"], pageIndex: number, pageCount: number, preparedBy: string, logo?: PngImage) {
   const commands: string[] = [];
-  if (hasLogo) commands.push("q 120 0 0 50.72 36 750 cm /Logo Do Q");
+  if (logo) commands.push(`q ${Math.min(120, 50.72 * logo.width / logo.height).toFixed(2)} 0 0 50.72 36 750 cm /Logo Do Q`);
   commands.push(text(organizationBranding.companyName.toUpperCase(), 172, 791, 12));
   commands.push(text(organizationBranding.departmentName, 172, 776, 9));
   commands.push(text("BILLING STATEMENT", 172, 754, 17));
@@ -182,7 +182,7 @@ export function generateBillingStatementPdf(document: InvoiceDocument, preparedB
   pageChunks.forEach((lines, index) => {
     const contentId = 4 + index * 2;
     const resources = `/Font << /F1 ${fontId} 0 R >>${imageId ? ` /XObject << /Logo ${imageId} 0 R >>` : ""}`;
-    const content = encoder.encode(pageContent(document, lines, index, pageChunks.length, preparedBy, Boolean(png)));
+    const content = encoder.encode(pageContent(document, lines, index, pageChunks.length, preparedBy, png));
     objects.push(encoder.encode(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << ${resources} >> /Contents ${contentId} 0 R >>`));
     objects.push(concat([encoder.encode(`<< /Length ${content.length} >>\nstream\n`),content,encoder.encode("\nendstream")]));
   });
