@@ -84,16 +84,54 @@ export async function readCanonicalDashboard(
   options: { canReadAudit: boolean; canReadFinancial?: boolean; signal?: AbortSignal },
 ): Promise<CanonicalDashboardModel> {
   const { readRepositories, repositories } = dependencies;
-  const [rawEquipment, statuses, assignments, rentals, deurs, audit, statements] = await Promise.all([
-    readAllCanonicalPages(readRepositories.equipment, options.signal),
-    readAllStatuses(repositories.equipmentStatusRead, options.signal),
-    readAllCanonicalPages(readRepositories.assignments, options.signal),
-    readAllCanonicalPages(readRepositories.rentals, options.signal),
-    readAllCanonicalPages(readRepositories.deurs, options.signal),
-    options.canReadAudit
-      ? readRepositories.canonicalAudit.list({ paging: { offset: 0, limit: 8 }, ordering: [{ field: "occurred_at", ascending: false }], signal: options.signal })
-      : Promise.resolve(undefined),
-    options.canReadFinancial ? readAllCanonicalPages(readRepositories.billing, options.signal) : Promise.resolve([] as BillingStatement[]),
+  const equipmentPromise = readAllCanonicalPages(readRepositories.equipment, options.signal);
+  const statusesPromise = readAllStatuses(repositories.equipmentStatusRead, options.signal);
+  const assignmentsPromise = readAllCanonicalPages(readRepositories.assignments, options.signal);
+  const rentalsPromise = readAllCanonicalPages(readRepositories.rentals, options.signal);
+  const deursPromise = readAllCanonicalPages(readRepositories.deurs, options.signal);
+  const auditPromise = options.canReadAudit
+    ? readRepositories.canonicalAudit.list({
+        paging: { offset: 0, limit: 8 },
+        ordering: [{ field: "occurred_at", ascending: false }],
+        signal: options.signal,
+      })
+    : Promise.resolve(undefined);
+  const statementsPromise = options.canReadFinancial
+    ? readAllCanonicalPages(readRepositories.billing, options.signal)
+    : Promise.resolve([] as BillingStatement[]);
+
+  const collectionsPromise = options.canReadFinancial
+    ? Promise.all([rentalsPromise, statementsPromise]).then(([rentalRows]) => {
+        const currentRentalRows = rentalRows.filter(
+          (record) => !(record as unknown as { deletedAt?: unknown }).deletedAt,
+        );
+
+        return readRentalCollections(
+          readRepositories.collections,
+          currentRentalRows,
+          options.signal,
+        );
+      })
+    : Promise.resolve([] as CollectionTransaction[]);
+
+  const [
+    rawEquipment,
+    statuses,
+    assignments,
+    rentals,
+    deurs,
+    audit,
+    statements,
+    collections,
+  ] = await Promise.all([
+    equipmentPromise,
+    statusesPromise,
+    assignmentsPromise,
+    rentalsPromise,
+    deursPromise,
+    auditPromise,
+    statementsPromise,
+    collectionsPromise,
   ]);
   if (audit && !audit.success) throw new Error(audit.error.message);
 
@@ -110,7 +148,6 @@ export async function readCanonicalDashboard(
   const currentDeurs = deurs.filter((record) => !(record as unknown as { deletedAt?: unknown }).deletedAt && !record.revision?.supersededByRevisionId);
   const rentalIds = new Set(currentRentals.map((record) => record.id));
   if (options.canReadFinancial && statements.some((statement) => !rentalIds.has(statement.rentalId))) throw new Error("A billing statement references a Rental unavailable to the Dashboard.");
-  const collections = options.canReadFinancial ? await readRentalCollections(readRepositories.collections, currentRentals, options.signal) : [];
   const operational = calculateDashboardSummary(currentEquipment, currentAssignments, currentRentals, []);
   const financial = calculateBusinessDashboardSummary({ statements, collections, rentals: currentRentals, deurs: currentDeurs });
   const fleetUtilization = calculateFleetUtilization(currentEquipment);
