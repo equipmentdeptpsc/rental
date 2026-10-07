@@ -61,6 +61,7 @@ export default function Header({ onMenu, search }: { onMenu(): void; search?: Re
         <button aria-label="Notifications" className="rounded-md p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><Bell size={18} /></button>
         {user && <div ref={menuRef} className="relative">
           <button type="button" aria-label="Account menu" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls="account-menu" className="flex items-center gap-2 rounded-lg p-1.5 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800" onClick={() => setMenuOpen((value) => !value)}>
+            <span className="sr-only">{user.displayName} ({role})</span>
             <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-full bg-slate-800 text-sm font-semibold text-white">{user.displayName.slice(0, 2).toUpperCase()}</span>
             <span aria-hidden="true" className="hidden min-w-0 xl:block"><span className="block max-w-36 truncate text-xs font-semibold">{user.displayName}</span><span className="block max-w-36 truncate text-[11px] text-slate-500">{role}</span></span>
             <ChevronDown aria-hidden="true" size={15} />

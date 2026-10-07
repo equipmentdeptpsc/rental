@@ -275,7 +275,12 @@ describe("route guards", () => {
     expect(container.textContent).toContain("Protected equipment");
     await act(async () => {
       [...container.querySelectorAll("button")]
-        .find((button) => button.textContent === "Sign Out")
+        .find((button) => button.getAttribute("aria-label") === "Account menu")
+        ?.click();
+    });
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Sign out")
         ?.click();
     });
     expect(container.querySelector("[data-location]")?.textContent).toBe("/login");

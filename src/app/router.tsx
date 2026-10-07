@@ -82,6 +82,7 @@ function permitted(permission: Permission, element: ReactNode) {
 
 export const PUBLIC_ROUTE_PATTERNS = Object.freeze([
   "/login",
+  "/reset-password",
   "/rental-approval/:token",
   "/customer-deur-review/:deurId",
   "/review/deur/completed",

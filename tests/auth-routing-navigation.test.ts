@@ -50,6 +50,7 @@ describe("public route inventory", () => {
   it("keeps only login and the approved external token workflows public", () => {
     expect(PUBLIC_ROUTE_PATTERNS).toEqual([
       "/login",
+      "/reset-password",
       "/rental-approval/:token",
       "/customer-deur-review/:deurId",
       "/review/deur/completed",
