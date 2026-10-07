@@ -167,7 +167,10 @@ jobs:
           python3 - <<'PY'
           import os, pathlib, re, sys
           output = pathlib.Path(os.environ['DRY_RUN_OUTPUT']).read_text(errors='replace')
-          proposed = sorted(set(re.findall(r'\b\d{14}_[a-z0-9_]+\.sql\b', output)))
+          output = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
+          proposed = sorted(set(re.findall(r'\b\d{14}_[A-Za-z0-9_.-]+\.sql\b', output)))
+          print('DRY_RUN_HAS_WOULD_PUSH=' + ('YES' if re.search(r'Would push migration', output, re.I) else 'NO'))
+          print('DRY_RUN_HAS_FINISHED=' + ('YES' if re.search(r'Finished supabase db push', output, re.I) else 'NO'))
           print('DRY_RUN_PROPOSED=' + (','.join(proposed) if proposed else 'NONE'))
           if proposed == ['20261007000100_canonical_idle_discount_vat_billing.sql']:
               print('DRY_RUN=PASS')
