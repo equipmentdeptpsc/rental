@@ -89,6 +89,17 @@ describe("canonical Assignment remote UI boundary", () => {
     expect(container.querySelector('a[href="/assignments/canonical-assignment"]')).not.toBeNull();
   });
 
+  it("keeps New Booking and the Assignment tab available beside the default Rental List", async () => {
+    const container = await render(createElement(Assignments), remoteDependencies({ assignments: [assignment] }));
+    expect(container.querySelector('a[href="/rentals/new"]')?.textContent).toContain("New Booking");
+    const bookingTab = [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((button) => button.textContent === "Rental Bookings");
+    await act(async () => bookingTab?.click());
+    expect(container.querySelector('[aria-label="Booking workspace views"] [aria-selected="true"]')?.textContent).toContain("List");
+    const assignmentTab = [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((button) => button.textContent === "Assignments");
+    await act(async () => assignmentTab?.click());
+    expect(container.querySelector('select[aria-label="Project"]')).not.toBeNull();
+  });
+
   it("opens the equipment-centered assignment drawer from the row", async () => {
     const container = await render(createElement(Assignments), remoteDependencies({ assignments: [assignment] }));
     const row = container.querySelector('tr[aria-label="Open ME-REMOTE assignment"]');
