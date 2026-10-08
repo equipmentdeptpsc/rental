@@ -34,6 +34,9 @@ export default function CanonicalBookingListWorkspace() {
   const attention = (["release", "return"].includes(param("attention")) ? param("attention") : "") as BookingAttention | "";
   const [queryInput, setQueryInput] = useState(param("q"));
   const [options, setOptions] = useState<{ customers: Option[]; projects: Option[]; equipment: Option[] }>({ customers: [], projects: [], equipment: [] });
+  const [optionSearch, setOptionSearch] = useState({ customer: "", project: "", equipment: "" });
+  const [optionSearchReady, setOptionSearchReady] = useState(optionSearch);
+  const [moreOptions, setMoreOptions] = useState({ customer: false, project: false, equipment: false });
   const [page, setPage] = useState<PageState>({ status: "loading" });
   const [summary, setSummary] = useState<Summary>();
   const [hasAnyBooking, setHasAnyBooking] = useState<boolean>();
@@ -91,12 +94,13 @@ export default function CanonicalBookingListWorkspace() {
   const canReadProject = hasPermission("project.read");
   const canReadEquipment = hasPermission("equipment.read");
   const selectedCustomerId = param("customer"), selectedProjectId = param("project"), selectedEquipmentId = param("equipment");
+  useEffect(() => { const timer = window.setTimeout(() => setOptionSearchReady(optionSearch), 250); return () => window.clearTimeout(timer); }, [optionSearch]);
   useEffect(() => {
     let active = true;
     void Promise.all([
-      canReadCustomer ? readRepositories.customers.list({ paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : Promise.resolve(null),
-      canReadProject ? readRepositories.projects.list({ paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : Promise.resolve(null),
-      canReadEquipment ? readRepositories.equipment.list({ paging: { limit: 100 }, ordering: [{ field: "asset_no", ascending: true }] }) : Promise.resolve(null),
+      canReadCustomer ? optionSearchReady.customer ? readRepositories.customers.search(optionSearchReady.customer, { paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : readRepositories.customers.list({ paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : Promise.resolve(null),
+      canReadProject ? optionSearchReady.project ? readRepositories.projects.search(optionSearchReady.project, { paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : readRepositories.projects.list({ paging: { limit: 100 }, ordering: [{ field: "name", ascending: true }] }) : Promise.resolve(null),
+      canReadEquipment ? optionSearchReady.equipment ? readRepositories.equipment.search(optionSearchReady.equipment, { paging: { limit: 100 }, ordering: [{ field: "asset_no", ascending: true }] }) : readRepositories.equipment.list({ paging: { limit: 100 }, ordering: [{ field: "asset_no", ascending: true }] }) : Promise.resolve(null),
     ]).then(async ([customers, projects, equipment]) => {
       if (!active) return;
       const customerItems = customers?.success ? customers.value.items : [];
@@ -108,6 +112,7 @@ export default function CanonicalBookingListWorkspace() {
         canReadEquipment && selectedEquipmentId && !equipmentItems.some((item) => item.id === selectedEquipmentId) ? readRepositories.equipment.getById(selectedEquipmentId) : Promise.resolve(null),
       ]);
       if (!active) return;
+      setMoreOptions({ customer: Boolean(customers?.success && customers.value.nextCursor), project: Boolean(projects?.success && projects.value.nextCursor), equipment: Boolean(equipment?.success && equipment.value.nextCursor) });
       setOptions({
         customers: [...customerItems, ...(selectedCustomer?.success && selectedCustomer.value ? [selectedCustomer.value] : [])].map((item) => ({ id: item.id, label: item.companyName })),
         projects: [...projectItems, ...(selectedProject?.success && selectedProject.value ? [selectedProject.value] : [])].map((item) => ({ id: item.id, label: getProjectDisplayLabel(item), customerId: item.customerId })),
@@ -115,7 +120,7 @@ export default function CanonicalBookingListWorkspace() {
       });
     }).catch(() => { if (active) setOptions({ customers: [], projects: [], equipment: [] }); });
     return () => { active = false; };
-  }, [readRepositories, canReadCustomer, canReadProject, canReadEquipment, selectedCustomerId, selectedProjectId, selectedEquipmentId]);
+  }, [readRepositories, canReadCustomer, canReadProject, canReadEquipment, selectedCustomerId, selectedProjectId, selectedEquipmentId, optionSearchReady]);
 
   const searchInput: CanonicalBookingSearchInput = {
     ...(status && !attention ? { status } : {}),
@@ -205,7 +210,7 @@ export default function CanonicalBookingListWorkspace() {
     { key: "release", title: "Releases Due", count: summary.releases, help: "Approved, reserved equipment scheduled for release" },
     { key: "return", title: "Returns Due", count: summary.returns, help: "Released or active equipment expected back" },
   ] : [];
-  const select = (label: string, key: string, values: Option[], permitted = true) => permitted && <label className="text-xs font-medium text-slate-600 dark:text-slate-300">{label}<select aria-label={label} className="app-control mt-1 w-full" value={param(key)} onChange={(event) => update(key, event.target.value)}><option value="">All {label.toLowerCase()}</option>{values.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>;
+  const select = (label: string, key: "customer" | "project" | "equipment", values: Option[], permitted = true) => permitted && <div className="text-xs font-medium text-slate-600 dark:text-slate-300"><label htmlFor={`booking-${key}`}>{label}</label>{(moreOptions[key] || optionSearch[key]) && <input aria-label={`Find ${label.toLowerCase()}`} className="app-control mt-1 w-full" value={optionSearch[key]} onChange={(event) => setOptionSearch((current) => ({ ...current, [key]: event.target.value }))} placeholder={`Find ${label.toLowerCase()}`} />}<select id={`booking-${key}`} aria-label={label} className="app-control mt-1 w-full" value={param(key)} onChange={(event) => update(key, event.target.value)}><option value="">All {label.toLowerCase()}</option>{values.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div>;
   return <div className="space-y-4">
     <section aria-label="Booking summary" className="grid grid-cols-2 gap-2 lg:grid-cols-4">{summaryCards.map((card) => <button key={card.key} type="button" title={card.help} onClick={() => setParams((current) => { const next = new URLSearchParams(current); next.delete("b_status"); next.delete("b_attention"); if (card.key === "reserved") next.set("b_status", "Reserved"); if (card.key === "release" || card.key === "return") next.set("b_attention", card.key); next.delete("b_page"); return next; }, { replace: true })} className={`app-card border p-3 text-left hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-800 ${param("attention") === card.key || card.key === "reserved" && param("status") === "Reserved" ? "border-blue-500" : ""}`}><span className="block text-xs text-slate-500">{card.title}</span><strong className="mt-1 block text-xl">{card.count}</strong></button>)}</section>
     <FilterBar onClear={clear} canClear={chips.length > 0 || preset !== "week"}><div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"><label className="text-xs font-medium text-slate-600 dark:text-slate-300 sm:col-span-2">Search bookings<input aria-label="Search bookings" className="app-control mt-1 w-full" value={queryInput} onChange={(event) => setQueryInput(event.target.value)} placeholder="Rental no., equipment, customer, project" /></label>{select("Customer", "customer", customerOptions, canReadCustomer)}{select("Project", "project", projectOptions, canReadProject)}{select("Equipment", "equipment", options.equipment, canReadEquipment)}<label className="text-xs font-medium text-slate-600 dark:text-slate-300">Status<select aria-label="Status" className="app-control mt-1 w-full" value={param("status")} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{canonicalBookingStatuses.map((value) => <option key={value} value={value}>{value}</option>)}</select></label><label className="text-xs font-medium text-slate-600 dark:text-slate-300">Date scope<select aria-label="Date scope" className="app-control mt-1 w-full" value={preset} onChange={(event) => update("preset", event.target.value)}><option value="today">Today</option><option value="week">This Week</option><option value="next7">Next 7 Days</option><option value="month">This Month</option><option value="custom">Custom Range</option></select></label><label className="text-xs font-medium text-slate-600 dark:text-slate-300">From<input aria-label="From" type="date" className="app-control mt-1 w-full" value={from} onChange={(event) => updateRange("from", event.target.value)} /></label><label className="text-xs font-medium text-slate-600 dark:text-slate-300">To<input aria-label="To" type="date" className="app-control mt-1 w-full" value={to} onChange={(event) => updateRange("to", event.target.value)} /></label><label className="text-xs font-medium text-slate-600 dark:text-slate-300">Sort by<select aria-label="Sort by" className="app-control mt-1 w-full" value={sort} onChange={(event) => setSort(event.target.value as CanonicalBookingSort)}>{sortOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></FilterBar>

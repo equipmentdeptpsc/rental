@@ -27,13 +27,22 @@ export default function BookingDetailsDrawer({ row, open, onClose }: { row: Cano
     if (!open) return;
     let active = true;
     setDetail({ status: "loading" });
+    const loadLines = async () => {
+      const items: RentalEquipmentLine[] = [];
+      for (let offset = 0; offset < 2000; offset += 100) {
+        const result = await readRepositories.rentalEquipmentLines.list({ filters: { rental_id: row.rentalId }, paging: { offset, limit: 100 } });
+        if (!result.success) return null;
+        items.push(...result.value.items);
+        if (!result.value.nextCursor) return items;
+      }
+      return null;
+    };
     void Promise.all([
       readRepositories.rentals.getById(row.rentalId),
-      readRepositories.rentalEquipmentLines.list({ filters: { rental_id: row.rentalId }, paging: { limit: 100 } }),
-    ]).then(async ([rentalResult, linesResult]) => {
+      loadLines(),
+    ]).then(async ([rentalResult, lines]) => {
       if (!active) return;
-      if (!rentalResult.success || !linesResult.success) { setDetail({ status: "error" }); return; }
-      const lines = linesResult.value.items;
+      if (!rentalResult.success || !lines) { setDetail({ status: "error" }); return; }
       const details = await Promise.all(lines.map(async (line): Promise<DetailLine> => {
         const [equipment, operator] = await Promise.all([
           canReadEquipment ? readRepositories.equipment.getById(line.equipmentId) : Promise.resolve(null),
