@@ -72,7 +72,7 @@ describe("canonical Assignment remote UI boundary", () => {
   });
   it("keeps remote list empty when only a local Assignment exists", async () => {
     const container = await render(createElement(Assignments));
-    expect(container.textContent).toContain("No current Bookings.");
+    expect(container.textContent).toContain("No assignments yet.");
     expect(container.textContent).not.toContain("local-only-assignment");
     expect(container.textContent).not.toContain("New Assignment");
   });
@@ -84,6 +84,37 @@ describe("canonical Assignment remote UI boundary", () => {
     expect(container.textContent).toContain("Remote Operator");
     expect(container.textContent).toContain("Remote Project");
     expect(container.querySelector('a[href="/assignments/canonical-assignment"]')).not.toBeNull();
+  });
+
+  it("opens the equipment-centered assignment drawer from the row", async () => {
+    const container = await render(createElement(Assignments), remoteDependencies({ assignments: [assignment] }));
+    const row = container.querySelector('tr[aria-label="Open ME-REMOTE assignment"]');
+    expect(row).not.toBeNull();
+    await act(async () => row?.querySelector("td")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(container.querySelector('[role="dialog"]')?.textContent).toContain("ME-REMOTE");
+    expect(container.textContent).not.toContain("Timeline");
+    expect(container.textContent).not.toContain("Kanban");
+    expect(container.textContent).not.toContain("Calendar");
+  });
+
+  it("filters assignments by status using the existing read data", async () => {
+    const container = await render(createElement(Assignments), remoteDependencies({ assignments: [assignment] }));
+    const status = container.querySelector('select[aria-label="Status"]') as HTMLSelectElement;
+    await act(async () => { status.value = "Completed"; status.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(container.textContent).toContain("No assignments match these filters.");
+  });
+
+  it("shows drawer actions only under the existing rental and cancellation gates", async () => {
+    const noCancel = await render(createElement(Assignments), remoteDependencies({ assignments: [{ ...assignment, rowVersion: 1 }] }));
+    await act(async () => noCancel.querySelector('tr[aria-label="Open ME-REMOTE assignment"] td')?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(noCancel.querySelector('[role="dialog"]')?.textContent).toContain("Start Rental");
+    expect(noCancel.querySelector('[role="dialog"]')?.textContent).not.toContain("Cancel Assignment");
+    authState.permissions = new Set(["rental.create", "assignment.close"]);
+    const enabled = remoteDependencies({ assignments: [{ ...assignment, rowVersion: 1 }] });
+    enabled.configuration.remoteAssignmentCancelEnabled = true;
+    const canCancel = await render(createElement(Assignments), enabled);
+    await act(async () => canCancel.querySelector('tr[aria-label="Open ME-REMOTE assignment"] td')?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(canCancel.querySelector('[role="dialog"]')?.textContent).toContain("Cancel Assignment");
   });
 
   it("keeps repository errors authoritative", async () => {
