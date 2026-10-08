@@ -99,7 +99,7 @@ function failureMessage(code: string) {
     CONFLICT: "The Assignment identity or selected Operator is already in use.",
     IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
     INVALID_TRANSITION: "This Assignment cannot be cancelled from its current state.",
-    RENTAL_CONFLICT: "This Assignment is linked to a non-final Rental and cannot be cancelled.",
+    RENTAL_CONFLICT: "This assignment is already part of an approved or active rental and can no longer be cancelled from the preparation workflow.",
     PERSISTENCE_FAILURE: "The remote service could not save the Assignment. Refresh before retrying.",
   };
   return messages[code] ?? "The Assignment request was rejected.";
