@@ -28,7 +28,7 @@ describe("manual DEUR append-only bootstrap repair preparation",()=>{
   });
   it("keeps raw superseded evidence out of the effective UI projection",()=>{
     expect(readRepository).toContain("deur_event_supersessions!deur_event_supersessions_original_event_id_fkey");
-    expect(readRepository).toContain("event.deur_event_supersessions.length>0");
+    expect(readRepository).toContain("superseded:outgoing.length>0");
   });
   it("uses the effective relation for all operational state consumers",()=>{
     expect(migration).toContain("FROM erp.effective_deur_events(target.id) e");

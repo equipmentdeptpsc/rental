@@ -61,7 +61,7 @@ function normalizeRemoteFailure<T>(data: unknown): OperationalCommandResult<T> |
   if (!data || typeof data !== "object") return undefined;
   const failure = data as Record<string, unknown>;
   if (failure.success !== false || typeof failure.code !== "string") return undefined;
-  const message = typeof failure.message === "string" ? failure.message : "The remote command was rejected.";
+  const message = typeof failure.message === "string" ? failure.message : "The request was rejected.";
   return {
     success: false,
     code: failure.code as OperationalCommandResult<T> extends { success: false; code: infer Code } ? Code : never,
@@ -94,18 +94,18 @@ export class SupabaseOperationalCommandRepository implements Repository {
         return {
           success: false,
           code: "TRANSPORT_FAILURE",
-          message: details?.remoteMessage ? `Remote command request failed: ${details.remoteMessage}` : "Confirmation was not received from the remote service. Refresh before retrying.",
+          message: details?.remoteMessage ? `Request failed: ${details.remoteMessage}` : "Confirmation was not received from the remote service. Refresh before retrying.",
           retryable: true,
           refreshRequired: true,
           ...(details ? { details } : {}),
         };
       }
       observe?.("RPC_DATA_RECEIVED", elapsedMilliseconds);
-      const response = normalize?.(data) ?? data;
+      const response = normalize ? normalize(data) : data;
       if (!isOperationalCommandResult<T>(response) || (response.success && isValue && !isValue(response.value))) {
         const remoteFailure = normalizeRemoteFailure<T>(response);
         if (remoteFailure) return remoteFailure;
-        return { success: false, code: "VALIDATION_REJECTED", message: "The remote command returned an invalid response.", retryable: false, refreshRequired: true };
+        return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response.", retryable: false, refreshRequired: true };
       }
       return response;
     } catch {
@@ -167,7 +167,7 @@ function isReturnAllProjection(value: unknown): value is ReturnAllProjection {
 
 const legacyRentalLineReturnFailureMessages: Record<string, string> = {
   FORBIDDEN: "Rental line return is not authorized.",
-  VALIDATION_REJECTED: "The canonical Rental Equipment Line return request was rejected.",
+  VALIDATION_REJECTED: "The rental equipment line return request was rejected.",
   NOT_FOUND: "Rental or Rental Equipment Line was not found.",
   IDEMPOTENCY_MISMATCH: "Idempotency key payload mismatch.",
   PARENT_READ_ONLY: "Cancelled, Closed, and historical Returned Rentals are read-only.",
@@ -183,7 +183,7 @@ const rentalLineReturnReasonMessages: Record<string, string> = {
   LINE_NOT_FOUND: "Rental Equipment Line was not found.",
   LINE_EQUIPMENT_MISMATCH: "Rental Equipment Line does not match the selected equipment.",
   LINE_ASSIGNMENT_MISMATCH: "Rental Equipment Line does not match the selected assignment.",
-  COMMAND_INVALID: "Return command is invalid.",
+  COMMAND_INVALID: "Return request is invalid.",
   VERSION_MISMATCH: "Rental Equipment Line version is stale. Refresh before retrying.",
   RETURN_DATE_CONFLICT: "Authoritative Return business date is already recorded and cannot be overwritten.",
   INVALID_LINE_TRANSITION: "Only an Active Rental Equipment Line can be returned.",
@@ -198,7 +198,7 @@ function normalizeLegacyRentalLineReturnFailure(value: unknown): unknown {
     || typeof candidate.retryable !== "boolean" || typeof candidate.refreshRequired !== "boolean") return value;
   const reasonCode = typeof candidate.reasonCode === "string" ? candidate.reasonCode : undefined;
   const message = (reasonCode ? rentalLineReturnReasonMessages[reasonCode] : undefined) ?? legacyRentalLineReturnFailureMessages[candidate.code];
-  return message ? { ...candidate, message } : value;
+  return message ? { ...candidate, message } : null;
 }
 
 export function createSupabaseOperationalCommands(client: RpcClient): OperationalCommandRepositories {

@@ -184,6 +184,6 @@ describe("D5F4B narrow Rental lifecycle wiring", () => {
   it("preserves a line lifecycle rejection even when the server omits optional display fields", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { success: false, code: "PARENT_READ_ONLY" }, error: null });
     const result = await new SupabaseOperationalCommandRepository({ schema: () => ({ rpc }) }).cancelLine({ commandId: "command-5", idempotencyKey: "key-5", rentalId: rental.id, rentalLineId: line.id });
-    expect(result).toMatchObject({ success: false, code: "PARENT_READ_ONLY", message: "The remote command was rejected." });
+    expect(result).toMatchObject({ success: false, code: "PARENT_READ_ONLY", message: "The request was rejected." });
   });
 });

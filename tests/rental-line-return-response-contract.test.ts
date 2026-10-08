@@ -32,7 +32,7 @@ describe("rental-line return response contract", () => {
 
   it("fails closed for an unknown or malformed response", async () => {
     const malformed = { ...accepted, value: { rentalId: "rental-1", rentalLineId: "line-1", status: "Returned" } };
-    await expect(repository(malformed).repository.returnLine(command)).resolves.toMatchObject({ success: false, code: "VALIDATION_REJECTED", message: "The remote command returned an invalid response." });
+    await expect(repository(malformed).repository.returnLine(command)).resolves.toMatchObject({ success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response." });
     await expect(repository({ success: false, code: "UNKNOWN", retryable: false, refreshRequired: false }).repository.returnLine(command)).resolves.toMatchObject({ success: false, code: "VALIDATION_REJECTED" });
   });
 

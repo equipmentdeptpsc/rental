@@ -42,7 +42,7 @@ describe("D5F4-R2 bounded Rental availability", () => {
   it("fails closed in the form while retaining the selected line and retry inputs", () => {
     expect(form).toContain('status: "error" as const');
     expect(form).toContain('availabilityLines.some((line) => availabilityByKey[line.key]?.status !== "available")');
-    expect(form).toContain('try {\n         return [line.key, await availabilityController.check');
+    expect(form).toMatch(/try\s*\{\s*return \[line\.key, await availabilityController\.check/);
     expect(form).toContain('windowStart: form.dateOut');
     expect(form).toContain('windowEnd: form.expectedReturn || null');
     expect(form).toContain('sourceAssignmentId: line.sourceAssignmentId');

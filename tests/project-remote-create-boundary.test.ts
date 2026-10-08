@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ permissions: new Set(["project.manage"]), addProject: vi.fn() }));
+const state = vi.hoisted(() => ({ permissions: new Set(["project.create"]), addProject: vi.fn() }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => state.permissions.has(permission) }) }));
 vi.mock("@/features/project/context/ProjectContext", () => ({ useProject: () => ({ projects: [], addProject: state.addProject }) }));
 vi.mock("@/features/customer/context/CustomerContext", () => ({ useCustomer: () => ({ customers: [] }) }));
@@ -36,14 +36,14 @@ function setSelect(node: HTMLSelectElement, value: string) {
   Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(node, value);
   node.dispatchEvent(new Event("change", { bubbles: true }));
 }
-afterEach(async () => { state.permissions = new Set(["project.manage"]); vi.clearAllMocks(); while (roots.length) await act(async () => roots.pop()?.unmount()); });
+afterEach(async () => { state.permissions = new Set(["project.create"]); vi.clearAllMocks(); while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical Project remote create boundary", () => {
   it("fails closed without flag, repository, or permission", async () => {
-    expect((await render(remoteDependencies({ enabled: false }).dependencies)).textContent).toContain("Project changes are unavailable");
-    expect((await render(remoteDependencies({ repository: false }).dependencies)).textContent).toContain("Project changes are unavailable");
+    expect((await render(remoteDependencies({ enabled: false }).dependencies)).textContent).toContain("Project changes are currently unavailable");
+    expect((await render(remoteDependencies({ repository: false }).dependencies)).textContent).toContain("Project changes are currently unavailable");
     state.permissions.clear();
-    expect((await render(remoteDependencies().dependencies)).textContent).toContain("Project changes are unavailable");
+    expect((await render(remoteDependencies().dependencies)).textContent).toContain("Project changes are currently unavailable");
   });
 
   it("submits only canonical Project inputs and refreshes canonical reads", async () => {

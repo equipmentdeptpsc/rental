@@ -65,23 +65,23 @@ describe("narrow canonical Operator-create capability", () => {
 
   it("requires the narrow flag, repository, and operator.create permission at the normal create route", async () => {
     const enabled = await render(remoteDependencies({ operatorCreateEnabled: true }));
-    expect(enabled.textContent).toContain("Create a canonical remote Operator business record.");
+    expect(enabled.textContent).toContain("Create a remote Operator business record.");
 
     const disabled = await render(remoteDependencies({ operatorCreateEnabled: false }));
-    expect(disabled.textContent).toContain("Operator changes, linked-user changes, and PIN changes are unavailable in remote mode until canonical commands are certified.");
+    expect(disabled.textContent).toContain("Operator changes, linked-user changes, and PIN changes are currently unavailable.");
 
     const repositoryMissing = await render(remoteDependencies({ operatorCreateEnabled: true, repositoryAvailable: false }));
-    expect(repositoryMissing.textContent).toContain("Operator changes, linked-user changes, and PIN changes are unavailable in remote mode until canonical commands are certified.");
+    expect(repositoryMissing.textContent).toContain("Operator changes, linked-user changes, and PIN changes are currently unavailable.");
 
     authState.permissions.delete("operator.create");
     const denied = await render(remoteDependencies({ operatorCreateEnabled: true }));
-    expect(denied.textContent).toContain("Operator changes, linked-user changes, and PIN changes are unavailable in remote mode until canonical commands are certified.");
+    expect(denied.textContent).toContain("Operator changes, linked-user changes, and PIN changes are currently unavailable.");
   });
 
   it("shows create but hides Edit links when only narrow Operator creation is enabled", async () => {
     const page = await render(remoteDependencies({ operatorCreateEnabled: true }), createElement(OperatorsPage));
     expect(page.textContent).toContain("New Operator");
-    expect(page.textContent).toContain("Read-only canonical view");
+    expect(page.textContent).toContain("Read-only view");
     expect(page.textContent).not.toContain("Edit");
     expect(page.querySelector('a[href="/operators/edit/operator-1"]')).toBeNull();
   });
@@ -96,7 +96,7 @@ describe("narrow canonical Operator-create capability", () => {
   it("keeps the direct Operator edit route unavailable in create-only mode", async () => {
     const page = await render(remoteDependencies({ operatorCreateEnabled: true }), createElement(EditOperator));
     expect(page.textContent).toContain("Edit Operator");
-    expect(page.textContent).toContain("unavailable in remote mode");
+    expect(page.textContent).toContain("currently unavailable");
   });
 
   it("does not broaden Assignment, Rental, Equipment, or general Operator mutations", () => {
@@ -104,7 +104,7 @@ describe("narrow canonical Operator-create capability", () => {
     expect(getOperatorRuntimeCapability(configuration, true).canonicalMutations).toBe(false);
     expect(getAssignmentRuntimeCapability(configuration, false).canonicalCreation).toBe(false);
     expect(canUseCanonicalRemoteRentalCreation(configuration)).toBe(false);
-    expect(getEquipmentRuntimeCapability(configuration, false).canonicalMutations).toBe(false);
+    expect(getEquipmentRuntimeCapability(configuration, false).canonicalCreate).toBe(false);
   });
 
   it("keeps the canonical Operator RPC command and response contract unchanged", async () => {

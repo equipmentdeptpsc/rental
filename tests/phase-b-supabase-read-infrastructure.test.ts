@@ -30,9 +30,10 @@ describe("Phase B Supabase read infrastructure", () => {
     expect(remote.authentication.remoteAuthenticationProvider).toBeInstanceOf(SupabaseAuthenticationProvider);
   });
 
-  it("normalizes environment mode safely with Local as the fallback", () => {
-    expect(normalizePersistenceMode(undefined)).toBe(PersistenceMode.Local);
-    expect(normalizePersistenceMode("unexpected")).toBe(PersistenceMode.Local);
+  it("requires an explicit environment mode", () => {
+    expect(() => normalizePersistenceMode(undefined)).toThrow("Invalid persistence mode configuration.");
+    expect(() => normalizePersistenceMode("unexpected")).toThrow("Invalid persistence mode configuration.");
+    expect(normalizePersistenceMode("local")).toBe(PersistenceMode.Local);
     expect(normalizePersistenceMode("remote")).toBe(PersistenceMode.Remote);
   });
 

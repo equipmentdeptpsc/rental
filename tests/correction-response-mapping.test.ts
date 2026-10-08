@@ -9,7 +9,7 @@ describe("remote correction response mapping", () => {
       schema: () => ({ rpc: async () => ({ data: { success: false, code: "CONFLICT", currentVersion: 7 }, error: null }) }),
     });
     const result = await repository.createCorrection(input);
-    expect(result).toMatchObject({ success: false, code: "CONFLICT", message: "The remote command was rejected.", retryable: false, refreshRequired: true, currentVersion: 7 });
+    expect(result).toMatchObject({ success: false, code: "CONFLICT", message: "The request was rejected.", retryable: false, refreshRequired: true, currentVersion: 7 });
   });
 
   it("keeps correction diagnostics safe while preserving the canonical validation code", async () => {
@@ -17,7 +17,7 @@ describe("remote correction response mapping", () => {
       schema: () => ({ rpc: async () => ({ data: { success: false, code: "VALIDATION_REJECTED", details: { reason: "CORRECTION_REASON_INVALID", detail: "internal SQL text", secret: "must not surface" } }, error: null }) }),
     });
     const result = await repository.createCorrection(input);
-    expect(result).toMatchObject({ success: false, code: "VALIDATION_REJECTED", message: "The remote command was rejected.", retryable: false, refreshRequired: false, details: { reason: "CORRECTION_REASON_INVALID" } });
+    expect(result).toMatchObject({ success: false, code: "VALIDATION_REJECTED", message: "The request was rejected.", retryable: false, refreshRequired: false, details: { reason: "CORRECTION_REASON_INVALID" } });
     expect(JSON.stringify(result)).not.toContain("internal SQL text");
     expect(JSON.stringify(result)).not.toContain("must not surface");
   });

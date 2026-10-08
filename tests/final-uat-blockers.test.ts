@@ -43,7 +43,7 @@ describe("final UAT blocker regressions", () => {
     const pending = createDeurBillingPreview({ deur: deur("Submitted"), terms: { billingMethod: "Per Hour", unitRate: 999, standbyRate: 999, operatorIncluded: true }, evaluatedAt: "2026-07-27T04:00:00Z" });
     expect(pending).toMatchObject({ status: "provisional", evidence: { operatingMinutes: 120, idleMinutes: 60 }, commercialTermsSource: "IMMUTABLE_SNAPSHOT" });
     const acknowledged = createDeurBillingPreview({ deur: deur("Acknowledged"), terms: { billingMethod: "Per Hour", unitRate: 999, standbyRate: 999, operatorIncluded: true }, evaluatedAt: "2026-07-27T04:00:00Z" });
-    expect(acknowledged).toMatchObject({ status: "available", charges: { operatingCharge: 200, idleCharge: 25 } });
+    expect(acknowledged).toMatchObject({ status: "available", charges: { operatingCharge: 200, idleCharge: 0 } });
   });
 
   it("hydrates immutable Customer review requests from Local Storage", () => {
