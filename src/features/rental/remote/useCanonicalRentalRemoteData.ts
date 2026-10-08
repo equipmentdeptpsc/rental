@@ -13,7 +13,7 @@ function useCanonicalRead<T>(load: (() => Promise<{ success: true; value: T } | 
   useEffect(() => {
     if (!load) { setState({ status: "inactive" }); return; }
     let active = true; setState({ status: "loading" });
-    void load().then(result => { if (active) setState(result.success ? { status: "loaded", data: result.value } : { status: "error", message: result.message }); }).catch(() => { if (active) setState({ status: "error", message: "Canonical Rental data could not be loaded. Retry the request or contact support." }); });
+    void load().then(result => { if (active) setState(result.success ? { status: "loaded", data: result.value } : { status: "error", message: result.message }); }).catch(() => { if (active) setState({ status: "error", message: "Rental data could not be loaded. Retry the request or contact support." }); });
     return () => { active = false; };
   }, [attempt, load]);
   return { ...state, retry };

@@ -10,7 +10,7 @@ export class SupabaseCustomerCommandRepository implements CustomerCommandReposit
     if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
     const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
     if (candidate?.success === false && typeof candidate.code === "string") return { success: false, code: candidate.code as Extract<OperationalCommandResult<CustomerCreationProjection>, { success: false }>["code"], message: failureMessage(candidate.code), retryable: false, refreshRequired: ["CUSTOMER_CODE_CONFLICT", "CUSTOMER_ID_CONFLICT", "PERSISTENCE_FAILURE"].includes(candidate.code) };
-    if (!isOperationalCommandResult<CustomerCreationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The remote Customer command returned an invalid response.", retryable: false, refreshRequired: true };
+    if (!isOperationalCommandResult<CustomerCreationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for Customer.", retryable: false, refreshRequired: true };
     return data;
   }
 }
@@ -22,7 +22,7 @@ function failureMessage(code: string) {
     CUSTOMER_ID_CONFLICT: "The Customer identity is already in use.", IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
     PERSISTENCE_FAILURE: "The remote service could not save the Customer. Refresh before retrying.",
   };
-  return messages[code] ?? "The remote Customer command was rejected.";
+  return messages[code] ?? "The Customer request was rejected.";
 }
 
 function isProjection(value: unknown): value is CustomerCreationProjection {

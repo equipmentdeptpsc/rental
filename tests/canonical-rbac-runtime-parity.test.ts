@@ -72,8 +72,8 @@ describe("Catalog 2.0.0 runtime RBAC parity",()=>{
 
   it("uses runtime database roles and permissions throughout remote administration",()=>{
     expect(rolesPage).toContain("<RemoteRolesPage administration=");
-    expect(remoteRolesPage).toContain("Runtime roles and effective permission mappings from the canonical database");
-    expect(remoteRolesPage).toContain("Remote role administration is read-only in the browser");
+    expect(remoteRolesPage).toContain("Runtime roles and effective permission mappings from the database");
+    expect(remoteRolesPage).toContain("Role changes are managed by an administrator.");
     expect(usersPage).toContain("runtimeRoles.filter(role=>viewUser.systemRoles.includes(role.code)).flatMap(role=>role.permissions)");
     expect(usersPage).toContain("!remote&&<p className=\"text-sm text-amber-800\"");
   });

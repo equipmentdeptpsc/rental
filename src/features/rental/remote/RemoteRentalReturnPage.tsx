@@ -30,7 +30,7 @@ export default function RemoteRentalReturnPage({ rentalId }: { rentalId: string 
   }), [localRental.rentals, localRental.rentalEquipmentLines, localAssignments, localEquipment, localOperators, localProjects]);
   const list = useRentalListData(fallback);
 
-  if (list.status === "loading") return <main className="p-8">Loading canonical Rental return…</main>;
+  if (list.status === "loading") return <main className="p-8">Loading Rental return…</main>;
   if (list.status === "error") return <main className="space-y-3 p-8" role="alert"><p className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{list.message}</p><Button onClick={list.retry}>Retry</Button></main>;
 
   const rental = list.data.rentals.find((item) => item.id === rentalId);
@@ -43,7 +43,7 @@ export default function RemoteRentalReturnPage({ rentalId }: { rentalId: string 
     <header>
       <Link className="text-blue-700" to={`/rentals/${rental.id}/workspace`}>← Rental Workspace</Link>
       <h1 className="mt-2 text-3xl font-bold">Return Rental Equipment</h1>
-      <p className="mt-2 text-slate-500">Confirm the equipment return through the canonical Rental lifecycle service.</p>
+      <p className="mt-2 text-slate-500">Confirm the equipment return through the Rental lifecycle service.</p>
     </header>
     <section className="space-y-3 rounded-xl border bg-white p-6">
       <Detail label="Rental" value={rental.rentalNumber ?? rental.id} />

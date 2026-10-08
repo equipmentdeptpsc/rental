@@ -56,7 +56,7 @@ export default function MaintenancePage() {
 
       <FilterBar onClear={() => setFilter("All")} canClear={filter !== "All"}><div className="text-sm text-slate-600 dark:text-slate-300">Filter by maintenance health</div>{cards.map(([label,count])=><button type="button" key={label} aria-pressed={filter===label} onClick={()=>setFilter(label)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-medium ${filter===label?"border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/50":"border-slate-300 dark:border-slate-600"}`}>{label} <span className="font-semibold">{count}</span></button>)}</FilterBar>
 
-      {filtered.length === 0 ? <EmptyDataState title={filter === "All" ? "No maintenance records yet" : "No maintenance records match the current filters"} description="Scheduled maintenance and due equipment will appear here through the canonical maintenance workflow." /> : <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
+      {filtered.length === 0 ? <EmptyDataState title={filter === "All" ? "No maintenance records yet" : "No maintenance records match the current filters"} description="Scheduled maintenance and due equipment will appear here through the maintenance workflow." /> : <ResponsiveTable><div className="rounded-xl border bg-white min-w-max">
 
         <table className="min-w-full">
 

@@ -94,7 +94,7 @@ describe("Rental remote-mode boundary", () => {
     await act(async () => rendered.root.render(rendered.element));
     expect(rendered.container.textContent).toBe("loading::");
     await act(async () => resolve(repositoryFailure("REMOTE_FAILED", "failed", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" }) as never));
-    expect(rendered.container.textContent).toContain("error::Canonical Rental data could not be loaded");
+    expect(rendered.container.textContent).toContain("error::Rental data could not be loaded");
     expect(rendered.container.textContent).not.toContain("local-rental");
   });
 

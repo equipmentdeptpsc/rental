@@ -58,7 +58,7 @@ describe("P7.7 canonical administration contract", () => {
     expect(userService).toContain("deactivate(actor");
     expect(userService).toContain("validateOperatorLink");
     expect(usersPage).toContain("systemRoles:form.roleCodes");
-    expect(usersPage).toContain("Effective Canonical Access");
+    expect(usersPage).toContain("Effective Access");
     expect(usersPage).toContain("Authorization History");
     expect(router).toMatch(/path:\s*["']roles["']/);
     expect(router).toMatch(/path:\s*["']permissions["']/);

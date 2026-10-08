@@ -109,11 +109,11 @@ export function evaluateDeurBillingEligibility({
   revisionChain,
 }: EvaluateDeurBillingEligibilityInput): DeurBillingEligibilityResult {
   if (deur.legacy) {
-    return ineligible(deur, "LEGACY_RECORD", "Legacy DEUR records cannot be used as canonical billing evidence.");
+    return ineligible(deur, "LEGACY_RECORD", "Older DEUR records cannot be used for billing.");
   }
 
   if (!Array.isArray(deur.events)) {
-    return ineligible(deur, "RECORD_NOT_CANONICAL", "The DEUR has no canonical event history.");
+    return ineligible(deur, "RECORD_NOT_CANONICAL", "The DEUR has no activity history.");
   }
 
   if (!deur.rentalId?.trim()) {
@@ -226,7 +226,7 @@ export function evaluateDeurBillingEligibility({
       })
       && persisted.startingOdometer === derived.startingOdometer && persisted.endingOdometer === derived.endingOdometer
       && persisted.totalDistance === derived.totalDistance && persisted.tripCount === derived.tripCount;
-    if (!consistent) return ineligible(deur, "ODOMETER_EVIDENCE_INVALID", "Persisted odometer/trip totals do not match the canonical checkpoints.");
+    if (!consistent) return ineligible(deur, "ODOMETER_EVIDENCE_INVALID", "Odometer and trip totals do not match the recorded checkpoints.");
     if (billingMethod === "Per Kilometer" && (!Number.isFinite(persisted.totalDistance) || persisted.totalDistance <= 0)) return ineligible(deur, "TOTAL_DISTANCE_REQUIRED", "A positive total distance is required.");
     if (billingMethod === "Per Trip" && (!Number.isInteger(persisted.tripCount) || persisted.tripCount <= 0)) return ineligible(deur, "TRIP_COUNT_REQUIRED", "A positive whole-number trip count is required.");
     return {

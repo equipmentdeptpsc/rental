@@ -12,13 +12,13 @@ export function resolveAssignmentRentalOrigin(
   customers: CustomerRecord[],
 ): AssignmentRentalOrigin {
   if (assignment.deleted || assignment.status !== "Active") return { success: false, message: "The selected Assignment is not active." };
-  if (!assignment.projectId) return { success: false, message: "The selected Assignment does not have a canonical Project." };
+  if (!assignment.projectId) return { success: false, message: "The selected Assignment does not have a Project." };
   const project = projects.find((item) => item.id === assignment.projectId);
-  if (!project || project.deleted) return { success: false, message: "The Assignment's canonical Project could not be found." };
-  if (project.status !== "Active") return { success: false, message: "The Assignment's canonical Project is inactive." };
-  if (!project.customerId) return { success: false, message: "The Assignment's canonical Project does not have a Customer." };
+  if (!project || project.deleted) return { success: false, message: "The Assignment's Project could not be found." };
+  if (project.status !== "Active") return { success: false, message: "The Assignment's Project is inactive." };
+  if (!project.customerId) return { success: false, message: "The Assignment's Project does not have a Customer." };
   const customer = customers.find((item) => item.id === project.customerId);
-  if (!customer) return { success: false, message: "The Project's canonical Customer could not be found." };
-  if (!customer.active) return { success: false, message: "The Project's canonical Customer is inactive." };
+  if (!customer) return { success: false, message: "The Project's Customer could not be found." };
+  if (!customer.active) return { success: false, message: "The Project's Customer is inactive." };
   return { success: true, assignment, project, customer };
 }

@@ -71,10 +71,10 @@ function workspaceReadFailure(source: string, error: import("@/core/persistence"
 }
 
 function WorkspaceReadDiagnostic({ failure }: { failure?: WorkspaceReadFailure }) {
-  if (!failure) return <>Canonical Rental workspace could not be loaded.</>;
+  if (!failure) return <>Rental workspace could not be loaded.</>;
   const diagnostic = failure.diagnostic;
-  return <span aria-label="Canonical workspace read diagnostic">
-    Canonical Rental workspace could not be loaded. Read: {failure.source}.
+  return <span aria-label="workspace read diagnostic">
+    Rental workspace could not be loaded. Read: {failure.source}.
     {diagnostic?.code && <> PostgREST code: {diagnostic.code}.</>}
     {diagnostic?.status !== undefined && <> HTTP status: {diagnostic.status}.</>}
     {diagnostic?.message && <> Message: {diagnostic.message}.</>}

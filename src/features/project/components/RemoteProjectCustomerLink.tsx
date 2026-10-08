@@ -39,7 +39,7 @@ export default function RemoteProjectCustomerLink() {
     }
     const result = await Promise.resolve(dependencies.readRepositories.projects.getById(id));
     if (!result.success || !result.value || result.value.deleted) {
-      setProjectState({ status: "error", message: "Canonical Project could not be loaded." });
+      setProjectState({ status: "error", message: "Project could not be loaded." });
       return;
     }
     setProjectState({ status: "loaded", project: result.value });
@@ -70,7 +70,7 @@ export default function RemoteProjectCustomerLink() {
     void Promise.resolve(operation).then((result) => {
       if (!active) return;
       if (!result.success) {
-        setCustomerState({ status: "error", items: [], message: "Canonical Customer data could not be loaded." });
+        setCustomerState({ status: "error", items: [], message: "Customer data could not be loaded." });
         return;
       }
       const resultValue = result.value;
@@ -79,7 +79,7 @@ export default function RemoteProjectCustomerLink() {
         : resultValue ? [resultValue as CustomerRecord] : [];
       setCustomerState({ status: "loaded", items: project.customerId ? value : value.filter((customer) => customer.active) });
     }).catch(() => {
-      if (active) setCustomerState({ status: "error", items: [], message: "Canonical Customer data could not be loaded." });
+      if (active) setCustomerState({ status: "error", items: [], message: "Customer data could not be loaded." });
     });
     return () => { active = false; };
   }, [canLink, dependencies.readRepositories.customers, project]);
@@ -88,7 +88,7 @@ export default function RemoteProjectCustomerLink() {
     if (!canLink || !project || !selectedCustomerId || !repository?.updateProjectCustomer || working.current) return;
     const customer = customerState.items.find((item) => item.id === selectedCustomerId);
     if (!customer) {
-      setMessage({ kind: "error", text: "Select an active canonical Customer." });
+      setMessage({ kind: "error", text: "Select an active Customer." });
       return;
     }
     if (!window.confirm(`Link ${project.projectName} to ${customer.customerCode} — ${customer.companyName}? This relationship cannot be changed from the Project UI.`)) return;
@@ -119,7 +119,7 @@ export default function RemoteProjectCustomerLink() {
     }
   }
 
-  if (projectState.status === "loading") return <div className="p-8 text-slate-500">Loading canonical Project…</div>;
+  if (projectState.status === "loading") return <div className="p-8 text-slate-500">Loading Project…</div>;
   if (projectState.status === "error") return <div className="p-8" role="alert">{projectState.message}<button className="ml-3 underline" onClick={() => { setProjectState({ status: "loading" }); void loadProject(); }}>Retry</button></div>;
 
   const currentProject = projectState.project;
@@ -130,16 +130,16 @@ export default function RemoteProjectCustomerLink() {
   ];
 
   return <div className="mx-auto max-w-3xl space-y-6 p-8">
-    <div><h1 className="text-3xl font-bold">Project Customer</h1><p className="mt-2 text-slate-500">Canonical remote Project relationship.</p></div>
+    <div><h1 className="text-3xl font-bold">Project Customer</h1><p className="mt-2 text-slate-500">remote Project relationship.</p></div>
     <section className="rounded-xl border bg-white p-6 shadow-sm">
       <dl className="grid gap-5 sm:grid-cols-2">
         <div><dt className="text-xs uppercase tracking-wide text-slate-500">Project</dt><dd className="mt-1 font-medium">{currentProject.projectCode} — {currentProject.projectName}</dd></div>
-        <div><dt className="text-xs uppercase tracking-wide text-slate-500">Customer</dt><dd className="mt-1 font-medium">{currentProject.customerId ? linkedCustomer ? `${linkedCustomer.customerCode} — ${linkedCustomer.companyName}` : customerState.status === "loading" ? "Loading canonical Customer…" : "Canonical Customer unavailable" : "Not linked"}</dd></div>
+        <div><dt className="text-xs uppercase tracking-wide text-slate-500">Customer</dt><dd className="mt-1 font-medium">{currentProject.customerId ? linkedCustomer ? `${linkedCustomer.customerCode} — ${linkedCustomer.companyName}` : customerState.status === "loading" ? "Loading Customer…" : "Customer unavailable" : "Not linked"}</dd></div>
       </dl>
     </section>
     {message && <p className={`rounded border px-3 py-2 text-sm ${message.kind === "error" ? "border-red-300 bg-red-50 text-red-950" : "border-emerald-300 bg-emerald-50 text-emerald-950"}`} role={message.kind === "error" ? "alert" : "status"}>{message.text}</p>}
     {canLink && <form className="space-y-4 rounded-xl border bg-white p-6 shadow-sm" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-      <Select label="Customer" searchable value={selectedCustomerId} options={customerOptions} loading={customerState.status === "loading"} disabled={busy || customerState.status === "error"} helperText={customerState.status === "error" ? customerState.message : "Only active canonical Customers are available."} onChange={(event) => setSelectedCustomerId(event.target.value)} />
+      <Select label="Customer" searchable value={selectedCustomerId} options={customerOptions} loading={customerState.status === "loading"} disabled={busy || customerState.status === "error"} helperText={customerState.status === "error" ? customerState.message : "Only active Customers are available."} onChange={(event) => setSelectedCustomerId(event.target.value)} />
       <div className="flex flex-wrap justify-between gap-3"><Link to="/projects"><Button type="button" variant="secondary">Back to Projects</Button></Link><Button type="submit" disabled={!selectedCustomerId || busy || customerState.status !== "loaded"} loading={busy}>{busy ? "Linking…" : "Link Customer"}</Button></div>
     </form>}
     {!canLink && <div className="flex justify-end"><Link to="/projects"><Button variant="secondary">Back to Projects</Button></Link></div>}

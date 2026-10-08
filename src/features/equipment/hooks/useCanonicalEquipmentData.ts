@@ -56,7 +56,7 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
     ]).then(([equipment, statuses]) => {
       if (!active) return;
       if (!equipment.success || !statuses.success) {
-        setState({ status: "error", items: [], message: "Canonical Equipment data could not be loaded." });
+        setState({ status: "error", items: [], message: "Equipment data could not be loaded." });
         return;
       }
       const statusLabels = new Map(statuses.value.filter((item) => item.active && !item.deleted).map((item) => [item.id, item.status]));
@@ -92,7 +92,7 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
         };
       });
       setState({ status: "loaded", items });
-    }).catch(() => { if (active) setState({ status: "error", items: [], message: "Canonical Equipment data could not be loaded." }); });
+    }).catch(() => { if (active) setState({ status: "error", items: [], message: "Equipment data could not be loaded." }); });
     return () => { active = false; };
   }, [attempt, readRepositories.equipment, repositories.equipmentStatusRead, filters.categoryId, filters.subcategoryId, filters.statusId, filters.projectId, filters.customerId]);
 

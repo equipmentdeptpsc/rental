@@ -62,7 +62,7 @@ describe("remote Release-readiness projection", () => {
     const pending = new Promise<{ success: true; value: CanonicalRentalReleaseReadiness }>(accept => { resolve = accept; });
     const container = await render(repository(vi.fn(() => pending)));
     expect(releaseButton(container).disabled).toBe(true);
-    expect(releaseButton(container).title).toContain("Checking canonical Release readiness");
+    expect(releaseButton(container).title).toContain("Checking Release readiness");
     await act(async () => resolve({ success: true, value: readiness(true) }));
     expect(releaseButton(container).disabled).toBe(false);
 

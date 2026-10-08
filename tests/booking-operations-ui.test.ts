@@ -13,7 +13,7 @@ describe("Rental Bookings operations UI", () => {
     expect(workspaceSource).toContain('"list"');
     expect(workspaceSource).toContain("searchCanonicalBookingCalendarRows");
     expect(workspaceSource).toContain("filterBookingOperations");
-    expect(workspaceSource).toContain("Canonical bookings could not be loaded.");
+    expect(workspaceSource).toContain("bookings could not be loaded.");
   });
 
   it("keeps workspace failures local and navigation read-only", () => {

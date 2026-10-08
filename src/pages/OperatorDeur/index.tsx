@@ -197,12 +197,12 @@ export default function OperatorDeurPage() {
       },
     ).then((report) => {
       if (disposed) return;
-      if (report?.succeeded) { setOptimisticDeurs([]); void refresh(); setMessage(`${report.succeeded} offline command${report.succeeded === 1 ? "" : "s"} synchronized.`); }
-      if (report?.terminal) setMessage(`${report.terminal} offline command${report.terminal === 1 ? "" : "s"} require attention.`);
+      if (report?.succeeded) { setOptimisticDeurs([]); void refresh(); setMessage(`${report.succeeded} offline action${report.succeeded === 1 ? "" : "s"} synchronized.`); }
+      if (report?.terminal) setMessage(`${report.terminal} offline action${report.terminal === 1 ? "" : "s"} require attention.`);
     }).then(async () => {
       if (disposed) return;
       const failures = await synchronization.offlineQueue.listTerminal({ tenantId: synchronization.tenantId!, operatorId: user.operatorId! });
-      if (!disposed && failures.length) setMessage(`${failures.length} offline command${failures.length === 1 ? "" : "s"} require operator attention.`);
+      if (!disposed && failures.length) setMessage(`${failures.length} offline action${failures.length === 1 ? "" : "s"} require operator attention.`);
     });
     window.addEventListener("online", replay);
     if (navigator.onLine) replay();

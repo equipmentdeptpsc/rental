@@ -195,7 +195,7 @@ export default function Settings() {
 
       <div className="rounded-xl border bg-white p-6">
         <h2 className="text-2xl font-semibold">Certification Type Master</h2>
-        <p className="mb-4 text-gray-500">Manage canonical Operator certification types and usage.</p>
+        <p className="mb-4 text-gray-500">Manage Operator certification types and usage.</p>
         <Link to="/settings/certification-types" className="inline-flex rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700">Manage Certification Types</Link>
       </div>
 

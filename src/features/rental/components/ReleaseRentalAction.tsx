@@ -37,7 +37,7 @@ export default function ReleaseRentalAction({ rentalId }: Props) {
   if (canonicalMutations) return hasPermission("rental.release") ? <Button variant="secondary" disabled={pending} onClick={async () => {
     if (pending) return; setPending(true);
     const rental = await dependencies.readRepositories.rentals.getById(rentalId);
-    if (!rental.success || !rental.value || typeof rental.value.rowVersion !== "number") { showToast("Canonical Rental version is unavailable. Refresh and try again.", "error"); setPending(false); return; }
+    if (!rental.success || !rental.value || typeof rental.value.rowVersion !== "number") { showToast("Rental version is unavailable. Refresh and try again.", "error"); setPending(false); return; }
     const commandIdentity = identity.current ??= { commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() };
     const result = await dependencies.commandRepositories.canonicalRental!.release({ ...commandIdentity, rentalId, expectedVersion: rental.value.rowVersion });
     if (result.success) { identity.current = undefined; requestCanonicalRentalRefresh(); }

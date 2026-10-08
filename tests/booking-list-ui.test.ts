@@ -24,7 +24,7 @@ describe("canonical Booking list UI", () => {
     expect(source).toContain('>Assignments</button>');
     expect(source).toContain('>Rental Bookings</button>');
     expect(source).toContain("readRepositories.canonicalBookings.searchCanonicalBookingRows");
-    expect(source).toContain("One row per Rental Equipment Line");
+    expect(source).toContain("One row per rental equipment line");
   });
 
   it("uses server predicates and bounded pagination rather than local post-filtering", () => {

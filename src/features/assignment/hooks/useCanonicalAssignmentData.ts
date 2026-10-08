@@ -67,7 +67,7 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
     ]).then(([assignments, equipment, operators, projects]) => {
       if (!active) return;
       if (!assignments.success || !equipment.success || !operators.success || !projects.success) {
-        setState({ status: "error", data: emptyData(), message: "Canonical Assignment data could not be loaded. Retry the request or contact support." });
+        setState({ status: "error", data: emptyData(), message: "Assignment data could not be loaded. Retry the request or contact support." });
         return;
       }
       const data: CanonicalAssignmentData = {
@@ -87,7 +87,7 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
       };
       setState({ status: data.assignments.length ? "loaded" : "empty", data });
     }).catch(() => {
-      if (active) setState({ status: "error", data: emptyData(), message: "Canonical Assignment data could not be loaded. Retry the request or contact support." });
+      if (active) setState({ status: "error", data: emptyData(), message: "Assignment data could not be loaded. Retry the request or contact support." });
     });
     return () => { active = false; };
   }, [attempt, readRepositories]);

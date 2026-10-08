@@ -90,7 +90,7 @@ describe("remote canonical Operator boundary", () => {
   });
   it("fails closed before local create, edit, link, PIN, or delete behavior", async () => {
     expect((await render(createElement(NewOperator), remoteDependencies(), "/operators/new")).textContent).toContain("Changes unavailable");
-    expect((await render(createElement(EditOperator), remoteDependencies(), "/operators/edit/local-operator")).textContent).toContain("certification assignments only");
+    expect((await render(createElement(EditOperator), remoteDependencies(), "/operators/edit/local-operator")).textContent).toContain("Operator changes, linked-user changes, and PIN changes are currently unavailable.");
     expect(local.addOperator).not.toHaveBeenCalled(); expect(local.updateOperator).not.toHaveBeenCalled(); expect(local.deleteOperator).not.toHaveBeenCalled();
   });
   it("re-reads the canonical list after a successful create refresh", async () => {
@@ -107,7 +107,7 @@ describe("remote canonical Operator boundary", () => {
 describe("remote canonical Project boundary", () => {
   it("ignores a local Project when the canonical response is empty", async () => {
     const container = await render(createElement(ProjectsPage));
-    expect(container.textContent).toContain("No canonical Projects found."); expect(container.textContent).not.toContain("Local Project");
+    expect(container.textContent).toContain("No Projects found."); expect(container.textContent).not.toContain("Local Project");
   });
   it("fails closed before local create or edit behavior", async () => {
     expect((await render(createElement(NewProject), remoteDependencies(), "/projects/new")).textContent).toContain("Changes unavailable");

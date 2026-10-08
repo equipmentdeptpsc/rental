@@ -4,4 +4,4 @@ export function getCustomerRuntimeCapability(configuration: ApplicationRuntimeCo
   const remote = configuration.persistenceMode === PersistenceMode.Remote;
   return { canonicalReads: remote, legacyReads: !remote, legacyMutations: !remote, canonicalMutations: remote && repositoryAvailable && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteCustomerCreateEnabled === true) };
 }
-export const REMOTE_CUSTOMER_MUTATION_UNAVAILABLE_MESSAGE = "Customer changes are unavailable in remote mode until the corresponding canonical command is certified.";
+export const REMOTE_CUSTOMER_MUTATION_UNAVAILABLE_MESSAGE = "Customer changes are currently unavailable.";

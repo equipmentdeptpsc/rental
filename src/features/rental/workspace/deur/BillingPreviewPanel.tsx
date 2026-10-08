@@ -8,7 +8,7 @@ const statusLabel: Record<DeurBillingPreview["status"], string> = {
 const reasonMessage: Partial<Record<DeurBillingPreview["eligibility"]["reasonCodes"][number], string>> = {
   BILLING_LOCKED: "This DEUR is locked for billing.", ALREADY_BILLED: "This DEUR has already been included in billing.",
   REJECTED: "Rejected DEUR records cannot be previewed for billing.", LEGACY_RECORD: "Legacy DEUR evidence is not supported.",
-  RECORD_NOT_CANONICAL: "Canonical DEUR activity evidence is required.", INVALID_EVENT_HISTORY: "The DEUR activity history is invalid.",
+  RECORD_NOT_CANONICAL: "DEUR activity evidence is required.", INVALID_EVENT_HISTORY: "The DEUR activity history is invalid.",
   UNSUPPORTED_BILLING_EVIDENCE: "The billing method requires evidence that is not recorded in this DEUR.",
   NOT_ACKNOWLEDGED: "Awaiting Customer Acknowledgement.",
   OPEN_ACTIVITY: "Operation activity is still open.",

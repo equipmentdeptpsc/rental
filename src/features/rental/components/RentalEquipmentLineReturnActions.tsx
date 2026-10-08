@@ -51,7 +51,7 @@ export default function RentalEquipmentLineReturnActions({ rental, lines, equipm
     }
     if (typeof target.rowVersion !== "number") {
       setTarget(undefined);
-      showToast("Canonical Rental Equipment Line version is unavailable. Refresh and try again.", "error");
+      showToast("Rental Equipment Line version is unavailable. Refresh and try again.", "error");
       return;
     }
     const command = identity.current ??= { commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() };

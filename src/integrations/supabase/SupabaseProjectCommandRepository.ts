@@ -13,7 +13,7 @@ export class SupabaseProjectCommandRepository implements ProjectCommandRepositor
     if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
     const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
     if (candidate?.success === false && typeof candidate.code === "string") return { success: false, code: candidate.code as Extract<OperationalCommandResult<ProjectCreationProjection>, { success: false }>["code"], message: failureMessage(candidate.code), retryable: false, refreshRequired: ["CONFLICT", "PROJECT_CODE_CONFLICT", "PERSISTENCE_FAILURE"].includes(candidate.code) };
-    if (!isOperationalCommandResult<ProjectCreationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The remote Project command returned an invalid response.", retryable: false, refreshRequired: true };
+    if (!isOperationalCommandResult<ProjectCreationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for Project.", retryable: false, refreshRequired: true };
     return data;
   }
 
@@ -22,7 +22,7 @@ export class SupabaseProjectCommandRepository implements ProjectCommandRepositor
     if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
     const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
     if (candidate?.success === false && typeof candidate.code === "string") return { success: false, code: candidate.code as Extract<OperationalCommandResult<ProjectCustomerLinkProjection>, { success: false }>["code"], message: customerLinkFailureMessage(candidate.code), retryable: false, refreshRequired: ["CONFLICT", "NOT_FOUND", "PERSISTENCE_FAILURE"].includes(candidate.code) };
-    if (!isOperationalCommandResult<ProjectCustomerLinkProjection>(data) || (data.success && !isCustomerLinkProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The remote Project customer-link command returned an invalid response.", retryable: false, refreshRequired: true };
+    if (!isOperationalCommandResult<ProjectCustomerLinkProjection>(data) || (data.success && !isCustomerLinkProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for Project customer-link.", retryable: false, refreshRequired: true };
     return data;
   }
 }
@@ -38,7 +38,7 @@ function failureMessage(code: string) {
     IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
     PERSISTENCE_FAILURE: "The remote service could not save the Project. Refresh before retrying.",
   };
-  return messages[code] ?? "The remote Project command was rejected.";
+  return messages[code] ?? "The Project request was rejected.";
 }
 
 function customerLinkFailureMessage(code: string) {
@@ -53,7 +53,7 @@ function customerLinkFailureMessage(code: string) {
     IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
     PERSISTENCE_FAILURE: "The remote service could not save the Project Customer link. Refresh before retrying.",
   };
-  return messages[code] ?? "The remote Project customer-link command was rejected.";
+  return messages[code] ?? "The Project customer-link request was rejected.";
 }
 
 function isProjection(value: unknown): value is ProjectCreationProjection {

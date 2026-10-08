@@ -70,7 +70,7 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
       if (!active) return;
       if (!rentals.success || !lines.success || !equipment.success
         || !assignments.success || !operators.success || !projects.success || !customers.success || !references?.success) {
-        setState({ status: "error", data: emptyRemoteData(), message: "Canonical Rental data could not be loaded. Retry the request or contact support." });
+        setState({ status: "error", data: emptyRemoteData(), message: "Rental data could not be loaded. Retry the request or contact support." });
         return;
       }
       setState({ status: "loaded", data: {
@@ -85,7 +85,7 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
         activityCodes: references.value.activityCodes,
       } });
     }).catch(() => {
-      if (active) setState({ status: "error", data: emptyRemoteData(), message: "Canonical Rental data could not be loaded. Retry the request or contact support." });
+      if (active) setState({ status: "error", data: emptyRemoteData(), message: "Rental data could not be loaded. Retry the request or contact support." });
     });
     return () => { active = false; };
   }, [attempt, commandRepositories.canonicalRental, readRepositories, remote]);

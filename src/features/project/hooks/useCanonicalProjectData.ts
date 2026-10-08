@@ -27,12 +27,12 @@ export function useCanonicalProjectData() {
     setState({ status: "loading", items: [] });
     void Promise.resolve(readRepositories.projects.list()).then((result) => {
       if (!active) return;
-      if (!result.success) return setState({ status: "error", items: [], message: "Canonical Project data could not be loaded." });
+      if (!result.success) return setState({ status: "error", items: [], message: "Project data could not be loaded." });
       setState({ status: "loaded", items: result.value.items.map((record) => {
         const row = record as unknown as Record<string, unknown>;
         return { id: record.id, projectCode: text(row.projectCode), name: record.projectName, active: record.status === "Active", customerId: record.customerId, location: record.location || undefined, deleted: record.deleted === true };
       }) });
-    }).catch(() => { if (active) setState({ status: "error", items: [], message: "Canonical Project data could not be loaded." }); });
+    }).catch(() => { if (active) setState({ status: "error", items: [], message: "Project data could not be loaded." }); });
     return () => { active = false; };
   }, [attempt, readRepositories.projects]);
   return { ...state, retry };

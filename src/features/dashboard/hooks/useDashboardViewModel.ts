@@ -49,7 +49,7 @@ export function useDashboardViewModel(refreshKey = 0) {
     ]).then(async ([equipmentResult, assignmentResult, rentalResult]) => {
       if (!active) return;
       if (!equipmentResult.success || !assignmentResult.success || !rentalResult.success) {
-        setRemoteState((current) => ({ ...current, status: "error", message: "Canonical Dashboard data could not be loaded. Retry the request or contact support." }));
+        setRemoteState((current) => ({ ...current, status: "error", message: "Dashboard data could not be loaded. Retry the request or contact support." }));
         return;
       }
       const [deurResult, statementResult, auditResult] = await Promise.allSettled([
@@ -68,14 +68,14 @@ export function useDashboardViewModel(refreshKey = 0) {
         activity: audit.map((item) => ({
           id: `audit:${item.id}`,
           title: `${item.aggregateType} ${item.action.replaceAll("_", " ").toLowerCase()}`,
-          description: `${item.aggregateType} activity recorded in the canonical audit log.`,
+          description: `${item.aggregateType} activity recorded in the audit log.`,
           timestamp: item.occurredAt,
           actor: item.actorName ?? "System",
           kind: "rental" as const,
         })),
       });
     }).catch(() => {
-      if (active) setRemoteState((current) => ({ ...current, status: "error", message: "Canonical Dashboard data could not be loaded. Retry the request or contact support." }));
+      if (active) setRemoteState((current) => ({ ...current, status: "error", message: "Dashboard data could not be loaded. Retry the request or contact support." }));
     });
     return () => { active = false; };
   }, [readRepositories, remote, refreshKey]);

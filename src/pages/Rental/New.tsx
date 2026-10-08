@@ -179,7 +179,7 @@ export default function NewRental() {
       </div>
     </div>
   );
-  if (remoteCreation && canonicalData.status === "loading") return <div className="p-6">Loading canonical Rental data…</div>;
+  if (remoteCreation && canonicalData.status === "loading") return <div className="p-6">Loading Rental data…</div>;
   if (remoteCreation && canonicalData.status === "error") return <div className="p-6" role="alert">{canonicalData.message}<button className="ml-3 underline" onClick={canonicalData.retry}>Retry</button></div>;
 
   return (

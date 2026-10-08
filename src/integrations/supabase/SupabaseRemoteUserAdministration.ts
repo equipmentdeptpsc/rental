@@ -9,12 +9,12 @@ export class SupabaseRemoteUserAdministration implements RemoteUserAdministratio
 
   async listUsers(): Promise<readonly User[]> {
     const { data, error } = await this.client.schema("erp").from("users").select("id,username,display_name,email,company_id,status,operator_id,credential_mode,created_at,updated_at,user_roles(app_roles(code))").order("display_name");
-    if (error) throw new Error("Unable to load canonical Users.");
+    if (error) throw new Error("Unable to load Users.");
     return (data ?? []).map((row: any) => ({ id:row.id,username:row.username,displayName:row.display_name,email:row.email??undefined,companyId:row.company_id,status:row.status,operatorId:row.operator_id??undefined,credentialMode:row.credential_mode==="OPERATOR_PIN"?"OPERATOR_PIN":"PASSWORD",createdAt:row.created_at,updatedAt:row.updated_at,systemRoles:(row.user_roles??[]).flatMap((x:any)=>x.app_roles?.code?[x.app_roles.code]:[]) }));
   }
   async listRoles(): Promise<readonly RemoteAssignableRole[]> {
     const { data, error } = await this.client.schema("erp").from("app_roles").select("code,name,active,deprecated_at,catalog_version,role_permissions(app_permissions(code,active))").order("name");
-    if (error) throw new Error("Unable to load canonical roles.");
+    if (error) throw new Error("Unable to load roles.");
     return (data ?? []).map((row:any)=>({
       code:String(row.code),name:String(row.name),active:row.active===true,
       deprecatedAt:row.deprecated_at??undefined,catalogVersion:row.catalog_version??undefined,
@@ -23,7 +23,7 @@ export class SupabaseRemoteUserAdministration implements RemoteUserAdministratio
   }
   async listOperators(): Promise<readonly Operator[]> {
     const { data, error } = await this.client.schema("erp").from("operators").select("id,name,email,license_number,certification_type,status,joined_date").eq("status","Active").order("name");
-    if (error) throw new Error("Unable to load canonical Operators.");
+    if (error) throw new Error("Unable to load Operators.");
     return (data ?? []).map((row:any)=>({id:row.id,name:row.name,email:row.email??"",licenseNumber:row.license_number??"",certificationType:row.certification_type,status:row.status,joinedDate:row.joined_date??""}));
   }
   create(input: CreateUserInput & { commandId:string;idempotencyKey:string }): Promise<User> { return this.request<User>(this.endpoint,input); }

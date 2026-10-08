@@ -14,4 +14,4 @@ export function getOperatorRuntimeCapability(configuration: ApplicationRuntimeCo
   return { canonicalReads: remote, legacyReads: !remote, legacyMutations: !remote, canonicalMutations, canonicalCreation: remote && canonicalRepositoryAvailable && (configuration.remoteOperationalWritesEnabled === true || configuration.remoteOperatorCreateEnabled === true) };
 }
 
-export const REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE = "Operator changes, linked-user changes, and PIN changes are unavailable in remote mode until commands are certified.";
+export const REMOTE_OPERATOR_MUTATION_UNAVAILABLE_MESSAGE = "Operator changes, linked-user changes, and PIN changes are currently unavailable.";

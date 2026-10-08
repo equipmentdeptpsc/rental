@@ -121,7 +121,7 @@ export default function RentalPage() {
       </div>
 
       {!anyMutationsAvailable && <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</div>}
-      {rentalList.status === "loading" && <LoadingState label="Loading canonical Rental data…" />}
+      {rentalList.status === "loading" && <LoadingState label="Loading Rental data…" />}
       {rentalList.status === "error" && <ErrorState title="Rental data unavailable" message={rentalList.message} onRetry={rentalList.retry} />}
 
       {rentalList.status === "loaded" && view === "engagements" && (

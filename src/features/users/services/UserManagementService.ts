@@ -138,7 +138,7 @@ export class UserManagementService {
     return updated;
   }
 
-  delete(actor:User,id:string):void{this.authorize(actor);const existing=this.required(id);if(actor.id===id)throw new Error("You cannot delete your own signed-in account. Deactivate another account instead.");if(existing.status==="active"&&existing.systemRoles.includes("system-administrator")&&this.activeAdministratorCount()<=1)throw new Error("The system must retain at least one active System Administrator. Deactivate another account instead.");if(this.deletionReferences?.hasBusinessReferences(existing)||this.deletionReferences?.hasBlockingAuditHistory(existing))throw new Error("User cannot be deleted because business or audit history exists. Deactivate the account instead.");if(!this.users.deleteUser)throw new Error("User deletion is unavailable for this user repository. Deactivate the account instead.");this.users.deleteUser(id);this.audit?.record({actor,targetId:id,action:"USER_DELETED",beforeRoles:existing.systemRoles,metadata:{username:existing.username}});this.notifyUserChanged(id)}
+  delete(actor:User,id:string):void{this.authorize(actor);const existing=this.required(id);if(actor.id===id)throw new Error("You cannot delete your own signed-in account. Deactivate another account instead.");if(existing.status==="active"&&existing.systemRoles.includes("system-administrator")&&this.activeAdministratorCount()<=1)throw new Error("The system must retain at least one active System Administrator. Deactivate another account instead.");if(this.deletionReferences?.hasBusinessReferences(existing)||this.deletionReferences?.hasBlockingAuditHistory(existing))throw new Error("User cannot be deleted because business or audit history exists. Deactivate the account instead.");if(!this.users.deleteUser)throw new Error("User deletion is unavailable. Deactivate the account instead.");this.users.deleteUser(id);this.audit?.record({actor,targetId:id,action:"USER_DELETED",beforeRoles:existing.systemRoles,metadata:{username:existing.username}});this.notifyUserChanged(id)}
 
   resetLocalPassword(actor: User, id: string, input: ResetLocalPasswordInput): User {
     this.authorize(actor);
@@ -148,7 +148,7 @@ export class UserManagementService {
     this.validateLocalPassword(input.newPassword);
     const updated = this.localProvisioner.replacePassword(existing.id, input.newPassword);
     if (updated.id !== existing.id || updated.username !== existing.username || updated.operatorId !== existing.operatorId || JSON.stringify(updated.systemRoles) !== JSON.stringify(existing.systemRoles)) {
-      throw new Error("Local password replacement changed canonical user identity and was rejected.");
+      throw new Error("The password change affected the user identity and was rejected.");
     }
     this.audit?.record({actor,targetId:updated.id,action:"USER_ACCESS_RESET"});
     return updated;
@@ -174,10 +174,10 @@ export class UserManagementService {
 
   private validateOperatorLink(candidate: User): void {
     if (!candidate.operatorId) return;
-    if (!candidate.systemRoles.includes("operator") && !candidate.systemRoles.includes("rental-operations")) throw new Error("Only a Rental Operations or canonical Operator role user can be linked to an Operator record.");
+    if (!candidate.systemRoles.includes("operator") && !candidate.systemRoles.includes("rental-operations")) throw new Error("Only a Rental Operations or Operator role user can be linked to an Operator record.");
     if (this.operators) {
       const operator = this.operators.getById(candidate.operatorId);
-      if (!operator || operator.status !== "Active") throw new Error("Select an active canonical Operator record.");
+      if (!operator || operator.status !== "Active") throw new Error("Select an active Operator record.");
     }
     if (candidate.status === "active" && this.users.getUsers().some((user) => user.id !== candidate.id && user.status === "active" && user.operatorId === candidate.operatorId)) {
       throw new Error("This Operator is already linked to another active application user.");

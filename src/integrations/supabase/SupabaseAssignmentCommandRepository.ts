@@ -47,7 +47,7 @@ export class SupabaseAssignmentCommandRepository implements AssignmentCommandRep
       return {
         success: false,
         code: "VALIDATION_REJECTED",
-        message: "The remote Assignment command returned an invalid response.",
+        message: "The server returned an invalid response for Assignment.",
         retryable: false,
         refreshRequired: true,
       };
@@ -71,7 +71,7 @@ export class SupabaseAssignmentCommandRepository implements AssignmentCommandRep
       };
     }
     if (!isOperationalCommandResult<AssignmentCancellationProjection>(data) || (data.success && !isCancellationProjection(data.value))) {
-      return { success: false, code: "VALIDATION_REJECTED", message: "The remote Assignment cancellation command returned an invalid response.", retryable: false, refreshRequired: true };
+      return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for Assignment cancellation.", retryable: false, refreshRequired: true };
     }
     return data;
   }
@@ -91,7 +91,7 @@ function failureMessage(code: string) {
     RENTAL_CONFLICT: "This Assignment is linked to a non-final Rental and cannot be cancelled.",
     PERSISTENCE_FAILURE: "The remote service could not save the Assignment. Refresh before retrying.",
   };
-  return messages[code] ?? "The remote Assignment command was rejected.";
+  return messages[code] ?? "The Assignment request was rejected.";
 }
 
 function isProjection(value: unknown): value is AssignmentCreationProjection {

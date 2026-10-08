@@ -48,11 +48,11 @@ describe("Phase C8.0B canonical application User to Operator linkage",()=>{
     expect(password.type).toBe("password");
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set?.call(password,"PreservedPassword!");
     await act(async()=>password.dispatchEvent(new Event("input",{bubbles:true})));
-    const show=rendered.container.querySelector('button[aria-label="Show password"]') as HTMLButtonElement;
+    const show=rendered.container.querySelector('button[aria-label="Show credential"]') as HTMLButtonElement;
     await act(async()=>show.click());
     expect(password.type).toBe("text");
     expect(password.value).toBe("PreservedPassword!");
-    const hide=rendered.container.querySelector('button[aria-label="Hide password"]') as HTMLButtonElement;
+    const hide=rendered.container.querySelector('button[aria-label="Hide credential"]') as HTMLButtonElement;
     await act(async()=>hide.click());
     expect(password.type).toBe("password");
     expect(password.value).toBe("PreservedPassword!");
@@ -172,7 +172,7 @@ describe("Phase C8.0B canonical application User to Operator linkage",()=>{
     const confirm=[...rendered.container.querySelectorAll("button")].find(item=>item.textContent==="Deactivate User") as HTMLButtonElement;
     await act(async()=>confirm.click());expect(repo.getUserByUsername("rental.operations")?.status).toBe("inactive");expect(row().textContent).toContain("Inactive");expect(action("Activate")).toBeTruthy();
     await act(async()=>action("Activate").click());const activate=[...rendered.container.querySelectorAll("button")].find(item=>item.textContent==="Activate User") as HTMLButtonElement;await act(async()=>activate.click());expect(repo.getUserByUsername("rental.operations")?.status).toBe("active");
-    const view=action("View Access");await act(async()=>view.click());const access=rendered.container.querySelector('[role="dialog"]')!;expect(access.textContent).toContain("Effective Canonical Access");expect(access.textContent).toContain("Legacy authorization remains runtime authority");const close=rendered.container.querySelector('button[aria-label="Close User Access"]') as HTMLButtonElement;await act(async()=>close.click());expect(document.activeElement).toBe(view);
+    const view=action("View Access");await act(async()=>view.click());const access=rendered.container.querySelector('[role="dialog"]')!;expect(access.textContent).toContain("Effective Access");expect(access.textContent).toContain("Displayed access may differ from current sign-in permissions");const close=rendered.container.querySelector('button[aria-label="Close User Access"]') as HTMLButtonElement;await act(async()=>close.click());expect(document.activeElement).toBe(view);
     await act(async()=>action("Reset Password").click());const password=rendered.container.querySelector("#reset-new-password") as HTMLInputElement,confirmation=rendered.container.querySelector("#reset-confirm-password") as HTMLInputElement;for(const input of [password,confirmation]){Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set?.call(input,"Replacement2!");await act(async()=>input.dispatchEvent(new Event("input",{bubbles:true})))}const reset=[...rendered.container.querySelectorAll("button")].find(item=>item.textContent==="Reset Password"&&item.closest('[role="dialog"]')) as HTMLButtonElement;await act(async()=>reset.click());expect(rendered.container.textContent).toContain("Access reset successfully");
   });
 

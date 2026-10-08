@@ -178,7 +178,7 @@ export default function BillingPanel() {
           <section className="rounded-xl border border-amber-300 bg-amber-50 p-4" aria-label="UAT billing statement approval">
             <h2 className="font-semibold">UAT approval control</h2>
             <p className="mt-1 text-sm">{UAT_STATEMENT_NUMBER} · PHP 1,000 · Draft → Approved</p>
-            <p className="mt-1 text-xs text-slate-600">Canonical command: command_finalize_billing_statement · Permission: billing.update</p>
+            <p className="mt-1 text-xs text-slate-600">Finalizing requires billing update access.</p>
             <button type="button" className="mt-3 rounded bg-amber-700 px-3 py-2 text-sm text-white disabled:opacity-50" disabled={!canApproveUatStatement} onClick={() => void approveUatStatement()}>
               {approvalBusy ? "Approving…" : approvalAttempted ? "Approval attempted — refresh to reconcile" : "Approve UAT billing statement"}
             </button>

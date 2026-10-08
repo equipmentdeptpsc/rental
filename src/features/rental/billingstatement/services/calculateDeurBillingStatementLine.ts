@@ -113,7 +113,7 @@ export function calculateDeurBillingStatementLine(
   const quantityBilling = terms.billingMethod === "Per Kilometer" || terms.billingMethod === "Per Trip" || terms.billingMethod === "Per Cubic Meter";
   const totals = calculateDeurTotals(deur.events ?? []);
   if (!quantityBilling && (totals.calculationIssues.length > 0 || !Object.values(totals.totals).every(hasValidNumber))) {
-    return { success: false, code: "INVALID_DEUR_TOTALS", message: "Canonical DEUR totals could not be calculated." };
+    return { success: false, code: "INVALID_DEUR_TOTALS", message: "DEUR totals could not be calculated." };
   }
 
   const engineInput: DeurRecord = {

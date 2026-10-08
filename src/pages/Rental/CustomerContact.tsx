@@ -46,10 +46,10 @@ export default function RentalCustomerContactPage() {
       <button disabled={saving} className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-50" onClick={async () => {
         if (remote) {
           const repository=dependencies.commandRepositories.canonicalRental;
-          if(!repository?.configureCustomerReview||rental.rowVersion===undefined||!rental.customerId){setMessage("Canonical Customer Review configuration is unavailable. Refresh and try again.");return;}
+          if(!repository?.configureCustomerReview||rental.rowVersion===undefined||!rental.customerId){setMessage("Customer Review configuration is unavailable. Refresh and try again.");return;}
           const command=identity.current??={commandId:crypto.randomUUID(),idempotencyKey:crypto.randomUUID()};setSaving(true);
           const result=await repository.configureCustomerReview({...command,rentalId:rental.id,customerId:rental.customerId,expectedVersion:rental.rowVersion,representativeName:name,representativeEmail:email});
-          setSaving(false);if(result.success||result.code!=="TRANSPORT_FAILURE")identity.current=undefined;if(result.success)requestCanonicalRentalRefresh();setMessage(result.success ? "Customer review recipient and canonical timezone saved." : result.message); return;
+          setSaving(false);if(result.success||result.code!=="TRANSPORT_FAILURE")identity.current=undefined;if(result.success)requestCanonicalRentalRefresh();setMessage(result.success ? "Customer review recipient and timezone saved." : result.message); return;
         }
         const result = localRental.updateCustomerContact(rental.id, { representativeName: name, representativeEmail: email, designation, contactNumber: phone });
         setMessage(result.success ? "Customer contact saved. Existing request recipients were not changed." : result.message ?? "Unable to save.");

@@ -13,7 +13,7 @@ export class SupabaseOperatorCommandRepository implements OperatorCommandReposit
     if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
     const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
     if (candidate?.success === false && typeof candidate.code === "string") return { success: false, code: candidate.code as Extract<OperationalCommandResult<OperatorCreationProjection>, { success: false }>["code"], message: failureMessage(candidate.code), retryable: false, refreshRequired: ["OPERATOR_ID_CONFLICT", "PERSISTENCE_FAILURE"].includes(candidate.code) };
-    if (!isOperationalCommandResult<OperatorCreationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The remote Operator command returned an invalid response.", retryable: false, refreshRequired: true };
+    if (!isOperationalCommandResult<OperatorCreationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for Operator.", retryable: false, refreshRequired: true };
     return data;
   }
 }
@@ -27,7 +27,7 @@ function failureMessage(code: string) {
     IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
     PERSISTENCE_FAILURE: "The remote service could not save the Operator. Refresh before retrying.",
   };
-  return messages[code] ?? "The remote Operator command was rejected.";
+  return messages[code] ?? "The Operator request was rejected.";
 }
 
 function isProjection(value: unknown): value is OperatorCreationProjection {

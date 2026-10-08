@@ -18,7 +18,7 @@ export default function RentalReturnEvidence() {
   },[aggregate.rental.id,aggregate.rental.status,commandRepositories.canonicalRental,configuration.persistenceMode,line?.id]);
   if (configuration.persistenceMode !== PersistenceMode.Remote || aggregate.rental.status !== "Returned" || !line) return null;
   if (state.error) return <section className="rounded border border-amber-300 bg-amber-50 p-4 text-sm" aria-label="Return evidence">Return evidence is unavailable: {state.error}</section>;
-  if (!state.value) return <section className="rounded border p-4 text-sm" aria-label="Return evidence">Loading canonical Return evidence…</section>;
+  if (!state.value) return <section className="rounded border p-4 text-sm" aria-label="Return evidence">Loading Return evidence…</section>;
   const {rental,line:returned,assignment,availability}=state.value;
   return <section className="rounded border bg-slate-50 p-4 text-sm" aria-label="Return evidence"><h3 className="font-semibold">Return evidence</h3><dl className="mt-2 grid gap-2 sm:grid-cols-2"><div><dt>Rental status / version</dt><dd>{rental.status} / {rental.version}</dd></div><div><dt>Actual return date</dt><dd>{returned.actualReturnDate ?? "—"}</dd></div><div><dt>Line status</dt><dd>{returned.status}</dd></div><div><dt>Assignment returned date</dt><dd>{assignment?.returnedDate ?? "—"}</dd></div><div><dt>Availability on return date</dt><dd>{available(availability.onReturnDate)}</dd></div><div><dt>Availability next day</dt><dd>{available(availability.onNextDate)}</dd></div></dl></section>;
 }

@@ -9,7 +9,7 @@ export interface ProjectRuntimeCapability {
   canonicalMutations: boolean;
 }
 
-export const REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE = "Project changes are unavailable in remote mode until the canonical command boundary is certified.";
+export const REMOTE_PROJECT_MUTATION_UNAVAILABLE_MESSAGE = "Project changes are currently unavailable.";
 
 export function getProjectRuntimeCapability(configuration: Configuration, canonicalRepositoryAvailable = false): ProjectRuntimeCapability {
   const local = configuration.persistenceMode === PersistenceMode.Local;

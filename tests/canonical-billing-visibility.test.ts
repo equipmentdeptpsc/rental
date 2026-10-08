@@ -34,7 +34,7 @@ describe("canonical billing dashboard visibility", () => {
   });
 
   it("reports a truthful zero state without local or collection fallback", () => {
-    expect(summarizeCanonicalBillingVisibility([])).toEqual({ readyForBilling: 0, blockerCount: 0, blockers: { "Awaiting customer acknowledgement": 0, "Pending correction": 0, "Incomplete DEUR": 0, "Billing setup incomplete": 0, "Other canonical blocking state": 0 } });
+    expect(summarizeCanonicalBillingVisibility([])).toEqual({ readyForBilling: 0, blockerCount: 0, blockers: { "Awaiting customer acknowledgement": 0, "Pending correction": 0, "Incomplete DEUR": 0, "Billing setup incomplete": 0, "Other blocking state": 0 } });
   });
 
   it("links finance users to Billing and renders nothing when finance visibility is unauthorized", () => {

@@ -47,7 +47,7 @@ export async function createCanonicalBillingStatement(input: {
     if (!result.success) return { success: false, message: result.message };
     const mismatches = evidenceMismatches(result.value, line);
     if (mismatches.length) {
-      return { success: false, message: `Canonical billing evidence changed: ${mismatches.join(", ")}. Refresh and review before creating a statement.` };
+      return { success: false, message: `Billing details changed: ${mismatches.join(", ")}. Refresh and review before creating a statement.` };
     }
   }
 

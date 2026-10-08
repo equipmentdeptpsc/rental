@@ -27,4 +27,4 @@ export function canStartRentalFromCanonicalAssignment(input: {
   return Boolean(input.assignment && input.assignment.status === "Active" && input.rentalCreationAvailable && input.hasRentalManagePermission);
 }
 
-export const REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE = "Assignment changes are unavailable in remote mode until the canonical command boundary is certified.";
+export const REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE = "Assignment changes are currently unavailable.";

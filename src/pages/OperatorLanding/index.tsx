@@ -64,7 +64,7 @@ export default function OperatorLandingPage() {
     return <main className="p-5">Operator interface access is not authorized.</main>;
   }
   if (remote && canonical.loading) return <main className="p-5">Loading your equipment shift...</main>;
-  if (remote && canonical.error) return <main className="p-5">Canonical Operator work data could not be loaded. Refresh and try again.</main>;
+  if (remote && canonical.error) return <main className="p-5">Operator work data could not be loaded. Refresh and try again.</main>;
   if (identity.status !== "RESOLVED") {
     return <main className="p-5"><h1 className="text-2xl font-bold">My Equipment Shift</h1><p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">{identity.message}</p></main>;
   }

@@ -8,7 +8,7 @@ export class SupabaseRentalPreparationCommandRepository implements RentalPrepara
   async prepareReservedRental(command: PrepareReservedRentalCommand): Promise<OperationalCommandResult<RentalPreparationProjection>> {
     const { data, error } = await this.client.schema("erp").rpc("command_prepare_reserved_rental", { command });
     if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
-    if (!isOperationalCommandResult<RentalPreparationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The remote Rental preparation command returned an invalid response.", retryable: false, refreshRequired: true };
+    if (!isOperationalCommandResult<RentalPreparationProjection>(data) || (data.success && !isProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for Rental preparation.", retryable: false, refreshRequired: true };
     return data;
   }
   async prepareReservedRentalAggregate(command: PrepareReservedRentalAggregateCommand): Promise<OperationalCommandResult<AggregateRentalPreparationProjection>> {
@@ -20,7 +20,7 @@ export class SupabaseRentalPreparationCommandRepository implements RentalPrepara
 }
 
 const transportFailure = (): OperationalCommandResult<never> => ({ success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true });
-const invalidResponse = (): OperationalCommandResult<never> => ({ success: false, code: "VALIDATION_REJECTED", message: "The remote Rental preparation command returned an invalid response.", retryable: false, refreshRequired: true });
+const invalidResponse = (): OperationalCommandResult<never> => ({ success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for Rental preparation.", retryable: false, refreshRequired: true });
 
 function isProjection(value: unknown): value is RentalPreparationProjection {
   if (!value || typeof value !== "object") return false;

@@ -67,7 +67,7 @@ export class LocalEquipmentAvailabilityRepository implements EquipmentAvailabili
 }
 
 function unavailable<T>(): RepositoryResult<T> {
-  return repositoryFailure("REMOTE_AVAILABILITY_READ_UNAVAILABLE", "Canonical equipment availability is available only in remote mode.", {
+  return repositoryFailure("REMOTE_AVAILABILITY_READ_UNAVAILABLE", "equipment availability is available only in remote mode.", {
     context: { repository: "EquipmentAvailability" }, recoverability: "USER_ACTION_REQUIRED", recommendedAction: "Use an authenticated remote environment.",
   });
 }

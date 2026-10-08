@@ -42,8 +42,8 @@ export default function Billing() {
       <div className="rounded-xl border bg-white p-4 sm:p-6">
         <h2 className="text-xl font-semibold">Billing Statements</h2>
         <FilterBar onClear={() => setQuery("")} canClear={Boolean(query)}><label className="min-w-[min(100%,28rem)] flex-1 text-sm font-medium">Search billing<input aria-label="Search Billing" className="app-control mt-1 w-full" placeholder="Search statement, rental, customer, project, or equipment reference" value={query} onChange={event=>setQuery(event.target.value)}/></label></FilterBar>
-        {remoteState === "loading" ? <p className="mt-4 text-slate-500">Loading canonical billing statements…</p> : remoteState === "error" ? <p className="mt-4 text-red-700">Canonical billing statements could not be loaded.</p> : statements.length === 0 ? (
-          <EmptyDataState title={query ? "No billing statements match these filters" : "No billing statements yet"} description="Statements appear here when they are created through the canonical rental billing workflow." />
+        {remoteState === "loading" ? <p className="mt-4 text-slate-500">Loading billing statements…</p> : remoteState === "error" ? <p className="mt-4 text-red-700">billing statements could not be loaded.</p> : statements.length === 0 ? (
+          <EmptyDataState title={query ? "No billing statements match these filters" : "No billing statements yet"} description="Statements appear here when they are created through the rental billing workflow." />
         ) : (
           <ResponsiveTable>
             <table className="mt-4 min-w-full text-sm">

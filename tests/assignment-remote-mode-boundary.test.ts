@@ -72,7 +72,7 @@ describe("canonical Assignment remote UI boundary", () => {
   });
   it("keeps remote list empty when only a local Assignment exists", async () => {
     const container = await render(createElement(Assignments));
-    expect(container.textContent).toContain("No canonical Bookings found.");
+    expect(container.textContent).toContain("No current Bookings.");
     expect(container.textContent).not.toContain("local-only-assignment");
     expect(container.textContent).not.toContain("New Assignment");
   });
@@ -89,7 +89,7 @@ describe("canonical Assignment remote UI boundary", () => {
   it("keeps repository errors authoritative", async () => {
     const container = await render(createElement(Assignments), remoteDependencies({ failure: true }));
     expect(container.getAttribute("role") ?? container.querySelector('[role="alert"]')?.getAttribute("role")).toBe("alert");
-    expect(container.textContent).toContain("Canonical Assignment data could not be loaded");
+    expect(container.textContent).toContain("Assignment data could not be loaded");
   });
 
   it("does not expose a local-only Assignment through remote details", async () => {
@@ -117,11 +117,11 @@ describe("canonical Assignment remote UI boundary", () => {
   it("enables canonical create only with permission, runtime flag, and repository", async () => {
     authState.permissions.add("assignment.create");
     const enabled = await render(createElement(NewAssignment));
-    expect(enabled.textContent).toContain("Create a canonical remote Assignment.");
+    expect(enabled.textContent).toContain("Create a remote Assignment.");
     const flagDisabled = await render(createElement(NewAssignment), remoteDependencies({ writesEnabled: false }));
     expect(flagDisabled.textContent).toContain("Assignment creation unavailable");
     const createOnly = await render(createElement(NewAssignment), remoteDependencies({ writesEnabled: false, assignmentCreateEnabled: true }));
-    expect(createOnly.textContent).toContain("Create a canonical remote Assignment.");
+    expect(createOnly.textContent).toContain("Create a remote Assignment.");
     const repositoryMissing = await render(createElement(NewAssignment), remoteDependencies({ assignmentRepository: false }));
     expect(repositoryMissing.textContent).toContain("Assignment creation unavailable");
     authState.permissions.delete("assignment.create");
