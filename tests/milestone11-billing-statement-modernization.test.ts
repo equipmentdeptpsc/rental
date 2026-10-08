@@ -56,4 +56,13 @@ describe("Milestone 11 Billing Statement modernization", () => {
     await expect(sendBillingStatementEmail({ document, provider, from: "sender@example.test", idempotencyKey: "stable", pdfGenerator: () => { throw new Error("failed"); } })).resolves.toMatchObject({ success: false, code: "PDF_GENERATION_FAILED" });
     expect(send).not.toHaveBeenCalled();
   });
+
+  it("does not create or send customer email for an unapproved statement", async () => {
+    const document = buildInvoiceDocument({ ...statement, approvalStatus: "Draft" });
+    const send = vi.fn(); const provider: EmailDeliveryProvider = { name: "fake", send };
+    await expect(sendBillingStatementEmail({ document, provider, from: "sender@example.test", idempotencyKey: "pending" })).resolves.toMatchObject({
+      success: false, code: "APPROVAL_REQUIRED", message: "Operations Manager approval is required before this billing statement can be sent to the customer.",
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
 });

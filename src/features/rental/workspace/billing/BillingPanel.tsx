@@ -22,19 +22,11 @@ import { resolveRentalBillingReadiness } from "@/features/rental/billing/resolve
 import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
 import { useSearchParams } from "react-router-dom";
 import { PersistenceMode, useApplicationDependencies } from "@/app/composition";
-import { useAuth } from "@/features/auth/AuthContext";
-import { useRef, useState } from "react";
-
-const UAT_APPROVAL_HOST = "uat.pscequipment.online";
-const UAT_STATEMENT_ID = "b0e9fba1-b9ff-48bc-9b3e-b3be4da0fb15";
-const UAT_RENTAL_ID = "fe225d54-5aec-42ab-b1e1-9ae731409e56";
-const UAT_STATEMENT_NUMBER = "BS-2026-000002";
 
 export default function BillingPanel() {
 
   const aggregate = useRentalWorkspaceAggregate();
   const dependencies = useApplicationDependencies();
-  const { hasPermission } = useAuth();
   const [searchParams] = useSearchParams();
   const selectedBillingStatementId = searchParams.get("billingStatementId") ?? undefined;
   const { equipment } = useRentalWorkspacePresentationData();
@@ -44,10 +36,6 @@ export default function BillingPanel() {
 
   const drafts =
     useBillingDrafts();
-  const [approvalBusy, setApprovalBusy] = useState(false);
-  const [approvalAttempted, setApprovalAttempted] = useState(false);
-  const [approvalMessage, setApprovalMessage] = useState("");
-  const approvalIdentity = useRef<{ commandId: string; idempotencyKey: string } | undefined>(undefined);
 
   const billingReadiness = resolveRentalBillingReadiness({ rentalEquipmentLines: aggregate.rentalEquipmentLines, deurs: aggregate.deurs, contract: aggregate.contract });
   const commercialTermsAvailable = aggregate.rentalEquipmentLines.length > 0 && aggregate.rentalEquipmentLines.every((line) => Boolean(line.commercialSnapshot));
@@ -66,26 +54,6 @@ export default function BillingPanel() {
   const eligibilityMessage = prerequisites.find(([valid]) => !valid)?.[1];
   const canGenerate = !eligibilityMessage;
   const canCreate = canGenerate && wizard.hasGenerated && wizard.preview.length > 0 && wizard.issues.length === 0;
-  const uatApprovalTarget = typeof window !== "undefined" && window.location.hostname === UAT_APPROVAL_HOST
-    ? drafts.drafts.find((statement) => statement.id === UAT_STATEMENT_ID && statement.rentalId === UAT_RENTAL_ID && statement.statementNo === UAT_STATEMENT_NUMBER && statement.approvalStatus === "Draft" && statement.invoiceStatus === "Not Invoiced" && statement.grandTotal === 1000)
-    : undefined;
-  const canApproveUatStatement = dependencies.configuration.persistenceMode === PersistenceMode.Remote && Boolean(uatApprovalTarget) && hasPermission("billing.update") && !approvalBusy && !approvalAttempted;
-  const approveUatStatement = async () => {
-    if (!uatApprovalTarget || !canApproveUatStatement || !window.confirm(`Approve ${UAT_STATEMENT_NUMBER} for PHP 1,000?\n\nDraft → Approved`)) return;
-    setApprovalBusy(true);
-    setApprovalAttempted(true);
-    setApprovalMessage("");
-    approvalIdentity.current ??= { commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() };
-    try {
-      const result = await dependencies.commandRepositories.billingFinancialCommands.finalizeStatement({ ...approvalIdentity.current, statementId: UAT_STATEMENT_ID });
-      setApprovalMessage(result.success ? "Billing statement approved. Refresh to verify the audit result." : result.message);
-      if (result.success) approvalIdentity.current = undefined;
-    } catch {
-      setApprovalMessage("Confirmation was not received from the remote service. Reconcile read-only before any further action.");
-    } finally {
-      setApprovalBusy(false);
-    }
-  };
 
   return (
 
@@ -173,18 +141,6 @@ export default function BillingPanel() {
       </div>
 
       <div className="min-w-0 rounded-xl border bg-white p-4 sm:p-6 space-y-4">
-
-        {uatApprovalTarget && (
-          <section className="rounded-xl border border-amber-300 bg-amber-50 p-4" aria-label="UAT billing statement approval">
-            <h2 className="font-semibold">UAT approval control</h2>
-            <p className="mt-1 text-sm">{UAT_STATEMENT_NUMBER} · PHP 1,000 · Draft → Approved</p>
-            <p className="mt-1 text-xs text-slate-600">Finalizing requires billing update access.</p>
-            <button type="button" className="mt-3 rounded bg-amber-700 px-3 py-2 text-sm text-white disabled:opacity-50" disabled={!canApproveUatStatement} onClick={() => void approveUatStatement()}>
-              {approvalBusy ? "Approving…" : approvalAttempted ? "Approval attempted — refresh to reconcile" : "Approve UAT billing statement"}
-            </button>
-            {approvalMessage && <p className="mt-2 text-sm" aria-live="polite">{approvalMessage}</p>}
-          </section>
-        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
 

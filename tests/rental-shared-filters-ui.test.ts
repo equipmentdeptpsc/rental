@@ -37,4 +37,14 @@ describe("shared Rental filters", () => {
     expect(onChange).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith("query", "excavator"));
   });
+
+  it("omits only filters whose optional catalog is unavailable", async () => {
+    const container = document.createElement("div"); const root = createRoot(container); roots.push(root);
+    const options = { customers: [{ value: "c", label: "Customer" }], projects: [{ value: "p", label: "Project" }], equipment: [], operators: [], statuses: [{ value: "Draft", label: "Draft" }] };
+    await act(async () => root.render(createElement(RentalSharedFilters, { filters: emptyRentalListFilters, options, unavailableCatalogs: ["equipment", "operators"], onChange: vi.fn(), onClear: vi.fn() })));
+    expect(container.querySelector('[aria-label="Customer filter"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Project filter"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Equipment filter"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Operator filter"]')).toBeNull();
+  });
 });

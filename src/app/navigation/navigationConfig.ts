@@ -64,6 +64,9 @@ export const APP_NAVIGATION_GROUPS: readonly NavigationGroup[] = Object.freeze([
   ] },
 ]);
 
+export const canReadDashboard = (hasPermission: (permission: Permission) => boolean): boolean =>
+  hasPermission("dashboard.read") || hasPermission("dashboard.executive.read") || hasPermission("dashboard.financial.read");
+
 export function getVisibleNavigation(
   user: User | null | undefined,
   authorization: AuthorizationService,
@@ -78,7 +81,7 @@ export function getVisibleNavigation(
   const groups = APP_NAVIGATION_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) =>
-      hasPermission(item.permission),
+      item.path === "/dashboard" ? canReadDashboard(hasPermission) : hasPermission(item.permission),
     ),
   })).filter((group) => group.items.length > 0);
   return groups;
@@ -94,7 +97,7 @@ export function getAuthorizedLandingPage(
   if (authorization.isOperatorPersona(user)) return authorization.hasPermission(user, "deur.read") ? "/operator" : null;
   if (
     user?.systemRoles.includes("system-administrator") &&
-    authorization.hasPermission(user, "dashboard.read")
+    canReadDashboard((permission) => authorization.hasPermission(user, permission))
   ) return "/dashboard";
   if (user?.systemRoles.includes("rental-operations")) {
     if (authorization.hasPermission(user, "rental.read")) return "/rentals";
@@ -105,7 +108,7 @@ export function getAuthorizedLandingPage(
   ) return "/billing";
   if (
     user?.systemRoles.includes("management") &&
-    authorization.hasPermission(user, "dashboard.read")
+    canReadDashboard((permission) => authorization.hasPermission(user, permission))
   ) return "/dashboard";
 
   const items = getVisibleNavigation(user, authorization).flatMap(

@@ -66,7 +66,7 @@ describe("canonical dashboard reads", () => {
     expect(model.fleetUtilization).toMatchObject({ total: 4, available: 1, assigned: 1, deployed: 1, maintenance: 1 });
     expect(model.operational).toMatchObject({ activeAssignments: 1, activeRentals: 1 });
     expect(model.pendingDeur).toBe(2);
-    expect(model.financial.upcoming).toMatchObject({ scheduledRelease: 1, expectedReturns: 1, pendingManagerApprovals: 0, pendingCustomerAcknowledgements: 1 });
+    expect(model.financial.upcoming).toMatchObject({ scheduledRelease: 1, expectedReturns: 1, pendingManagerApprovals: 1, pendingCustomerAcknowledgements: 1 });
     expect(model.financialAvailable).toBe(false);
     expect(input.reads.billing.list).not.toHaveBeenCalled();
     expect(input.reads.rentalEquipmentLines.list).toHaveBeenCalled();
@@ -81,6 +81,21 @@ describe("canonical dashboard reads", () => {
     const input = dependencies();
     input.reads.equipment.list.mockImplementationOnce(async () => repositoryFailure("REMOTE_READ_FAILED", "Equipment unavailable", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" }) as never);
     await expect(readCanonicalDashboard(input.dependencies, { canReadAudit: false })).rejects.toThrow("Equipment unavailable");
+  });
+
+  it("skips readers the role cannot access while keeping authorized operational sections available", async () => {
+    const input = dependencies();
+    const model = await readCanonicalDashboard(input.dependencies, {
+      canReadAudit: false, canReadFinancial: false, canReadEquipment: false,
+      canReadAssignments: false, canReadRentals: true, canReadDeurs: false,
+    });
+    expect(model.managementSource.rentals.length).toBeGreaterThan(0);
+    expect(model.managementSource.equipment).toEqual([]);
+    expect(input.reads.equipment.list).not.toHaveBeenCalled();
+    expect(input.reads.assignments.list).not.toHaveBeenCalled();
+    expect(input.reads.deurs.list).not.toHaveBeenCalled();
+    expect(input.reads.billing.list).not.toHaveBeenCalled();
+    expect(input.reads.collections.list).not.toHaveBeenCalled();
   });
 
   it("fails closed when billing statements cannot be read", async () => {

@@ -42,12 +42,12 @@ function dependencies(list: ReturnType<typeof vi.fn>, references: CanonicalRenta
   };
 }
 
-function renderHook(deps: ApplicationDependencies) {
+function renderHook(deps: ApplicationDependencies, listOnly = false) {
   const container = document.createElement("div");
   const root = createRoot(container); roots.push(root);
   function Probe() {
-    const state = useRentalListData(fallback);
-    return createElement("button", { onClick: state.retry }, `${state.status}:${state.data.rentals.map((item) => item.id).join(",")}:${"message" in state ? state.message : ""}`);
+    const state = useRentalListData(fallback, listOnly);
+    return createElement("button", { onClick: state.retry }, `${state.status}:${state.data.rentals.map((item) => item.id).join(",")}:${"message" in state ? state.message : ""}${state.data.unavailableCatalogs?.length ? `:${state.data.unavailableCatalogs.join(",")}` : ""}`);
   }
   return { container, root, element: createElement(ApplicationDependencyProvider, { dependencies: deps }, createElement(Probe)) };
 }
@@ -124,5 +124,29 @@ describe("Rental remote-mode boundary", () => {
     function Probe(){const state=useRentalListData(fallback);return createElement("div",null,`${state.status}:${state.data.costCodes[0]?.id??""}:${state.data.activityCodes[0]?.id??""}`)}
     await act(async()=>root.render(createElement(ApplicationDependencyProvider,{dependencies:deps},createElement(Probe))));
     expect(container.textContent).toBe("loaded:cost-id:activity-id");
+  });
+
+  it.each(["Auditor", "Dispatcher", "Billing Officer"])("keeps core Rentals readable for %s when optional catalogs are denied", async () => {
+    const success = repositorySuccess({ items: [{ id: "remote-rental", status: "Draft" }], nextCursor: undefined });
+    const denied = repositoryFailure("REMOTE_FAILED", "Forbidden", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" });
+    const deps = dependencies(vi.fn().mockResolvedValue(success));
+    deps.readRepositories.equipment = { ...deps.readRepositories.equipment, list: vi.fn().mockResolvedValue(denied) };
+    deps.readRepositories.assignments = { ...deps.readRepositories.assignments, list: vi.fn().mockResolvedValue(denied) };
+    deps.commandRepositories.canonicalRental!.readReferenceData = vi.fn().mockResolvedValue({ success: false, code: "FORBIDDEN", message: "Forbidden" });
+    const rendered = renderHook(deps, true);
+    await act(async () => rendered.root.render(rendered.element));
+    expect(rendered.container.textContent).toContain("loaded:remote-rental");
+    expect(rendered.container.textContent).toContain("equipment,assignments,references");
+    expect(rendered.container.textContent).not.toContain("local-rental");
+  });
+
+  it("still fails the page when the required Rental read fails", async () => {
+    const success = repositorySuccess({ items: [], nextCursor: undefined });
+    const denied = repositoryFailure("REMOTE_FAILED", "Forbidden", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" });
+    const deps = dependencies(vi.fn().mockResolvedValue(success));
+    deps.readRepositories.rentals = { ...deps.readRepositories.rentals, list: vi.fn().mockResolvedValue(denied) };
+    const rendered = renderHook(deps, true);
+    await act(async () => rendered.root.render(rendered.element));
+    expect(rendered.container.textContent).toContain("error::Rental data could not be loaded");
   });
 });

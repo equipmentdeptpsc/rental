@@ -85,15 +85,15 @@ export interface CanonicalDashboardModel {
  */
 export async function readCanonicalDashboard(
   dependencies: Pick<ApplicationDependencies, "readRepositories" | "repositories">,
-  options: { canReadAudit: boolean; canReadFinancial?: boolean; signal?: AbortSignal },
+  options: { canReadAudit: boolean; canReadFinancial?: boolean; canReadEquipment?: boolean; canReadAssignments?: boolean; canReadRentals?: boolean; canReadDeurs?: boolean; signal?: AbortSignal },
 ): Promise<CanonicalDashboardModel> {
   const { readRepositories, repositories } = dependencies;
-  const equipmentPromise = readAllCanonicalPages(readRepositories.equipment, options.signal);
-  const statusesPromise = readAllStatuses(repositories.equipmentStatusRead, options.signal);
-  const assignmentsPromise = readAllCanonicalPages(readRepositories.assignments, options.signal);
-  const rentalsPromise = readAllCanonicalPages(readRepositories.rentals, options.signal);
-  const deursPromise = readAllCanonicalPages(readRepositories.deurs, options.signal);
-  const rentalLinesPromise = readAllCanonicalPages(readRepositories.rentalEquipmentLines, options.signal);
+  const equipmentPromise = options.canReadEquipment !== false ? readAllCanonicalPages(readRepositories.equipment, options.signal) : Promise.resolve([] as EquipmentRecord[]);
+  const statusesPromise = options.canReadEquipment !== false ? readAllStatuses(repositories.equipmentStatusRead, options.signal) : Promise.resolve([] as EquipmentStatusRecord[]);
+  const assignmentsPromise = options.canReadAssignments !== false ? readAllCanonicalPages(readRepositories.assignments, options.signal) : Promise.resolve([]);
+  const rentalsPromise = options.canReadRentals !== false ? readAllCanonicalPages(readRepositories.rentals, options.signal) : Promise.resolve([] as RentalRecord[]);
+  const deursPromise = options.canReadDeurs !== false ? readAllCanonicalPages(readRepositories.deurs, options.signal) : Promise.resolve([]);
+  const rentalLinesPromise = options.canReadRentals !== false ? readAllCanonicalPages(readRepositories.rentalEquipmentLines, options.signal) : Promise.resolve([]);
   const projectsPromise = options.canReadFinancial ? readAllCanonicalPages(readRepositories.projects, options.signal) : Promise.resolve([]);
   const auditPromise = options.canReadAudit
     ? readRepositories.canonicalAudit.list({

@@ -5,9 +5,10 @@ import type { RentalFilterOption, RentalListFilters } from "../services/filterRe
 type FilterKey = keyof RentalListFilters;
 type Options = { customers: RentalFilterOption[]; projects: RentalFilterOption[]; equipment: RentalFilterOption[]; operators: RentalFilterOption[]; statuses: RentalFilterOption[] };
 
-export default function RentalSharedFilters({ filters, options, onChange, onClear }: {
+export default function RentalSharedFilters({ filters, options, unavailableCatalogs = [], onChange, onClear }: {
   filters: RentalListFilters;
   options: Options;
+  unavailableCatalogs?: readonly string[];
   onChange: (key: FilterKey, value: string) => void;
   onClear: () => void;
 }) {
@@ -18,11 +19,12 @@ export default function RentalSharedFilters({ filters, options, onChange, onClea
     const timer = window.setTimeout(() => onChange("query", query), 250);
     return () => window.clearTimeout(timer);
   }, [query, filters.query, onChange]);
-  const selects: Array<[FilterKey, string, RentalFilterOption[]]> = [
+  const allSelects: Array<[FilterKey, string, RentalFilterOption[]]> = [
     ["customer", "Customer", options.customers], ["project", "Project", options.projects],
     ["equipment", "Equipment", options.equipment], ["operator", "Operator", options.operators],
     ["status", "Status", options.statuses],
   ];
+  const selects = allSelects.filter(([key]) => !unavailableCatalogs.includes(key === "operator" ? "operators" : key));
   const chips = (["query", "customer", "project", "equipment", "operator", "status", "from", "to"] as FilterKey[])
     .filter((key) => filters[key]).map((key) => {
       const labels: Record<FilterKey, string> = { query: "Search", customer: "Customer", project: "Project", equipment: "Equipment", operator: "Operator", status: "Status", from: "Start from", to: "Start to" };

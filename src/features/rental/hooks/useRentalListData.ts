@@ -23,6 +23,7 @@ export interface RentalListData {
   customers: CustomerRecord[];
   costCodes: CanonicalReferenceCode[];
   activityCodes: CanonicalReferenceCode[];
+  unavailableCatalogs?: readonly ("equipment" | "assignments" | "operators" | "projects" | "customers" | "references")[];
 }
 
 export type RentalListLoadState =
@@ -53,7 +54,7 @@ export async function loadRentalListPages<T>(repository: ReadOnlyRepository<T>):
   return repositoryFailure("REPOSITORY_UNAVAILABLE", "Rental list exceeds the supported read window. Narrow the source data or contact support.");
 }
 
-export function useRentalListData(fallback: RentalListData): RentalListLoadState {
+export function useRentalListData(fallback: RentalListData, listOnly = false): RentalListLoadState {
   const { readRepositories, commandRepositories, configuration } = useApplicationDependenciesCompatibility();
   const remote = configuration.persistenceMode === "remote";
   const [attempt, setAttempt] = useState(0);
@@ -76,35 +77,43 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
     void Promise.all([
       loadRentalListPages(readRepositories.rentals),
       loadRentalListPages(readRepositories.rentalEquipmentLines),
-      loadRentalListPages(readRepositories.equipment),
-      loadRentalListPages(readRepositories.assignments),
-      loadRentalListPages(readRepositories.operators),
-      loadRentalListPages(readRepositories.projects),
-      loadRentalListPages(readRepositories.customers),
-      commandRepositories.canonicalRental?.readReferenceData(),
+      loadRentalListPages(readRepositories.equipment).catch(() => repositoryFailure("REPOSITORY_UNAVAILABLE", "Equipment catalog unavailable.")),
+      loadRentalListPages(readRepositories.assignments).catch(() => repositoryFailure("REPOSITORY_UNAVAILABLE", "Assignment catalog unavailable.")),
+      loadRentalListPages(readRepositories.operators).catch(() => repositoryFailure("REPOSITORY_UNAVAILABLE", "Operator catalog unavailable.")),
+      loadRentalListPages(readRepositories.projects).catch(() => repositoryFailure("REPOSITORY_UNAVAILABLE", "Project catalog unavailable.")),
+      loadRentalListPages(readRepositories.customers).catch(() => repositoryFailure("REPOSITORY_UNAVAILABLE", "Customer catalog unavailable.")),
+      commandRepositories.canonicalRental?.readReferenceData().catch(() => undefined),
     ]).then(([rentals, lines, equipment, assignments, operators, projects, customers, references]) => {
       if (!active) return;
-      if (!rentals.success || !lines.success || !equipment.success
-        || !assignments.success || !operators.success || !projects.success || !customers.success || !references?.success) {
+      if (!rentals.success || !lines.success || (!listOnly && (!equipment.success
+        || !assignments.success || !operators.success || !projects.success || !customers.success || !references?.success))) {
         setState({ status: "error", data: emptyRemoteData(), message: "Rental data could not be loaded. Retry the request or contact support." });
         return;
+      }
+      const unavailableCatalogs = ([
+        !equipment.success && "equipment", !assignments.success && "assignments", !operators.success && "operators",
+        !projects.success && "projects", !customers.success && "customers", !references?.success && "references",
+      ].filter(Boolean) as NonNullable<RentalListData["unavailableCatalogs"]>);
+      if (listOnly && unavailableCatalogs.length && import.meta.env.VITE_UAT_REMOTE_READ_DIAGNOSTICS === "true") {
+        console.warn("Rental supporting reads unavailable", unavailableCatalogs);
       }
       setState({ status: "loaded", data: {
         rentals: rentals.value.items,
         rentalEquipmentLines: lines.value.items,
-        equipment: equipment.value.items,
-        assignments: assignments.value.items,
-        operators: operators.value.items,
-        projects: projects.value.items,
-        customers: customers.value.items,
-        costCodes: references.value.costCodes,
-        activityCodes: references.value.activityCodes,
+        equipment: equipment.success ? equipment.value.items : [],
+        assignments: assignments.success ? assignments.value.items : [],
+        operators: operators.success ? operators.value.items : [],
+        projects: projects.success ? projects.value.items : [],
+        customers: customers.success ? customers.value.items : [],
+        costCodes: references?.success ? references.value.costCodes : [],
+        activityCodes: references?.success ? references.value.activityCodes : [],
+        unavailableCatalogs: listOnly ? unavailableCatalogs : [],
       } });
     }).catch(() => {
       if (active) setState({ status: "error", data: emptyRemoteData(), message: "Rental data could not be loaded. Retry the request or contact support." });
     });
     return () => { active = false; };
-  }, [attempt, commandRepositories.canonicalRental, readRepositories, remote]);
+  }, [attempt, commandRepositories.canonicalRental, readRepositories, remote, listOnly]);
 
   return { ...state, retry } as RentalListLoadState;
 }

@@ -117,8 +117,8 @@ export const router = createBrowserRouter([
     element: <RecoveryRedirect><RequireAuthentication><AppLayout /></RequireAuthentication></RecoveryRedirect>,
     errorElement: <NotFound />,
     children: [
-      { index: true, element: permitted("dashboard.read", routePage(<Dashboard />)) },
-      { path: "dashboard", element: permitted("dashboard.read", routePage(<Dashboard />)) },
+      { index: true, element: <RequirePermission permission={["dashboard.read", "dashboard.executive.read", "dashboard.financial.read"]}>{routePage(<Dashboard />)}</RequirePermission> },
+      { path: "dashboard", element: <RequirePermission permission={["dashboard.read", "dashboard.executive.read", "dashboard.financial.read"]}>{routePage(<Dashboard />)}</RequirePermission> },
       { path: "access-denied", element: <AccessDenied /> },
       { path: "equipment", element: permitted("equipment.read", routePage(<Equipment />)) },
       { path: "equipment/new", element: permitted("equipment.create", routePage(<NewEquipment />)) },

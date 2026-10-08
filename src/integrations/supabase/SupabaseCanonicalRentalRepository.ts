@@ -8,7 +8,7 @@ const messages: Record<string, string> = {
   DUPLICATE_EQUIPMENT_LINE: "This equipment is already included in this Rental.", PARENT_READ_ONLY: "This Rental is read-only and cannot accept additional equipment.", PARENT_STATE_NOT_ELIGIBLE: "Additional equipment is not available in this Rental state.", INVALID_EFFECTIVE_START: "Choose an effective start date within the Rental interval.",
   RENTAL_NUMBER_CONFLICT: "Rental number allocation conflicted. Please retry.", RENTAL_CONFLICT: "This Rental already exists.", CONFLICT: "This Rental changed while you were working. Refresh and try again.",
   LINE_SET_MISMATCH: "The Rental equipment list changed. Refresh and try again.", INVALID_TRANSITION: "This action is not available for the Rental's current state.",
-  RELEASE_NOT_READY: "This Rental is not ready for release.", IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
+  RELEASE_NOT_READY: "This Rental is not ready for release.", MANAGEMENT_APPROVAL_REQUIRED: "Operations Manager approval is required before this rental can be released.", IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
   EXPECTATION_NOT_WAIVABLE: "The selected historical expectation is not eligible for waiver.", EXPECTATION_HAS_DEUR: "A DEUR already exists for this expectation.", ALREADY_WAIVED: "This expectation is already waived.",
   PERSISTENCE_FAILURE: "The remote service could not save the Rental. Refresh before retrying.", TRANSPORT_FAILURE: "Confirmation was not received from the remote service. Refresh before retrying.", INVALID_RESPONSE: "The remote service returned an invalid response.",
 };
@@ -92,7 +92,7 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
     try { const { data, error } = await this.client.schema("erp").rpc(name, args); if (error) return failure("TRANSPORT_FAILURE"); const value = object(data); if (!value || value.success !== true) return failure(code(value?.code)); return { success: true, value: map(value) }; } catch { return failure("TRANSPORT_FAILURE"); }
   }
   private async command(name: string, input: unknown): Promise<CanonicalCommandResult> {
-    try { const { data, error } = await this.client.schema("erp").rpc(name, { command: input }); if (error) return failure("TRANSPORT_FAILURE"); const value = object(data); if (!value || value.success !== true) return failure(code(value?.code), value); const result = object(value.value); if (!result || typeof result.rentalId !== "string" || (typeof result.version !== "number" && typeof result.waiverId !== "string")) return failure("INVALID_RESPONSE"); return { success: true, disposition: value.disposition === "REPLAYED" ? "REPLAYED" : "ACCEPTED", value: result as unknown as CanonicalCommandValue }; } catch { return failure("TRANSPORT_FAILURE"); }
+    try { const { data, error } = await this.client.schema("erp").rpc(name, { command: input }); if (error) return approvalGateError(error) ? failure("MANAGEMENT_APPROVAL_REQUIRED") : failure("TRANSPORT_FAILURE"); const value = object(data); if (!value || value.success !== true) return failure(code(value?.code), value); const result = object(value.value); if (!result || typeof result.rentalId !== "string" || (typeof result.version !== "number" && typeof result.waiverId !== "string")) return failure("INVALID_RESPONSE"); return { success: true, disposition: value.disposition === "REPLAYED" ? "REPLAYED" : "ACCEPTED", value: result as unknown as CanonicalCommandValue }; } catch { return failure("TRANSPORT_FAILURE"); }
   }
   private async createDraftWithTransportGuard(input: CreateCanonicalDraftInput): Promise<CanonicalCommandResult> {
     const started = this.now();
@@ -155,6 +155,7 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
   }
 }
 function object(value: unknown): Record<string, unknown> | undefined { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined; }
+function approvalGateError(value: unknown): boolean { return object(value)?.message === "Operations Manager approval is required before this rental can be released."; }
 function array<T>(value: unknown): T[] { return Array.isArray(value) ? value as T[] : []; }
 function strings(value: unknown): string[] { return array<unknown>(value).filter((item): item is string => typeof item === "string"); }
 function code(value: unknown): keyof typeof messages { return typeof value === "string" && value in messages ? value : "INVALID_RESPONSE"; }

@@ -82,6 +82,10 @@ export class SupabaseOperationalCommandRepository implements Repository {
       const { data, error } = await this.client.schema("erp").rpc(name, { command: input as Record<string, unknown> });
       const elapsedMilliseconds = Date.now() - startedAt;
       if (error) {
+        if (error.message === "Operations Manager approval is required before this rental can be released."
+          || error.message === "Operations Manager approval is required before this billing statement can be sent to the customer.") {
+          return { success: false, code: "INVALID_TRANSITION", message: error.message, retryable: false, refreshRequired: false };
+        }
         const diagnostic: OperationalCommandTransportDiagnostic = {
           ...(typeof error.code === "string" && error.code.trim() ? { code: error.code.trim().slice(0, 80) } : {}),
           ...(safeRemoteText(error.message) ? { message: safeRemoteText(error.message) } : {}),

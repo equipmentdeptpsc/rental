@@ -9,6 +9,7 @@ import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import RentalDeurExceptionsSection from "@/features/rental/components/RentalDeurExceptionsSection";
 import { RentalMobileCard } from "@/features/rental/components/RentalListPresentation";
 import RentalSharedFilters from "@/features/rental/components/RentalSharedFilters";
+import ManagementBillingApprovals from "@/features/rental/components/ManagementBillingApprovals";
 import InteractiveTableRow from "@/components/ui/InteractiveTableRow";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
@@ -70,7 +71,7 @@ export default function RentalPage() {
     projects: projectContext.projects,
     customers: [], costCodes: [], activityCodes: [],
   }), [assignmentContext.assignments, equipmentContext.equipment, operatorContext.operators, projectContext.projects, rentalContext.rentalEquipmentLines, rentalContext.rentals]);
-  const rentalList = useRentalListData(fallbackListData);
+  const rentalList = useRentalListData(fallbackListData, true);
   const { rentals, rentalEquipmentLines, equipment: equipmentRecords, assignments, operators, projects, customers } = rentalList.data;
   const getEquipment = (id: string) => equipmentRecords.find((record) => record.id === id);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -112,7 +113,7 @@ export default function RentalPage() {
   }, [equipmentRecords, operators, projects, filters.query, filters.customer, filters.project, filters.equipment, filters.operator, filters.status, filters.from, filters.to, rentalEquipmentLines, rentals]);
   const engagements = useMemo(() => projectActiveRentalEngagements({ rentals: filteredRentals, lines: rentalEquipmentLines }), [filteredRentals, rentalEquipmentLines]);
   const displayedRentals = view === "approvals"
-    ? filteredRentals.filter((rental) => rental.status === "Reserved" && rental.approvalStatus === "Pending")
+    ? filteredRentals.filter((rental) => rental.status === "Draft" && rental.approvalStatus === "Pending")
     : filteredRentals;
   const sortedRentals = useMemo(() => [...displayedRentals].sort((a, b) => {
     const value = (record: typeof a) => sort === "number" ? record.rentalNumber ?? "" : sort === "status" ? record.status : sort === "expectedReturn" ? record.expectedReturn ?? "" : sort === "customer" ? record.customer : record.dateOut;
@@ -152,7 +153,8 @@ export default function RentalPage() {
       {!anyMutationsAvailable && <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</div>}
       {rentalList.status === "loading" && <LoadingState label="Loading Rental data…" />}
       {rentalList.status === "error" && <ErrorState title="Rental data unavailable" message={rentalList.message} onRetry={rentalList.retry} />}
-      {rentalList.status === "loaded" && <RentalSharedFilters filters={filters} options={options} onChange={setFilter} onClear={clearFilters} />}
+      {rentalList.status === "loaded" && <RentalSharedFilters filters={filters} options={options} unavailableCatalogs={rentalList.data.unavailableCatalogs} onChange={setFilter} onClear={clearFilters} />}
+      {rentalList.status === "loaded" && Boolean(rentalList.data.unavailableCatalogs?.length) && <p className="app-muted text-xs" role="status">Some filters are temporarily unavailable. Rental records remain available.</p>}
 
       {rentalList.status === "loaded" && view === "engagements" && (
         <section className="app-card p-5">
@@ -175,10 +177,10 @@ export default function RentalPage() {
 
       {rentalList.status === "loaded" && (view === "rentals" || view === "approvals") && (
         <>
-          {view === "approvals" && <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status"><strong>Manager approvals</strong><p className="mt-1">Reserved Rentals awaiting your decision.</p></section>}
+          {view === "approvals" && <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status"><strong>Manager approvals</strong><p className="mt-1">Draft Rentals awaiting your decision.</p></section>}
           <div className="space-y-3 xl:hidden">
             {displayedRentals.length === 0 ? (
-              <EmptyDataState title={view === "approvals" ? "No pending approvals" : rentals.length ? "No matching rentals" : "No rental transactions"} description={view === "approvals" ? "There are no Reserved Rentals awaiting your decision." : "Try a different search term or clear the filters."} />
+              <EmptyDataState title={view === "approvals" ? "No pending rental approvals" : rentals.length ? "No matching rentals" : "No rental transactions"} description={view === "approvals" ? "There are no Draft Rentals awaiting your decision." : "Try a different search term or clear the filters."} />
             ) : pageRentals.map((rental) => {
               const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
               const rentalDeurs = deurRepository.getByRentalId(rental.id);
@@ -242,6 +244,8 @@ export default function RentalPage() {
           </div>
         </>
       )}
+
+      {rentalList.status === "loaded" && view === "approvals" && dependencies.configuration.persistenceMode === "remote" && <ManagementBillingApprovals />}
 
       {rentalList.status === "loaded" && view === "deur-exceptions" && (
         <RentalDeurExceptionsSection

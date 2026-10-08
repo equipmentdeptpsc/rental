@@ -5,7 +5,7 @@ import { generateBillingStatementPdf } from "./generateBillingStatementPdf";
 
 export type BillingStatementEmailResult =
   | { success: true; provider: string; providerMessageId: string }
-  | { success: false; code: "RECIPIENT_REQUIRED" | "PDF_GENERATION_FAILED" | "DELIVERY_FAILED"; message: string; delivery?: EmailDeliveryResult };
+  | { success: false; code: "APPROVAL_REQUIRED" | "RECIPIENT_REQUIRED" | "PDF_GENERATION_FAILED" | "DELIVERY_FAILED"; message: string; delivery?: EmailDeliveryResult };
 
 function base64(bytes: Uint8Array) {
   let binary = "";
@@ -22,6 +22,7 @@ export async function sendBillingStatementEmail(input: {
   logoPng?: Uint8Array;
   pdfGenerator?: typeof generateBillingStatementPdf;
 }): Promise<BillingStatementEmailResult> {
+  if (input.document.approvalStatus !== "Approved") return { success: false, code: "APPROVAL_REQUIRED", message: "Operations Manager approval is required before this billing statement can be sent to the customer." };
   const recipient = input.document.customerRepresentativeEmail?.trim() ?? "";
   if (!recipient) return { success: false, code: "RECIPIENT_REQUIRED", message: "Customer billing email is not available." };
   let pdf: Uint8Array;

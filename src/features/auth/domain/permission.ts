@@ -1,5 +1,5 @@
 export const PERMISSIONS = {
-  dashboard: ["dashboard.read"],
+  dashboard: ["dashboard.read", "dashboard.executive.read", "dashboard.financial.read"],
   equipment: [
     "equipment.read",
     "equipment.create",
@@ -31,7 +31,7 @@ export const PERMISSIONS = {
   operator: ["operator.read", "operator.create", "operator.update", "operator.manage"],
   maintenance: ["maintenance.read", "maintenance.manage"],
   dailyLog: ["dailyLog.read", "dailyLog.manage"],
-  billing: ["billing.read", "billing.create", "billing.update"],
+  billing: ["billing.read", "billing.create", "billing.update", "billing.approve"],
   collections: ["collections.read", "collections.create", "collections.manage"],
   reports: ["reports.read", "reports.view"],
   administration: [

@@ -15,7 +15,7 @@ export function calculateBusinessDashboardSummary(input:{statements:BillingState
   upcoming:{
    scheduledRelease:input.rentals.filter(item=>item.status==="Reserved"&&item.approvalStatus==="Approved").length,
    expectedReturns:input.rentals.filter(item=>["Released","Active"].includes(item.status)&&Boolean(item.expectedReturn)).length,
-   pendingManagerApprovals:input.rentals.filter(item=>item.approvalStatus==="Pending" && item.status === "Reserved" && (input.approvalPermissionGranted === undefined || evaluateCanonicalApprovalDecisionEligibility(item, input.currentUserId, input.approvalPermissionGranted).eligible)).length,
+   pendingManagerApprovals:input.rentals.filter(item=>item.approvalStatus==="Pending" && item.status === "Draft" && (input.approvalPermissionGranted === undefined || evaluateCanonicalApprovalDecisionEligibility(item, input.currentUserId, input.approvalPermissionGranted).eligible)).length,
    pendingCustomerAcknowledgements:input.deurs.filter(item=>item.status==="Submitted"&&!item.revision?.supersededByRevisionId).length,
   },
  };

@@ -5,11 +5,11 @@ import { buildDashboardActionQueue } from "@/features/dashboard/services/dashboa
 import { calculateDashboardSummary } from "@/features/dashboard/services/dashboard.service";
 
 describe("Dashboard beta blocker", () => {
-  it("counts only actionable pending Reserved Rentals for the current approver", () => {
+  it("counts only actionable pending Draft Rentals for the current approver", () => {
     const rentals = [
-      { id: "eligible", status: "Reserved", approvalStatus: "Pending", approvalRequestedById: "requester" },
-      { id: "draft", status: "Draft", approvalStatus: "Pending", approvalRequestedById: "requester" },
-      { id: "self", status: "Reserved", approvalStatus: "Pending", approvalRequestedById: "approver" },
+      { id: "eligible", status: "Draft", approvalStatus: "Pending", approvalRequestedById: "requester" },
+      { id: "reserved", status: "Reserved", approvalStatus: "Pending", approvalRequestedById: "requester" },
+      { id: "self", status: "Draft", approvalStatus: "Pending", approvalRequestedById: "approver" },
     ] as never[];
     const summary = calculateBusinessDashboardSummary({
       statements: [], collections: [], rentals, deurs: [], currentUserId: "approver", approvalPermissionGranted: true,
@@ -51,8 +51,8 @@ describe("Dashboard beta blocker", () => {
     expect(hook).toContain('status: "loading"');
     expect(page).toContain("Loading dashboard");
     expect(page).toContain("Dashboard data is unavailable");
-    expect(page).toContain("No equipment in the system yet");
+    expect(page).toContain("No recent activity");
     expect(rentalsPage).toContain('requestedView === "approvals"');
-    expect(rentalsPage).toContain('rental.status === "Reserved" && rental.approvalStatus === "Pending"');
+    expect(rentalsPage).toContain('rental.status === "Draft" && rental.approvalStatus === "Pending"');
   });
 });

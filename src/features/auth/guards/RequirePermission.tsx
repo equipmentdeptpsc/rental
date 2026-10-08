@@ -7,9 +7,9 @@ export default function RequirePermission({
   permission,
   children,
 }: {
-  permission: Permission;
+  permission: Permission | readonly Permission[];
   children: ReactNode;
 }) {
   const { hasPermission } = useAuth();
-  return hasPermission(permission) ? <>{children}</> : <AccessDenied />;
+  return (Array.isArray(permission) ? permission.some((item) => hasPermission(item)) : hasPermission(permission as Permission)) ? <>{children}</> : <AccessDenied />;
 }

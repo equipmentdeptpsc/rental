@@ -1,34 +1,42 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { SupabaseBillingStatementEmailCommandRepository } from "@/features/rental/billing-email/BillingStatementEmailCommandRepository";
 
 const panel = readFileSync("src/features/rental/workspace/billing/BillingPanel.tsx", "utf8");
-const repository = readFileSync("src/integrations/supabase/SupabaseOperationalCommandRepository.ts", "utf8");
-const migration = readFileSync("supabase/migrations/20260729001000_phase_c3b_billing_commands.sql", "utf8");
+const managerPanel = readFileSync("src/features/rental/components/ManagementBillingApprovals.tsx", "utf8");
+const migration = readFileSync("supabase/migrations/20261008000100_uat_management_approval_guards.sql", "utf8");
 
-describe("UAT billing approval control", () => {
-  it("is narrowly scoped to the UAT statement and host", () => {
-    expect(panel).toContain("window.location.hostname === UAT_APPROVAL_HOST");
-    expect(panel).toContain("statement.id === UAT_STATEMENT_ID");
-    expect(panel).toContain('statement.approvalStatus === "Draft"');
-    expect(panel).toContain('statement.invoiceStatus === "Not Invoiced"');
-    expect(panel).toContain("statement.grandTotal === 1000");
+describe("scoped billing approval control", () => {
+  it("removes the protected fixture-specific approval action from the billing workspace", () => {
+    expect(panel).not.toContain("UAT_STATEMENT_ID");
+    expect(panel).not.toContain("UAT_RENTAL_ID");
+    expect(panel).not.toContain("Approve UAT billing statement");
   });
 
-  it("uses confirmation, permission, single-flight, and the canonical repository", () => {
-    expect(panel).toContain('hasPermission("billing.update")');
-    expect(panel).toContain("window.confirm");
-    expect(panel).toContain("approvalAttempted");
-    expect(panel).toContain("finalizeStatement");
-    expect(panel).toContain("onClick={() => void approveUatStatement()}");
-    expect(panel).not.toContain("createInvoice");
-    expect(panel).not.toContain("recordCollection");
+  it("only exposes the manager approval action with scoped permission and version", () => {
+    expect(managerPanel).toContain('hasPermission("billing.approve")');
+    expect(managerPanel).toContain("expectedVersion");
+    expect(managerPanel).toContain('rpc("command_finalize_billing_statement"');
+    expect(managerPanel).not.toContain('hasPermission("billing.update")');
   });
 
-  it("maps the repository to the canonical finalize RPC with audited auth", () => {
-    expect(repository).toContain('finalizeStatement = (input: BillingCommandInput) => this.rpc<BillingLifecycleProjection>("command_finalize_billing_statement", input)');
-    expect(migration).toContain("current_user_has_permission('billing.update')");
-    expect(migration).toContain("actor=auth.uid()::text");
-    expect(migration).toContain("FINALIZE_BILLING_STATEMENT");
-    expect(migration).toContain("statement.approval_status<>required_approval");
+  it("keeps idempotency and an audit record in the finalization command", () => {
+    expect(migration).toContain("current_user_has_permission('billing.approve')");
+    expect(migration).toContain("idem->>'state'='REPLAY'");
+    expect(migration).toContain("erp.finish_operational_command");
+    expect(migration).toContain("INSERT INTO erp.audit_log");
+  });
+
+  it("shows the server approval rejection without queuing a customer email", async () => {
+    const message = "Operations Manager approval is required before this billing statement can be sent to the customer.";
+    const repository = new SupabaseBillingStatementEmailCommandRepository({ schema: () => ({ rpc: async () => ({ data: null, error: { message } }) }) });
+    await expect(repository.enqueue({ statementId: "local-test", commandId: "command", idempotencyKey: "idem", expectedVersion: 1 }))
+      .resolves.toEqual({ success: false, code: "APPROVAL_REQUIRED", message });
+  });
+
+  it("turns an unapproved statement response into the customer-facing approval message", async () => {
+    const repository = new SupabaseBillingStatementEmailCommandRepository({ schema: () => ({ rpc: async () => ({ data: { success: false, code: "INVALID_TRANSITION", message: "Only an approved Billing Statement can be emailed." }, error: null }) }) });
+    await expect(repository.enqueue({ statementId: "local-test", commandId: "command", idempotencyKey: "idem", expectedVersion: 1 }))
+      .resolves.toEqual({ success: false, code: "APPROVAL_REQUIRED", message: "Operations Manager approval is required before this billing statement can be sent to the customer." });
   });
 });
