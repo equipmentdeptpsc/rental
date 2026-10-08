@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ChevronRight, PackageOpen } from "lucide-react";
 
 import Button from "@/components/ui/Button";
@@ -7,7 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import EquipmentTable from "@/features/equipment/components/EquipmentTable";
 
 import { useEquipment } from "@/features/equipment/context/EquipmentContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAssignment } from "@/features/assignment/context/AssignmentContext";
 import { useRental } from "@/features/rental/context/RentalContext";
 import { useOperator } from "@/features/operators/context/OperatorContext";
@@ -23,6 +23,9 @@ import EmptyState from "@/components/ui/EmptyState";
 import { LoadingState, ErrorState } from "@/components/ui/AsyncState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { filterCanonicalEquipment } from "@/features/equipment/services/filterCanonicalEquipment";
+import InteractiveTableRow from "@/components/ui/InteractiveTableRow";
+import EquipmentQuickDetails from "@/features/equipment/components/EquipmentQuickDetails";
+import LocalEquipmentQuickDetails from "@/features/equipment/components/LocalEquipmentQuickDetails";
 
 export default function EquipmentPage() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -32,12 +35,15 @@ export default function EquipmentPage() {
 function CanonicalEquipmentPage() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
-  const [query, setQuery] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [subcategoryId, setSubcategoryId] = useState("");
-  const [statusId, setStatusId] = useState("");
-  const [projectId, setProjectId] = useState("");
-  const [customerId, setCustomerId] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get("e_query") ?? "");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState(() => searchParams.get("e_category") ?? "");
+  const [subcategoryId, setSubcategoryId] = useState(() => searchParams.get("e_subcategory") ?? "");
+  const [statusId, setStatusId] = useState(() => searchParams.get("e_status") ?? "");
+  const [projectId, setProjectId] = useState(() => searchParams.get("e_project") ?? "");
+  const [customerId, setCustomerId] = useState(() => searchParams.get("e_customer") ?? "");
+  useEffect(() => { setSearchParams((current) => { const next = new URLSearchParams(current); for (const [key, value] of Object.entries({ query, category: categoryId, subcategory: subcategoryId, status: statusId, project: projectId, customer: customerId })) value ? next.set(`e_${key}`, value) : next.delete(`e_${key}`); return next; }, { replace: true }); }, [query, categoryId, subcategoryId, statusId, projectId, customerId, setSearchParams]);
   const canReadProjects = hasPermission("project.read");
   const canReadCustomers = hasPermission("customer.read");
   const data = useCanonicalEquipmentData({ categoryId, subcategoryId, statusId, projectId, customerId });
@@ -55,12 +61,13 @@ function CanonicalEquipmentPage() {
   return <div className="app-page"><PageHeader title="Equipment" description="Company equipment." actions={canCreate ? <Link to="/equipment/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">Add Equipment</Button></Link> : undefined} />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatusCard label="All" value={visible.length} /><>{[...counts].slice(0, 3).map(([label, value]) => <StatusCard key={label} label={label} value={value} />)}</></div>
      <FilterBar onClear={() => { setQuery(""); setCategoryId(""); setSubcategoryId(""); setStatusId(""); setProjectId(""); setCustomerId(""); }} canClear={Boolean(query || categoryId || subcategoryId || statusId || projectId || customerId)}><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Category</span><select aria-label="Category" className="app-control mt-1 w-full" value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setSubcategoryId(""); }} disabled={options.categories.status === "loading"}><option value="">{categoryError ? "Categories unavailable" : options.categories.status === "loading" ? "Loading categories…" : "All Categories"}</option>{options.categories.items.map((value) => <option key={value.id} value={value.id}>{value.name}</option>)}</select></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Sub-Category</span><select aria-label="Sub-Category" className="app-control mt-1 w-full" value={subcategoryId} onChange={(event) => setSubcategoryId(event.target.value)} disabled={!categoryId || options.subcategories.status === "loading"}><option value="">{!categoryId ? "Select a Category first" : subcategoryError ? "Sub-categories unavailable" : options.subcategories.status === "loading" ? "Loading sub-categories…" : "All Sub-Categories"}</option>{options.subcategories.items.map((value) => <option key={value.id} value={value.id}>{value.name}</option>)}</select></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Status</span><select aria-label="Status" className="app-control mt-1 w-full" value={statusId} onChange={(event) => setStatusId(event.target.value)} disabled={options.statuses.status === "loading"}><option value="">{statusError ? "Statuses unavailable" : options.statuses.status === "loading" ? "Loading statuses…" : "All Statuses"}</option>{options.statuses.items.map((value) => <option key={value.id} value={value.id}>{value.status}</option>)}</select></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Project</span><select aria-label="Project" className="app-control mt-1 w-full" value={projectId} onChange={(event) => setProjectId(event.target.value)} disabled={!canReadProjects || options.projects.status === "loading"}><option value="">{!canReadProjects ? "Project filter unavailable" : options.projects.status === "loading" ? "Loading projects…" : options.projects.status === "error" ? "Projects unavailable" : "All Projects"}</option>{options.projects.items.map((value) => <option key={value.id} value={value.id}>{value.projectName}</option>)}</select></label><label className="min-w-40 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Customer</span><select aria-label="Customer" className="app-control mt-1 w-full" value={customerId} onChange={(event) => setCustomerId(event.target.value)} disabled={!canReadCustomers || options.customers.status === "loading"}><option value="">{!canReadCustomers ? "Customer filter unavailable" : options.customers.status === "loading" ? "Loading customers…" : options.customers.status === "error" ? "Customers unavailable" : "All Customers"}</option>{options.customers.items.map((value) => <option key={value.id} value={value.id}>{value.companyName}</option>)}</select></label><label className="min-w-[15rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="block">Search</span><input aria-label="Search Equipment" className="app-control mt-1 w-full" placeholder="Search asset number, equipment, or category" value={query} onChange={(event) => setQuery(event.target.value)} /></label></FilterBar>
-    {!visible.length ? <EmptyState icon={<PackageOpen aria-hidden="true" size={22} />} title="No Equipment found" description="Equipment will appear here when available." action={canCreate ? <Link to="/equipment/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">Add Equipment</Button></Link> : undefined} /> : <>{filtered.length === 0 ? <EmptyState title="No matching equipment" description="Try clearing a filter or adjusting your search." /> : <ResponsiveEquipmentTable items={filtered} />}</>}
+    {!visible.length ? <EmptyState icon={<PackageOpen aria-hidden="true" size={22} />} title="No Equipment found" description="Equipment will appear here when available." action={canCreate ? <Link to="/equipment/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">Add Equipment</Button></Link> : undefined} /> : <>{filtered.length === 0 ? <EmptyState title="No matching equipment" description="Try clearing a filter or adjusting your search." /> : <ResponsiveEquipmentTable items={filtered} selectedId={selectedId} onSelect={setSelectedId} />}</>}
+    {selectedId && <EquipmentQuickDetails id={selectedId} onClose={() => setSelectedId(null)} />}
   </div>;
 }
 
-function ResponsiveEquipmentTable({ items }: { items: ReturnType<typeof useCanonicalEquipmentData>["items"] }) {
-  return <div className="app-card overflow-x-auto"><table className="app-table min-w-full table-fixed"><thead><tr><th className="w-[18%] px-4 py-3 text-left">Asset No.</th><th className="w-[34%] px-4 py-3 text-left">Equipment</th><th className="w-[20%] px-4 py-3 text-left">Category</th><th className="w-[16%] px-4 py-3 text-left">Status</th><th className="w-[12%] px-4 py-3 text-right">Action</th></tr></thead><tbody>{items.map((item) => <tr className="odd:bg-slate-50/40 hover:bg-amber-50/60 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20" key={item.id}><td className="px-4 py-3 align-middle">{item.assetNo}</td><td className="px-4 py-3 align-middle">{item.equipmentName}</td><td className="px-4 py-3 align-middle">{item.category ?? "—"}</td><td className="px-4 py-3 align-middle whitespace-nowrap"><StatusBadge className={statusBadgeClass(item.statusLabel)} tone={statusBadgeTone(item.statusLabel)}>{item.statusLabel ?? "Unavailable"}</StatusBadge></td><td className="px-4 py-3 text-right align-middle"><Link aria-label={`View ${item.equipmentName}`} className="inline-flex rounded p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" to={`/equipment/${item.id}`}><ChevronRight size={16} aria-hidden="true" /></Link></td></tr>)}</tbody></table></div>;
+function ResponsiveEquipmentTable({ items, selectedId, onSelect }: { items: ReturnType<typeof useCanonicalEquipmentData>["items"]; selectedId: string | null; onSelect: (id: string) => void }) {
+  return <div className="app-card overflow-x-auto"><table className="app-table min-w-full table-fixed"><thead className="sticky top-0 z-10 bg-white dark:bg-slate-900"><tr><th className="w-[18%] px-4 py-3 text-left">Asset No.</th><th className="w-[34%] px-4 py-3 text-left">Equipment</th><th className="w-[20%] px-4 py-3 text-left">Category</th><th className="w-[16%] px-4 py-3 text-left">Status</th><th className="w-[12%] px-4 py-3 text-right">Action</th></tr></thead><tbody>{items.map((item) => <InteractiveTableRow onOpen={() => onSelect(item.id)} selected={selectedId === item.id} aria-label={`Open ${item.assetNo} ${item.equipmentName}`} className="odd:bg-slate-50/40 dark:odd:bg-slate-800/20" key={item.id}><td className="px-4 py-3 align-middle">{item.assetNo}</td><td className="px-4 py-3 align-middle">{item.equipmentName}</td><td className="px-4 py-3 align-middle">{item.category ?? "—"}</td><td className="px-4 py-3 align-middle whitespace-nowrap"><StatusBadge className={statusBadgeClass(item.statusLabel)} tone={statusBadgeTone(item.statusLabel)}>{item.statusLabel ?? "Unavailable"}</StatusBadge></td><td className="px-4 py-3 text-right align-middle"><Link aria-label={`View full ${item.equipmentName}`} className="inline-flex rounded p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" to={`/equipment/${item.id}`}><ChevronRight size={16} aria-hidden="true" /></Link></td></InteractiveTableRow>)}</tbody></table></div>;
 }
 
 function StatusCard({ label, value }: { label: string; value: number }) { return <div className="app-card relative p-4"><span aria-hidden="true" className={`absolute left-4 top-5 h-2 w-2 rounded-full ${statusIndicator(label)}`} /><p className="pl-4 text-xs text-slate-500">{label}</p><strong className="font-display mt-1 block text-2xl">{value}</strong></div>; }
@@ -69,6 +76,8 @@ function statusBadgeTone(status?: string): "neutral" | "info" | "warning" { retu
 function statusBadgeClass(status?: string) { return status === "Assigned" ? "bg-[#f0a93a] text-[#071a33]" : status === "Rented" || status === "Deployed" ? "bg-slate-800 text-white dark:bg-slate-700" : ""; }
 
 function LocalEquipmentPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const {
     equipment,
     deleteEquipment,
@@ -77,9 +86,10 @@ function LocalEquipmentPage() {
   const { rentals, rentalEquipmentLines } = useRental();
   const { operators } = useOperator();
   const { projects } = useProject();
-  const [query,setQuery]=useState("");
-  const [status,setStatus]=useState<EquipmentStatusFilter>("All");
-  const [category,setCategory]=useState(""); const [ownership,setOwnership]=useState(""); const [location,setLocation]=useState("");
+  const [query,setQuery]=useState(() => searchParams.get("e_query") ?? "");
+  const [status,setStatus]=useState<EquipmentStatusFilter>(() => searchParams.get("e_status") as EquipmentStatusFilter ?? "All");
+  const [category,setCategory]=useState(() => searchParams.get("e_category") ?? ""); const [ownership,setOwnership]=useState(() => searchParams.get("e_ownership") ?? ""); const [location,setLocation]=useState(() => searchParams.get("e_location") ?? "");
+  useEffect(() => { setSearchParams((current) => { const next = new URLSearchParams(current); for (const [key, value] of Object.entries({ query, status: status === "All" ? "" : status, category, ownership, location })) value ? next.set(`e_${key}`, value) : next.delete(`e_${key}`); return next; }, { replace: true }); }, [query, status, category, ownership, location, setSearchParams]);
   const filtered=filterEquipmentList(equipment,{query,status,category,ownership,location});
   const activeEquipment=equipment.filter(item=>item.active!==false&&!item.deleted);
   const fleet=[
@@ -108,11 +118,14 @@ function LocalEquipmentPage() {
       <p className="text-sm text-slate-500">Showing {filtered.length} of {activeEquipment.length} equipment</p>
       <EquipmentTable
         equipment={filtered}
+        onOpen={setSelectedId}
+        selectedId={selectedId}
         onDelete={deleteEquipment}
         detailMode={status}
         deploymentByEquipment={deploymentByEquipment}
         emptyStateAction={<Link to="/equipment/new"><Button className="bg-[#f0a93a] text-[#071a33] hover:bg-[#d99a2f]">Add Equipment</Button></Link>}
       />
+      {selectedId && equipment.find((item) => item.id === selectedId) && <LocalEquipmentQuickDetails equipment={equipment.find((item) => item.id === selectedId)!} assignment={{ ...deploymentByEquipment[selectedId], rentalStatus: rentals.find((item) => item.rentalNumber === deploymentByEquipment[selectedId]?.rentalNumber)?.status }} onClose={() => setSelectedId(null)} />}
 
     </div>
   );

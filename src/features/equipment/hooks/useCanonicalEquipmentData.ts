@@ -17,6 +17,8 @@ export interface CanonicalEquipmentProjection {
   subcategoryId?: string;
   subcategoryName?: string;
   subcategoryActive?: boolean;
+  condition?: string;
+  location?: string;
   projectId?: string;
   customerId?: string;
   type?: string;
@@ -76,6 +78,8 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
           subcategoryId: text(row.subcategoryId),
           subcategoryName: text(row.subcategoryName),
           subcategoryActive: typeof row.subcategoryActive === "boolean" ? row.subcategoryActive : undefined,
+          condition: text(row.condition),
+          location: text(row.location),
           projectId: text(row.projectId),
           customerId: text(row.customerId),
           type: text(row.type),

@@ -19,6 +19,7 @@ import { presentEquipmentStatus } from "../utils/equipmentStatusPresentation";
 import type { EquipmentStatusFilter } from "../services/equipmentListFilters";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
+import InteractiveTableRow from "@/components/ui/InteractiveTableRow";
 
 export interface EquipmentDeploymentSummary { project?: string; operator?: string; rentalNumber?: string; assignedDate?: string; dateDeployed?: string; hasAssignment: boolean }
 
@@ -29,6 +30,8 @@ interface Props {
   detailMode?: EquipmentStatusFilter;
   deploymentByEquipment?: Record<string, EquipmentDeploymentSummary>;
   emptyStateAction?: ReactNode;
+  onOpen?: (id: string) => void;
+  selectedId?: string | null;
 }
 
 export default function EquipmentTable({
@@ -37,6 +40,8 @@ export default function EquipmentTable({
   detailMode = "All",
   deploymentByEquipment = {},
   emptyStateAction,
+  onOpen,
+  selectedId,
 }: Props) {
   const { showToast } =
     useToast();
@@ -85,7 +90,7 @@ export default function EquipmentTable({
 
       <table className="app-table min-w-full table-fixed">
 
-        <thead>
+        <thead className="sticky top-0 z-10 bg-white dark:bg-slate-900">
           <tr>
 
             <th className="w-[16%] px-4 py-3 text-left">
@@ -118,9 +123,11 @@ export default function EquipmentTable({
           {equipment.length === 0 && <tr><td colSpan={detailMode === "Assigned" || detailMode === "Deployed" ? 9 : 5}><EmptyState icon={<PackageOpen aria-hidden="true" size={22} />} title="No equipment found" description="Add equipment to begin tracking your fleet." action={emptyStateAction} /></td></tr>}
 
           {equipment.map((item) => (
-            <tr
+            <InteractiveTableRow
               key={item.id}
-              className="odd:bg-slate-50/40 hover:bg-amber-50/60 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20"
+              onOpen={() => onOpen?.(item.id)} selected={selectedId === item.id}
+              aria-label={`Open ${item.assetNo} ${item.equipmentName}`}
+              className="odd:bg-slate-50/40 dark:odd:bg-slate-800/20"
             >
 
               <td className="px-4 py-3 align-middle">
@@ -174,7 +181,7 @@ export default function EquipmentTable({
 
               </td>
 
-            </tr>
+            </InteractiveTableRow>
           ))}
 
         </tbody>
