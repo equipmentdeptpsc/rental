@@ -10,6 +10,8 @@ import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types
 import type { RentalRecord } from "@/features/rental/types";
 import { subscribeCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
+import { repositoryFailure, repositorySuccess, type Page, type RepositoryResult } from "@/core/persistence";
+import type { ReadOnlyRepository } from "@/core/remote";
 
 export interface RentalListData {
   rentals: RentalRecord[];
@@ -37,6 +39,20 @@ const emptyRemoteData = (): RentalListData => ({
   rentals: [], rentalEquipmentLines: [], equipment: [], assignments: [], operators: [], projects: [], customers: [], costCodes: [], activityCodes: [],
 });
 
+export async function loadRentalListPages<T>(repository: ReadOnlyRepository<T>): Promise<RepositoryResult<Page<T>>> {
+  const items: T[] = [];
+  let offset = 0;
+  for (let page = 0; page < 100; page += 1) {
+    const result = await repository.list({ paging: { offset, limit: 500 } });
+    if (!result.success) return result;
+    items.push(...result.value.items);
+    if (!result.value.nextCursor) return repositorySuccess({ items, nextCursor: undefined });
+    offset = Number(result.value.nextCursor);
+    if (!Number.isSafeInteger(offset) || offset <= items.length - result.value.items.length) break;
+  }
+  return repositoryFailure("REPOSITORY_UNAVAILABLE", "Rental list exceeds the supported read window. Narrow the source data or contact support.");
+}
+
 export function useRentalListData(fallback: RentalListData): RentalListLoadState {
   const { readRepositories, commandRepositories, configuration } = useApplicationDependenciesCompatibility();
   const remote = configuration.persistenceMode === "remote";
@@ -58,13 +74,13 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
     setState({ status: "loading", data: emptyRemoteData() });
     let active = true;
     void Promise.all([
-      readRepositories.rentals.list(),
-      readRepositories.rentalEquipmentLines.list(),
-      readRepositories.equipment.list(),
-      readRepositories.assignments.list(),
-      readRepositories.operators.list(),
-      readRepositories.projects.list(),
-      readRepositories.customers.list(),
+      loadRentalListPages(readRepositories.rentals),
+      loadRentalListPages(readRepositories.rentalEquipmentLines),
+      loadRentalListPages(readRepositories.equipment),
+      loadRentalListPages(readRepositories.assignments),
+      loadRentalListPages(readRepositories.operators),
+      loadRentalListPages(readRepositories.projects),
+      loadRentalListPages(readRepositories.customers),
       commandRepositories.canonicalRental?.readReferenceData(),
     ]).then(([rentals, lines, equipment, assignments, operators, projects, customers, references]) => {
       if (!active) return;
