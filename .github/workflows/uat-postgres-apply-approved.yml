@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
-      group: approved-uat-postgres-migration-20261007000100
+      group: approved-uat-postgres-migration-20261008000100
       cancel-in-progress: false
     env:
       UAT_PROJECT_REF: jtkctarqbwmqdcewthkn
@@ -24,7 +24,7 @@ jobs:
       - name: Check out authorized integration commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: 6c978b40a3688a283443317c2d40e47e19614582
+          ref: ef6feb1ac1c1215034de4e33a79c8edff0f92f6b
           persist-credentials: false
 
       - name: Install PostgreSQL client
@@ -45,9 +45,9 @@ jobs:
           set -euo pipefail
           set +x
 
-          expected_sha=6c978b40a3688a283443317c2d40e47e19614582
-          expected_migration_sha=BA24EA87C361CBAB6AFF165709115D6CD25B7080B66C030DAB98D745AB920165
-          migration=supabase/migrations/20261007000100_canonical_idle_discount_vat_billing.sql
+          expected_sha=ef6feb1ac1c1215034de4e33a79c8edff0f92f6b
+          expected_migration_sha=3DA8E286748DD06D56762ED99AB15552FA670B5B73A1EC2BC9C39C272DFF069A
+          migration=supabase/migrations/20261008000100_uat_management_approval_guards.sql
 
           [[ "$UAT_PROJECT_REF" == jtkctarqbwmqdcewthkn ]] || { echo 'PROJECT_REF=FAIL'; exit 1; }
           [[ "$UAT_POOLER_HOST" == aws-0-ap-southeast-1.pooler.supabase.com ]] || { echo 'POOLER_HOST=FAIL'; exit 1; }
@@ -107,16 +107,16 @@ jobs:
           remote_set, local_set = set(remote), set(local)
           pending = sorted(local_set - remote_set)
           remote_only = sorted(remote_set - local_set)
-          unexpected = sorted(set(pending) - {'20261007000100'})
+          unexpected = sorted(set(pending) - {'20261008000100'})
           latest = max(remote) if remote else 'NONE'
           print(f'{phase}_LATEST_REMOTE={latest}')
           print(f'{phase}_LOCAL_PENDING={",".join(pending) if pending else "NONE"}')
           print(f'{phase}_REMOTE_ONLY={",".join(remote_only) if remote_only else "NONE"}')
           print(f'{phase}_UNEXPECTED_PENDING={",".join(unexpected) if unexpected else "NONE"}')
           if phase == 'PRE':
-              valid = latest == '20261006000100' and pending == ['20261007000100'] and not remote_only and not unexpected
+              valid = latest == '20261007000100' and pending == ['20261008000100'] and not remote_only and not unexpected
           else:
-              valid = latest == '20261007000100' and not pending and not remote_only and not unexpected and '20261007000100' in remote_set
+              valid = latest == '20261008000100' and not pending and not remote_only and not unexpected and '20261008000100' in remote_set
           print(f'{phase}_LEDGER=' + ('PASS' if valid else 'FAIL'))
           sys.exit(0 if valid else 1)
           PY
@@ -143,7 +143,7 @@ jobs:
           proposed = sorted(set(re.findall(r'\b\d{14}_[A-Za-z0-9_.-]+\.sql\b', output)))
           finished = bool(re.search(r'Finished supabase db push', output, re.I))
           print('DRY_RUN_PROPOSED=' + (','.join(proposed) if proposed else 'NONE'))
-          valid = finished and proposed == ['20261007000100_canonical_idle_discount_vat_billing.sql']
+          valid = finished and proposed == ['20261008000100_uat_management_approval_guards.sql']
           print('DRY_RUN=' + ('PASS' if valid else 'FAIL'))
           sys.exit(0 if valid else 1)
           PY
@@ -162,3 +162,32 @@ jobs:
           [[ "$one" == 1 ]] || { echo 'POST_APPLY_SELECT_1=FAIL'; exit 1; }
           echo 'POST_APPLY_SELECT_1=PASS'
           check_ledger POST
+
+          echo 'EXPECTED_PENDING_ONLY=PASS'
+          object_checks="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 <<'SQL'
+          WITH checks(name, ok) AS (
+            VALUES
+              ('RENTAL_RELEASE_GUARD_PRESENT',
+                to_regprocedure('erp.require_management_approval_for_rental_release()') IS NOT NULL AND
+                EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='require_parent_rental_release_approval' AND tgrelid='erp.rentals'::regclass AND NOT tgisinternal)),
+              ('LINE_RELEASE_GUARD_PRESENT',
+                EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='require_line_rental_release_approval' AND tgrelid='erp.rental_equipment_lines'::regclass AND NOT tgisinternal)),
+              ('BILLING_APPROVAL_AUTH_PRESENT',
+                to_regprocedure('erp.require_scoped_billing_approval()') IS NOT NULL AND
+                EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='require_scoped_billing_approval' AND tgrelid='erp.billing_statements'::regclass AND NOT tgisinternal) AND
+                (SELECT count(*)=2 FROM erp.role_permissions rp JOIN erp.app_roles r ON r.id=rp.role_id JOIN erp.app_permissions p ON p.id=rp.permission_id WHERE r.code='operations-manager' AND p.code IN ('billing.approve','dashboard.financial.read'))),
+              ('CUSTOMER_SEND_GUARD_PRESENT',
+                to_regprocedure('erp.require_management_approval_for_billing_email()') IS NOT NULL AND
+                EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='require_billing_email_approval' AND tgrelid='erp.notification_outbox'::regclass AND NOT tgisinternal)),
+              ('DASHBOARD_FINANCIAL_RPC_PRESENT',
+                to_regprocedure('erp.read_dashboard_management_financial_summary(date,date,date,date)') IS NOT NULL AND
+                has_function_privilege('authenticated','erp.read_dashboard_management_financial_summary(date,date,date,date)','EXECUTE')),
+              ('APPROVAL_COUNT_RPC_PRESENT',
+                to_regprocedure('erp.read_pending_management_approvals()') IS NOT NULL AND
+                has_function_privilege('authenticated','erp.read_pending_management_approvals()','EXECUTE'))
+          )
+          SELECT name || '=' || CASE WHEN ok THEN 'PASS' ELSE 'FAIL' END FROM checks;
+          SQL
+          )"
+          printf '%s\n' "$object_checks"
+          if grep -q '=FAIL' <<<"$object_checks"; then exit 1; fi
