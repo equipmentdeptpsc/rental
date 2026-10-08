@@ -156,7 +156,41 @@ jobs:
           PY
 
             # Only the one preflight-verified authorized migration may be applied.
-            if ! timeout 180s supabase db push --db-url "$db_url" --yes >"$apply_output" 2>&1; then echo 'APPLY=CLI_ERROR'; exit 1; fi
+            if ! timeout 180s supabase db push --db-url "$db_url" --yes >"$apply_output" 2>&1; then
+              echo 'APPLY=CLI_ERROR'
+              echo '--- APPLY ERROR START ---'
+              APPLY_OUTPUT="$apply_output" APPLY_DB_URL="$db_url" python3 - <<'PY'
+          import os, pathlib, re, urllib.parse
+
+          output = pathlib.Path(os.environ['APPLY_OUTPUT']).read_text(errors='replace')
+          output = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
+
+          # Redact configured secrets and connection strings before considering
+          # provider-agnostic patterns. GitHub Actions continues masking db_url.
+          secrets = [os.environ.get('UAT_SUPABASE_DB_PASSWORD', ''),
+                     os.environ.get('PGPASSWORD', ''),
+                     os.environ.get('APPLY_DB_URL', '')]
+          for secret in secrets:
+              if secret:
+                  output = output.replace(secret, '[REDACTED]')
+                  output = output.replace(urllib.parse.quote(secret, safe=''), '[REDACTED]')
+
+          output = re.sub(r'(?i)\b(?:postgres(?:ql)?|mysql|mariadb)://[^\s\"\'<>]+', '[REDACTED_CONNECTION_STRING]', output)
+          output = re.sub(r'(?i)(https?://)[^/\s@]+@', r'\1[REDACTED]@', output)
+          output = re.sub(r'(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+', 'Bearer [REDACTED]', output)
+          output = re.sub(r'\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b', '[REDACTED_TOKEN]', output)
+          output = re.sub(r'\b(?:github_pat_|gh[pousr]_|sb_secret_|sk_live_|sk_test_)[A-Za-z0-9_-]{12,}\b', '[REDACTED_TOKEN]', output)
+          output = re.sub(r'(?i)\b(access[_-]?token|refresh[_-]?token|token|api[_-]?key|password|passwd|secret|credential)\b(\s*[:=]\s*)([^\s,;\"\']+)', r'\1\2[REDACTED]', output)
+          output = re.sub(r'(?i)([?&](?:access_token|refresh_token|api_key|password|token)=)[^&\s]+', r'\1[REDACTED]', output)
+
+          limit = 12000
+          if len(output) > limit:
+              output = output[:limit] + '\n[OUTPUT TRUNCATED]'
+          print(output, end='' if output.endswith('\n') else '\n')
+          PY
+              echo '--- APPLY ERROR END ---'
+              exit 1
+            fi
             echo 'APPLY=CLI_SUCCESS'
             verify_ledger POST
           fi
