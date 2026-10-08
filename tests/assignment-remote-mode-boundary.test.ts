@@ -104,6 +104,20 @@ describe("canonical Assignment remote UI boundary", () => {
     expect(container.textContent).toContain("No assignments match these filters.");
   });
 
+  it("shows readable project options and keeps the selected label human-readable", async () => {
+    const container = await render(createElement(Assignments), remoteDependencies({ assignments: [assignment] }));
+    const project = container.querySelector('select[aria-label="Project"]') as HTMLSelectElement;
+    const option = [...project.options].find((item) => item.value === "canonical-project");
+    expect(option?.textContent).toBe("Remote Project");
+    expect(option?.className).toContain("text-slate-900");
+    await act(async () => { project.value = "canonical-project"; project.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(project.value).toBe("canonical-project");
+    expect(project.selectedOptions[0].textContent).toBe("Remote Project");
+    expect(container.textContent).toContain("project: Remote Project");
+    expect(container.textContent).not.toContain("canonical-project");
+    for (const name of ["Category", "Equipment", "Status", "Operator"]) expect(container.querySelector(`select[aria-label="${name}"]`)?.className).toContain("assignment-filter-select");
+  });
+
   it("shows drawer actions only under the existing rental and cancellation gates", async () => {
     const noCancel = await render(createElement(Assignments), remoteDependencies({ assignments: [{ ...assignment, rowVersion: 1 }] }));
     await act(async () => noCancel.querySelector('tr[aria-label="Open ME-REMOTE assignment"] td')?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
