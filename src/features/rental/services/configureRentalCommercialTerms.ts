@@ -61,8 +61,8 @@ export function configureBulkRentalCommercialTerms(input: {
   return { success: true, contracts };
 }
 
-export function canEditRentalCommercialTerms(rental: Pick<RentalRecord, "status">): boolean {
-  return rental.status === "Draft" || rental.status === "Assigned" || rental.status === "Reserved";
+export function canEditRentalCommercialTerms(rental: Pick<RentalRecord, "status"> & Partial<Pick<RentalRecord, "approvalStatus">>): boolean {
+  return rental.approvalStatus !== "Approved" && (rental.status === "Draft" || rental.status === "Assigned" || rental.status === "Reserved");
 }
 
 export function configureRentalCommercialTerms(input: {
@@ -75,6 +75,7 @@ export function configureRentalCommercialTerms(input: {
 }): ConfigureRentalCommercialTermsResult {
   const { rental, line, equipmentId, commercialTerms, existingContract, timestamp } = input;
   if (line.rentalId !== rental.id) return { success: false, code: "LINE_RENTAL_MISMATCH", message: "Rental Equipment Line does not belong to this Rental." };
+  if (rental.approvalStatus === "Approved") return { success: false, code: "APPROVED_LOCKED", message: "This rental has already been approved. Preparation details can no longer be changed." };
   if (line.equipmentId !== equipmentId) return { success: false, code: "LINE_EQUIPMENT_MISMATCH", message: "Equipment does not match this Rental Equipment Line." };
   if (existingContract && (existingContract.rentalId !== rental.id || existingContract.rentalEquipmentLineId !== line.id || existingContract.equipmentId !== line.equipmentId)) {
     return { success: false, code: "CONTRACT_LINE_MISMATCH", message: "Commercial terms record does not match this Rental Equipment Line." };

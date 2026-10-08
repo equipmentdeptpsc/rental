@@ -144,6 +144,10 @@ export default function AssignmentForm({
       submission.fail("Assignment Date, Start Date, and End Date are required.");
       return;
     }
+    if (!form.activityCodeId) {
+      submission.fail("Activity Code is required for this assignment.");
+      return;
+    }
     if (form.endDate < form.startDate) {
       submission.fail("End Date cannot be earlier than Start Date.");
       return;

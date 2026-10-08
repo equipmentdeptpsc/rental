@@ -32,6 +32,18 @@ export interface CancelAssignmentCommand extends OperationalCommandMetadata {
   expectedVersion: number;
 }
 
+export interface AmendAssignmentActivityCodeCommand extends OperationalCommandMetadata {
+  assignmentId: string;
+  expectedVersion: number;
+  activityCodeId: string;
+}
+
+export interface AssignmentActivityCodeAmendmentProjection {
+  id: string;
+  activityCodeId: string;
+  rowVersion: number;
+}
+
 export interface AssignmentCancellationProjection {
   id: string;
   equipmentId: string;
@@ -43,4 +55,9 @@ export interface AssignmentCancellationProjection {
 export interface AssignmentCommandRepository {
   createAssignment(command: CreateAssignmentCommand): Promise<OperationalCommandResult<AssignmentCreationProjection>>;
   cancelAssignment(command: CancelAssignmentCommand): Promise<OperationalCommandResult<AssignmentCancellationProjection>>;
+  amendActivityCode(command: AmendAssignmentActivityCodeCommand): Promise<OperationalCommandResult<AssignmentActivityCodeAmendmentProjection>>;
+}
+
+export interface AssignmentActivityCodeAmendmentRepository {
+  amendActivityCode(command: AmendAssignmentActivityCodeCommand): Promise<OperationalCommandResult<AssignmentActivityCodeAmendmentProjection>>;
 }

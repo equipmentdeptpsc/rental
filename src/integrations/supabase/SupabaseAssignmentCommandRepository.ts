@@ -1,6 +1,8 @@
 import type {
   AssignmentCommandRepository,
   AssignmentCancellationProjection,
+  AssignmentActivityCodeAmendmentProjection,
+  AmendAssignmentActivityCodeCommand,
   AssignmentCreationProjection,
   CancelAssignmentCommand,
   CreateAssignmentCommand,
@@ -75,6 +77,15 @@ export class SupabaseAssignmentCommandRepository implements AssignmentCommandRep
     }
     return data;
   }
+
+  async amendActivityCode(command: AmendAssignmentActivityCodeCommand): Promise<OperationalCommandResult<AssignmentActivityCodeAmendmentProjection>> {
+    const { data, error } = await this.client.schema("erp").rpc("command_amend_assignment_activity_code", { command });
+    if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received from the remote service. Refresh before retrying.", retryable: true, refreshRequired: true };
+    const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
+    if (candidate?.success === false && typeof candidate.code === "string") return { success: false, code: candidate.code as Extract<OperationalCommandResult<AssignmentActivityCodeAmendmentProjection>, { success: false }>["code"], message: assignmentFailureMessage(candidate.code), retryable: false, refreshRequired: ["CONFLICT", "DEPENDENCY_CONFLICT"].includes(candidate.code) };
+    if (!isOperationalCommandResult<AssignmentActivityCodeAmendmentProjection>(data) || (data.success && !isActivityCodeAmendmentProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The server returned an invalid response for the Assignment Activity Code update.", retryable: false, refreshRequired: true };
+    return data;
+  }
 }
 
 function failureMessage(code: string) {
@@ -92,6 +103,19 @@ function failureMessage(code: string) {
     PERSISTENCE_FAILURE: "The remote service could not save the Assignment. Refresh before retrying.",
   };
   return messages[code] ?? "The Assignment request was rejected.";
+}
+
+function assignmentFailureMessage(code: string) {
+  if (code === "APPROVED_LOCKED") return "This rental has already been approved. Preparation details can no longer be changed.";
+  if (code === "DEPENDENCY_CONFLICT") return "This Assignment cannot be repaired after DEUR activity or a Rental lifecycle change.";
+  if (code === "FORBIDDEN") return "You do not have permission to manage Assignments.";
+  return failureMessage(code);
+}
+
+function isActivityCodeAmendmentProjection(value: unknown): value is AssignmentActivityCodeAmendmentProjection {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.id === "string" && typeof row.activityCodeId === "string" && typeof row.rowVersion === "number";
 }
 
 function isProjection(value: unknown): value is AssignmentCreationProjection {

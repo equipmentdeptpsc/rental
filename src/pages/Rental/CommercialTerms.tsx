@@ -63,7 +63,7 @@ export function LineTermsEditor({ rental, line, contract, equipmentLabel, operat
   const numberField = (label: string, value: string, setValue: (value: string) => void, required = false) => <label className="text-sm">{label}<input className="mt-1 block w-full rounded border p-2" type="number" min="0" step="any" required={required} disabled={!editable} value={value} onChange={(event) => setValue(event.target.value)} /></label>;
   return <section className="rounded-xl border bg-white p-6 shadow-sm">
     <div className="mb-4 rounded-lg bg-slate-50 p-4"><p className="font-semibold">{equipmentLabel}</p><p className="text-sm text-slate-600">Operator: {operatorLabel}</p><p className="text-xs text-slate-500">Rental Equipment Line · {line.status}</p></div>
-    {!editable && <p className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-blue-800">🔒 Frozen — Commercial Terms are frozen after reservation preparation.</p>}
+    {rental.approvalStatus === "Approved" ? <p className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-amber-950" role="status">This rental has already been approved. Preparation details can no longer be changed.</p> : !editable && <p className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-blue-800">🔒 Frozen — Commercial Terms are frozen after reservation preparation.</p>}
     {editable&&["Pending","Approved"].includes(rental.approvalStatus??"")&&<p className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-amber-900">Saving a material change will invalidate the current Manager approval state and require a new approval request.</p>}
     <div className="grid gap-4 sm:grid-cols-2">
       <h3 className="border-b pb-2 font-semibold sm:col-span-2">A. Billing Basis</h3>

@@ -106,7 +106,7 @@ describe("remote DEUR preparation references", () => {
     activityCodeId = "";
     await render(); await completeAndSave();
     expect(updateTerms).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("linked Equipment Cost Code or Assignment Activity Code is unavailable");
+    expect(container.textContent).toContain("Activity Code is missing from the linked assignment. Update the assignment before preparing the DEUR.");
   });
 
   it("submits once while the first save is still pending", async () => {

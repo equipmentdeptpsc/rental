@@ -1,12 +1,15 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/features/auth/AuthContext";
 import WorkflowBanner from "@/components/ui/WorkflowBanner";
 import WorkflowStepper from "@/components/ui/WorkflowStepper";
-import { useRentalWorkspaceAggregate } from "..";
+import { useRentalWorkspaceAggregate, useRentalWorkspacePresentationData } from "..";
 import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
 import { buildRentalWorkflowSteps, workflowBannerTone } from "../presentation/rentalWorkflowPresentation";
 
 export default function RentalWorkspaceWorkflowPanel() {
   const aggregate = useRentalWorkspaceAggregate();
+  const { assignments } = useRentalWorkspacePresentationData();
+  const { hasPermission } = useAuth();
   const effectiveDeurs = aggregate.rentalEquipmentLines
     .map((line) =>
       [...aggregate.deurs]
@@ -30,6 +33,8 @@ export default function RentalWorkspaceWorkflowPanel() {
     billableEvidence,
   });
   const steps = buildRentalWorkflowSteps(workflow.stage);
+  const preparationOpen = aggregate.rental.approvalStatus !== "Approved";
+  const linkedAssignments = aggregate.rentalEquipmentLines.map(line => assignments.find(item => item.id === line.assignmentId)).filter((item): item is NonNullable<typeof item> => Boolean(item));
   const [searchParams] = useSearchParams();
   const tabHint =
     workflow.stage === "BillingEligible" || workflow.stage === "Billed"
@@ -47,6 +52,11 @@ export default function RentalWorkspaceWorkflowPanel() {
   return (
     <div className="space-y-4">
       <WorkflowStepper steps={steps} />
+      {preparationOpen && <nav aria-label="Rental preparation steps" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-white px-4 py-3 text-sm">
+        <span className="font-medium text-slate-600">Revise before approval:</span>
+        {hasPermission("assignment.read") && linkedAssignments.map(assignment => <Link key={assignment.id} className="app-link underline" to={`/assignments/${encodeURIComponent(assignment.id)}?returnTo=${encodeURIComponent(`/rentals/${aggregate.rental.id}/commercial-terms?step=deur`)}`}>Assignment</Link>)}
+        {hasPermission("rental.commercialTerms.read") && <><Link className="app-link underline" to={`/rentals/${aggregate.rental.id}/commercial-terms`}>Commercial Terms</Link><Link className="app-link underline" to={`/rentals/${aggregate.rental.id}/commercial-terms?step=deur`}>DEUR Preparation</Link></>}
+      </nav>}
       <WorkflowBanner
         tone={workflowBannerTone(workflow.stage)}
         title={workflow.label}

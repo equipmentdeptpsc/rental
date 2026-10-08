@@ -19,8 +19,7 @@ export function canUseCanonicalRemoteRentalCreation(configuration: RentalRuntime
 }
 
 export function canUseCanonicalRemoteRentalCommercialTermsMutation(configuration: RentalRuntimeConfiguration): boolean {
-  return configuration.persistenceMode === PersistenceMode.Remote
-    && configuration.remoteRentalCommercialTermsEnabled === true;
+  return configuration.persistenceMode === PersistenceMode.Remote;
 }
 
 export function canUseCanonicalRemoteRentalApprovalMutations(configuration: RentalRuntimeConfiguration): boolean {

@@ -39,7 +39,7 @@ import type { CertificationTypeRecord, CertificationTypeCommandRepository } from
 import type { DeurCommandRepository, ManualDeurCommandRepository } from "@/features/rental/deur/commands/contracts";
 import type { OperationalCommandRepositories } from "@/features/rental/operations/commands/contracts";
 import type { CanonicalRentalEquipmentRepository, CanonicalRentalRemoteRepository } from "@/features/rental/remote/contracts";
-import type { AssignmentCommandRepository } from "@/features/assignment/commands/contracts";
+import type { AssignmentActivityCodeAmendmentRepository, AssignmentCommandRepository } from "@/features/assignment/commands/contracts";
 import type { ProjectCommandRepository } from "@/features/project/commands/contracts";
 import type { OperatorCommandRepository } from "@/features/operators/commands/contracts";
 import type { EquipmentCommandRepository } from "@/features/equipment/commands/contracts";
@@ -88,7 +88,7 @@ export interface ApplicationReadRepositories {
   equipmentAvailability: EquipmentAvailabilityRepository;
   operatorCertifications: OperatorCertificationRepository;
 }
-export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; manualDeurCommands?: ManualDeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalRentalEquipment?: CanonicalRentalEquipmentRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository; certificationTypes?: CertificationTypeCommandRepository; equipmentSubcategories?: EquipmentSubcategoryCommandRepository; operatorCertifications?: OperatorCertificationRepository }
+export interface ApplicationCommandRepositories extends OperationalCommandRepositories { deurCommands: DeurCommandRepository; manualDeurCommands?: ManualDeurCommandRepository; canonicalRental?: CanonicalRentalRemoteRepository; canonicalRentalEquipment?: CanonicalRentalEquipmentRepository; canonicalAssignment?: AssignmentCommandRepository; canonicalAssignmentActivityCode?: AssignmentActivityCodeAmendmentRepository; canonicalProject?: ProjectCommandRepository; canonicalOperator?: OperatorCommandRepository; canonicalEquipment?: EquipmentCommandRepository; canonicalCustomer?: CustomerCommandRepository; certificationTypes?: CertificationTypeCommandRepository; equipmentSubcategories?: EquipmentSubcategoryCommandRepository; operatorCertifications?: OperatorCertificationRepository }
 export interface ApplicationChangeNotifications { subscribeDeur(listener: (record: DeurRecord) => void): () => void }
 export interface OperationalSynchronizationDependencies {
   readonly tenantId?: string;
