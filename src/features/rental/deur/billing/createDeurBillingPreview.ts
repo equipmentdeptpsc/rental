@@ -13,7 +13,7 @@ export interface DeurBillingPreview {
   billingMethod: BillingCalculationTerms["billingMethod"];
   eligibility: { eligible: boolean; reasonCodes: DeurBillingEligibilityReasonCode[] };
   evidence: {
-    operatingMinutes: number; idleMinutes: number; mobilizationMinutes: number; demobilizationMinutes: number;
+    operatingMinutes: number; idleMinutes: number; standbyMinutes: number; mobilizationMinutes: number; demobilizationMinutes: number;
     hasRunningActivity: boolean; completedShift: boolean;
   };
   rates: Omit<BillingCalculationTerms, "billingMethod" | "operatorIncluded"> & { operatorIncluded: boolean };
@@ -43,7 +43,7 @@ function closeOpenEvents(events: CanonicalDeurEvent[], evaluatedAt: Date): Canon
     const timestamp = new Date(Number.isFinite(startedAt) ? Math.max(startedAt, evaluation) : evaluation).toISOString();
     result.push({ id: `preview-${activityType}-end`, activityType, action: "end", timestamp, sequence: ++sequence, source: "automatic" });
   };
-  (["operation", "idle", "mealBreak", "breakdown"] as const).forEach(close);
+  (["operation", "idle", "standby", "mealBreak", "breakdown"] as const).forEach(close);
   close("shift");
   return result;
 }
@@ -77,7 +77,7 @@ export function createDeurBillingPreview({ deur, terms, evaluatedAt = new Date()
     commercialTermsSource:resolvedCommercial.source,...(resolvedCommercial.capturedAt?{commercialCapturedAt:resolvedCommercial.capturedAt}:{}),
     eligibility: { eligible: eligibility.eligible, reasonCodes: [eligibility.reasonCode] },
     evidence: {
-      operatingMinutes: totals.operationMinutes, idleMinutes: totals.idleMinutes,
+      operatingMinutes: totals.operationMinutes, idleMinutes: totals.idleMinutes, standbyMinutes: totals.standbyMinutes ?? 0,
       mobilizationMinutes: Math.max(0, deur.totalMobilizationMinutes), demobilizationMinutes: Math.max(0, deur.totalDemobilizationMinutes),
       hasRunningActivity, completedShift: eventState.shiftCompleted,
     },

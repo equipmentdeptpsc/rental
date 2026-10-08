@@ -93,11 +93,26 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
   }
 
   async claimBatch(workerId: string, limit: number): Promise<ClaimedNotification[]> {
+    await this.prepareSubmittedDeurReviewHandoffs(limit);
     const result = await this.rpc<RpcResult<Array<{ id: string }>>>(
       this.service, "claim_notification_delivery_batch", { worker_id: workerId, batch_size: limit },
     );
     if (!result.success) return [];
     return Promise.all((result.value ?? []).filter(Boolean).map((item) => this.getIntent(item.id)));
+  }
+
+  private async prepareSubmittedDeurReviewHandoffs(limit: number): Promise<void> {
+    const pending = await this.rpc<RpcResult<Array<{ notificationId: string; batchId: string }>>>(
+      this.service, "read_pending_submitted_deur_review_handoffs", { batch_size: Math.max(1, Math.min(limit, 50)) },
+    );
+    for (const item of pending.value ?? []) {
+      const credential = generateGroupedReviewCredential();
+      const envelope = encryptGroupedReviewDeliveryEnvelope(credential.reviewPath, item.notificationId, this.deliveryKey());
+      const prepared = await this.rpc<RpcResult<unknown>>(this.service, "prepare_submitted_deur_review_handoff", {
+        command: { notificationId: item.notificationId, batchId: item.batchId, credentialHash: credential.hash, ...envelope },
+      });
+      if (!prepared.success) throw new Error(`prepare_submitted_deur_review_handoff failed (${prepared.code ?? "unknown"})`);
+    }
   }
 
   async complete(input: Parameters<TrustedNotificationWorkerRepository["complete"]>[0]): Promise<void> {

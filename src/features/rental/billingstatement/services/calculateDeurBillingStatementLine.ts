@@ -120,6 +120,7 @@ export function calculateDeurBillingStatementLine(
     ...deur,
     totalOperatingMinutes: quantityBilling ? 0 : totals.totals.operationMinutes,
     totalIdleMinutes: quantityBilling ? 0 : totals.totals.idleMinutes,
+    totalStandbyMinutes: quantityBilling ? 0 : totals.totals.standbyMinutes,
     totalMealBreakMinutes: quantityBilling ? 0 : totals.totals.mealBreakMinutes,
   };
   const charges = BillingRateEngine.calculate(engineInput, terms);

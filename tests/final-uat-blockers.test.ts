@@ -16,7 +16,9 @@ const events: DeurRecord["events"] = [
   { id: "o2", activityType: "operation", action: "end", timestamp: "2026-07-27T02:00:00Z", sequence: 3, source: "user" },
   { id: "i1", activityType: "idle", action: "start", timestamp: "2026-07-27T02:00:00Z", sequence: 4, source: "user" },
   { id: "i2", activityType: "idle", action: "end", timestamp: "2026-07-27T03:00:00Z", sequence: 5, source: "user" },
-  { id: "e", activityType: "shift", action: "end", timestamp: "2026-07-27T03:00:00Z", sequence: 6, source: "user" },
+  { id: "w1", activityType: "standby", action: "start", timestamp: "2026-07-27T03:00:00Z", sequence: 6, source: "user" },
+  { id: "w2", activityType: "standby", action: "end", timestamp: "2026-07-27T04:00:00Z", sequence: 7, source: "user" },
+  { id: "e", activityType: "shift", action: "end", timestamp: "2026-07-27T04:00:00Z", sequence: 8, source: "user" },
 ];
 const deur = (status: DeurRecord["status"]): DeurRecord => ({ id: "d", deurNumber: "DEUR-1", rentalId: "r", rentalEquipmentLineId: "line-1", equipmentId: "e", operatorId: operator.id, workDate: "2026-07-27", status, events, totals: { shiftMinutes: 180, operationMinutes: 120, idleMinutes: 60, standbyMinutes: 60, mealBreakMinutes: 0, breakdownMinutes: 0 }, logs: [], totalOperatingMinutes: 120, totalIdleMinutes: 60, totalStandbyMinutes: 60, totalMaintenanceMinutes: 0, totalMealBreakMinutes: 0, totalMobilizationMinutes: 0, totalDemobilizationMinutes: 0, legacy: false, evidenceMode: "TIME_TIMELINE", billingMethodSnapshot: "Per Hour", commercialSnapshotRequired: true, commercialSnapshot: snapshot, createdAt: "", updatedAt: "" });
 
@@ -41,9 +43,10 @@ describe("final UAT blocker regressions", () => {
 
   it("shows canonical evidence before acknowledgement and becomes calculable afterward", () => {
     const pending = createDeurBillingPreview({ deur: deur("Submitted"), terms: { billingMethod: "Per Hour", unitRate: 999, standbyRate: 999, operatorIncluded: true }, evaluatedAt: "2026-07-27T04:00:00Z" });
-    expect(pending).toMatchObject({ status: "provisional", evidence: { operatingMinutes: 120, idleMinutes: 60 }, commercialTermsSource: "IMMUTABLE_SNAPSHOT" });
+    expect(pending).toMatchObject({ status: "provisional", evidence: { operatingMinutes: 120, idleMinutes: 60, standbyMinutes: 60 }, commercialTermsSource: "IMMUTABLE_SNAPSHOT" });
     const acknowledged = createDeurBillingPreview({ deur: deur("Acknowledged"), terms: { billingMethod: "Per Hour", unitRate: 999, standbyRate: 999, operatorIncluded: true }, evaluatedAt: "2026-07-27T04:00:00Z" });
-    expect(acknowledged).toMatchObject({ status: "available", charges: { operatingCharge: 200, idleCharge: 0 } });
+    expect(acknowledged).toMatchObject({ status: "available", charges: { operatingCharge: 200, idleCharge: 0, standbyCharge: 25, standbyHours: 1 } });
+    expect(acknowledged.charges?.operatingHours).toBe(2);
   });
 
   it("hydrates immutable Customer review requests from Local Storage", () => {
