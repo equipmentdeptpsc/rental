@@ -45,7 +45,9 @@ function dependencies() {
     const rows = filters?.rental_id === "r1" ? [{ id: "c1", rentalId: "r1", statementId: "s1", amount: 250 }] : filters?.rental_id === "r4" ? [{ id: "c2", rentalId: "r4", statementId: "s2", amount: 100 }] : [];
     return repositorySuccess({ items: rows.slice(paging?.offset ?? 0, (paging?.offset ?? 0) + Math.min(paging?.limit ?? 1, 1)) });
   }) };
-  const reads = { equipment, assignments, rentals, deurs, canonicalAudit: audit, billing, collections };
+  const rentalEquipmentLines = paged([]);
+  const projects = paged([]);
+  const reads = { equipment, assignments, rentals, deurs, rentalEquipmentLines, projects, canonicalAudit: audit, billing, collections };
   const writes = { canonicalEquipment: { createEquipment: vi.fn() }, canonicalAssignment: { createAssignment: vi.fn() } };
   return { dependencies: { readRepositories: reads, repositories: { equipmentStatusRead: statuses }, commandRepositories: writes } as unknown as ApplicationDependencies, reads, statuses, writes };
 }
@@ -67,6 +69,8 @@ describe("canonical dashboard reads", () => {
     expect(model.financial.upcoming).toMatchObject({ scheduledRelease: 1, expectedReturns: 1, pendingManagerApprovals: 0, pendingCustomerAcknowledgements: 1 });
     expect(model.financialAvailable).toBe(false);
     expect(input.reads.billing.list).not.toHaveBeenCalled();
+    expect(input.reads.rentalEquipmentLines.list).toHaveBeenCalled();
+    expect(input.reads.projects.list).not.toHaveBeenCalled();
     expect(input.reads.collections.list).not.toHaveBeenCalled();
     expect(input.reads.canonicalAudit.list).not.toHaveBeenCalled();
     expect(input.writes.canonicalEquipment.createEquipment).not.toHaveBeenCalled();
@@ -98,6 +102,7 @@ describe("canonical dashboard reads", () => {
     const input = dependencies();
     const model = await readCanonicalDashboard(input.dependencies, { canReadAudit: false, canReadFinancial: true });
     expect(model.financialAvailable).toBe(true);
+    expect(input.reads.projects.list).toHaveBeenCalled();
     expect(model.financial.revenue).toEqual({ billed: 1500, collected: 350, outstanding: 1150 });
     expect(model.financial.collectionPerformance.collectionRate).toBe(23.33);
     expect(input.reads.billing.list.mock.calls.length).toBeGreaterThan(2);

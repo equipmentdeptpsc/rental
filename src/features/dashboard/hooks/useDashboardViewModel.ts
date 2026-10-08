@@ -5,6 +5,7 @@ import { useEquipment } from "@/features/equipment/context/EquipmentContext";
 import { useEquipmentHistory } from "@/features/equipment/history";
 import { useMaintenance } from "@/features/maintenance/context/MaintenanceContext";
 import { useRental } from "@/features/rental/context/RentalContext";
+import { useProject } from "@/features/project/context/ProjectContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { billingStatementRepository } from "@/features/rental/billingstatement/repository";
 import { collectionRepository } from "@/features/rental/collections/repository";
@@ -18,7 +19,8 @@ import { buildDashboardActionQueue } from "../services/dashboardActionQueue";
 export function useDashboardViewModel(refreshKey = 0) {
   const { equipment } = useEquipment();
   const { assignments } = useAssignment();
-  const { rentals } = useRental();
+  const { rentals, rentalEquipmentLines } = useRental();
+  const { projects } = useProject();
   const { maintenance } = useMaintenance();
   const { history } = useEquipmentHistory();
   const { readRepositories, configuration } = useApplicationDependenciesCompatibility();
@@ -88,6 +90,7 @@ export function useDashboardViewModel(refreshKey = 0) {
     const statements = remote ? remoteState.statements : billingStatementRepository.getAll();
     const sourceMaintenance = remote ? [] : maintenance;
     const financial = calculateBusinessDashboardSummary({ statements, collections: remote ? [] : collectionRepository.getAll(), rentals: sourceRentals, deurs, currentUserId: user?.id, approvalPermissionGranted: hasPermission("rental.approval.decide") });
+    const managementSource = { equipment: sourceEquipment, assignments: sourceAssignments, rentals: sourceRentals, rentalLines: remote ? [] : rentalEquipmentLines, projects: remote ? [] : projects, deurs, statements, collections: remote ? [] : collectionRepository.getAll() };
     const operational = calculateDashboardSummary(sourceEquipment, sourceAssignments, sourceRentals, sourceMaintenance);
     const fleetUtilization = calculateFleetUtilization(sourceEquipment);
     const pendingDeur = deurs.filter((item) => ["Draft", "In Progress", "Submitted", "Pending Acknowledgement"].includes(item.status) && !item.revision?.supersededByRevisionId).length;
@@ -102,6 +105,6 @@ export function useDashboardViewModel(refreshKey = 0) {
       pendingCustomerAcknowledgements: financial.upcoming.pendingCustomerAcknowledgements,
       expectedReturns: financial.upcoming.expectedReturns,
     });
-    return { status: remote ? remoteState.status : "loaded" as const, error: remoteState.message, retry: () => undefined, operational, financial, pendingDeur, utilizationRate: fleetUtilization.rate, fleetUtilization, statusData: getEquipmentStatusData(sourceEquipment), categoryData: getEquipmentCategoryData(sourceEquipment), activity, recentEquipmentActivity, actionQueue };
-  }, [assignments, equipment, hasPermission, history, maintenance, remote, remoteState, rentals, user?.id]);
+    return { status: remote ? remoteState.status : "loaded" as const, error: remoteState.message, retry: () => undefined, operational, financial, managementSource, pendingDeur, utilizationRate: fleetUtilization.rate, fleetUtilization, statusData: getEquipmentStatusData(sourceEquipment), categoryData: getEquipmentCategoryData(sourceEquipment), activity, recentEquipmentActivity, actionQueue };
+  }, [assignments, equipment, hasPermission, history, maintenance, projects, remote, remoteState, rentalEquipmentLines, rentals, user?.id]);
 }

@@ -10,6 +10,8 @@ import { calculateDashboardSummary } from "./dashboard.service";
 import { calculateBusinessDashboardSummary } from "./businessDashboardSummary";
 import { calculateFleetUtilization } from "./fleetUtilization";
 import { buildDashboardActionQueue } from "./dashboardActionQueue";
+import type { DashboardManagementSource } from "./managementAnalytics";
+import { summarizeCanonicalBillingVisibility } from "./canonicalBillingVisibility";
 
 const PAGE_SIZE = 200;
 const MAX_PAGES = 100;
@@ -62,6 +64,8 @@ async function readAllStatuses(repository: ApplicationDependencies["repositories
 }
 
 export interface CanonicalDashboardModel {
+  managementSource: DashboardManagementSource;
+  billingVisibility: ReturnType<typeof summarizeCanonicalBillingVisibility>;
   operational: ReturnType<typeof calculateDashboardSummary>;
   financial: ReturnType<typeof calculateBusinessDashboardSummary>;
   financialAvailable: boolean;
@@ -89,6 +93,8 @@ export async function readCanonicalDashboard(
   const assignmentsPromise = readAllCanonicalPages(readRepositories.assignments, options.signal);
   const rentalsPromise = readAllCanonicalPages(readRepositories.rentals, options.signal);
   const deursPromise = readAllCanonicalPages(readRepositories.deurs, options.signal);
+  const rentalLinesPromise = readAllCanonicalPages(readRepositories.rentalEquipmentLines, options.signal);
+  const projectsPromise = options.canReadFinancial ? readAllCanonicalPages(readRepositories.projects, options.signal) : Promise.resolve([]);
   const auditPromise = options.canReadAudit
     ? readRepositories.canonicalAudit.list({
         paging: { offset: 0, limit: 8 },
@@ -120,6 +126,8 @@ export async function readCanonicalDashboard(
     assignments,
     rentals,
     deurs,
+    rentalLines,
+    projects,
     audit,
     statements,
     collections,
@@ -129,6 +137,8 @@ export async function readCanonicalDashboard(
     assignmentsPromise,
     rentalsPromise,
     deursPromise,
+    rentalLinesPromise,
+    projectsPromise,
     auditPromise,
     statementsPromise,
     collectionsPromise,
@@ -153,10 +163,12 @@ export async function readCanonicalDashboard(
   const fleetUtilization = calculateFleetUtilization(currentEquipment);
   const pendingDeur = currentDeurs.filter((record) => ["Draft", "In Progress", "Submitted", "Pending Acknowledgement"].includes(record.status)).length;
   const activity = (audit?.success ? audit.value.items : []).map((event: CanonicalAuditEvent) => ({
-    id: event.id, title: event.action.replaceAll("_", " ").toLowerCase(), description: `${event.aggregateType} ${event.aggregateId}`,
+    id: event.id, title: event.action.replaceAll("_", " ").toLowerCase(), description: `${event.aggregateType} activity`,
     timestamp: event.occurredAt, kind: event.aggregateType === "Rental" ? "rental" as const : "equipment" as const,
   }));
   return {
+    managementSource: { equipment: currentEquipment, assignments: currentAssignments, rentals: currentRentals, rentalLines, projects, deurs: currentDeurs, statements, collections },
+    billingVisibility: options.canReadFinancial ? summarizeCanonicalBillingVisibility(currentDeurs) : { readyForBilling: 0, blockerCount: 0, blockers: { "Awaiting customer acknowledgement": 0, "Pending correction": 0, "Incomplete DEUR": 0, "Billing setup incomplete": 0, "Other blocking state": 0 } },
     operational, financial, financialAvailable: Boolean(options.canReadFinancial), fleetUtilization, utilizationRate: fleetUtilization.rate, pendingDeur,
     actionQueue: buildDashboardActionQueue({ deurs: currentDeurs, rentals: currentRentals, ...financial.upcoming }),
     activity, recentEquipmentActivity: [], activityAvailable: options.canReadAudit,
