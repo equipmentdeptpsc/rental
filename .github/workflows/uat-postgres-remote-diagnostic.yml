@@ -21,7 +21,7 @@ jobs:
       - name: Check out pinned release
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: 6c978b40a3688a283443317c2d40e47e19614582
+          ref: ef6feb1ac1c1215034de4e33a79c8edff0f92f6b
           persist-credentials: false
 
       - name: Install diagnostic clients
@@ -42,9 +42,9 @@ jobs:
           set -euo pipefail
           set +x
 
-          expected_sha=6c978b40a3688a283443317c2d40e47e19614582
-          expected_migration_sha=BA24EA87C361CBAB6AFF165709115D6CD25B7080B66C030DAB98D745AB920165
-          migration=supabase/migrations/20261007000100_canonical_idle_discount_vat_billing.sql
+          expected_sha=ef6feb1ac1c1215034de4e33a79c8edff0f92f6b
+          expected_migration_sha=3DA8E286748DD06D56762ED99AB15552FA670B5B73A1EC2BC9C39C272DFF069A
+          migration=supabase/migrations/20261008000100_uat_management_approval_guards.sql
 
           [[ "$UAT_PROJECT_REF" == jtkctarqbwmqdcewthkn ]] || { echo 'PROJECT_REF=FAIL'; exit 1; }
           [[ "$UAT_POOLER_HOST" == aws-0-ap-southeast-1.pooler.supabase.com ]] || { echo 'POOLER_HOST=FAIL'; exit 1; }
@@ -119,7 +119,7 @@ jobs:
           export REMOTE_VERSIONS="$remote_versions"
           python3 - <<'PY'
           import os, pathlib, re, sys
-          expected = '20261007000100'
+          expected = '20261008000100'
           remote = [v for v in os.environ['REMOTE_VERSIONS'].splitlines() if v]
           files = list(pathlib.Path('supabase/migrations').glob('*.sql'))
           local = [p.name.split('_', 1)[0] for p in files]
@@ -172,7 +172,7 @@ jobs:
           print('DRY_RUN_HAS_WOULD_PUSH=' + ('YES' if re.search(r'Would push migration', output, re.I) else 'NO'))
           print('DRY_RUN_HAS_FINISHED=' + ('YES' if re.search(r'Finished supabase db push', output, re.I) else 'NO'))
           print('DRY_RUN_PROPOSED=' + (','.join(proposed) if proposed else 'NONE'))
-          if proposed == ['20261007000100_canonical_idle_discount_vat_billing.sql']:
+          if proposed == ['20261008000100_uat_management_approval_guards.sql']:
               print('DRY_RUN=PASS')
           else:
               print('DRY_RUN=UNEXPECTED_MIGRATION_SET')
