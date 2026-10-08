@@ -12,7 +12,7 @@ import DeurReleaseReadinessPanel from "@/features/rental/components/DeurReleaseR
 import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
 import { resolveRentalLinePresentation } from "@/features/rental/deur/presentation/resolveDeurPresentation";
 import { useAuth } from "@/features/auth/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { resolveRentalWorkflowStatus } from "@/features/rental/workflow/resolveRentalWorkflowStatus";
 import type { WorkspaceTab } from "../types";
 import { detectClosedRentalIntegrityViolation } from "@/features/rental/services/detectClosedRentalIntegrityViolation";
@@ -26,8 +26,11 @@ import { useState } from "react";
 import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import RentalReturnEvidence from "./RentalReturnEvidence";
 import RentalEquipmentLineReturnActions, { isReturnableRentalEquipmentLine } from "@/features/rental/components/RentalEquipmentLineReturnActions";
+import { rentalListReturnPath } from "@/features/rental/services/rentalListNavigation";
 
 export default function RentalWorkspaceHeader({ activeTab }: { activeTab: WorkspaceTab }) {
+  const location = useLocation();
+  const backToRentals = rentalListReturnPath(location.search);
   const dependencies = useApplicationDependenciesCompatibility();
   const { configuration } = dependencies;
   const legacyMutationsAvailable = canUseLegacyRentalMutations(configuration);
@@ -53,18 +56,21 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
 
   return (
     <div className="app-card space-y-5 p-5 sm:p-6">
+      <Link className="app-link inline-block text-sm" to={backToRentals}>← Back to Rentals</Link>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental Workspace</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">{aggregate.rental.customer}</h2>
           <p className="mt-1 text-sm text-slate-500">{aggregate.rental.project}</p>
-          <p className="mt-1 text-xs text-slate-500">{aggregate.rental.rentalNumber ?? aggregate.rental.id}</p>
+          <p className="mt-1 text-xs text-slate-500">{aggregate.rental.rentalNumber ?? "Rental transaction"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge tone={aggregate.rental.status === "Closed" ? "neutral" : "info"}>{aggregate.rental.status}</StatusBadge>
           <RentalDeurComplianceIndicator result={displayedCompliance} />
         </div>
       </div>
+
+      {mutationsAvailable && aggregate.rental.status !== "Closed" && <section className="min-w-0 rounded-lg border border-slate-200 p-3 dark:border-slate-700" aria-label="Available rental actions"><h3 className="mb-2 text-sm font-semibold">Available actions</h3><RentalQuickActions rental={aggregate.rental} hideClose={activeTab === "closing"} returnableLineCount={aggregate.rentalEquipmentLines.filter(isReturnableRentalEquipmentLine).length} /></section>}
 
       <RentalWorkspaceSummaryStrip />
       <RentalWorkspaceWorkflowPanel />
@@ -78,7 +84,7 @@ export default function RentalWorkspaceHeader({ activeTab }: { activeTab: Worksp
       {legacyMutationsAvailable&&aggregate.rental.status!=="Closed"&&<RentalDeurExpectationPolicyCard rental={aggregate.rental} />}
       {!mutationsAvailable && aggregate.rental.status !== "Closed" && <p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE}</p>}
       {legacyMutationsAvailable&&["Draft","Assigned","Reserved"].includes(aggregate.rental.status)&&<DeurReleaseReadinessPanel rentalId={aggregate.rental.id} />}
-      {aggregate.rental.status!=="Closed"&&<div className="mt-4 space-y-4 border-t pt-4"><RentalQuickActions rental={aggregate.rental} hideClose={activeTab==="closing"} returnableLineCount={aggregate.rentalEquipmentLines.filter(isReturnableRentalEquipmentLine).length} /><RentalEquipmentLineReturnActions rental={aggregate.rental} lines={aggregate.rentalEquipmentLines} equipment={equipment} assignments={assignments} operators={operators} /></div>}
+      {aggregate.rental.status!=="Closed"&&<div className="mt-4 space-y-4 border-t pt-4"><RentalEquipmentLineReturnActions rental={aggregate.rental} lines={aggregate.rentalEquipmentLines} equipment={equipment} assignments={assignments} operators={operators} /></div>}
       {mutationsAvailable&&aggregate.rental.status!=="Closed"&&hasPermission("rental.customerContact.update")&&<Link className="mt-3 inline-block rounded border border-blue-600 px-3 py-2 text-sm text-blue-700" to={`/rentals/${aggregate.rental.id}/customer-contact`}>Edit Customer Contact</Link>}
       <ApprovalInvalidationNotice rental={aggregate.rental} />
       {workflow.blockingReasons.length > 0 && (

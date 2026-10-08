@@ -18,18 +18,23 @@ export function RentalMobileCard({
   workflowLabel,
   collectionStatus,
   compliance,
+  onOpen,
+  workspacePath,
 }: {
   rental: RentalRecord;
   presentation: ReturnType<typeof resolveRentalTransactionPresentation>;
   workflowLabel: string;
   collectionStatus: string;
   compliance: React.ReactNode;
+  onOpen?: () => void;
+  workspacePath?: string;
 }) {
   return (
-    <article className="app-card space-y-3 p-4 lg:hidden">
+    <article className="app-card cursor-pointer space-y-3 p-4 transition-colors hover:bg-amber-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-amber-950/20 xl:hidden" tabIndex={onOpen ? 0 : undefined} role={onOpen ? "link" : undefined} aria-label={onOpen ? `Open rental ${rental.rentalNumber ?? "workspace"}` : undefined} onClick={(event) => { if (!(event.target instanceof Element && event.target.closest("a,button,input,select,textarea"))) onOpen?.(); }} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onOpen?.(); } }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-semibold">{presentation.equipmentLabel}</p>
+          <p className="font-semibold">{rental.rentalNumber ?? "Rental transaction"}</p>
+          <p className="text-sm">{presentation.equipmentLabel}</p>
           <p className="text-xs text-slate-500">{presentation.operatorLabel}</p>
           <p className="mt-1 text-sm">{rental.customer} · {rental.project}</p>
         </div>
@@ -42,8 +47,8 @@ export function RentalMobileCard({
         <div><dt className="text-slate-500">Collection</dt><dd>{collectionStatus}</dd></div>
       </dl>
       <div>{compliance}</div>
-      <div className="flex flex-wrap gap-2">
-        <Link to={`/rentals/${rental.id}/workspace`}><Button size="sm">Open Workspace</Button></Link>
+      <div className="flex flex-wrap gap-2" data-row-interactive>
+        <Link to={workspacePath ?? `/rentals/${rental.id}/workspace`}><Button size="sm">Open Workspace</Button></Link>
         <RentalQuickActions rental={rental} />
       </div>
       <ApprovalInvalidationNotice rental={rental} />

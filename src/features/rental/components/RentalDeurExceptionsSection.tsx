@@ -1,7 +1,9 @@
 import { Fragment, useState } from "react";
-import { Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
+import InteractiveTableRow from "@/components/ui/InteractiveTableRow";
+import { rentalWorkspaceFromListPath } from "@/features/rental/services/rentalListNavigation";
 import { filterMissingDeurItems, missingDeurCounts, type MissingDeurStatus } from "@/features/rental/deur/compliance/missingDeurList";
 import { getRentalEquipmentLabel } from "@/features/rental/utils/rentalFormOptions";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line";
@@ -25,6 +27,8 @@ export default function RentalDeurExceptionsSection({
   operators: Operator[];
   projects: ProjectRecord[];
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const deurItems = attentionRows.map(({ rental, assignment, result, expectation }) => {
     const line = expectation?.rentalEquipmentLineId
       ? rentalEquipmentLines.find((item) => item.id === expectation.rentalEquipmentLineId)
@@ -115,33 +119,27 @@ export default function RentalDeurExceptionsSection({
       </div>
       <p className="mb-2 text-xs text-slate-500">Showing {pageRows.length} of {filteredDeur.length} exceptions · newest work date first</p>
       <ResponsiveTable>
-        <table className="app-table min-w-full text-sm">
+        <table className="app-table w-full table-fixed text-sm">
           <thead>
-            <tr>{["Rental", "Work Date", "Equipment", "Operator", "Shift", "DEUR Status", "Reason", "Action"].map((heading) => <th scope="col" key={heading} className="px-3 py-2 text-left">{heading}</th>)}</tr>
+            <tr>{["Rental", "Work Date", "Equipment", "Operator", "Shift", "DEUR Status", "Reason"].map((heading) => <th scope="col" key={heading} className="px-3 py-2 text-left">{heading}</th>)}</tr>
           </thead>
           <tbody>
             {pageRows.length === 0 ? (
-              <tr><td colSpan={8} className="p-6 text-center text-slate-500">No DEUR exceptions match the selected filters.</td></tr>
+              <tr><td colSpan={7} className="p-6 text-center text-slate-500">No DEUR exceptions match the selected filters.</td></tr>
             ) : pageRows.map((item) => (
               <Fragment key={item.id}>
-                <tr className="border-t">
+                <InteractiveTableRow aria-label={`Open rental ${item.rental}`} onOpen={() => navigate(rentalWorkspaceFromListPath(item.source.rental.id, location.search))}>
                   <td className="px-3 py-2 font-medium">{item.rental}</td>
                   <td className="px-3 py-2">{item.workDate}</td>
                   <td className="px-3 py-2">{item.equipment}</td>
                   <td className="px-3 py-2">{item.operator}</td>
                   <td className="px-3 py-2">{item.shift}</td>
                   <td className="px-3 py-2"><span className={`status-badge ${item.status === "Missing" ? "status-danger" : item.status === "Incomplete" ? "status-warning" : "status-neutral"}`}>{item.status}</span></td>
-                  <td className="max-w-sm px-3 py-2">{item.reason}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-2">
-                      <Link to={`/rentals/${item.source.rental.id}/workspace`}><Button variant="secondary" size="sm">View Rental</Button></Link>
-                      <Button variant="ghost" size="sm" aria-expanded={expanded === item.id} onClick={() => setExpanded(expanded === item.id ? undefined : item.id)}>Details</Button>
-                    </div>
-                  </td>
-                </tr>
+                  <td className="break-words px-3 py-2">{item.reason}<Button variant="ghost" size="sm" aria-expanded={expanded === item.id} onClick={() => setExpanded(expanded === item.id ? undefined : item.id)}>Details</Button></td>
+                </InteractiveTableRow>
                 {expanded === item.id && (
                   <tr className="bg-slate-50 dark:bg-slate-900">
-                    <td colSpan={8} className="px-4 py-3 text-xs">
+                    <td colSpan={7} className="px-4 py-3 text-xs">
                       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div><dt className="text-slate-500">Project</dt><dd>{item.project}</dd></div>
                         <div><dt className="text-slate-500">Billing Method</dt><dd>{item.source.rental.billingMethod ?? "Not configured"}</dd></div>
