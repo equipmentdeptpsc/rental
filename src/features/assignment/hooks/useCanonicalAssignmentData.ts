@@ -74,17 +74,19 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
       readRepositories.operators.list(),
       readRepositories.projects.list(),
       canReadCustomers ? readRepositories.customers.list() : Promise.resolve(null),
-    ]).then(([assignments, equipment, operators, projects, customers]) => {
+      readRepositories.equipmentCategories.list(),
+    ]).then(([assignments, equipment, operators, projects, customers, categories]) => {
       if (!active) return;
       if (!assignments.success || !equipment.success || !operators.success || !projects.success) {
         setState({ status: "error", data: emptyData(), message: "Assignment data could not be loaded. Retry the request or contact support." });
         return;
       }
+      const categoryNames = new Map(categories.success ? categories.value.items.map((item) => [item.id, item.name]) : []);
       const data: CanonicalAssignmentData = {
         assignments: assignments.value.items,
         equipment: equipment.value.items.map((record) => {
           const canonical = record as unknown as Record<string, unknown>;
-          return { id: record.id, assetNo: record.assetNo, equipmentName: record.equipmentName, statusId: text(canonical.statusId) || undefined, category: text(canonical.category), condition: text(canonical.condition), location: text(canonical.location), active: canonical.active === true, deleted: canonical.deletedAt !== null && canonical.deletedAt !== undefined };
+          return { id: record.id, assetNo: record.assetNo, equipmentName: record.equipmentName, statusId: text(canonical.statusId) || undefined, category: categoryNames.get(text(canonical.categoryId)) || text(canonical.category), condition: text(canonical.condition), location: text(canonical.location), active: canonical.active === true, deleted: canonical.deletedAt !== null && canonical.deletedAt !== undefined };
         }),
         operators: operators.value.items.map((record) => {
           const canonical = record as unknown as Record<string, unknown>;
