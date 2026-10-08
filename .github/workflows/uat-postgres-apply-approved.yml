@@ -19,6 +19,11 @@ on:
         description: Expected latest UAT migration version before apply
         required: true
         type: string
+      verify_only:
+        description: Run post-apply read-only verification without applying migrations
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -38,6 +43,7 @@ jobs:
       AUTHORIZED_MIGRATION: ${{ inputs.authorized_migration }}
       AUTHORIZED_MIGRATION_SHA: ${{ inputs.authorized_migration_sha }}
       EXPECTED_PREVIOUS_REMOTE_MIGRATION: ${{ inputs.expected_previous_remote_migration }}
+      VERIFY_ONLY: ${{ inputs.verify_only }}
     steps:
       - name: Check out exact authorized commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -122,20 +128,23 @@ jobs:
           PY
           }
 
-          verify_ledger PRE
-          migration_version="${AUTHORIZED_MIGRATION%%_*}"
-          echo "PRE_LATEST_REMOTE=$EXPECTED_PREVIOUS_REMOTE_MIGRATION"
-          echo "PENDING_MIGRATIONS=$migration_version"
+          if [[ "$VERIFY_ONLY" == "true" ]]; then
+            verify_ledger POST
+          else
+            verify_ledger PRE
+            migration_version="${AUTHORIZED_MIGRATION%%_*}"
+            echo "PRE_LATEST_REMOTE=$EXPECTED_PREVIOUS_REMOTE_MIGRATION"
+            echo "PENDING_MIGRATIONS=$migration_version"
 
-          db_url="$(python3 - <<'PY'
+            db_url="$(python3 - <<'PY'
           import os, urllib.parse
           password = urllib.parse.quote(os.environ['PGPASSWORD'], safe='')
           print(f"postgresql://{os.environ['PGUSER']}:{password}@{os.environ['PGHOST']}:{os.environ['PGPORT']}/{os.environ['PGDATABASE']}?sslmode=require")
           PY
-          )"
-          echo "::add-mask::$db_url"
-          if ! timeout 120s supabase db push --db-url "$db_url" --dry-run >"$dry_run_output" 2>&1; then echo 'DRY_RUN=CLI_ERROR'; exit 1; fi
-          DRY_RUN_OUTPUT="$dry_run_output" AUTHORIZED_MIGRATION="$AUTHORIZED_MIGRATION" python3 - <<'PY'
+            )"
+            echo "::add-mask::$db_url"
+            if ! timeout 120s supabase db push --db-url "$db_url" --dry-run >"$dry_run_output" 2>&1; then echo 'DRY_RUN=CLI_ERROR'; exit 1; fi
+            DRY_RUN_OUTPUT="$dry_run_output" AUTHORIZED_MIGRATION="$AUTHORIZED_MIGRATION" python3 - <<'PY'
           import os, pathlib, re, sys
           output = pathlib.Path(os.environ['DRY_RUN_OUTPUT']).read_text(errors='replace')
           output = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
@@ -146,25 +155,60 @@ jobs:
           if not finished or proposed != expected: sys.exit(1)
           PY
 
-          # Only the one preflight-verified authorized migration may be applied.
-          if ! timeout 180s supabase db push --db-url "$db_url" --yes >"$apply_output" 2>&1; then echo 'APPLY=CLI_ERROR'; exit 1; fi
-          echo 'APPLY=CLI_SUCCESS'
-          verify_ledger POST
+            # Only the one preflight-verified authorized migration may be applied.
+            if ! timeout 180s supabase db push --db-url "$db_url" --yes >"$apply_output" 2>&1; then echo 'APPLY=CLI_ERROR'; exit 1; fi
+            echo 'APPLY=CLI_SUCCESS'
+            verify_ledger POST
+          fi
 
           checks="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 <<'SQL'
           WITH defs AS (
-            SELECT p.proname, pg_get_functiondef(p.oid) AS body
-            FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='erp'
+            SELECT p.oid,p.proname,has_function_privilege('authenticated',p.oid,'EXECUTE') AS authenticated_execute,
+              lower(regexp_replace(pg_get_functiondef(p.oid),'\s+','','g')) AS compact_body
+            FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='erp' AND p.prokind='f'
           ), checks(name, ok) AS (
             VALUES
-              ('ACTIVITY_CODE_AMENDMENT_AUTH_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND body LIKE '%current_user_has_permission(''assignment.manage'')%')),
-              ('ASSIGNMENT_CREATE_ACTIVITY_CODE_VALIDATION_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_create_assignment' AND body LIKE '%current_user_has_permission(''assignment.create'')%' AND body LIKE '%nullif(btrim(command->>''activityCodeId''), '''') IS NULL%')),
-              ('COMMERCIAL_TERMS_REVISION_SUPPORT_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND body LIKE '%UPDATE_DRAFT_RENTAL_TERMS%')),
-              ('DEUR_PREPARATION_REVISION_SUPPORT_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND body LIKE '%draftPreparation%')),
-              ('POST_APPROVAL_PREPARATION_LOCK_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND body LIKE '%approval_status=''Approved''%') AND EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND body LIKE '%APPROVED_LOCKED%'))
+              ('ACTIVITY_CODE_CREATE_VALIDATION_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_create_assignment' AND authenticated_execute AND position('nullif(btrim(command->>''activitycodeid''),'''')isnull' IN compact_body)>0)),
+              ('ACTIVITY_CODE_AMENDMENT_AUTH_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND authenticated_execute AND position('current_user_has_permission(''assignment.manage'')' IN compact_body)>0)),
+              ('PREAPPROVAL_REVISION_SUPPORT_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND authenticated_execute AND position('draftpreparation' IN compact_body)>0 AND position('update_draft_rental_terms' IN compact_body)>0)),
+              ('POST_APPROVAL_LOCK_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND position('target.approval_status=''approved''thenreturn' IN compact_body)>0 AND position('approved_locked' IN compact_body)>0) AND EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND position('r.approval_status=''approved''' IN compact_body)>0 AND position('approved_locked' IN compact_body)>0))
           ) SELECT name || '=' || CASE WHEN ok THEN 'PASS' ELSE 'FAIL' END FROM checks;
           SQL
           )"
           printf '%s\n' "$checks"
           if grep -q '=FAIL' <<<"$checks"; then exit 1; fi
+
+          if [[ "$VERIFY_ONLY" == "true" ]]; then
+          behavioral="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          SELECT id AS create_actor FROM erp.users u WHERE u.status='active' AND EXISTS(SELECT 1 FROM erp.effective_user_permissions p WHERE p.user_id=u.id AND p.permission_code='assignment.create') ORDER BY u.id LIMIT 1 \gset
+          \if :{?create_actor}
+          SELECT set_config('request.jwt.claim.sub', :'create_actor', true) \gset
+          SET LOCAL ROLE authenticated;
+          SELECT erp.command_create_assignment('{"commandId":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1","idempotencyKey":"uat-read-only-missing-activity","assignmentId":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2","equipmentId":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3","operatorId":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4","projectId":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5","assignedDate":"2026-10-08"}'::jsonb)->>'code' AS create_result \gset
+          RESET ROLE;
+          \echo CREATE_MISSING_ACTIVITY_CODE=:create_result
+          \else
+          \echo CREATE_MISSING_ACTIVITY_CODE=NO_ELIGIBLE_ACTOR
+          \endif
+          SELECT id AS amend_actor FROM erp.users u WHERE u.status='active' AND EXISTS(SELECT 1 FROM erp.effective_user_permissions p WHERE p.user_id=u.id AND p.permission_code='assignment.manage') ORDER BY u.id LIMIT 1 \gset
+          \if :{?amend_actor}
+          WITH candidate AS (SELECT gen_random_uuid()::text AS id) SELECT candidate.id AS fake_assignment_id FROM candidate WHERE NOT EXISTS(SELECT 1 FROM erp.assignments a WHERE a.id=candidate.id) \gset
+          SELECT set_config('request.jwt.claim.sub', :'amend_actor', true) \gset
+          SET LOCAL ROLE authenticated;
+          SELECT erp.command_amend_assignment_activity_code(jsonb_build_object('commandId','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6','idempotencyKey','uat-read-only-assignment-auth','assignmentId',:'fake_assignment_id','activityCodeId','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2','expectedVersion','0'))->>'code' AS amendment_result \gset
+          RESET ROLE;
+          \echo ASSIGNMENT_MANAGE_PATH=:amendment_result
+          \else
+          \echo ASSIGNMENT_MANAGE_PATH=NO_ELIGIBLE_ACTOR
+          \endif
+          ROLLBACK;
+          \echo TRANSACTION_ROLLED_BACK=YES
+          SQL
+            )"
+            printf '%s\n' "$behavioral"
+            grep -qx 'CREATE_MISSING_ACTIVITY_CODE=VALIDATION_REJECTED' <<<"$behavioral" || grep -qx 'CREATE_MISSING_ACTIVITY_CODE=NO_ELIGIBLE_ACTOR' <<<"$behavioral" || exit 1
+            grep -qx 'ASSIGNMENT_MANAGE_PATH=NOT_FOUND' <<<"$behavioral" || grep -qx 'ASSIGNMENT_MANAGE_PATH=NO_ELIGIBLE_ACTOR' <<<"$behavioral" || exit 1
+            grep -qx 'TRANSACTION_ROLLED_BACK=YES' <<<"$behavioral" || exit 1
+          fi
           echo 'UAT_MIGRATION_VERIFICATION=PASS'
