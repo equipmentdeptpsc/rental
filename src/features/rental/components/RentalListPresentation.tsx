@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
-import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
 import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
 import ApprovalInvalidationNotice from "@/features/rental/approval/ApprovalInvalidationNotice";
 import { resolveRentalTransactionPresentation } from "@/features/rental/services/resolveRentalTransactionPresentation";
@@ -49,7 +48,6 @@ export function RentalMobileCard({
       <div>{compliance}</div>
       <div className="flex flex-wrap gap-2" data-row-interactive>
         <Link to={workspacePath ?? `/rentals/${rental.id}/workspace`}><Button size="sm">Open Workspace</Button></Link>
-        <RentalQuickActions rental={rental} />
       </div>
       <ApprovalInvalidationNotice rental={rental} />
     </article>
