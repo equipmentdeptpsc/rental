@@ -94,7 +94,7 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
         }),
         projects: projects.value.items.map((record) => {
           const canonical = record as unknown as Record<string, unknown>;
-          return { id: record.id, projectCode: text(canonical.projectCode) || undefined, name: text(canonical.name), customerId: text(canonical.customerId) || undefined, location: text(canonical.location) || undefined, active: canonical.active === true || canonical.status === "Active" };
+          return { id: record.id, projectCode: text(canonical.projectCode) || undefined, name: record.projectName, customerId: text(canonical.customerId) || undefined, location: text(canonical.location) || undefined, active: canonical.active === true || canonical.status === "Active" };
         }),
         customers: customers?.success ? customers.value.items.map((item) => ({ id: item.id, name: item.companyName })) : [],
       };

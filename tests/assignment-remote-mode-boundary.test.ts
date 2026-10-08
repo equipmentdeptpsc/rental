@@ -15,12 +15,14 @@ import AssignmentDetails from "@/pages/Assignments/Details";
 import NewAssignment from "@/pages/Assignments/New";
 import EditAssignment from "@/pages/Assignments/Edit";
 import { SupabaseAssignmentCommandRepository } from "@/integrations/supabase/SupabaseAssignmentCommandRepository";
+import { mapProject } from "@/integrations/supabase/readRepositories";
+import { getProjectDisplayLabel } from "@/features/project/projectDisplay";
 
 const roots: Root[] = [];
 const page = (items: unknown[]) => repositorySuccess({ items, nextCursor: undefined });
 const assignment = { id: "canonical-assignment", equipmentId: "canonical-equipment", operatorId: "canonical-operator", projectId: "canonical-project", assignedDate: "2026-08-23", expectedReturn: "2026-08-24", remarks: "Canonical", status: "Active" as const };
 
-function remoteDependencies(input: { assignments?: unknown[]; equipment?: unknown[]; failure?: boolean; writesEnabled?: boolean; assignmentCreateEnabled?: boolean; assignmentRepository?: boolean } = {}): ApplicationDependencies {
+function remoteDependencies(input: { assignments?: unknown[]; equipment?: unknown[]; projects?: unknown[]; customers?: unknown[]; failure?: boolean; writesEnabled?: boolean; assignmentCreateEnabled?: boolean; assignmentRepository?: boolean } = {}): ApplicationDependencies {
   const local = createLocalApplicationDependencies();
   const failure = repositoryFailure("REMOTE_FAILED", "failed", { context: {}, recoverability: "RETRYABLE", recommendedAction: "Retry" });
   const repository = (items: unknown[]) => ({ ...local.readRepositories.assignments, list: vi.fn(async () => input.failure ? failure : page(items)) });
@@ -32,7 +34,8 @@ function remoteDependencies(input: { assignments?: unknown[]; equipment?: unknow
       assignments: repository(input.assignments ?? []),
       equipment: repository(input.equipment ?? [{ id: "canonical-equipment", assetNo: "ME-REMOTE", equipmentName: "Remote Equipment", statusId: "equipment-status-available", active: true }]),
       operators: repository([{ id: "canonical-operator", name: "Remote Operator", status: "Active" }]),
-      projects: repository([{ id: "canonical-project", projectCode: "REMOTE", name: "Remote Project", status: "Active" }]),
+      projects: repository(input.projects ?? [{ id: "canonical-project", projectCode: "REMOTE", projectName: "Remote Project", customerId: "canonical-customer", location: "Remote location", projectManager: "", status: "Active" }]),
+      customers: repository(input.customers ?? [{ id: "canonical-customer", companyName: "Remote Customer" }]),
     } as ApplicationDependencies["readRepositories"],
     commandRepositories: { ...local.commandRepositories, canonicalRental: { readReferenceData: vi.fn(async () => ({ success: true, value: { costCodes: [], activityCodes: [] } })) } as unknown as ApplicationDependencies["commandRepositories"]["canonicalRental"], ...((input.assignmentRepository ?? true) ? { canonicalAssignment: { createAssignment: vi.fn() } } : {}) },
     configuration: { ...local.configuration, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: input.writesEnabled ?? true, remoteAssignmentCreateEnabled: input.assignmentCreateEnabled ?? false },
@@ -82,7 +85,7 @@ describe("canonical Assignment remote UI boundary", () => {
     expect(container.textContent).toContain("ME-REMOTE");
     expect(container.textContent).toContain("Remote Equipment");
     expect(container.textContent).toContain("Remote Operator");
-    expect(container.textContent).toContain("Remote Project");
+    expect(container.textContent).toContain("REMOTE - Remote Project");
     expect(container.querySelector('a[href="/assignments/canonical-assignment"]')).not.toBeNull();
   });
 
@@ -92,6 +95,7 @@ describe("canonical Assignment remote UI boundary", () => {
     expect(row).not.toBeNull();
     await act(async () => row?.querySelector("td")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(container.querySelector('[role="dialog"]')?.textContent).toContain("ME-REMOTE");
+    expect(container.querySelector('[role="dialog"]')?.textContent).toContain("REMOTE - Remote Project");
     expect(container.textContent).not.toContain("Timeline");
     expect(container.textContent).not.toContain("Kanban");
     expect(container.textContent).not.toContain("Calendar");
@@ -108,14 +112,38 @@ describe("canonical Assignment remote UI boundary", () => {
     const container = await render(createElement(Assignments), remoteDependencies({ assignments: [assignment] }));
     const project = container.querySelector('select[aria-label="Project"]') as HTMLSelectElement;
     const option = [...project.options].find((item) => item.value === "canonical-project");
-    expect(option?.textContent).toBe("Remote Project");
+    expect(option?.textContent).toBe("REMOTE - Remote Project");
     expect(option?.className).toContain("text-slate-900");
     await act(async () => { project.value = "canonical-project"; project.dispatchEvent(new Event("change", { bubbles: true })); });
     expect(project.value).toBe("canonical-project");
-    expect(project.selectedOptions[0].textContent).toBe("Remote Project");
-    expect(container.textContent).toContain("project: Remote Project");
+    expect(project.selectedOptions[0].textContent).toBe("REMOTE - Remote Project");
+    expect(container.textContent).toContain("project: REMOTE - Remote Project");
     expect(container.textContent).not.toContain("canonical-project");
     for (const name of ["Category", "Equipment", "Status", "Operator"]) expect(container.querySelector(`select[aria-label="${name}"]`)?.className).toContain("assignment-filter-select");
+  });
+
+  it("maps the actual remote Project read-model shape and uses one readable label", async () => {
+    const mapped = mapProject({ id: "7e6a2b4f-10fd-4f4f-99b4-6eb845940123", project_code: "P-204", name: "Harbor Works", customer_id: "customer-a", location: "Pier 4", active: true, deleted_at: null });
+    expect(mapped.success && mapped.value).toMatchObject({ projectCode: "P-204", projectName: "Harbor Works", customerId: "customer-a" });
+    expect(mapped.success && getProjectDisplayLabel({ id: mapped.value!.id, projectCode: mapped.value!.projectCode, projectName: mapped.value!.projectName })).toBe("P-204 - Harbor Works");
+    expect(getProjectDisplayLabel({ id: "7e6a2b4f-10fd-4f4f-99b4-6eb845940123" })).toBe("Project 7e6a2b");
+  });
+
+  it("keeps Customer + Project labels and options correctly linked", async () => {
+    authState.permissions = new Set(["rental.create", "customer.read"]);
+    const dependencies = remoteDependencies({ projects: [
+      { id: "project-a", projectCode: "A", projectName: "Alpha", customerId: "customer-a", location: "", projectManager: "", status: "Active" },
+      { id: "project-b", projectCode: "B", projectName: "Beta", customerId: "customer-b", location: "", projectManager: "", status: "Active" },
+    ], customers: [
+      { id: "customer-a", companyName: "Customer A" }, { id: "customer-b", companyName: "Customer B" },
+    ] });
+    const container = await render(createElement(Assignments), dependencies, "/?a_customer=customer-a&a_project=project-a");
+    const project = container.querySelector('select[aria-label="Project"]') as HTMLSelectElement;
+    expect([...project.options].map((option) => [option.value, option.textContent])).toContainEqual(["project-a", "A - Alpha"]);
+    expect([...project.options].some((option) => option.value === "project-b")).toBe(false);
+    expect(project.value).toBe("project-a");
+    expect(container.textContent).toContain("project: A - Alpha");
+    expect(container.textContent).not.toContain("project-a");
   });
 
   it("shows drawer actions only under the existing rental and cancellation gates", async () => {
