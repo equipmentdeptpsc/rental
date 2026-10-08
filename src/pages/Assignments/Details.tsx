@@ -24,12 +24,14 @@ import AssignmentActivityCodeDisplay from "@/features/assignment/components/Assi
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { canUseCanonicalRemoteRentalCreation, canUseLegacyRentalMutations, REMOTE_RENTAL_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/rental/services/rentalRuntimeCapability";
 import { useAuth } from "@/features/auth/AuthContext";
-import { useCanonicalAssignmentData } from "@/features/assignment/hooks/useCanonicalAssignmentData";
+import { useCanonicalAssignmentData, type CanonicalAssignmentData } from "@/features/assignment/hooks/useCanonicalAssignmentData";
 import { requestCanonicalAssignmentRefresh } from "@/features/assignment/remote/canonicalAssignmentRefresh";
 import { canStartRentalFromCanonicalAssignment, getAssignmentRuntimeCapability, REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/assignment/services/assignmentRuntimeCapability";
 import AssignmentActivityCodeRepair from "@/features/assignment/components/AssignmentActivityCodeRepair";
 import { useAssignmentRentalPreparation } from "@/features/assignment/hooks/useAssignmentRentalPreparation";
 import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
+import { requestCanonicalEquipmentRefresh } from "@/features/equipment/remote/canonicalEquipmentRefresh";
+import type { AssignmentCancellationProjection } from "@/features/assignment/commands/contracts";
 
 export default function AssignmentDetails() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -41,22 +43,30 @@ function RemoteAssignmentDetails() {
   const { configuration, commandRepositories } = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const state = useCanonicalAssignmentData();
+  const lastLoadedData = useRef<{ assignmentId?: string; data: CanonicalAssignmentData } | null>(null);
+  if (state.status === "loaded" || state.status === "empty") lastLoadedData.current = { assignmentId: id, data: state.data };
+  const snapshot = lastLoadedData.current;
+  const priorData = snapshot && snapshot.assignmentId === id ? snapshot.data : null;
+  const data = state.status === "loading" && priorData ? priorData : state.data;
   const rentalState = useAssignmentRentalPreparation(id);
   const [cancelMessage, setCancelMessage] = useState<string>();
   const [cancelling, setCancelling] = useState(false);
   const [confirmDraftCancellation, setConfirmDraftCancellation] = useState(false);
-  if (state.status === "loading") return <div className="p-8 text-slate-500">Loading Assignment…</div>;
+  const [confirmedCancellation, setConfirmedCancellation] = useState<AssignmentCancellationProjection>();
+  if (state.status === "loading" && !priorData) return <div className="p-8 text-slate-500">Loading Assignment…</div>;
   if (state.status === "error") return <div className="p-8" role="alert">{state.message}<button className="ml-3 underline" onClick={state.retry}>Retry</button></div>;
-  const assignment = state.data.assignments.find((record) => record.id === id && !record.deleted);
+  const assignment = data.assignments.find((record) => record.id === id && !record.deleted);
   if (!assignment) return <div className="p-8">Assignment not found.</div>;
-  const currentAssignment = assignment;
-  const equipment = state.data.equipment.find((record) => record.id === assignment.equipmentId);
-  const operator = state.data.operators.find((record) => record.id === assignment.operatorId);
-  const project = state.data.projects.find((record) => record.id === assignment.projectId);
+  const currentAssignment = confirmedCancellation?.id === assignment.id
+    ? { ...assignment, status: confirmedCancellation.status, rowVersion: confirmedCancellation.rowVersion }
+    : assignment;
+  const equipment = data.equipment.find((record) => record.id === assignment.equipmentId);
+  const operator = data.operators.find((record) => record.id === assignment.operatorId);
+  const project = data.projects.find((record) => record.id === assignment.projectId);
   const rentalCreationAvailable = canUseCanonicalRemoteRentalCreation(configuration) && Boolean(commandRepositories.canonicalRental);
-  const showStartRental = rentalState.kind === "none" && canStartRentalFromCanonicalAssignment({ assignment, rentalCreationAvailable, hasRentalManagePermission: hasPermission("rental.create") });
+  const showStartRental = rentalState.kind === "none" && canStartRentalFromCanonicalAssignment({ assignment: currentAssignment, rentalCreationAvailable, hasRentalManagePermission: hasPermission("rental.create") });
   const capability = getAssignmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalAssignment));
-  const canCancel = currentAssignment.status === "Active" && capability.canonicalCancellation && hasPermission("assignment.close")
+  const canCancel = currentAssignment.status === "Active" && typeof currentAssignment.rowVersion === "number" && capability.canonicalCancellation && hasPermission("assignment.close")
     && (rentalState.kind === "none" || (rentalState.kind === "draft" && hasPermission("rental.update")));
   async function handleCancel() {
     if (!canCancel || !commandRepositories.canonicalAssignment || typeof currentAssignment.rowVersion !== "number") return;
@@ -77,18 +87,20 @@ function RemoteAssignmentDetails() {
       setCancelMessage(result.message);
       return;
     }
+    setConfirmedCancellation(result.value);
     requestCanonicalAssignmentRefresh();
     requestCanonicalRentalRefresh();
+    requestCanonicalEquipmentRefresh();
   }
   return <div className="space-y-6 p-8">
-    <div><h1 className="text-3xl font-bold">Assignment {getAssignmentNumber(assignment.id, state.data.assignments)}</h1><p className="text-slate-500">remote Assignment details.</p></div>
+    <div><h1 className="text-3xl font-bold">Assignment {getAssignmentNumber(assignment.id, data.assignments)}</h1><p className="text-slate-500">remote Assignment details.</p></div>
     <div className="rounded-xl border bg-white p-6 shadow-sm">
       <div className="grid gap-6 md:grid-cols-2">
         <Info label="Equipment" value={equipment ? equipment.assetNo + " - " + equipment.equipmentName : "Unknown Equipment"} />
         <Info label="Operator" value={operator?.name || "Unknown Operator"} />
         <Info label="Project" value={project?.name || "Unknown Project"} />
-        <AssignmentActivityCodeRepair assignment={assignment} rentalState={rentalState} />
-        <Info label="Status" value={assignment.status} />
+        <AssignmentActivityCodeRepair assignment={currentAssignment} rentalState={rentalState} />
+        <Info label="Status" value={currentAssignment.status} />
         <Info label="Assigned Date" value={assignment.assignedDate} />
         <Info label="End Date / Expected Return" value={displayAssignmentExpectedReturn(assignment.expectedReturn)} />
       </div>
@@ -100,7 +112,7 @@ function RemoteAssignmentDetails() {
     {cancelMessage && <p className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-950" role="alert">{cancelMessage}</p>}
     <div className="flex flex-wrap gap-3">
       {showStartRental && <Link to={"/rentals/new?assignment=" + encodeURIComponent(assignment.id)}><Button>Start Rental</Button></Link>}
-      {rentalState.kind === "draft" && rentalState.count === 1 && hasPermission("rental.commercialTerms.read") && <Link to={"/rentals/" + rentalState.rental.id + "/commercial-terms"}><Button>Continue Rental Preparation</Button></Link>}
+      {currentAssignment.status === "Active" && rentalState.kind === "draft" && rentalState.count === 1 && hasPermission("rental.commercialTerms.read") && <Link to={"/rentals/" + rentalState.rental.id + "/commercial-terms"}><Button>Continue Rental Preparation</Button></Link>}
       {canCancel && <Button variant="secondary" disabled={cancelling} onClick={() => rentalState.kind === "draft" ? setConfirmDraftCancellation(true) : void handleCancel()}>{cancelling ? "Cancelling…" : "Cancel Assignment"}</Button>}
     </div>
     {confirmDraftCancellation && <DraftRentalCancellationDialog busy={cancelling} onKeep={() => setConfirmDraftCancellation(false)} onCancel={() => void handleCancel()} />}

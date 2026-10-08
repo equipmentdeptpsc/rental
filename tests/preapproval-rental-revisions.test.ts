@@ -16,11 +16,11 @@ describe("pre-approval Rental preparation revision gates", () => {
   it("allows remote Commercial Terms and DEUR revisions without the rollout flag", () => {
     expect(canUseCanonicalRemoteRentalCommercialTermsMutation({ persistenceMode: PersistenceMode.Remote, remoteRentalCommercialTermsEnabled: false } as never)).toBe(true);
     expect(remoteTerms).toContain('hasPermission("rental.commercialTerms.update")');
-    expect(remoteTerms).toContain("const editable = canEdit && !approvedLocked");
+    expect(remoteTerms).toContain('const editable = canEdit && rental.status === "Draft" && !approvedLocked');
   });
 
-  it("limits Assignment repair to Activity Code and the existing manage permission", () => {
-    expect(repair).toContain('hasPermission("assignment.manage")');
+  it("limits Assignment repair to Activity Code with the canonical update permission", () => {
+    expect(repair).toContain('hasPermission("assignment.update")');
     expect(repair).toContain("amendActivityCode({");
     expect(repair).not.toContain("equipmentId:");
     expect(repair).not.toContain("operatorId:");

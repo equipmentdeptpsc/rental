@@ -3,6 +3,7 @@ import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { loadRentalListPages } from "@/features/rental/hooks/useRentalListData";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { RentalRecord } from "@/features/rental/types";
+import { subscribeCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 
 export type AssignmentRentalPreparation =
   | { kind: "loading" | "error" | "none" | "committed" }
@@ -32,6 +33,8 @@ export function classifyAssignmentRentalPreparation(
 export function useAssignmentRentalPreparation(assignmentId?: string): AssignmentRentalPreparation {
   const { readRepositories } = useApplicationDependenciesCompatibility();
   const [state, setState] = useState<AssignmentRentalPreparation>({ kind: "loading" });
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => subscribeCanonicalRentalRefresh(() => setAttempt((value) => value + 1)), []);
   useEffect(() => {
     if (!assignmentId) { setState({ kind: "none" }); return; }
     let active = true;
@@ -46,6 +49,6 @@ export function useAssignmentRentalPreparation(assignmentId?: string): Assignmen
         : { kind: "error" });
     }).catch(() => { if (active) setState({ kind: "error" }); });
     return () => { active = false; };
-  }, [assignmentId, readRepositories]);
+  }, [assignmentId, attempt, readRepositories]);
   return state;
 }

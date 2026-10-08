@@ -37,13 +37,16 @@ export default function RemoteCommercialTermsPage({ rentalId }: { rentalId: stri
   useEffect(() => { let active = true; void Promise.resolve(dependencies.readRepositories.workDescriptions.list()).then(result => { if (!active) return; if (result.success) setWorkDescriptions(result.value.items.filter(item => item.active !== false)); else setWorkError("Work descriptions could not be loaded."); }); return () => { active = false; }; }, [dependencies.readRepositories.workDescriptions]);
   const rental = list.data.rentals.find(item => item.id === rentalId);
   const lines = useMemo(() => list.data.rentalEquipmentLines.filter(item => item.rentalId === rentalId), [list.data.rentalEquipmentLines, rentalId]);
-  if (list.status === "loading" || workspace.status === "loading" || references.status === "loading") return <main className="p-8">Loading commercial preparation…</main>;
+  if (list.status === "loading") return <main className="p-8">Loading commercial preparation…</main>;
+  if (list.status !== "error" && rental?.status === "Cancelled") return <main className="mx-auto max-w-5xl space-y-4 p-6"><Link className="text-blue-700" to={`/rentals/${rentalId}/workspace`}>← Rental Workspace</Link><p className="rounded border border-amber-300 bg-amber-50 p-4 text-amber-950" role="status">This rental preparation has been cancelled and can no longer be edited.</p></main>;
+  if (workspace.status === "loading" || references.status === "loading") return <main className="p-8">Loading commercial preparation…</main>;
   const error = list.status === "error" ? list.message : workspace.status === "error" ? workspace.message : references.status === "error" ? references.message : workError;
   if (error) return <main className="p-8" role="alert"><p className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{error}</p><Button className="mt-3" onClick={() => { list.retry(); workspace.retry(); references.retry(); }}>Retry</Button></main>;
   if (!rental || workspace.status !== "loaded" || references.status !== "loaded") return <main className="p-8">Rental not found.</main>;
   const approvedLocked = rental.approvalStatus === "Approved";
-  const editable = canEdit && !approvedLocked;
-  const missingActivityLine = lines.find(line => !list.data.assignments.find(assignment => assignment.id === line.assignmentId)?.activityCodeId);
+  const editable = canEdit && rental.status === "Draft" && !approvedLocked
+    && lines.every(line => list.data.assignments.find(assignment => assignment.id === line.assignmentId)?.status === "Active");
+  const missingActivityLine = editable ? lines.find(line => !list.data.assignments.find(assignment => assignment.id === line.assignmentId)?.activityCodeId) : undefined;
   const draftForLine = (line: (typeof lines)[number]): Draft => {
     const contract = workspace.data.contracts.find(item => item.rentalEquipmentLineId === line.id);
     return drafts[line.id] ?? { ...blank(), billingMethod: contract?.billingMethod ?? "Per Hour", currency: contract?.currency ?? "PHP", unitRate: contract ? String(contract.unitRate) : "", idleRate: contract?.idleRate == null ? "" : String(contract.idleRate), standbyRate: contract?.standbyRate == null ? "" : String(contract.standbyRate), discountType: contract?.discountType ?? "NONE", discountValue: String(contract?.discountValue ?? 0), transactionRelationship: contract?.transactionRelationship ?? "Non-Affiliate", vatApplicability: contract?.vatApplicability ?? "Applicable", taxRate: contract?.taxRate == null ? "" : String(contract.taxRate), operatorIncluded: contract?.operatorIncluded ?? rental.rentalType === "Operated Rental", workDescriptionId: line.deurWorkDescriptionId ?? "", remarks: contract?.remarks ?? "" };

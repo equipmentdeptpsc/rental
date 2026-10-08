@@ -23,10 +23,13 @@ export default function AssignmentActivityCodeRepair({ assignment, rentalState }
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const allowed = configuration.persistenceMode !== "local" && hasPermission("assignment.manage")
-    && assignment.status === "Active" && !assignment.activityCodeId
+  const [confirmed, setConfirmed] = useState<{ assignmentId: string; activityCodeId: string; rowVersion: number }>();
+  const current = confirmed?.assignmentId === assignment.id && (assignment.rowVersion ?? -1) < confirmed.rowVersion
+    ? confirmed : assignment;
+  const allowed = configuration.persistenceMode !== "local" && hasPermission("assignment.update")
+    && assignment.status === "Active"
     && (rentalState.kind === "none" || rentalState.kind === "draft")
-    && typeof assignment.rowVersion === "number" && Boolean(commandRepositories.canonicalAssignmentActivityCode);
+    && typeof current.rowVersion === "number" && Boolean(commandRepositories.canonicalAssignmentActivityCode);
 
   useEffect(() => {
     let current = true;
@@ -37,18 +40,19 @@ export default function AssignmentActivityCodeRepair({ assignment, rentalState }
     return () => { current = false; };
   }, [commandRepositories.canonicalRental]);
 
-  const selected = codes.find((code) => code.id === assignment.activityCodeId);
+  const selected = codes.find((code) => code.id === current.activityCodeId);
   async function save() {
-    if (!allowed || !value || !commandRepositories.canonicalAssignmentActivityCode || typeof assignment.rowVersion !== "number") return;
+    if (!allowed || !value || value === current.activityCodeId || !commandRepositories.canonicalAssignmentActivityCode || typeof current.rowVersion !== "number") return;
     setSaving(true); setMessage("");
     const result = await commandRepositories.canonicalAssignmentActivityCode.amendActivityCode({
       commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID(), assignmentId: assignment.id,
-      expectedVersion: assignment.rowVersion, activityCodeId: value,
+      expectedVersion: current.rowVersion, activityCodeId: value,
       clientCreatedAt: new Date().toISOString(), deviceId: "erms-web",
     });
     setSaving(false);
     if (!result.success) { setMessage(result.message); return; }
     setEditing(false);
+    setConfirmed({ assignmentId: assignment.id, activityCodeId: result.value.activityCodeId, rowVersion: result.value.rowVersion });
     requestCanonicalAssignmentRefresh();
     requestCanonicalRentalRefresh();
     const returnTo = searchParams.get("returnTo");
@@ -59,15 +63,15 @@ export default function AssignmentActivityCodeRepair({ assignment, rentalState }
   return <div>
     <div className="text-xs uppercase tracking-wide text-slate-500">Activity Code</div>
     <div className="mt-1 flex flex-wrap items-center gap-3">
-      <span className={`font-medium ${assignment.activityCodeId ? "" : "text-amber-700"}`}>
-        {assignment.activityCodeId ? selected ? `${selected.code} — ${selected.name}` : "Activity Code unavailable" : "Not assigned"}
+      <span className={`font-medium ${current.activityCodeId ? "" : "text-amber-700"}`}>
+        {current.activityCodeId ? selected ? `${selected.code} — ${selected.name}` : "Activity Code unavailable" : "Not assigned"}
       </span>
-      {allowed && !editing && <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>Edit Activity Code</Button>}
+      {allowed && !editing && <Button size="sm" variant="secondary" onClick={() => { setValue(current.activityCodeId ?? ""); setEditing(true); }}>{current.activityCodeId ? "Change" : "Edit Activity Code"}</Button>}
     </div>
     {editing && allowed && <div role="group" aria-label="Edit Activity Code" className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
       <Select label="Activity Code" value={value} onChange={(event) => setValue(event.target.value)}
         options={[{ label: "Select Activity Code", value: "" }, ...codes.filter((code) => code.active).map((code) => ({ label: `${code.code} — ${code.name}`, value: code.id }))]} />
-      <div className="mt-3 flex gap-2"><Button size="sm" disabled={!value || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save Activity Code"}</Button>
+      <div className="mt-3 flex gap-2"><Button size="sm" disabled={!value || value === current.activityCodeId || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save Activity Code"}</Button>
         <Button size="sm" variant="secondary" disabled={saving} onClick={() => setEditing(false)}>Cancel</Button></div>
     </div>}
     {message && <p className="mt-2 text-sm" role="status">{message}</p>}
