@@ -15,7 +15,8 @@ describe("operator Assignment visibility and DEUR review handoff migration", () 
 
   it("keeps visibility separate from the Active-only server command gate", () => {
     expect(sql).toContain("coalesce(r.rental_number,'Preparation pending')");
-    expect(sql).toContain("coalesce(line.status,'Preparation pending')");
+    expect(sql).toContain("coalesce(r.status::text,'Preparation pending')");
+    expect(sql).toContain("coalesce(line.status::text,'Preparation pending')");
     expect(sql).toContain("'deurEligible',coalesce(r.status='Active' AND line.status='Active',false)");
     expect(sql).toContain("line.status<>''Active''");
     expect(sql).toContain("active_rental.status=''Active''");
@@ -24,6 +25,7 @@ describe("operator Assignment visibility and DEUR review handoff migration", () 
 
   it("creates one idempotent grouped review outbox handoff from authoritative snapshots", () => {
     expect(sql).toContain("erp.command_generate_customer_review_batch");
+    expect(sql).toContain("erp.current_user_has_permission(''deur.customerReview.issue'') OR erp.current_user_has_permission(''deur.review'')");
     expect(sql).toContain("rental.customer_review_email_snapshot");
     expect(sql).toContain("ON CONFLICT(company_id,idempotency_key)");
     expect(sql).toContain("PERFORM erp.enqueue_submitted_deur_customer_review(current_deur.id)");

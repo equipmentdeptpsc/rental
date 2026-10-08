@@ -11,8 +11,8 @@ RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=erp,auth,pg_c
     SELECT jsonb_strip_nulls(jsonb_build_object(
       'assignment',jsonb_build_object('id',a.id,'status',a.status,'projectId',a.project_id,'projectName',p.name,'operatorId',o.id,'operatorDisplayName',o.name),
       'equipment',jsonb_build_object('id',e.id,'name',e.equipment_name,'assetNumber',e.asset_no,'currentReading',e.current_reading),
-      'rental',jsonb_build_object('id',coalesce(r.id,'assignment:'||a.id),'rentalNumber',coalesce(r.rental_number,'Preparation pending'),'status',coalesce(r.status,'Preparation pending')),
-      'rentalLine',jsonb_build_object('id',coalesce(line.id,'assignment:'||a.id),'status',coalesce(line.status,'Preparation pending'),'operationalMetadata',coalesce(line.operational_metadata,'{}'::jsonb)),
+      'rental',jsonb_build_object('id',coalesce(r.id,'assignment:'||a.id),'rentalNumber',coalesce(r.rental_number,'Preparation pending'),'status',coalesce(r.status::text,'Preparation pending')),
+      'rentalLine',jsonb_build_object('id',coalesce(line.id,'assignment:'||a.id),'status',coalesce(line.status::text,'Preparation pending'),'operationalMetadata',coalesce(line.operational_metadata,'{}'::jsonb)),
       'deurEligible',coalesce(r.status='Active' AND line.status='Active',false)
     )) value
     FROM identity i
@@ -38,11 +38,11 @@ GRANT EXECUTE ON FUNCTION erp.read_current_operator_assignments() TO authenticat
 -- transaction marker lets the already-authorized submit command invoke it
 -- without granting the Operator the broader review-issuance permission.
 DO $$
-DECLARE definition text; needle text := 'IF NOT erp.current_user_has_permission(''deur.customerReview.issue'') THEN RETURN jsonb_build_object(''success'',false,''code'',''FORBIDDEN''); END IF;';
+DECLARE definition text; needle text := 'IF NOT (erp.current_user_has_permission(''deur.customerReview.issue'') OR erp.current_user_has_permission(''deur.review'')) THEN RETURN jsonb_build_object(''success'',false,''code'',''FORBIDDEN''); END IF;';
 BEGIN
   SELECT pg_get_functiondef('erp.command_generate_customer_review_batch(jsonb)'::regprocedure) INTO definition;
   IF (length(definition)-length(replace(definition,needle,'')))/length(needle)<>1 THEN RAISE EXCEPTION 'review generator authorization marker changed' USING ERRCODE='55000'; END IF;
-  definition:=replace(definition,needle,'IF NOT erp.current_user_has_permission(''deur.customerReview.issue'') AND current_setting(''erp.deur_submit_review_handoff'',true)<>''true'' THEN RETURN jsonb_build_object(''success'',false,''code'',''FORBIDDEN''); END IF;');
+  definition:=replace(definition,needle,'IF NOT (erp.current_user_has_permission(''deur.customerReview.issue'') OR erp.current_user_has_permission(''deur.review'')) AND current_setting(''erp.deur_submit_review_handoff'',true)<>''true'' THEN RETURN jsonb_build_object(''success'',false,''code'',''FORBIDDEN''); END IF;');
   EXECUTE definition;
 END $$;
 
