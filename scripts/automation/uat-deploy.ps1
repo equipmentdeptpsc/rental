@@ -1,7 +1,13 @@
-param([ValidateSet('Migration','Application')][string]$Kind,[Alias('ExpectedMigration')][string[]]$ExpectedMigrations=@())
+param(
+  [ValidateSet('Migration','Application')][string]$Kind,
+  [string]$AuthorizedHead,
+  [string]$AuthorizedMigration,
+  [string]$AuthorizedMigrationSha,
+  [string]$ExpectedPreviousRemoteMigration
+)
 . (Join-Path $PSScriptRoot 'common.ps1')
 Set-Location $script:RepositoryRoot
-Assert-UatTarget
+if ($Kind -eq 'Application') { Assert-UatTarget }
 $supabaseCli = Resolve-SupabaseCli
 if ($Kind -eq 'Application') {
   # Build-time values are process-scoped; the key is never printed or persisted.
@@ -9,8 +15,10 @@ if ($Kind -eq 'Application') {
   if (-not $env:VITE_SUPABASE_PUBLISHABLE_KEY -and $env:SUPABASE_PUBLISHABLE_KEY) { $env:VITE_SUPABASE_PUBLISHABLE_KEY = $env:SUPABASE_PUBLISHABLE_KEY }
 }
 if ($Kind -eq 'Migration') {
-  if (-not $ExpectedMigrations.Count) { throw 'ExpectedMigrations is required for migration deployment.' }
-  & (Join-Path $PSScriptRoot 'uat-preflight.ps1') -ExpectedPendingMigrations $ExpectedMigrations
+  foreach ($value in @($AuthorizedHead,$AuthorizedMigration,$AuthorizedMigrationSha,$ExpectedPreviousRemoteMigration)) {
+    if ([string]::IsNullOrWhiteSpace($value)) { throw 'All migration authorization inputs are required.' }
+  }
+  & (Join-Path $PSScriptRoot 'uat-preflight.ps1') -AuthorizedHead $AuthorizedHead -AuthorizedMigration $AuthorizedMigration -AuthorizedMigrationSha $AuthorizedMigrationSha -ExpectedPreviousRemoteMigration $ExpectedPreviousRemoteMigration
 } else {
   & (Join-Path $PSScriptRoot 'uat-preflight.ps1')
 }

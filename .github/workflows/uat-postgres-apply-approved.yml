@@ -1,0 +1,170 @@
+name: Approved UAT Postgres Migration Apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      authorized_head:
+        description: Exact commit SHA approved for this migration run
+        required: true
+        type: string
+      authorized_migration:
+        description: Exact migration filename approved for this run
+        required: true
+        type: string
+      authorized_migration_sha:
+        description: SHA-256 of the authorized migration file
+        required: true
+        type: string
+      expected_previous_remote_migration:
+        description: Expected latest UAT migration version before apply
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: approved-uat-postgres-migration-jtkctarqbwmqdcewthkn
+  cancel-in-progress: false
+
+jobs:
+  apply-approved-migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UAT_PROJECT_REF: jtkctarqbwmqdcewthkn
+      UAT_POOLER_HOST: aws-0-ap-southeast-1.pooler.supabase.com
+      AUTHORIZED_HEAD: ${{ inputs.authorized_head }}
+      AUTHORIZED_MIGRATION: ${{ inputs.authorized_migration }}
+      AUTHORIZED_MIGRATION_SHA: ${{ inputs.authorized_migration_sha }}
+      EXPECTED_PREVIOUS_REMOTE_MIGRATION: ${{ inputs.expected_previous_remote_migration }}
+    steps:
+      - name: Check out exact authorized commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.authorized_head }}
+          persist-credentials: false
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+        with:
+          version: 2.110.0
+
+      - name: Verify, dry-run, apply, and verify UAT migration
+        shell: bash
+        env:
+          UAT_SUPABASE_DB_PASSWORD: ${{ secrets.UAT_SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          project_ref='jtkctarqbwmqdcewthkn'
+          pooler_host='aws-0-ap-southeast-1.pooler.supabase.com'
+          [[ "$UAT_PROJECT_REF" == "$project_ref" ]] || { echo 'UAT_PROJECT=FAIL'; exit 1; }
+          [[ "$UAT_POOLER_HOST" == "$pooler_host" ]] || { echo 'UAT_TARGET=FAIL'; exit 1; }
+          [[ "$AUTHORIZED_HEAD" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'AUTHORIZED_HEAD=INVALID'; exit 1; }
+          [[ "$AUTHORIZED_MIGRATION" =~ ^[0-9]{14}_[A-Za-z0-9_-]+\.sql$ ]] || { echo 'AUTHORIZED_MIGRATION=INVALID'; exit 1; }
+          [[ "$AUTHORIZED_MIGRATION_SHA" =~ ^[0-9a-fA-F]{64}$ ]] || { echo 'AUTHORIZED_MIGRATION_SHA=INVALID'; exit 1; }
+          [[ "$EXPECTED_PREVIOUS_REMOTE_MIGRATION" =~ ^[0-9]{14}$ ]] || { echo 'EXPECTED_PREVIOUS_REMOTE_MIGRATION=INVALID'; exit 1; }
+          [[ -n "$UAT_SUPABASE_DB_PASSWORD" ]] || { echo 'UAT_SECRET=ABSENT'; exit 1; }
+          actual_head="$(git rev-parse HEAD)"
+          [[ "$actual_head" == "$AUTHORIZED_HEAD" ]] || { echo 'PINNED_SHA=FAIL'; exit 1; }
+          [[ -z "$(git status --porcelain)" ]] || { echo 'WORKING_TREE=DIRTY'; exit 1; }
+          echo 'PINNED_SHA=PASS'
+
+          migration="supabase/migrations/$AUTHORIZED_MIGRATION"
+          [[ -f "$migration" ]] || { echo 'AUTHORIZED_MIGRATION=ABSENT'; exit 1; }
+          actual_migration_sha="$(sha256sum "$migration" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
+          expected_migration_sha="${AUTHORIZED_MIGRATION_SHA^^}"
+          [[ "$actual_migration_sha" == "$expected_migration_sha" ]] || { echo 'MIGRATION_SHA=FAIL'; exit 1; }
+          echo 'MIGRATION_SHA=PASS'
+          [[ "$(supabase --version)" == 2.110.0 ]] || { echo 'SUPABASE_CLI=FAIL'; exit 1; }
+
+          export PGHOST="$pooler_host" PGPORT=5432 PGUSER="postgres.$project_ref" PGDATABASE=postgres
+          export PGPASSWORD="$UAT_SUPABASE_DB_PASSWORD" PGSSLMODE=require PGCONNECT_TIMEOUT=10
+          pg_error="$(mktemp)"; dry_run_output="$(mktemp)"; apply_output="$(mktemp)"
+          trap 'rm -f "$pg_error" "$dry_run_output" "$apply_output"' EXIT
+          if ! one="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 -c 'SELECT 1;' 2>"$pg_error")"; then echo 'UAT_CONNECTION=FAIL'; exit 1; fi
+          [[ "$one" == 1 ]] || { echo 'UAT_CONNECTION=FAIL'; exit 1; }
+          echo 'UAT_CONNECTION=PASS'
+
+          verify_ledger() {
+            local phase="$1" remote_versions
+            if ! remote_versions="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version;' 2>"$pg_error")"; then
+              echo "${phase}_LEDGER=QUERY_FAILED"; return 1
+            fi
+            REMOTE_VERSIONS="$remote_versions" LEDGER_PHASE="$phase" AUTHORIZED_MIGRATION="$AUTHORIZED_MIGRATION" EXPECTED_PREVIOUS="$EXPECTED_PREVIOUS_REMOTE_MIGRATION" python3 - <<'PY'
+          import os, pathlib, re, sys
+          phase = os.environ['LEDGER_PHASE']
+          remote = os.environ['REMOTE_VERSIONS'].splitlines()
+          local = sorted(p.name.split('_', 1)[0] for p in pathlib.Path('supabase/migrations').glob('*.sql'))
+          authorized = os.environ['AUTHORIZED_MIGRATION'].split('_', 1)[0]
+          expected_previous = os.environ['EXPECTED_PREVIOUS']
+          if not all(re.fullmatch(r'\d{14}', v) for v in remote + local) or len(remote) != len(set(remote)) or len(local) != len(set(local)):
+              print(f'{phase}_LEDGER=INVALID'); sys.exit(1)
+          remote_only = sorted(set(remote) - set(local))
+          pending = sorted(set(local) - set(remote))
+          latest = remote[-1] if remote else 'NONE'
+          print(f'{phase}_LATEST_REMOTE={latest}')
+          print(f'{phase}_PENDING={",".join(pending) if pending else "NONE"}')
+          print(f'{phase}_REMOTE_ONLY={",".join(remote_only) if remote_only else "NONE"}')
+          if phase == 'PRE':
+              valid = latest == expected_previous and not remote_only and pending == [authorized] and local[:len(remote)] == remote
+          else:
+              valid = latest == authorized and not remote_only and not pending and local == remote
+          print(f'{phase}_LEDGER=' + ('PASS' if valid else 'FAIL'))
+          sys.exit(0 if valid else 1)
+          PY
+          }
+
+          verify_ledger PRE
+          migration_version="${AUTHORIZED_MIGRATION%%_*}"
+          echo "PRE_LATEST_REMOTE=$EXPECTED_PREVIOUS_REMOTE_MIGRATION"
+          echo "PENDING_MIGRATIONS=$migration_version"
+
+          db_url="$(python3 - <<'PY'
+          import os, urllib.parse
+          password = urllib.parse.quote(os.environ['PGPASSWORD'], safe='')
+          print(f"postgresql://{os.environ['PGUSER']}:{password}@{os.environ['PGHOST']}:{os.environ['PGPORT']}/{os.environ['PGDATABASE']}?sslmode=require")
+          PY
+          )"
+          echo "::add-mask::$db_url"
+          if ! timeout 120s supabase db push --db-url "$db_url" --dry-run >"$dry_run_output" 2>&1; then echo 'DRY_RUN=CLI_ERROR'; exit 1; fi
+          DRY_RUN_OUTPUT="$dry_run_output" AUTHORIZED_MIGRATION="$AUTHORIZED_MIGRATION" python3 - <<'PY'
+          import os, pathlib, re, sys
+          output = pathlib.Path(os.environ['DRY_RUN_OUTPUT']).read_text(errors='replace')
+          output = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
+          proposed = sorted(set(re.findall(r'\b\d{14}_[A-Za-z0-9_.-]+\.sql\b', output)))
+          expected = [os.environ['AUTHORIZED_MIGRATION']]
+          finished = bool(re.search(r'Finished supabase db push', output, re.I))
+          print('DRY_RUN=' + ('PASS' if finished and proposed == expected else 'FAIL'))
+          if not finished or proposed != expected: sys.exit(1)
+          PY
+
+          # Only the one preflight-verified authorized migration may be applied.
+          if ! timeout 180s supabase db push --db-url "$db_url" --yes >"$apply_output" 2>&1; then echo 'APPLY=CLI_ERROR'; exit 1; fi
+          echo 'APPLY=CLI_SUCCESS'
+          verify_ledger POST
+
+          checks="$(timeout 20s psql -X -A -t -q -v ON_ERROR_STOP=1 <<'SQL'
+          WITH defs AS (
+            SELECT p.proname, pg_get_functiondef(p.oid) AS body
+            FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='erp'
+          ), checks(name, ok) AS (
+            VALUES
+              ('ACTIVITY_CODE_AMENDMENT_AUTH_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND body LIKE '%current_user_has_permission(''assignment.manage'')%')),
+              ('ASSIGNMENT_CREATE_ACTIVITY_CODE_VALIDATION_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_create_assignment' AND body LIKE '%current_user_has_permission(''assignment.create'')%' AND body LIKE '%nullif(btrim(command->>''activityCodeId''), '''') IS NULL%')),
+              ('COMMERCIAL_TERMS_REVISION_SUPPORT_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND body LIKE '%UPDATE_DRAFT_RENTAL_TERMS%')),
+              ('DEUR_PREPARATION_REVISION_SUPPORT_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND body LIKE '%draftPreparation%')),
+              ('POST_APPROVAL_PREPARATION_LOCK_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND body LIKE '%approval_status=''Approved''%') AND EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND body LIKE '%APPROVED_LOCKED%'))
+          ) SELECT name || '=' || CASE WHEN ok THEN 'PASS' ELSE 'FAIL' END FROM checks;
+          SQL
+          )"
+          printf '%s\n' "$checks"
+          if grep -q '=FAIL' <<<"$checks"; then exit 1; fi
+          echo 'UAT_MIGRATION_VERIFICATION=PASS'

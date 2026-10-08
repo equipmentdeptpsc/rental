@@ -34,9 +34,11 @@ function Invoke-LoggedStep([string]$Name,[scriptblock]$Action) {
   }
 }
 
-function Assert-UatTarget {
-  $branch = (git -C $script:RepositoryRoot branch --show-current).Trim()
-  if ($branch -ne $script:ExpectedBranch) { throw "Refusing UAT operation from branch $branch." }
+function Assert-UatTarget([switch]$MigrationAuthorizationVerified) {
+  if (-not $MigrationAuthorizationVerified) {
+    $branch = (git -C $script:RepositoryRoot branch --show-current).Trim()
+    if ($branch -ne $script:ExpectedBranch) { throw "Refusing UAT operation from branch $branch." }
+  }
   $refFile = Join-Path $script:RepositoryRoot 'supabase\.temp\project-ref'
   if (-not (Test-Path -LiteralPath $refFile)) { throw 'No linked Supabase project found.' }
   $projectRef = (Get-Content -LiteralPath $refFile -Raw).Trim()
