@@ -57,6 +57,8 @@ describe("Rental Bookings list workspace", () => {
     expect(container.textContent).toContain("Returns Due");
     expect([...container.querySelectorAll('[aria-label="Booking summary"] button')].map((card) => card.textContent)).toEqual(["Total Bookings2", "Equipment Reserved1", "Releases Due1", "Returns Due1"]);
     expect(container.querySelectorAll('tr[aria-label^="Open booking"]')).toHaveLength(2);
+    expect(container.querySelector("table")?.parentElement?.parentElement?.className).toContain("overflow-auto");
+    expect(container.querySelector("thead")?.className).toContain("sticky top-0");
     await act(async () => container.querySelector<HTMLButtonElement>('button[role="tab"]:nth-child(2)')?.click());
     expect(container.textContent).toContain("Calendar");
   });
