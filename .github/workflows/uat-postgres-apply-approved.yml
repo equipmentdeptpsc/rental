@@ -169,7 +169,7 @@ jobs:
           ), checks(name, ok) AS (
             VALUES
               ('ACTIVITY_CODE_CREATE_VALIDATION_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_create_assignment' AND authenticated_execute AND position('nullif(btrim(command->>''activitycodeid''),'''')isnull' IN compact_body)>0)),
-              ('ACTIVITY_CODE_AMENDMENT_AUTH_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND authenticated_execute AND position('current_user_has_permission(''assignment.manage'')' IN compact_body)>0)),
+              ('ACTIVITY_CODE_AMENDMENT_AUTH_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND authenticated_execute AND position('current_user_has_permission(''assignment.update'')' IN compact_body)>0)),
               ('PREAPPROVAL_REVISION_SUPPORT_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND authenticated_execute AND position('draftpreparation' IN compact_body)>0 AND position('update_draft_rental_terms' IN compact_body)>0)),
               ('POST_APPROVAL_LOCK_PRESENT', EXISTS(SELECT 1 FROM defs WHERE proname='command_update_draft_rental_terms' AND position('target.approval_status=''approved''thenreturn' IN compact_body)>0 AND position('approved_locked' IN compact_body)>0) AND EXISTS(SELECT 1 FROM defs WHERE proname='command_amend_assignment_activity_code' AND position('r.approval_status=''approved''' IN compact_body)>0 AND position('approved_locked' IN compact_body)>0))
           ) SELECT name || '=' || CASE WHEN ok THEN 'PASS' ELSE 'FAIL' END FROM checks;
@@ -191,7 +191,7 @@ jobs:
           \else
           \echo CREATE_MISSING_ACTIVITY_CODE=NO_ELIGIBLE_ACTOR
           \endif
-          SELECT id AS amend_actor FROM erp.users u WHERE u.status='active' AND EXISTS(SELECT 1 FROM erp.effective_user_permissions p WHERE p.user_id=u.id AND p.permission_code='assignment.manage') ORDER BY u.id LIMIT 1 \gset
+          SELECT id AS amend_actor FROM erp.users u WHERE u.status='active' AND EXISTS(SELECT 1 FROM erp.effective_user_permissions p WHERE p.user_id=u.id AND p.permission_code='assignment.update') ORDER BY u.id LIMIT 1 \gset
           \if :{?amend_actor}
           WITH candidate AS (SELECT gen_random_uuid()::text AS id) SELECT candidate.id AS fake_assignment_id FROM candidate WHERE NOT EXISTS(SELECT 1 FROM erp.assignments a WHERE a.id=candidate.id) \gset
           SELECT set_config('request.jwt.claim.sub', :'amend_actor', true) \gset
