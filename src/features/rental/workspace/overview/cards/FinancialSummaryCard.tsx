@@ -18,7 +18,7 @@ import type {
           </h2>
   
           <p className="text-sm text-slate-500">
-            Current financial status of this rental.
+            Actual accrued charges for this rental. Configured rates appear in Commercial Terms for Approval.
           </p>
         </div>
   

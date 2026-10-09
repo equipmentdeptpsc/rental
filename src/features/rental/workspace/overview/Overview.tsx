@@ -18,6 +18,7 @@ import { useRentalWorkspacePresentationData } from "..";
 import { resolveRentalOverviewPreparation } from "./resolveRentalOverviewPreparation";
 import AddEquipmentPanel from "./sections/AddEquipmentPanel";
 import RentalLineLifecycleActions from "./sections/RentalLineLifecycleActions";
+import CommercialTermsForApprovalCard from "./cards/CommercialTermsForApprovalCard";
 
 export default function Overview() {
   const aggregate =
@@ -46,6 +47,12 @@ export default function Overview() {
             ? "Unknown equipment"
             : `${overview.equipment.assetNo} - ${overview.equipment.equipmentName}`
         }
+      />
+      <CommercialTermsForApprovalCard
+        rental={aggregate.rental}
+        lines={lines}
+        contracts={contracts}
+        equipmentLabels={Object.fromEntries(equipment.map((item) => [item.id, `${item.assetNo} - ${item.equipmentName}`]))}
       />
       {lines.map((line) => (
         <div key={`commercial-${line.id}`}>
