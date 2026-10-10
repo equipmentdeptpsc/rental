@@ -16,6 +16,8 @@ export interface DigitalDeurRunningState {
   activeEventType?: DeurActivityTypeCanonical;
   activeEventStartedAt?: string;
   activeEventElapsedSeconds: number;
+  completedShiftMinutes: number;
+  projectedShiftMinutes: number;
   completedOperationMinutes: number;
   projectedOperationMinutes: number;
   completedIdleMinutes: number;
