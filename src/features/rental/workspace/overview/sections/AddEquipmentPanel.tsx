@@ -8,7 +8,8 @@ import type { AssignmentRecord } from "@/features/assignment/types";
 import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types";
 import type { RentalRecord } from "@/features/rental/types";
 import { notifyRentalWorkspaceChange } from "@/features/rental/workspace/workspaceRefresh";
-import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
+import { requestCanonicalRentalRefresh, subscribeCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
+import { availabilityLabel, equipmentStartError, initialEquipmentStartDate } from "./equipmentPlanning";
 
 interface Props { rental: RentalRecord; lines: RentalEquipmentLine[]; equipment: EquipmentRecord[]; assignments: AssignmentRecord[] }
 
@@ -22,28 +23,52 @@ export default function AddEquipmentPanel({ rental, lines, equipment, assignment
   const canAdd = hasPermission("rental.update") && editableStatuses.has(rental.status) && !readOnlyStatuses.has(rental.status) && Boolean(repository?.addEquipment);
   const [open, setOpen] = useState(false);
   const [equipmentId, setEquipmentId] = useState("");
-  const [effectiveStart, setEffectiveStart] = useState(rental.dateOut);
+  const [effectiveStart, setEffectiveStart] = useState(() => initialEquipmentStartDate(rental));
   const [sourceAssignmentId, setSourceAssignmentId] = useState("");
   const [availability, setAvailability] = useState<EquipmentAvailabilityState>({ status: "not_checked" });
+  const [candidateAvailability, setCandidateAvailability] = useState<Record<string, EquipmentAvailabilityState>>({});
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [message, setMessage] = useState("");
   const controller = useMemo(() => new EquipmentAvailabilityController(dependencies.repositories.equipmentAvailability), [dependencies.repositories.equipmentAvailability]);
   const requestKey = `${rental.id}:add-equipment`;
   const selectedAssignments = useMemo(() => assignments.filter((assignment) => assignment.status === "Active" && !assignment.deleted && assignment.equipmentId === equipmentId && assignment.projectId === rental.projectId), [assignments, equipmentId, rental.projectId]);
   const selectedEquipmentIds = useMemo(() => new Set(lines.map((line) => line.equipmentId)), [lines]);
-  const candidates = equipment.filter((item) => item.active !== false && !item.deleted);
+  const candidates = useMemo(() => equipment.filter((item) => item.active !== false && !item.deleted), [equipment]);
+  const startError = equipmentStartError(rental, effectiveStart);
+
+  useEffect(() => subscribeCanonicalRentalRefresh(() => setRefreshVersion((value) => value + 1)), []);
 
   useEffect(() => {
-    if (!open || !equipmentId || !effectiveStart) { setAvailability({ status: "not_checked" }); return; }
+    if (!open || startError) { setCandidateAvailability({}); return; }
     let active = true;
+    setCandidateAvailability({});
+    void (async () => {
+      // Bounded batches avoid issuing an unbounded number of canonical reads at once.
+      for (let offset = 0; offset < candidates.length && active; offset += 6) {
+        const batch = candidates.slice(offset, offset + 6).filter((item) => !selectedEquipmentIds.has(item.id));
+        const results = await Promise.all(batch.map(async (item) => ({
+          id: item.id,
+          state: await controller.check({ key: `${requestKey}:candidate:${item.id}`, equipmentId: item.id, windowStart: effectiveStart, windowEnd: rental.expectedReturn ?? null }),
+        })));
+        if (active) setCandidateAvailability((current) => Object.fromEntries([...Object.entries(current), ...results.map(({ id, state }) => [id, state])]));
+      }
+    })();
+    return () => { active = false; };
+  }, [candidates, controller, effectiveStart, open, rental.expectedReturn, refreshVersion, requestKey, selectedEquipmentIds, startError]);
+
+  useEffect(() => {
+    if (!open || !equipmentId || startError) { setAvailability({ status: "not_checked" }); return; }
+    let active = true;
+    setAvailability({ status: "checking" });
     void controller.check({ key: requestKey, equipmentId, windowStart: effectiveStart, windowEnd: rental.expectedReturn ?? null, ...(sourceAssignmentId ? { sourceAssignmentId } : {}) }).then((state) => { if (active) setAvailability(state); });
     return () => { active = false; };
-  }, [controller, effectiveStart, equipmentId, open, rental.expectedReturn, requestKey, sourceAssignmentId]);
+  }, [controller, effectiveStart, equipmentId, open, rental.expectedReturn, requestKey, sourceAssignmentId, startError]);
 
   if (!canAdd) return null;
 
-  const reset = (clearMessage = true) => { setOpen(false); setEquipmentId(""); setSourceAssignmentId(""); setEffectiveStart(rental.dateOut); setAvailability({ status: "not_checked" }); if (clearMessage) setMessage(""); };
+  const reset = (clearMessage = true) => { setOpen(false); setEquipmentId(""); setSourceAssignmentId(""); setEffectiveStart(initialEquipmentStartDate(rental)); setAvailability({ status: "not_checked" }); if (clearMessage) setMessage(""); };
   const submit = async () => {
-    if (!repository?.addEquipment || availability.status !== "available" || !equipmentId || !effectiveStart) return;
+    if (!repository?.addEquipment || availability.status !== "available" || !equipmentId || startError) return;
     setMessage("");
     const result = await repository.addEquipment({ commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID(), rentalId: rental.id, equipmentId, proposedEffectiveStartDate: effectiveStart, ...(sourceAssignmentId ? { sourceAssignmentId } : {}) });
     if (!result.success) {
@@ -73,20 +98,22 @@ export default function AddEquipmentPanel({ rental, lines, equipment, assignment
       <label className="grid gap-1 text-sm font-medium text-slate-700">Equipment
         <select className="rounded border bg-white p-2" value={equipmentId} onChange={(event) => { setEquipmentId(event.target.value); setSourceAssignmentId(""); }}>
           <option value="">Select equipment</option>
-          {candidates.map((item) => <option key={item.id} value={item.id} disabled={selectedEquipmentIds.has(item.id)}>{item.assetNo} — {item.equipmentName}{selectedEquipmentIds.has(item.id) ? " (already included)" : ""}</option>)}
+          {candidates.map((item) => <option key={item.id} value={item.id} disabled={selectedEquipmentIds.has(item.id)}>{item.assetNo} — {item.equipmentName} · {selectedEquipmentIds.has(item.id) ? "Already included" : availabilityLabel(candidateAvailability[item.id])}</option>)}
         </select>
       </label>
+      {equipmentId && candidateAvailability[equipmentId]?.status === "conflict" && <p className="text-sm text-amber-800">Current commitment: {candidateAvailability[equipmentId].result?.conflicts[0]?.projectLabel ?? candidateAvailability[equipmentId].result?.conflicts[0]?.rentalNumber ?? "Restricted"}. Historical assignments outside the selected interval are not conflicts.</p>}
       <label className="grid gap-1 text-sm font-medium text-slate-700">Effective start
-        <input className="rounded border bg-white p-2" type="date" min={rental.dateOut} max={rental.expectedReturn} value={effectiveStart} onChange={(event) => setEffectiveStart(event.target.value)} />
+        <input className="rounded border bg-white p-2" type="date" min={rental.dateOut} max={rental.expectedReturn} value={effectiveStart} onChange={(event) => setEffectiveStart(event.target.value)} aria-invalid={Boolean(startError)} />
+        {startError && <span className="text-sm text-red-700" role="alert">{startError}</span>}
       </label>
       {selectedAssignments.length > 0 && <label className="grid gap-1 text-sm font-medium text-slate-700">Source Assignment <span className="font-normal text-slate-500">Optional; choose only the legitimate matching Assignment.</span>
-        <select className="rounded border bg-white p-2" value={sourceAssignmentId} onChange={(event) => setSourceAssignmentId(event.target.value)}>
+        <select className="rounded border bg-white p-2" value={sourceAssignmentId} onChange={(event) => { const assignment = selectedAssignments.find((item) => item.id === event.target.value); setSourceAssignmentId(event.target.value); if (assignment) setEffectiveStart(assignment.startDate ?? assignment.assignedDate); }}>
           <option value="">Ordinary equipment (no source Assignment)</option>
           {selectedAssignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.id} · {assignment.assignedDate}–{assignment.expectedReturn ?? "Open-ended"}</option>)}
         </select>
       </label>}
       <AvailabilityState state={availability} />
-       <div className="flex flex-wrap justify-end gap-2"><button type="button" className="rounded border bg-white px-3 py-2 text-sm" onClick={() => reset()}>Cancel</button><button type="button" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={availability.status !== "available"} onClick={() => void submit()}>Add as Draft</button></div>
+       <div className="flex flex-wrap justify-end gap-2"><button type="button" className="rounded border bg-white px-3 py-2 text-sm" onClick={() => reset()}>Cancel</button><button type="button" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={Boolean(startError) || availability.status !== "available"} onClick={() => void submit()}>Add as Draft</button></div>
     </div>}
   </section>;
 }
