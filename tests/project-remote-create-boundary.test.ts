@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ permissions: new Set(["project.manage"]), addProject: vi.fn() }));
+const state = vi.hoisted(() => ({ permissions: new Set(["project.create"]), addProject: vi.fn() }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => state.permissions.has(permission) }) }));
 vi.mock("@/features/project/context/ProjectContext", () => ({ useProject: () => ({ projects: [], addProject: state.addProject }) }));
 vi.mock("@/features/customer/context/CustomerContext", () => ({ useCustomer: () => ({ customers: [] }) }));
@@ -11,6 +11,7 @@ vi.mock("@/features/customer/context/CustomerContext", () => ({ useCustomer: () 
 import { ApplicationDependencyProvider, createLocalApplicationDependencies, PersistenceMode, type ApplicationDependencies } from "@/app/composition";
 import { subscribeCanonicalProjectRefresh } from "@/features/project/remote/canonicalProjectRefresh";
 import NewProject from "@/pages/Projects/New";
+import { getProjectRuntimeCapability } from "@/features/project/services/projectRuntimeCapability";
 
 const roots: Root[] = [];
 function remoteDependencies(input: { enabled?: boolean; repository?: boolean } = {}) {
@@ -36,12 +37,20 @@ function setSelect(node: HTMLSelectElement, value: string) {
   Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(node, value);
   node.dispatchEvent(new Event("change", { bubbles: true }));
 }
-afterEach(async () => { state.permissions = new Set(["project.manage"]); vi.clearAllMocks(); while (roots.length) await act(async () => roots.pop()?.unmount()); });
+afterEach(async () => { state.permissions = new Set(["project.create"]); vi.clearAllMocks(); while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical Project remote create boundary", () => {
+  it("allows only the explicitly enabled Project create capability", () => {
+    const base = { persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: false, remoteProjectCreateEnabled: true } as ApplicationDependencies["configuration"];
+    expect(getProjectRuntimeCapability(base, true).canonicalMutations).toBe(true);
+    expect(getProjectRuntimeCapability(base, false).canonicalMutations).toBe(false);
+    expect(getProjectRuntimeCapability({ ...base, remoteProjectCreateEnabled: false }, true).canonicalMutations).toBe(false);
+  });
   it("fails closed without flag, repository, or permission", async () => {
     expect((await render(remoteDependencies({ enabled: false }).dependencies)).textContent).toContain("Project changes are unavailable");
     expect((await render(remoteDependencies({ repository: false }).dependencies)).textContent).toContain("Project changes are unavailable");
+    state.permissions = new Set(["project.manage"]);
+    expect((await render(remoteDependencies().dependencies)).textContent).toContain("Project changes are unavailable");
     state.permissions.clear();
     expect((await render(remoteDependencies().dependencies)).textContent).toContain("Project changes are unavailable");
   });

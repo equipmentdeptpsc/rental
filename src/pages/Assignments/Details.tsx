@@ -1,5 +1,6 @@
 import {
   Link,
+  useLocation,
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -30,7 +31,10 @@ import { canStartRentalFromCanonicalAssignment, getAssignmentRuntimeCapability, 
 
 export default function AssignmentDetails() {
   const { configuration } = useApplicationDependenciesCompatibility();
-  return getAssignmentRuntimeCapability(configuration).canonicalReads ? <RemoteAssignmentDetails /> : <LocalAssignmentDetails />;
+  const location = useLocation();
+  const state = location.state && typeof location.state === "object" && "rentalWorkspace" in location.state ? location.state as { rentalWorkspace?: { returnTo?: unknown; rentalId?: unknown } } : undefined;
+  const returnTo = typeof state?.rentalWorkspace?.returnTo === "string" && typeof state.rentalWorkspace.rentalId === "string" && state.rentalWorkspace.returnTo.startsWith(`/rentals/${state.rentalWorkspace.rentalId}/workspace`) ? state.rentalWorkspace.returnTo : undefined;
+  return <>{returnTo && <div className="px-8 pt-6"><Link className="text-blue-700 underline" to={returnTo} state={location.state}>← Return to Rental Workspace</Link></div>}{getAssignmentRuntimeCapability(configuration).canonicalReads ? <RemoteAssignmentDetails /> : <LocalAssignmentDetails />}</>;
 }
 
 function RemoteAssignmentDetails() {

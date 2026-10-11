@@ -7,7 +7,7 @@ export const PERMISSIONS = {
     "equipment.delete",
     "equipment.restore",
   ],
-  assignment: ["assignment.read", "assignment.create", "assignment.manage", "assignment.close"],
+  assignment: ["assignment.read", "assignment.create", "assignment.manage", "assignment.close", "assignment.operator.replace"],
   rental: [
     "rental.read",
     "rental.create",
@@ -27,7 +27,7 @@ export const PERMISSIONS = {
   ],
   deur: ["deur.read", "deur.create", "deur.review", "deur.correct", "deur.expectation.waive", "deur.customerReview.issue"],
   customer: ["customer.read", "customer.create", "customer.manage"],
-  project: ["project.read", "project.update", "project.manage"],
+  project: ["project.read", "project.create", "project.update", "project.manage"],
   operator: ["operator.read", "operator.create", "operator.update", "operator.manage"],
   maintenance: ["maintenance.read", "maintenance.manage"],
   dailyLog: ["dailyLog.read", "dailyLog.manage"],

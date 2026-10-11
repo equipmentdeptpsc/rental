@@ -91,6 +91,23 @@ describe("D5F4B narrow Rental lifecycle wiring", () => {
     expect(disabled.commandRepositories.rentalLineLifecycleCommands).toBeUndefined();
     await expect(disabled.commandRepositories.rentalClosureCommands.close({ commandId: "command-3", idempotencyKey: "key-3", rentalId: rental.id })).resolves.toMatchObject({ success: false, code: "NOT_ENABLED" });
   });
+  it("composes Customer, Project, and Billing commands independently", async () => {
+    const base = { persistenceMode: PersistenceMode.Remote, equipmentStatusSource: "supabase", supabaseUrl: "https://example.supabase.co", supabasePublishableKey: "sb_publishable_test_value", remoteOperationalWritesEnabled: false } as const;
+    const disabled = createApplicationDependencies(base);
+    expect(disabled.commandRepositories.canonicalCustomer).toBeUndefined();
+    expect(disabled.commandRepositories.canonicalProject).toBeUndefined();
+    await expect(disabled.commandRepositories.billingFinancialCommands.createInvoice({ commandId: "c", idempotencyKey: "k", statementId: "s" })).resolves.toMatchObject({ success: false, code: "NOT_ENABLED" });
+    const customer = createApplicationDependencies({ ...base, remoteCustomerCreateEnabled: true });
+    expect(customer.commandRepositories.canonicalCustomer?.createCustomer).toEqual(expect.any(Function));
+    expect(customer.commandRepositories.canonicalProject).toBeUndefined();
+    const project = createApplicationDependencies({ ...base, remoteProjectCreateEnabled: true });
+    expect(project.commandRepositories.canonicalProject?.createProject).toEqual(expect.any(Function));
+    expect(project.commandRepositories.canonicalCustomer).toBeUndefined();
+    const billing = createApplicationDependencies({ ...base, remoteBillingFinancialEnabled: true });
+    expect(billing.commandRepositories.billingFinancialCommands.createInvoice).toEqual(expect.any(Function));
+    expect(billing.commandRepositories.canonicalCustomer).toBeUndefined();
+    expect(billing.configuration.remoteOperationalWritesEnabled).toBe(false);
+  });
 
   it("maps every line command and parent Close to the exact canonical RPC", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { success: false, code: "FORBIDDEN", message: "Forbidden", retryable: false, refreshRequired: false }, error: null });

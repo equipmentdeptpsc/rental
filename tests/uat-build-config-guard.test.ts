@@ -41,4 +41,19 @@ describe("UAT build configuration guard", () => {
     const { UAT_BUILD_PROFILE: _ignored, ...withoutProfile } = base;
     expect(() => execFileSync(process.execPath, [guard], { env: { ...process.env, ...withoutProfile }, stdio: "pipe" })).not.toThrow();
   });
+  it("accepts operation-specific UAT capabilities while keeping broad writes disabled", () => {
+    const operationFlags = {
+      VITE_REMOTE_CUSTOMER_CREATE_ENABLED: "true", VITE_REMOTE_PROJECT_CREATE_ENABLED: "true", VITE_REMOTE_PROJECT_CUSTOMER_LINK_ENABLED: "true",
+      VITE_REMOTE_EQUIPMENT_CREATE_ENABLED: "true", VITE_REMOTE_OPERATOR_CREATE_ENABLED: "true", VITE_REMOTE_ASSIGNMENT_CREATE_ENABLED: "true", VITE_REMOTE_ASSIGNMENT_CANCEL_ENABLED: "true",
+      VITE_REMOTE_RENTAL_CREATE_ENABLED: "true", VITE_REMOTE_RENTAL_COMMERCIAL_TERMS_ENABLED: "true", VITE_REMOTE_RENTAL_APPROVAL_ENABLED: "true", VITE_REMOTE_RENTAL_RESERVE_ENABLED: "true", VITE_REMOTE_RENTAL_RELEASE_ENABLED: "true", VITE_REMOTE_RENTAL_ACTIVATE_ENABLED: "true", VITE_REMOTE_RENTAL_RETURN_ENABLED: "true", VITE_REMOTE_RENTAL_CANCEL_ENABLED: "true",
+      VITE_REMOTE_RENTAL_LINE_RESERVE_ENABLED: "true", VITE_REMOTE_RENTAL_LINE_RELEASE_ENABLED: "true", VITE_REMOTE_RENTAL_LINE_ACTIVATE_ENABLED: "true", VITE_REMOTE_RENTAL_LINE_CANCEL_ENABLED: "true", VITE_REMOTE_RENTAL_LINE_RETURN_ENABLED: "true", VITE_REMOTE_RENTAL_LINE_ASSIGNMENT_ENABLED: "true", VITE_REMOTE_RENTAL_CLOSE_ENABLED: "true",
+      VITE_REMOTE_CUSTOMER_REVIEW_CREATE_ENABLED: "true", VITE_REMOTE_BILLING_FINANCIAL_ENABLED: "true",
+    };
+    const env = { ...process.env, ...base, ...operationFlags, UAT_BUILD_PROFILE: "operations" };
+    expect(() => execFileSync(process.execPath, [guard], { env, stdio: "pipe" })).not.toThrow();
+    expect(() => execFileSync(process.execPath, [guard], { env: { ...env, VITE_REMOTE_BILLING_FINANCIAL_ENABLED: "false" }, stdio: "pipe" })).toThrow();
+    expect(() => execFileSync(process.execPath, [guard], { env: { ...env, VITE_REMOTE_RENTAL_LINE_ASSIGNMENT_ENABLED: "false" }, stdio: "pipe" })).toThrow();
+    expect(() => execFileSync(process.execPath, [guard], { env: { ...env, VITE_REMOTE_OPERATIONAL_WRITES_ENABLED: "true" }, stdio: "pipe" })).toThrow();
+    expect(() => execFileSync(process.execPath, [guard], { env: { ...env, VITE_SUPABASE_URL: "https://other.supabase.co" }, stdio: "pipe" })).toThrow();
+  });
 });

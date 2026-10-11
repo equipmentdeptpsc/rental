@@ -14,6 +14,12 @@ describe("remote Customer boundary",()=>{
   it("disables legacy persistence in remote mode",()=>{
     expect(getCustomerRuntimeCapability({persistenceMode:"remote",remoteOperationalWritesEnabled:true} as never,true)).toMatchObject({canonicalReads:true,canonicalMutations:true,legacyMutations:false});
   });
+  it("requires an explicit create capability and repository when broad UAT writes are disabled",()=>{
+    const base={persistenceMode:"remote",remoteOperationalWritesEnabled:false,remoteCustomerCreateEnabled:true} as const;
+    expect(getCustomerRuntimeCapability(base,true).canonicalMutations).toBe(true);
+    expect(getCustomerRuntimeCapability(base,false).canonicalMutations).toBe(false);
+    expect(getCustomerRuntimeCapability({...base,remoteCustomerCreateEnabled:false},true).canonicalMutations).toBe(false);
+  });
   it("invokes only the canonical command RPC",async()=>{
     const rpc=vi.fn().mockResolvedValue({data:{success:true,disposition:"ACCEPTED",serverOccurredAt:"2026-08-24T00:00:00Z",refresh:["c"],value:{id:"c",companyId:"co",customerCode:"C",name:"N",email:null,phone:null,address:null,active:true,deletedAt:null,createdAt:"2026-08-24T00:00:00Z",updatedAt:"2026-08-24T00:00:00Z",rowVersion:1}},error:null});
     const repository=new SupabaseCustomerCommandRepository({schema:()=>({rpc})} as never);

@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AddRentalEquipmentInput, AddRentalEquipmentResult, CanonicalCommandResult, CanonicalCommandValue, CanonicalDraftValidationReason, CanonicalReadResult, CanonicalRentalReferenceData, CanonicalRentalReleaseReadiness, CanonicalRentalRemoteRepository, CanonicalRentalReturnEvidence, CanonicalRentalWorkspace, CanonicalVersionedInput, ConfigureCanonicalCustomerReviewInput, CreateCanonicalDraftInput, DecideCanonicalApprovalInput, UpdateCanonicalTermsInput } from "@/features/rental/remote/contracts";
+import type { AddRentalEquipmentInput, AddRentalEquipmentResult, CanonicalCommandResult, CanonicalCommandValue, CanonicalDraftValidationReason, CanonicalOperatorAssignmentConflictDetails, CanonicalReadResult, CanonicalRentalReferenceData, CanonicalRentalReleaseReadiness, CanonicalRentalRemoteRepository, CanonicalRentalReturnEvidence, CanonicalRentalWorkspace, CanonicalVersionedInput, ConfigureCanonicalCustomerReviewInput, ConfigureRentalLineAssignmentInput, CreateCanonicalDraftInput, DecideCanonicalApprovalInput, UpdateCanonicalTermsInput } from "@/features/rental/remote/contracts";
 
 const messages: Record<string, string> = {
   UNAUTHENTICATED: "Your session has expired. Sign in and try again.", FORBIDDEN: "You do not have permission to perform this action.",
   VALIDATION_REJECTED: "The request is incomplete or invalid.", NOT_FOUND: "Referenced Rental information has changed or is unavailable. Refresh and try again.",
   MISSING_RELATIONSHIP: "Referenced Rental information has changed or is unavailable. Refresh and try again.", EQUIPMENT_UNAVAILABLE: "This equipment already has an active or pending Rental.", EQUIPMENT_INTERVAL_CONFLICT: "This equipment is already committed for the requested interval.",
+  OPERATOR_ALREADY_ASSIGNED: "This operator already has an active Assignment. Choose another operator or review the existing Assignment.",
   DUPLICATE_EQUIPMENT_LINE: "This equipment is already included in this Rental.", PARENT_READ_ONLY: "This Rental is read-only and cannot accept additional equipment.", PARENT_STATE_NOT_ELIGIBLE: "Additional equipment is not available in this Rental state.", INVALID_EFFECTIVE_START: "Choose an effective start date within the Rental interval.",
   RENTAL_NUMBER_CONFLICT: "Rental number allocation conflicted. Please retry.", RENTAL_CONFLICT: "This Rental already exists.", CONFLICT: "This Rental changed while you were working. Refresh and try again.",
   LINE_SET_MISMATCH: "The Rental equipment list changed. Refresh and try again.", INVALID_TRANSITION: "This action is not available for the Rental's current state.",
@@ -86,6 +87,7 @@ export class SupabaseCanonicalRentalRepository implements CanonicalRentalRemoteR
   release(input: CanonicalVersionedInput) { return this.command("command_release_rental", input); }
   activate(input: CanonicalVersionedInput) { return this.command("command_activate_rental", input); }
   addEquipment(input: AddRentalEquipmentInput): Promise<AddRentalEquipmentResult> { return this.command("command_add_rental_equipment", input) as Promise<AddRentalEquipmentResult>; }
+  configureLineAssignment(input: ConfigureRentalLineAssignmentInput) { return this.command("command_configure_rental_line_assignment", input); }
   configureCustomerReview(input: ConfigureCanonicalCustomerReviewInput) { return this.command("command_configure_rental_customer_review", input); }
   waiveDeurExpectation(input: import("@/features/rental/remote/contracts").WaiveDeurExpectationInput) { return this.command("command_waive_deur_expectation", input); }
   private async read<T>(name: string, args: Record<string, unknown>, map: (value: Record<string, unknown>) => T): Promise<CanonicalReadResult<T>> {
@@ -165,7 +167,18 @@ function safeValidationDetails(value: unknown): { reason: CanonicalDraftValidati
   const reason = details?.reason;
   return typeof reason === "string" && draftValidationReasons.has(reason as CanonicalDraftValidationReason) ? { reason: reason as CanonicalDraftValidationReason } : undefined;
 }
+function safeOperatorConflictDetails(value: unknown): CanonicalOperatorAssignmentConflictDetails | undefined {
+  const details = object(value);
+  if (!details || typeof details.assignmentId !== "string" || !details.assignmentId) return undefined;
+  return {
+    assignmentId: details.assignmentId,
+    ...(typeof details.status === "string" ? { status: details.status } : {}),
+    ...(typeof details.assignedDate === "string" ? { assignedDate: details.assignedDate } : {}),
+    ...(typeof details.expectedReturn === "string" ? { expectedReturn: details.expectedReturn } : {}),
+  };
+}
 function failure(value: keyof typeof messages, source?: Record<string, unknown>): Extract<CanonicalCommandResult, { success: false }> {
   const validation = value === "VALIDATION_REJECTED" ? safeValidationDetails(source?.details) : undefined;
-  return { success: false, code: value as never, message: validation ? `${messages[value]} (${validation.reason})` : messages[value], details: value === "VALIDATION_REJECTED" ? validation : source?.details, currentVersion: typeof source?.currentVersion === "number" ? source.currentVersion : undefined };
+  const operatorConflict = value === "OPERATOR_ALREADY_ASSIGNED" ? safeOperatorConflictDetails(source?.details) : undefined;
+  return { success: false, code: value as never, message: validation ? `${messages[value]} (${validation.reason})` : messages[value], details: value === "VALIDATION_REJECTED" ? validation : value === "OPERATOR_ALREADY_ASSIGNED" ? operatorConflict : source?.details, currentVersion: typeof source?.currentVersion === "number" ? source.currentVersion : undefined };
 }

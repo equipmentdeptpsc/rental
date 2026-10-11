@@ -21,11 +21,13 @@ import { resolveRentalBillingBlockers } from "@/features/rental/billing/resolveR
 import { developmentCustomerReviewOutbox } from "@/features/rental/customer-review/developmentCustomerReviewOutbox";
 import { useSearchParams } from "react-router-dom";
 import { PersistenceMode, useApplicationDependencies } from "@/app/composition";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export default function BillingPanel() {
 
   const aggregate = useRentalWorkspaceAggregate();
   const dependencies = useApplicationDependencies();
+  const { hasPermission } = useAuth();
   const [searchParams] = useSearchParams();
   const selectedBillingStatementId = searchParams.get("billingStatementId") ?? undefined;
   const { equipment } = useRentalWorkspacePresentationData();
@@ -51,7 +53,10 @@ export default function BillingPanel() {
   ] as const;
   const eligibilityMessage = prerequisites.find(([valid]) => !valid)?.[1];
   const canGenerate = !eligibilityMessage;
-  const canCreate = canGenerate && wizard.hasGenerated && wizard.preview.length > 0 && wizard.issues.length === 0;
+  const billingWriteAvailable = dependencies.configuration.persistenceMode !== PersistenceMode.Remote
+    || dependencies.configuration.remoteOperationalWritesEnabled === true
+    || dependencies.configuration.remoteBillingFinancialEnabled === true;
+  const canCreate = billingWriteAvailable && hasPermission("billing.create") && canGenerate && wizard.hasGenerated && wizard.preview.length > 0 && wizard.issues.length === 0;
 
   return (
 
@@ -66,7 +71,7 @@ export default function BillingPanel() {
         onSaveDraft={wizard.saveDraft}
         canGenerate={canGenerate}
         canCreate={canCreate}
-        createUnavailableMessage={wizard.hasGenerated && wizard.issues.length ? "Resolve every DEUR eligibility issue before creating the statement." : wizard.hasGenerated && !wizard.preview.length ? "No billable DEUR entries exist for the selected period." : eligibilityMessage ?? "Generate valid billing lines before creating a statement."}
+        createUnavailableMessage={!billingWriteAvailable ? "Billing writes are not enabled in this environment." : !hasPermission("billing.create") ? "Your role cannot create billing statements." : wizard.hasGenerated && wizard.issues.length ? "Resolve every DEUR eligibility issue before creating the statement." : wizard.hasGenerated && !wizard.preview.length ? "No billable DEUR entries exist for the selected period." : eligibilityMessage ?? "Generate valid billing lines before creating a statement."}
       />
 
       {!canGenerate && (
