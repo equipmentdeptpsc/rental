@@ -43,6 +43,7 @@ export class RentalOverviewMapper {
 
         assetNo:
           aggregate.equipment?.assetNo ?? "-",
+        legacyEquipmentNumber: aggregate.equipment?.legacyEquipmentNumber,
 
         equipmentName:
           aggregate.equipment?.equipmentName ??

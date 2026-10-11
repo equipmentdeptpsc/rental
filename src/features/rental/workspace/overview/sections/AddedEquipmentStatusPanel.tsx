@@ -138,6 +138,7 @@ export default function AddedEquipmentStatusPanel({ rental, lines, equipment, as
         const historical = ["Returned", "Cancelled", "Closed"].includes(status);
         return <article key={line.id} className="rounded-lg border p-4 text-sm">
           <h3 className="font-semibold">{machine ? `${machine.assetNo} — ${machine.equipmentName}` : line.equipmentId}</h3>
+          {machine?.legacyEquipmentNumber && <p>Legacy Equipment Number: {machine.legacyEquipmentNumber}</p>}
           <p className="break-all text-xs text-slate-500">Equipment ID: {line.equipmentId}</p>
           <p>Rental dates: {line.effectiveStartDate ?? rental.dateOut} → {rental.expectedReturn ?? "Open-ended"}</p>
           <p>Assignment: {assignment ? `${assignment.status} (${assignment.assignedDate} → ${assignment.expectedReturn ?? "Open-ended"})` : line.assignmentId ? `Linked ${line.assignmentId}` : "Not linked"}</p>

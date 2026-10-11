@@ -30,7 +30,7 @@ export function getAssignmentDisplayName(input: { assignment: AssignmentRecord; 
   const explicit = input.displayName?.trim();
   if (explicit) return explicit;
   const project = input.project?.projectName?.trim();
-  const equipment = input.equipment ? `${input.equipment.assetNo} - ${input.equipment.equipmentName}` : undefined;
+  const equipment = input.equipment ? `${input.equipment.assetNo}${input.equipment.legacyEquipmentNumber ? ` / Legacy ${input.equipment.legacyEquipmentNumber}` : ""} - ${input.equipment.equipmentName}` : undefined;
   const operator = input.operator?.name?.trim();
   const parts = [project, equipment, operator].filter(Boolean);
   return parts.length >= 2 ? parts.join(" — ") : "Assignment details unavailable";

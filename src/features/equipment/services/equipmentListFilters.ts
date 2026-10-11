@@ -21,5 +21,5 @@ export function filterEquipmentList(equipment: readonly EquipmentRecord[], filte
     .filter((item) => !filter.category || item.category === filter.category)
     .filter((item) => !filter.ownership || item.ownership === filter.ownership)
     .filter((item) => !filter.location || item.location === filter.location)
-    .filter((item) => !query || `${item.assetNo} ${item.equipmentName} ${item.category} ${item.subcategoryName ?? ""} ${item.ownership ?? ""} ${item.location ?? ""}`.toLowerCase().includes(query));
+    .filter((item) => !query || `${item.assetNo} ${item.legacyEquipmentNumber ?? ""} ${item.equipmentName} ${item.category} ${item.subcategoryName ?? ""} ${item.ownership ?? ""} ${item.location ?? ""}`.toLowerCase().includes(query));
 }

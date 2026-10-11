@@ -127,7 +127,7 @@ export default function EquipmentTable({
             >
 
               <td className="px-4 py-3 align-middle">
-                {item.assetNo}
+                {item.assetNo}{item.legacyEquipmentNumber && <span className="block text-xs text-slate-500">Legacy: {item.legacyEquipmentNumber}</span>}
               </td>
 
               <td className="px-4 py-3 align-middle">

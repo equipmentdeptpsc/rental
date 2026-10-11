@@ -22,6 +22,7 @@ export interface EquipmentRecord {
   prefixId: string;
 
   assetNo: string;
+  legacyEquipmentNumber?: string | null;
 
   equipmentName: string;
 
@@ -96,6 +97,7 @@ export interface EquipmentFormData {
   prefixId: string;
 
   assetNo: string;
+  legacyEquipmentNumber?: string;
 
   equipmentName: string;
 

@@ -27,7 +27,7 @@ export function billingStatementPdfText(document: InvoiceDocument, preparedBy = 
     `Representative Email: ${document.customerRepresentativeEmail ?? "Not provided"}`,
     `Project: ${document.project}`,
     "DEUR NO. | DATE | EQUIPMENT CODE | EQUIPMENT | ACTIVITY CODE | SERVICE / ACTIVITY | COST CODE | QTY / HOURS | RATE | AMOUNT",
-    ...document.serviceLines.map((line) => `${line.deurReference} | ${line.workDate} | ${line.equipmentCode} | ${line.equipmentLabel} / ${line.operatorLabel} | ${line.activityCode} | ${line.service} | ${line.costCode} | ${line.quantityLabel} | ${line.rate === undefined ? "-" : money(line.rate, document.currency)} | ${money(line.amount, document.currency)}`),
+    ...document.serviceLines.map((line) => `${line.deurReference} | ${line.workDate} | ${line.equipmentCode}${line.equipmentLegacyCode ? ` / Legacy ${line.equipmentLegacyCode}` : ""} | ${line.equipmentLabel} / ${line.operatorLabel} | ${line.activityCode} | ${line.service} | ${line.costCode} | ${line.quantityLabel} | ${line.rate === undefined ? "-" : money(line.rate, document.currency)} | ${money(line.amount, document.currency)}`),
     `Subtotal: ${money(document.subtotal, document.currency)}`,
     ...(document.discountAmount ? [`Discount: (${money(document.discountAmount, document.currency)})`, `Net taxable subtotal: ${money(document.subtotalAfterDiscount ?? document.subtotal - document.discountAmount, document.currency)}`] : []),
     ...(document.vatApplicable ? [`VAT: ${money(document.vat ?? 0, document.currency)}`] : []),
@@ -126,20 +126,22 @@ function pageContent(document: InvoiceDocument, pageLines: InvoiceDocument["serv
   headers.forEach(([label,x]) => commands.push(text(label,x,tableTop+7,6.5)));
   commands.push(`0.7 G 36 ${tableTop} m 576 ${tableTop} l S`);
   pageLines.forEach((line, index) => {
-    const y = tableTop - 19 - index * 24;
+    const y = tableTop - 19 - index * 32;
     commands.push(text(line.deurReference,38,y,6.5));
     commands.push(text(line.workDate,96,y,6.5));
     commands.push(text(short(`${line.equipmentLabel} / ${line.operatorLabel}`,20),148,y,6.5));
     commands.push(text(short(line.service,24),278,y,6.5));
-    commands.push(text(short(`EQ ${line.equipmentCode}  ACT ${line.activityCode}  COST ${line.costCode}`,58),148,y-8,5.5));
+    commands.push(text(short(`Asset ${line.equipmentCode}`,42),148,y-8,5.5));
+    commands.push(text(short(`ACT ${line.activityCode}  COST ${line.costCode}`,43),278,y-8,5.5));
+    if (line.equipmentLegacyCode) commands.push(text(`Legacy ${line.equipmentLegacyCode}`,148,y-16,5.5));
     commands.push(rightText(line.quantityLabel,467,y,6.5));
     commands.push(rightText(line.rate === undefined ? "-" : money(line.rate,document.currency),523,y,6.5));
     commands.push(rightText(money(line.amount,document.currency),574,y,6.5));
-    commands.push(`0.88 G 36 ${y-12} m 576 ${y-12} l S`);
+    commands.push(`0.88 G 36 ${y-24} m 576 ${y-24} l S`);
   });
 
   if (pageIndex === pageCount - 1) {
-    let y = Math.max(118, tableTop - 30 - pageLines.length * 24);
+    let y = Math.max(118, tableTop - 30 - pageLines.length * 32);
     const total = (label: string, value: string, strong = false) => {
       commands.push(text(label,410,y,strong?9:8)); commands.push(rightText(value,574,y,strong?9:8)); y -= 15;
     };
@@ -169,7 +171,7 @@ function concat(parts: Uint8Array[]) {
 
 export function generateBillingStatementPdf(document: InvoiceDocument, preparedBy = "Administrator", logoPng?: Uint8Array): Uint8Array {
   const png = readPng(logoPng);
-  const rowsPerPage = 18;
+  const rowsPerPage = 13;
   const pageChunks = Array.from({ length: Math.max(1, Math.ceil(document.serviceLines.length / rowsPerPage)) }, (_, index) => document.serviceLines.slice(index * rowsPerPage, (index + 1) * rowsPerPage));
   const fontId = 3 + pageChunks.length * 2;
   const imageId = png ? fontId + 1 : undefined;

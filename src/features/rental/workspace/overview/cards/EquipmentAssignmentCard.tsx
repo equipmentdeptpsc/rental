@@ -30,6 +30,7 @@ import type {
             label="Asset Number"
             value={equipment.assetNo}
           />
+          {equipment.legacyEquipmentNumber && <Field label="Legacy Equipment Number" value={equipment.legacyEquipmentNumber} />}
   
           <Field
             label="Equipment"

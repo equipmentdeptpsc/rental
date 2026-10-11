@@ -98,7 +98,7 @@ export default function AddEquipmentPanel({ rental, lines, equipment, assignment
       <label className="grid gap-1 text-sm font-medium text-slate-700">Equipment
         <select className="rounded border bg-white p-2" value={equipmentId} onChange={(event) => { setEquipmentId(event.target.value); setSourceAssignmentId(""); }}>
           <option value="">Select equipment</option>
-          {candidates.map((item) => <option key={item.id} value={item.id} disabled={selectedEquipmentIds.has(item.id)}>{item.assetNo} — {item.equipmentName} · {selectedEquipmentIds.has(item.id) ? "Already included" : availabilityLabel(candidateAvailability[item.id])}</option>)}
+          {candidates.map((item) => <option key={item.id} value={item.id} disabled={selectedEquipmentIds.has(item.id)}>{item.assetNo}{item.legacyEquipmentNumber ? ` / Legacy ${item.legacyEquipmentNumber}` : ""} — {item.equipmentName} · {selectedEquipmentIds.has(item.id) ? "Already included" : availabilityLabel(candidateAvailability[item.id])}</option>)}
         </select>
       </label>
       {equipmentId && candidateAvailability[equipmentId]?.status === "conflict" && <p className="text-sm text-amber-800">Current commitment: {candidateAvailability[equipmentId].result?.conflicts[0]?.projectLabel ?? candidateAvailability[equipmentId].result?.conflicts[0]?.rentalNumber ?? "Restricted"}. Historical assignments outside the selected interval are not conflicts.</p>}

@@ -7,6 +7,7 @@ import { toCanonicalEquipmentQueryFilters, type CanonicalEquipmentRemoteFilter }
 export interface CanonicalEquipmentProjection {
   id: string;
   assetNo: string;
+  legacyEquipmentNumber?: string;
   equipmentName: string;
   statusId?: string;
   statusLabel?: string;
@@ -29,6 +30,15 @@ export interface CanonicalEquipmentProjection {
   chassisNumber?: string;
   plateNumber?: string;
   yearModel?: number;
+  ownershipId?: string;
+  ownershipName?: string;
+  locationId?: string;
+  locationName?: string;
+  conditionId?: string;
+  conditionName?: string;
+  costCodeId?: string;
+  costCode?: string;
+  remarks?: string;
   capacity?: string;
 }
 
@@ -65,6 +75,7 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
         return {
           id: record.id,
           assetNo: record.assetNo,
+          legacyEquipmentNumber: text(row.legacyEquipmentNumber),
           equipmentName: record.equipmentName,
           statusId,
           statusLabel: statusId ? statusLabels.get(statusId) : undefined,
@@ -87,6 +98,15 @@ export function useCanonicalEquipmentData(filters: CanonicalEquipmentRemoteFilte
           chassisNumber: text(row.chassisNumber),
           plateNumber: text(row.plateNumber),
           yearModel: typeof row.yearModel === "number" ? row.yearModel : undefined,
+          ownershipId: text(row.ownershipId),
+          ownershipName: text(row.ownershipName),
+          locationId: text(row.locationId),
+          locationName: text(row.locationName),
+          conditionId: text(row.conditionId),
+          conditionName: text(row.conditionName),
+          costCodeId: text(row.costCodeId),
+          costCode: text(row.costCode),
+          remarks: text(row.remarks),
           capacity: text(row.capacity),
         };
       });

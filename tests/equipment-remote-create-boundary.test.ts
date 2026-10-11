@@ -17,7 +17,7 @@ import NewEquipment from "@/pages/Equipment/New";
 const roots: Root[] = [];
 function remoteDependencies(input: { enabled?: boolean; equipmentCreateEnabled?: boolean; repository?: boolean } = {}) {
   const dependencies = createLocalApplicationDependencies();
-  const readReferenceData = vi.fn(async () => ({ success: true as const, costCodes: [{ id: "cost-1", code: "EQP", name: "Equipment", active: true as const, sortOrder: 1 }] }));
+  const readReferenceData = vi.fn(async () => ({ success: true as const, costCodes: [{ id: "cost-1", code: "EQP", name: "Equipment", active: true as const, sortOrder: 1 }], brands: [{ id: "brand-1", code: null, name: "Caterpillar", active: true as const }], models: [{ id: "model-1", code: null, name: "320", active: true as const }], ownerships: [], locations: [], conditions: [] }));
   const createEquipment = vi.fn(async (_command: unknown) => ({ success: true as const, disposition: "ACCEPTED" as const, serverOccurredAt: "2026-08-23T00:00:00Z", refresh: [], value: { id: "equipment-1", companyId: "tenant", assetNo: "EQ-001", equipmentName: "Excavator", maintenanceType: "Engine Hours" as const, costCodeId: "cost-1", statusId: "available", currentReading: 0, remarks: null, active: true as const, deletedAt: null, createdAt: "2026-08-23T00:00:00Z", updatedAt: "2026-08-23T00:00:00Z", rowVersion: 1 } }));
   const equipmentCategories = { getById: vi.fn(), list: vi.fn(async () => ({ success: true as const, value: { items: [{ id: "category-1", name: "Earthmoving", active: true, deletedAt: null, sortOrder: 1 }] } })), search: vi.fn() };
   const equipmentSubcategories = { getById: vi.fn(), list: vi.fn(), search: vi.fn(), listAssignable: vi.fn(async (categoryId: string) => ({ success: true as const, value: categoryId === "category-1" ? [{ id: "subcategory-1", categoryId, name: "Excavators", active: true, usageCount: 0, updatedAt: "2026-09-05T00:00:00Z", rowVersion: 1 }] : [] })) };
@@ -28,7 +28,7 @@ function input(container: HTMLElement, label: string) { const node = [...contain
 function setInput(node: HTMLInputElement, value: string) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(node, value); node.dispatchEvent(new Event("input", { bubbles: true })); }
 function select(container: HTMLElement, label: string) { return container.querySelector(`[aria-label="${label}"]`) as HTMLSelectElement; }
 function setSelect(node: HTMLSelectElement, value: string) { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(node, value); node.dispatchEvent(new Event("change", { bubbles: true })); }
-async function completeRequiredRemoteFields(container: HTMLElement) { await act(async () => { setInput(input(container, "Asset Number"), "EQ-001"); setInput(input(container, "Equipment Name"), "Excavator"); setSelect(select(container, "Equipment Category"), "category-1"); await Promise.resolve(); }); await act(async () => { await Promise.resolve(); setSelect(select(container, "Equipment Sub-Category"), "subcategory-1"); setSelect([...container.querySelectorAll("select")].find((node) => node.parentElement?.textContent?.startsWith("Cost Code")) as HTMLSelectElement, "cost-1"); }); }
+async function completeRequiredRemoteFields(container: HTMLElement) { await act(async () => { setInput(input(container, "Equipment Name"), "Excavator"); setSelect(select(container, "Equipment Category"), "category-1"); await Promise.resolve(); }); await act(async () => { await Promise.resolve(); setSelect(select(container, "Equipment Sub-Category"), "subcategory-1"); setSelect([...container.querySelectorAll("select")].find((node) => node.parentElement?.textContent?.startsWith("Cost Code")) as HTMLSelectElement, "cost-1"); }); }
 afterEach(async () => { state.permissions = new Set(["equipment.create"]); vi.clearAllMocks(); while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical Equipment remote create boundary", () => {
@@ -37,13 +37,13 @@ describe("canonical Equipment remote create boundary", () => {
     expect(source).not.toMatch(/canonicalRental|read_canonical_rental_reference_data|costCodeRepository|useCostCodes/);
   });
   it("parses the live reference shape without an operational command envelope", async () => {
-    const rpc = vi.fn(async () => ({ data: { success: true, costCodes: [] }, error: null }));
+    const rpc = vi.fn(async () => ({ data: { success: true, costCodes: [], brands: [], models: [], ownerships: [], locations: [], conditions: [] }, error: null }));
     const repository = new SupabaseEquipmentCommandRepository({ schema: () => ({ rpc }) });
-    await expect(repository.readReferenceData()).resolves.toEqual({ success: true, costCodes: [] });
+    await expect(repository.readReferenceData()).resolves.toEqual({ success: true, costCodes: [], brands: [], models: [], ownerships: [], locations: [], conditions: [] });
     expect(rpc).toHaveBeenCalledWith("read_canonical_equipment_reference_data");
   });
   it("validates non-empty reference rows and rejects malformed payloads", async () => {
-    const valid = { success: true, costCodes: [{ id: "cost-1", code: "EQP", name: "Equipment", active: true, sortOrder: 1 }] };
+    const valid = { success: true, costCodes: [{ id: "cost-1", code: "EQP", name: "Equipment", active: true, sortOrder: 1 }], brands: [], models: [], ownerships: [], locations: [], conditions: [] };
     const rpc = vi.fn(async (): Promise<{ data: unknown; error: null }> => ({ data: valid, error: null }));
     const repository = new SupabaseEquipmentCommandRepository({ schema: () => ({ rpc }) });
     await expect(repository.readReferenceData()).resolves.toEqual(valid);
@@ -62,15 +62,31 @@ describe("canonical Equipment remote create boundary", () => {
   it("uses Equipment-owned Cost Codes and submits only approved fields", async () => {
     const { dependencies, readReferenceData, createEquipment } = remoteDependencies(); const refreshed = vi.fn(); const unsubscribe = subscribeCanonicalEquipmentRefresh(refreshed); const container = await render(dependencies);
     expect(readReferenceData).toHaveBeenCalledTimes(1); expect(container.textContent).toContain("EQP — Equipment");
-    for (const unsupported of ["Status", "Project", "Operator", "Customer", "Category", "Type", "Brand", "Location", "Ownership", "Prefix", "Rate", "PIN", "Password"]) expect([...container.querySelectorAll("label")].some((label) => label.textContent?.trim().startsWith(unsupported))).toBe(false);
+    for (const unsupported of ["Status", "Project", "Operator", "Customer", "Prefix", "Rate", "PIN", "Password"]) expect([...container.querySelectorAll("label")].some((label) => label.textContent?.trim().startsWith(unsupported))).toBe(false);
     await completeRequiredRemoteFields(container);
     await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
-    expect(createEquipment).toHaveBeenCalledWith(expect.objectContaining({ assetNo: "EQ-001", equipmentName: "Excavator", categoryId: "category-1", subcategoryId: "subcategory-1", maintenanceType: "Engine Hours", costCodeId: "cost-1" }));
+    expect(createEquipment).toHaveBeenCalledWith(expect.objectContaining({ equipmentName: "Excavator", categoryId: "category-1", subcategoryId: "subcategory-1", maintenanceType: "Engine Hours", costCodeId: "cost-1" }));
+    expect(createEquipment.mock.calls[0][0]).not.toHaveProperty("assetNo");
     for (const field of ["companyId", "statusId", "active", "projectId", "operatorId", "createdBy", "rowVersion", "legacyPayload"]) expect(createEquipment.mock.calls[0][0]).not.toHaveProperty(field);
     expect(state.localAdd).not.toHaveBeenCalled(); expect(refreshed).toHaveBeenCalledTimes(1); expect(container.textContent).toContain("Canonical Equipment destination"); unsubscribe();
   });
+  it("submits full registration fields while leaving Asset Number server-owned", async () => {
+    const { dependencies, createEquipment } = remoteDependencies(); const container = await render(dependencies);
+    await completeRequiredRemoteFields(container);
+    await act(async () => {
+      setInput(input(container, "Legacy Equipment Number"), " OLD  101 ");
+      setInput(input(container, "Serial Number"), "SN-101");
+      setInput(input(container, "Year Model"), "2024");
+      setSelect(select(container, "Manufacturer / Brand"), "brand-1");
+      setSelect(select(container, "Model"), "model-1");
+    });
+    expect(input(container, "Asset Number").readOnly).toBe(true);
+    await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
+    expect(createEquipment).toHaveBeenCalledWith(expect.objectContaining({ legacyEquipmentNumber: "OLD  101", brandId: "brand-1", modelId: "model-1", serialNumber: "SN-101", yearModel: 2024 }));
+    expect(createEquipment.mock.calls[0][0]).not.toHaveProperty("assetNo");
+  });
   it("treats a canonical replay as success", async () => { const { dependencies } = remoteDependencies(); dependencies.commandRepositories.canonicalEquipment!.createEquipment = vi.fn(async () => ({ success: true as const, disposition: "REPLAYED" as const, serverOccurredAt: "2026-08-23T00:00:00Z", refresh: [], value: { id: "equipment-1", companyId: "tenant", assetNo: "EQ-001", equipmentName: "Excavator", maintenanceType: "Engine Hours" as const, costCodeId: "cost-1", statusId: "available", currentReading: 0, remarks: null, active: true as const, deletedAt: null, createdAt: "2026-08-23T00:00:00Z", updatedAt: "2026-08-23T00:00:00Z", rowVersion: 1 } })); const container = await render(dependencies); await completeRequiredRemoteFields(container); await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); }); expect(container.textContent).toContain("Canonical Equipment destination"); });
   it("shows a controlled duplicate Asset Number response without local fallback", async () => { const { dependencies } = remoteDependencies(); dependencies.commandRepositories.canonicalEquipment!.createEquipment = vi.fn(async () => ({ success: false as const, code: "ASSET_NUMBER_CONFLICT" as const, message: "Asset number already exists.", retryable: false, refreshRequired: true })); const container = await render(dependencies); await completeRequiredRemoteFields(container); await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); }); expect(container.textContent).toContain("Asset number already exists."); expect(state.localAdd).not.toHaveBeenCalled(); });
-  it("renders loaded-empty as a controlled prerequisite state and cannot submit", async () => { const { dependencies, createEquipment } = remoteDependencies(); dependencies.commandRepositories.canonicalEquipment!.readReferenceData = vi.fn(async () => ({ success: true as const, costCodes: [] })); const container = await render(dependencies); expect(container.textContent).toContain("No active Cost Codes are available"); expect(container.textContent).not.toContain("The remote Equipment reference response was invalid."); expect(container.querySelector("form")).toBeNull(); expect(createEquipment).not.toHaveBeenCalled(); expect(state.localAdd).not.toHaveBeenCalled(); });
+  it("renders loaded-empty as a controlled prerequisite state and cannot submit", async () => { const { dependencies, createEquipment } = remoteDependencies(); dependencies.commandRepositories.canonicalEquipment!.readReferenceData = vi.fn(async () => ({ success: true as const, costCodes: [], brands: [], models: [], ownerships: [], locations: [], conditions: [] })); const container = await render(dependencies); expect(container.textContent).toContain("No active Cost Codes are available"); expect(container.textContent).not.toContain("The remote Equipment reference response was invalid."); expect(container.querySelector("form")).toBeNull(); expect(createEquipment).not.toHaveBeenCalled(); expect(state.localAdd).not.toHaveBeenCalled(); });
   it("keeps a canonical repository error authoritative", async () => { const { dependencies } = remoteDependencies(); dependencies.commandRepositories.canonicalEquipment!.readReferenceData = vi.fn(async () => ({ success: false as const, code: "INVALID_RESPONSE" as const, message: "The remote Equipment reference response was invalid.", retryable: false })); const container = await render(dependencies); expect(container.textContent).toContain("The remote Equipment reference response was invalid."); expect(state.localAdd).not.toHaveBeenCalled(); });
 });

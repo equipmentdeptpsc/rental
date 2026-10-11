@@ -22,7 +22,7 @@ export default function AssignmentsPage() {
 
     if (!item) return "Unknown Equipment";
 
-    return `${item.assetNo} • ${item.equipmentName}`;
+    return `${item.assetNo}${item.legacyEquipmentNumber ? ` • Legacy ${item.legacyEquipmentNumber}` : ""} • ${item.equipmentName}`;
   }
 
   function operatorName(id: string) {

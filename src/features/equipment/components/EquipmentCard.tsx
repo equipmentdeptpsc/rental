@@ -54,6 +54,7 @@ export default function EquipmentCard({
           <p className="mt-1 text-sm text-slate-500">
             {item.assetNo}
           </p>
+          {item.legacyEquipmentNumber && <p className="text-sm text-slate-500">Legacy: {item.legacyEquipmentNumber}</p>}
 
         </div>
 

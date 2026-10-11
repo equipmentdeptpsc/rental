@@ -196,7 +196,7 @@ export default function AssignmentForm({
 
           ...availableEquipment.map(
             (e) => ({
-              label: `${e.assetNo} - ${e.equipmentName}`,
+              label: `${e.assetNo}${e.legacyEquipmentNumber ? ` / Legacy ${e.legacyEquipmentNumber}` : ""} - ${e.equipmentName}`,
               value: e.id,
             })
           ),

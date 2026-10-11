@@ -26,6 +26,7 @@ export interface EquipmentAssignmentSummary {
   equipmentId: string;
 
   assetNo: string;
+  legacyEquipmentNumber?: string | null;
 
   equipmentName: string;
 

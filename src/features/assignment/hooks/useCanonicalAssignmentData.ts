@@ -7,6 +7,7 @@ import { subscribeCanonicalAssignmentRefresh } from "@/features/assignment/remot
 export interface CanonicalAssignmentEquipment {
   id: string;
   assetNo: string;
+  legacyEquipmentNumber?: string;
   equipmentName: string;
   statusId?: string;
   active: boolean;
@@ -74,7 +75,7 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
         assignments: assignments.value.items,
         equipment: equipment.value.items.map((record) => {
           const canonical = record as unknown as Record<string, unknown>;
-          return { id: record.id, assetNo: record.assetNo, equipmentName: record.equipmentName, statusId: text(canonical.statusId) || undefined, active: canonical.active === true, deleted: canonical.deletedAt !== null && canonical.deletedAt !== undefined };
+          return { id: record.id, assetNo: record.assetNo, legacyEquipmentNumber: text(canonical.legacyEquipmentNumber) || undefined, equipmentName: record.equipmentName, statusId: text(canonical.statusId) || undefined, active: canonical.active === true, deleted: canonical.deletedAt !== null && canonical.deletedAt !== undefined };
         }),
         operators: operators.value.items.map((record) => {
           const canonical = record as unknown as Record<string, unknown>;

@@ -91,6 +91,7 @@ export default function EquipmentDetailsDrawer({
           <strong>Asset:</strong>{" "}
           {currentEquipment.assetNo}
         </p>
+        {currentEquipment.legacyEquipmentNumber && <p><strong>Legacy Equipment Number:</strong> {currentEquipment.legacyEquipmentNumber}</p>}
 
         <p>
           <strong>Status:</strong>{" "}

@@ -20,6 +20,7 @@ export default function FleetStatusReport({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left">Asset No.</th>
+              <th className="px-4 py-3 text-left">Legacy No.</th>
               <th className="px-4 py-3 text-left">Equipment</th>
               <th className="px-4 py-3 text-left">Category</th>
               <th className="px-4 py-3 text-left">Status</th>
@@ -35,6 +36,7 @@ export default function FleetStatusReport({
                 className="border-t"
               >
                 <td className="px-4 py-3">{item.assetNo}</td>
+                <td className="px-4 py-3">{item.legacyEquipmentNumber ?? "—"}</td>
                 <td className="px-4 py-3">{item.equipmentName}</td>
                 <td className="px-4 py-3">{item.category}</td>
                 <td className="px-4 py-3">{item.status}</td>
@@ -46,7 +48,7 @@ export default function FleetStatusReport({
             {equipment.length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-6 py-10 text-center text-gray-500"
                 >
                   No equipment records found.
