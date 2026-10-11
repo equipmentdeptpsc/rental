@@ -10,6 +10,7 @@ import type { RentalEquipmentLine } from "@/features/rental/equipment-line/types
 import type { RentalRecord } from "@/features/rental/types";
 import { subscribeCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import type { CanonicalReferenceCode } from "@/features/rental/remote/contracts";
+import { loadAllAuthorizedPages } from "@/core/remote/loadAllAuthorizedPages";
 
 export interface RentalListData {
   rentals: RentalRecord[];
@@ -58,13 +59,13 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
     setState({ status: "loading", data: emptyRemoteData() });
     let active = true;
     void Promise.all([
-      readRepositories.rentals.list(),
-      readRepositories.rentalEquipmentLines.list(),
-      readRepositories.equipment.list(),
-      readRepositories.assignments.list(),
-      readRepositories.operators.list(),
-      readRepositories.projects.list(),
-      readRepositories.customers.list(),
+      loadAllAuthorizedPages(readRepositories.rentals),
+      loadAllAuthorizedPages(readRepositories.rentalEquipmentLines),
+      loadAllAuthorizedPages(readRepositories.equipment),
+      loadAllAuthorizedPages(readRepositories.assignments),
+      loadAllAuthorizedPages(readRepositories.operators),
+      loadAllAuthorizedPages(readRepositories.projects),
+      loadAllAuthorizedPages(readRepositories.customers),
       commandRepositories.canonicalRental?.readReferenceData(),
     ]).then(([rentals, lines, equipment, assignments, operators, projects, customers, references]) => {
       if (!active) return;
@@ -74,13 +75,13 @@ export function useRentalListData(fallback: RentalListData): RentalListLoadState
         return;
       }
       setState({ status: "loaded", data: {
-        rentals: rentals.value.items,
-        rentalEquipmentLines: lines.value.items,
-        equipment: equipment.value.items,
-        assignments: assignments.value.items,
-        operators: operators.value.items,
-        projects: projects.value.items,
-        customers: customers.value.items,
+        rentals: rentals.value,
+        rentalEquipmentLines: lines.value,
+        equipment: equipment.value,
+        assignments: assignments.value,
+        operators: operators.value,
+        projects: projects.value,
+        customers: customers.value,
         costCodes: references.value.costCodes,
         activityCodes: references.value.activityCodes,
       } });

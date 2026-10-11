@@ -70,6 +70,9 @@ export default function RentalPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [, setDeurVersion] = useState(0);
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState({ equipmentId: "", operatorId: "", customerId: "", projectId: "", status: "", dateFrom: "", dateTo: "" });
+  const [page, setPage] = useState(0);
+  const setFilter = (key: keyof typeof filters, value: string) => { setFilters((current) => ({ ...current, [key]: value })); setPage(0); };
 
   useEffect(() => subscribeDeurChanges(() => setDeurVersion((value) => value + 1)), []);
 
@@ -92,11 +95,12 @@ export default function RentalPage() {
   });
   const engagements = projectActiveRentalEngagements({ rentals, lines: rentalEquipmentLines });
   const filteredRentals = useMemo(() => {
-    return filterRentalList({ rentals, lines: rentalEquipmentLines, equipment: equipmentRecords, operators, query });
-  }, [equipmentRecords, operators, query, rentalEquipmentLines, rentals]);
+    return filterRentalList({ rentals, lines: rentalEquipmentLines, equipment: equipmentRecords, operators, query, filters });
+  }, [equipmentRecords, operators, query, filters, rentalEquipmentLines, rentals]);
   const displayedRentals = view === "approvals"
     ? filteredRentals.filter((rental) => rental.status === "Reserved" && rental.approvalStatus === "Pending")
     : filteredRentals;
+  const pagedRentals = displayedRentals.slice(page * 25, (page + 1) * 25);
 
   return (
     <div className="app-page">
@@ -174,20 +178,28 @@ export default function RentalPage() {
       {rentalList.status === "loaded" && (view === "rentals" || view === "approvals") && (
         <>
           {view === "approvals" && <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status"><strong>Manager approvals</strong><p className="mt-1">Reserved Rentals awaiting your decision.</p></section>}
-          <FilterBar onClear={() => setQuery("")} canClear={Boolean(query)}>
+          <FilterBar onClear={() => { setQuery(""); setFilters({ equipmentId: "", operatorId: "", customerId: "", projectId: "", status: "", dateFrom: "", dateTo: "" }); setPage(0); }} canClear={Boolean(query) || Object.values(filters).some(Boolean)}>
             <input
               aria-label="Search rentals"
               className="app-control"
               placeholder="Search rental number, customer, project, equipment, or operator"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => { setQuery(event.target.value); setPage(0); }}
             />
+            <select aria-label="Equipment filter" className="app-control" value={filters.equipmentId} onChange={(event) => setFilter("equipmentId", event.target.value)}><option value="">All equipment</option>{equipmentRecords.map((item) => <option value={item.id} key={item.id}>{item.assetNo} · {item.equipmentName}</option>)}</select>
+            <select aria-label="Operator filter" className="app-control" value={filters.operatorId} onChange={(event) => setFilter("operatorId", event.target.value)}><option value="">All operators</option>{operators.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select>
+            <select aria-label="Customer filter" className="app-control" value={filters.customerId} onChange={(event) => setFilter("customerId", event.target.value)}><option value="">All customers</option>{rentalList.data.customers.map((item) => <option value={item.id} key={item.id}>{item.companyName}</option>)}</select>
+            <select aria-label="Project filter" className="app-control" value={filters.projectId} onChange={(event) => setFilter("projectId", event.target.value)}><option value="">All projects</option>{projects.map((item) => <option value={item.id} key={item.id}>{item.projectName}</option>)}</select>
+            <select aria-label="Rental status filter" className="app-control" value={filters.status} onChange={(event) => setFilter("status", event.target.value)}><option value="">All statuses</option>{[...new Set(rentals.map((item) => item.status))].map((status) => <option key={status}>{status}</option>)}</select>
+            <label className="text-xs">From<input aria-label="Rental date from" type="date" className="app-control block" value={filters.dateFrom} onChange={(event) => setFilter("dateFrom", event.target.value)} /></label>
+            <label className="text-xs">To<input aria-label="Rental date to" type="date" className="app-control block" value={filters.dateTo} onChange={(event) => setFilter("dateTo", event.target.value)} /></label>
           </FilterBar>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600"><span>{displayedRentals.length} matching Rentals</span><div className="flex gap-2"><button type="button" className="app-control" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Previous</button><span className="self-center">Page {page + 1} of {Math.max(1, Math.ceil(displayedRentals.length / 25))}</span><button type="button" className="app-control" disabled={(page + 1) * 25 >= displayedRentals.length} onClick={() => setPage((value) => value + 1)}>Next</button></div></div>
 
           <div className="space-y-3 lg:hidden">
             {displayedRentals.length === 0 ? (
               <EmptyDataState title={view === "approvals" ? "No pending approvals" : "No rental transactions found"} description={view === "approvals" ? "There are no Reserved Rentals awaiting your decision." : "Try a different search term or clear the filters."} />
-            ) : displayedRentals.map((rental) => {
+            ) : pagedRentals.map((rental) => {
               const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
               const rentalDeurs = deurRepository.getByRentalId(rental.id);
               const effectiveDeur = rentalDeurs.at(-1);
@@ -232,7 +244,7 @@ export default function RentalPage() {
                 <tbody>
                   {displayedRentals.length === 0 ? (
                     <tr><td colSpan={9} className="p-4"><EmptyDataState title={view === "approvals" ? "No pending approvals" : "No rental transactions found"} description={view === "approvals" ? "There are no Reserved Rentals awaiting your decision." : "Try a different search term or clear the filters."} /></td></tr>
-                  ) : displayedRentals.map((rental) => {
+                  ) : pagedRentals.map((rental) => {
                     const presentation = resolveRentalTransactionPresentation({ rental, lines: rentalEquipmentLines, equipment: equipmentRecords, operators });
                     const rentalDeurs = deurRepository.getByRentalId(rental.id);
                     const effectiveDeur = rentalDeurs.at(-1);

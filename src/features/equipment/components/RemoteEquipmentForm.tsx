@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useApplicationDependenciesCompatibility } from "@/app/composition";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useFormSubmission } from "@/components/form/useFormSubmission";
@@ -84,9 +85,15 @@ export default function RemoteEquipmentForm() {
   if (!reference.data) return <div className="p-8" role="alert">{reference.error ?? "Equipment reference data could not be loaded."}</div>;
   if (!reference.data.costCodes.length) return <div className="mx-auto max-w-3xl space-y-3 p-8" role="status"><h1 className="text-3xl font-bold">New Equipment</h1><p>No active Cost Codes are available. A canonical Cost Code must be configured before Equipment can be created.</p></div>;
   const noCategories = !categories.length;
+  const missingMasters = ([
+    ["Manufacturer / Brand", reference.data.brands], ["Model", reference.data.models],
+    ["Ownership Type", reference.data.ownerships], ["Initial Location", reference.data.locations],
+    ["Equipment Condition", reference.data.conditions],
+  ] as const).filter(([, records]) => records.length === 0).map(([label]) => label);
   return <div className="mx-auto max-w-3xl space-y-6 p-8">
     <div><h1 className="text-3xl font-bold">New Equipment</h1><p className="mt-2 text-gray-500">Create canonical remote Equipment.</p></div>
     {noCategories && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="status">Create or activate an Equipment Category before creating Equipment.</p>}
+    {missingMasters.length > 0 && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="status">No active canonical records for {missingMasters.join(", ")}. Optional fields may remain unspecified. {hasPermission("masterData.create") && <Link className="underline" to="/settings">Manage Equipment Reference Masters in Settings</Link>}</p>}
     <form className="space-y-5" onSubmit={(event) => {
       event.preventDefault();
       if (!form.equipmentName.trim() || !form.costCodeId || !form.categoryId || !form.subcategoryId) return submission.fail("Select a Category, Sub-Category, Equipment Name, and Cost Code.");

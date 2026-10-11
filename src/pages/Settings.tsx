@@ -27,6 +27,7 @@ import type { DeurShiftWindowDefinition } from "@/features/rental/types";
 import { normalizeDeurShiftWindow } from "@/features/rental/deur/shift-window/normalizeDeurShiftWindow";
 import ManagerApproverSettings from "@/features/settings/manager-approver/ManagerApproverSettings";
 import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/composition";
+import EquipmentReferenceMastersSection from "@/features/masters/equipment-reference/EquipmentReferenceMastersSection";
 
 export default function Settings() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -183,6 +184,8 @@ export default function Settings() {
 
       </div>
       </section>
+
+      {configuration.persistenceMode === PersistenceMode.Remote && <EquipmentReferenceMastersSection />}
 
       {configuration.persistenceMode !== PersistenceMode.Remote && <div className="rounded-xl border bg-white p-6">
         <h2 className="text-2xl font-semibold">Development Email Outbox</h2>

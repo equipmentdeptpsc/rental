@@ -12,6 +12,8 @@ export interface AssignmentRecord {
 
   projectId: string;
 
+  customerId?: string;
+
   activityCodeId?: string;
 
   assignedDate: string;

@@ -17,6 +17,7 @@ export function resolveAssignmentRentalOrigin(
   if (!project || project.deleted) return { success: false, message: "The Assignment's canonical Project could not be found." };
   if (project.status !== "Active") return { success: false, message: "The Assignment's canonical Project is inactive." };
   if (!project.customerId) return { success: false, message: "The Assignment's canonical Project does not have a Customer." };
+  if (assignment.customerId && assignment.customerId !== project.customerId) return { success: false, message: "The Assignment Customer no longer matches its canonical Project. Reconcile the relationship before starting a Rental." };
   const customer = customers.find((item) => item.id === project.customerId);
   if (!customer) return { success: false, message: "The Project's canonical Customer could not be found." };
   if (!customer.active) return { success: false, message: "The Project's canonical Customer is inactive." };

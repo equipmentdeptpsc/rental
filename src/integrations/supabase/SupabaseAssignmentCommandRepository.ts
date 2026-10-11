@@ -4,6 +4,7 @@ import type {
   AssignmentCreationProjection,
   CancelAssignmentCommand,
   CreateAssignmentCommand,
+  ReviseAssignmentCommand,
 } from "@/features/assignment/commands/contracts";
 import {
   isOperationalCommandResult,
@@ -22,8 +23,21 @@ interface AssignmentRpcClient {
 export class SupabaseAssignmentCommandRepository implements AssignmentCommandRepository {
   constructor(private readonly client: AssignmentRpcClient) {}
 
+  async reviseAssignment(command: ReviseAssignmentCommand): Promise<OperationalCommandResult<AssignmentCreationProjection>> {
+    const { data, error } = await this.client.schema("erp").rpc("command_revise_assignment", { command });
+    if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "Confirmation was not received. Refresh before retrying.", retryable: true, refreshRequired: true };
+    const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
+    if (candidate?.success === false && typeof candidate.code === "string") return {
+      success: false, code: candidate.code as Extract<OperationalCommandResult<AssignmentCreationProjection>, { success: false }>["code"],
+      message: failureMessage(candidate.code), retryable: false, refreshRequired: ["CONFLICT", "DEPENDENCY_CONFLICT", "OPERATOR_ALREADY_ASSIGNED", "EQUIPMENT_INTERVAL_CONFLICT", "PERSISTENCE_FAILURE"].includes(candidate.code),
+    };
+    if (!isOperationalCommandResult<AssignmentCreationProjection>(data) || (data.success && !isProjection(data.value)))
+      return { success: false, code: "VALIDATION_REJECTED", message: "The remote Assignment revision returned an invalid response.", retryable: false, refreshRequired: true };
+    return data;
+  }
+
   async createAssignment(command: CreateAssignmentCommand): Promise<OperationalCommandResult<AssignmentCreationProjection>> {
-    const { data, error } = await this.client.schema("erp").rpc("command_create_assignment", { command });
+    const { data, error } = await this.client.schema("erp").rpc("command_create_assignment_with_customer", { command });
     if (error) {
       return {
         success: false,
@@ -84,7 +98,10 @@ function failureMessage(code: string) {
     VALIDATION_REJECTED: "The Assignment request is incomplete or invalid.",
     NOT_FOUND: "Referenced Assignment information is unavailable. Refresh and try again.",
     EQUIPMENT_UNAVAILABLE: "The selected Equipment is unavailable for Assignment.",
+    CUSTOMER_PROJECT_MISMATCH: "Select an active Customer and one of its Projects.",
     EQUIPMENT_INTERVAL_CONFLICT: "This equipment is already committed for the requested interval.",
+    OPERATOR_ALREADY_ASSIGNED: "This Operator already has an active Assignment.",
+    DEPENDENCY_CONFLICT: "This Assignment is linked to Rental or DEUR history and cannot be revised here.",
     CONFLICT: "The Assignment identity or selected Operator is already in use.",
     IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier submission. Refresh before retrying.",
     INVALID_TRANSITION: "This Assignment cannot be cancelled from its current state.",

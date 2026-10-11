@@ -22,6 +22,7 @@ describe("Assignment-origin canonical Rental resolution",()=>{
     ["missing customer link",assignment,[{...project,customerId:undefined}],[customer]],
     ["foreign or missing customer",assignment,[project],[]],
     ["inactive customer",assignment,[project],[{...customer,active:false}]],
+    ["persisted customer mismatch",{...assignment,customerId:"customer-2"},[project],[customer]],
   ])("fails safely for %s",(_label,a,p,c)=>expect(resolveAssignmentRentalOrigin(a,p,c).success).toBe(false));
   it("maps canonical Project identity, Customer link, and location independently",()=>{
     const result=mapProject({id:"project-3",project_code:"UAT-PROJ-003",name:"Project",customer_id:"customer-1",location:"Manila",active:true,deleted_at:null});

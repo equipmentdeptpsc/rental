@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const assignmentsSource = readFileSync("src/pages/Assignments/index.tsx", "utf8");
 const workspaceSource = readFileSync("src/features/booking/components/CanonicalBookingOperationsWorkspace.tsx", "utf8");
+const loaderSource = readFileSync("src/features/booking/loadAllCanonicalBookingRows.ts", "utf8");
 
 describe("Rental Bookings operations UI", () => {
   it("connects Rental Bookings to the canonical four-view workspace", () => {
@@ -11,7 +12,9 @@ describe("Rental Bookings operations UI", () => {
     expect(workspaceSource).toContain('"kanban"');
     expect(workspaceSource).toContain('"calendar"');
     expect(workspaceSource).toContain('"list"');
-    expect(workspaceSource).toContain("searchCanonicalBookingCalendarRows");
+    expect(workspaceSource).toContain("loadAllCanonicalBookingRows");
+    expect(loaderSource).toContain("searchCanonicalBookingCalendarRows");
+    expect(loaderSource).toContain("searchCanonicalBookingRows");
     expect(workspaceSource).toContain("filterBookingOperations");
     expect(workspaceSource).toContain("Canonical bookings could not be loaded.");
   });

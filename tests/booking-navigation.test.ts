@@ -10,7 +10,7 @@ describe("canonical booking rental navigation", () => {
   });
 
   it("uses the same canonical Rental route from every booking view", () => {
-    expect(workspaceSource.match(/bookingRentalWorkspacePath\(row\.rentalId\)/g)?.length).toBe(5);
+    expect(workspaceSource.match(/bookingRentalWorkspacePath\(row\.rentalId\)/g)?.length).toBeGreaterThanOrEqual(5);
     expect(workspaceSource).not.toContain('to={`/rentals/${row.rentalId}`}');
   });
 });

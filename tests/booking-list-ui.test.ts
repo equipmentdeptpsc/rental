@@ -1,52 +1,49 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync("src/pages/Assignments/index.tsx", "utf8");
+const assignments = readFileSync("src/pages/Assignments/index.tsx", "utf8");
+const workspace = readFileSync("src/features/booking/components/CanonicalBookingOperationsWorkspace.tsx", "utf8");
+const loader = readFileSync("src/features/booking/loadAllCanonicalBookingRows.ts", "utf8");
+const presentation = readFileSync("src/features/booking/bookingOperationsPresentation.ts", "utf8");
 
 describe("canonical Booking list UI", () => {
-  it("provides separate List, Calendar, and Agenda views backed by the calendar repository", () => {
-    expect(source).toContain('type RentalBookingView = "list" | "calendar" | "agenda"');
-    expect(source).toContain('aria-label="Rental booking views"');
-    expect(source).toContain("searchCanonicalBookingCalendarRows");
-    expect(source).toContain("windowStart");
-    expect(source).toContain("windowEnd");
-    expect(source).toContain("No rental bookings in this period");
-  });
-  it("keeps calendar reads bounded and uses authoritative return precedence", () => {
-    expect(source).toContain("limit: 100");
-    expect(source).toContain("row.actualReturn ?? row.expectedReturn ?? row.dateOut");
-    expect(source).toContain("Previous month");
-    expect(source).toContain("Next month");
-    expect(source).toContain("to={`/rentals/${row.rentalId}`}");
-    expect(source).not.toContain("created_at");
-  });
-  it("keeps Assignment compatibility and adds a separate Rental Bookings view", () => {
-    expect(source).toContain('>Assignments</button>');
-    expect(source).toContain('>Rental Bookings</button>');
-    expect(source).toContain("readRepositories.canonicalBookings.searchCanonicalBookingRows");
-    expect(source).toContain("One row per Rental Equipment Line");
+  it("keeps Assignment compatibility and exposes the separate Rental Bookings workspace", () => {
+    expect(assignments).toContain('>Assignments</button>');
+    expect(assignments).toContain('>Rental Bookings</button>');
+    expect(assignments).toContain("<CanonicalBookingOperationsWorkspace />");
+    expect(workspace).toContain('aria-label="Booking workspace views"');
+    for (const view of ['"timeline"', '"kanban"', '"calendar"', '"list"']) expect(workspace).toContain(view);
   });
 
-  it("uses server predicates and bounded pagination rather than local post-filtering", () => {
-    expect(source).toContain("offset: 0");
-    expect(source).toContain("limit: 25");
-    expect(source).toContain("filters.status");
-    expect(source).toContain("filters.rentalNumberSearch");
-    expect(source).toContain("hasMore");
+  it("loads every authorized page for list filters while bounding calendar and timeline by date", () => {
+    expect(workspace).toContain("loadAllCanonicalBookingRows(readRepositories.canonicalBookings");
+    expect(workspace).toContain('view === "calendar" || view === "timeline"');
+    expect(workspace).toContain("windowStart: window.start, windowEnd: window.end");
+    expect(loader).toContain("limit: 100, offset");
+    expect(loader).toContain("hasMore");
+    expect(loader).toContain("offset = next");
+    expect(workspace).toContain("visible.slice(page * 25, (page + 1) * 25)");
   });
 
-  it("keeps secondary labels permission-gated and exposes navigation only", () => {
-    expect(source).toContain('hasPermission("customer.read")');
-    expect(source).toContain('hasPermission("project.read")');
-    expect(source).toContain('hasPermission("equipment.read")');
-    expect(source).toContain("Open Rental");
-    expect(source).not.toContain("Return Equipment");
+  it("uses authoritative return precedence and retains Rental Workspace navigation", () => {
+    expect(presentation).toContain("row.actualReturn ?? row.expectedReturn ?? row.dateOut");
+    expect(workspace).toContain('aria-label="Previous period"');
+    expect(workspace).toContain('aria-label="Next period"');
+    expect(workspace).toContain("bookingRentalWorkspacePath(row.rentalId)");
+    expect(workspace).not.toContain("Return Equipment");
   });
 
-  it("loads filter options independently from bounded canonical readers", () => {
-    expect(source).toContain("readRepositories.customers.list({");
-    expect(source).toContain("readRepositories.projects.list({");
-    expect(source).toContain("readRepositories.equipment.list({");
-    expect(source).not.toContain("const options = page?.rows");
+  it("filters by customer, project, operator, equipment, status, dates, and keyword", () => {
+    for (const label of ["Customer filter", "Project filter", "Operator filter", "Equipment filter", "Status filter", "Booking date from", "Booking date to", "Booking keyword search"]) expect(workspace).toContain(label);
+    expect(workspace).toContain("filterBookingOperations(");
+    for (const predicate of ["input.customerId", "input.projectId", "input.operatorId", "input.equipmentId", "input.status", "input.dateFrom", "input.dateTo", "input.search"]) expect(presentation).toContain(predicate);
+  });
+
+  it("uses canonical booking labels and repository-scoped operator data", () => {
+    expect(workspace).toContain("readRepositories.canonicalBookings");
+    expect(workspace).toContain("readRepositories.operators");
+    expect(workspace).toContain("row.customerName");
+    expect(workspace).toContain("row.projectName");
+    expect(workspace).not.toContain("localStorage");
   });
 });

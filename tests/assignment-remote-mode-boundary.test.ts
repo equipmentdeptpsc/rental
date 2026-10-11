@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const authState = vi.hoisted(() => ({ permissions: new Set(["rental.create"]) }));
+const authState = vi.hoisted(() => ({ permissions: new Set(["rental.create", "customer.read"]) }));
 vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => authState.permissions.has(permission) }) }));
 
 import { ApplicationDependencyProvider, createLocalApplicationDependencies, PersistenceMode, type ApplicationDependencies } from "@/app/composition";
@@ -32,9 +32,10 @@ function remoteDependencies(input: { assignments?: unknown[]; equipment?: unknow
       assignments: repository(input.assignments ?? []),
       equipment: repository(input.equipment ?? [{ id: "canonical-equipment", assetNo: "ME-REMOTE", equipmentName: "Remote Equipment", statusId: "equipment-status-available", active: true }]),
       operators: repository([{ id: "canonical-operator", name: "Remote Operator", status: "Active" }]),
-      projects: repository([{ id: "canonical-project", projectCode: "REMOTE", name: "Remote Project", status: "Active" }]),
+      projects: repository([{ id: "canonical-project", projectCode: "REMOTE", name: "Remote Project", customerId: "canonical-customer", status: "Active" }]),
+      customers: repository([{ id: "canonical-customer", companyName: "Remote Customer", active: true }]),
     } as ApplicationDependencies["readRepositories"],
-    commandRepositories: { ...local.commandRepositories, canonicalRental: { readReferenceData: vi.fn(async () => ({ success: true, value: { costCodes: [], activityCodes: [] } })) } as unknown as ApplicationDependencies["commandRepositories"]["canonicalRental"], ...((input.assignmentRepository ?? true) ? { canonicalAssignment: { createAssignment: vi.fn() } } : {}) },
+    commandRepositories: { ...local.commandRepositories, canonicalRental: { readReferenceData: vi.fn(async () => ({ success: true, value: { costCodes: [], activityCodes: [] } })) } as unknown as ApplicationDependencies["commandRepositories"]["canonicalRental"], ...((input.assignmentRepository ?? true) ? { canonicalAssignment: { createAssignment: vi.fn() } as unknown as NonNullable<ApplicationDependencies["commandRepositories"]["canonicalAssignment"]> } : {}) },
     configuration: { ...local.configuration, persistenceMode: PersistenceMode.Remote, remoteOperationalWritesEnabled: input.writesEnabled ?? true, remoteAssignmentCreateEnabled: input.assignmentCreateEnabled ?? false },
   };
 }
@@ -46,14 +47,14 @@ async function render(element: React.ReactNode, dependencies = remoteDependencie
   return container;
 }
 
-afterEach(async () => { authState.permissions = new Set(["rental.create"]); while (roots.length) await act(async () => roots.pop()?.unmount()); });
+afterEach(async () => { authState.permissions = new Set(["rental.create", "customer.read"]); while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("canonical Assignment remote UI boundary", () => {
   it("preserves and maps the canonical interval conflict", async () => {
     const repository = new SupabaseAssignmentCommandRepository({
       schema: () => ({ rpc: vi.fn(async () => ({ data: { success: false, code: "EQUIPMENT_INTERVAL_CONFLICT" }, error: null })) }),
     });
-    await expect(repository.createAssignment({ commandId: "command-1", idempotencyKey: "command-1", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1", assignedDate: "2031-03-11", expectedReturn: "2031-03-11", remarks: "" })).resolves.toMatchObject({
+    await expect(repository.createAssignment({ commandId: "command-1", idempotencyKey: "command-1", assignmentId: "assignment-1", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1", assignedDate: "2031-03-11", expectedReturn: "2031-03-11", remarks: "" })).resolves.toMatchObject({
       success: false,
       code: "EQUIPMENT_INTERVAL_CONFLICT",
       message: "This equipment is already committed for the requested interval.",
@@ -64,7 +65,7 @@ describe("canonical Assignment remote UI boundary", () => {
     const repository = new SupabaseAssignmentCommandRepository({
       schema: () => ({ rpc: vi.fn(async () => ({ data: { success: false, code: "PERSISTENCE_FAILURE" }, error: null })) }),
     });
-    await expect(repository.createAssignment({ commandId: "command-2", idempotencyKey: "command-2", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1", assignedDate: "2031-03-11", expectedReturn: "2031-03-11", remarks: "" })).resolves.toMatchObject({
+    await expect(repository.createAssignment({ commandId: "command-2", idempotencyKey: "command-2", assignmentId: "assignment-2", equipmentId: "equipment-1", operatorId: "operator-1", projectId: "project-1", assignedDate: "2031-03-11", expectedReturn: "2031-03-11", remarks: "" })).resolves.toMatchObject({
       success: false,
       code: "PERSISTENCE_FAILURE",
       message: "The remote service could not save the Assignment. Refresh before retrying.",
@@ -72,7 +73,7 @@ describe("canonical Assignment remote UI boundary", () => {
   });
   it("keeps remote list empty when only a local Assignment exists", async () => {
     const container = await render(createElement(Assignments));
-    expect(container.textContent).toContain("No canonical Bookings found.");
+    expect(container.textContent).toContain("No canonical Assignments found. Rental Bookings may still be available.");
     expect(container.textContent).not.toContain("local-only-assignment");
     expect(container.textContent).not.toContain("New Assignment");
   });
@@ -134,7 +135,7 @@ describe("canonical Assignment remote UI boundary", () => {
     const dependencies = remoteDependencies();
     const createdId = "11111111-1111-4111-8111-111111111111";
     const createAssignment = vi.fn(async () => ({ success: true as const, disposition: "ACCEPTED" as const, serverOccurredAt: "2026-08-23T00:00:00Z", refresh: [createdId], value: { ...assignment, id: createdId, companyId: "tenant", createdAt: "2026-08-23T00:00:00Z", updatedAt: "2026-08-23T00:00:00Z", rowVersion: 1 } }));
-    dependencies.commandRepositories.canonicalAssignment = { createAssignment };
+    dependencies.commandRepositories.canonicalAssignment = { createAssignment } as unknown as NonNullable<ApplicationDependencies["commandRepositories"]["canonicalAssignment"]>;
     const refreshed = vi.fn();
     const unsubscribe = subscribeCanonicalAssignmentRefresh(refreshed);
     const routes = createElement(Routes, null,
@@ -143,7 +144,7 @@ describe("canonical Assignment remote UI boundary", () => {
     );
     const container = await render(routes, dependencies, "/assignments/new");
     await act(async () => { await Promise.resolve(); });
-    for (const label of ["Equipment", "Operator", "Project"]) {
+    for (const label of ["Equipment", "Operator", "Customer", "Project"]) {
       const labelNode = [...container.querySelectorAll("label")].find((node) => node.textContent === label)!;
       const input = [...container.querySelectorAll("input")].find((node) => node.id === labelNode.htmlFor) as HTMLInputElement;
       await act(async () => input.click());
@@ -151,7 +152,7 @@ describe("canonical Assignment remote UI boundary", () => {
       await act(async () => choice.click());
     }
     await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
-    expect(createAssignment).toHaveBeenCalledWith(expect.objectContaining({ equipmentId: "canonical-equipment", operatorId: "canonical-operator", projectId: "canonical-project" }));
+    expect(createAssignment).toHaveBeenCalledWith(expect.objectContaining({ equipmentId: "canonical-equipment", operatorId: "canonical-operator", customerId: "canonical-customer", projectId: "canonical-project" }));
     expect((createAssignment.mock.calls as unknown[][])[0][0]).toHaveProperty("expectedReturn", undefined);
     expect(refreshed).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("Canonical destination");
@@ -179,7 +180,7 @@ describe("canonical Assignment remote UI boundary", () => {
     authState.permissions.add("assignment.create");
     const dependencies = remoteDependencies();
     const createAssignment = vi.fn();
-    dependencies.commandRepositories.canonicalAssignment = { createAssignment };
+    dependencies.commandRepositories.canonicalAssignment = { createAssignment } as unknown as NonNullable<ApplicationDependencies["commandRepositories"]["canonicalAssignment"]>;
     const container = await render(createElement(NewAssignment), dependencies, "/assignments/new");
     await act(async () => { await Promise.resolve(); });
     const assignedDate = [...container.querySelectorAll("input")].find((input) => input.type === "date" && input.required) as HTMLInputElement;
@@ -195,10 +196,10 @@ describe("canonical Assignment remote UI boundary", () => {
   it("keeps controlled canonical command failures on the form", async () => {
     authState.permissions.add("assignment.create");
     const dependencies = remoteDependencies();
-    dependencies.commandRepositories.canonicalAssignment = { createAssignment: vi.fn(async () => ({ success: false as const, code: "EQUIPMENT_INTERVAL_CONFLICT" as const, message: "This equipment is already committed for the requested interval.", retryable: false, refreshRequired: true })) };
+    dependencies.commandRepositories.canonicalAssignment = { createAssignment: vi.fn(async () => ({ success: false as const, code: "EQUIPMENT_INTERVAL_CONFLICT" as const, message: "This equipment is already committed for the requested interval.", retryable: false, refreshRequired: true })) } as unknown as NonNullable<ApplicationDependencies["commandRepositories"]["canonicalAssignment"]>;
     const container = await render(createElement(NewAssignment), dependencies, "/assignments/new");
     await act(async () => { await Promise.resolve(); });
-    for (const label of ["Equipment", "Operator", "Project"]) {
+    for (const label of ["Equipment", "Operator", "Customer", "Project"]) {
       const labelNode = [...container.querySelectorAll("label")].find((node) => node.textContent === label)!;
       const input = [...container.querySelectorAll("input")].find((node) => node.id === labelNode.htmlFor) as HTMLInputElement;
       await act(async () => input.click());

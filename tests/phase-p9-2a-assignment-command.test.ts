@@ -71,7 +71,7 @@ describe("P9.2A Supabase Assignment adapter", () => {
     const rpc = vi.fn().mockResolvedValue({ data: { success: true, disposition: "ACCEPTED", serverOccurredAt: projection.createdAt, refresh: [projection.id], value: projection }, error: null });
     const repository = new SupabaseAssignmentCommandRepository({ schema: vi.fn(() => ({ rpc })) });
     await expect(repository.createAssignment(command)).resolves.toMatchObject({ success: true, value: projection });
-    expect(rpc).toHaveBeenCalledWith("command_create_assignment", { command });
+    expect(rpc).toHaveBeenCalledWith("command_create_assignment_with_customer", { command });
   });
 
   it("preserves typed business failures and safe transport uncertainty", async () => {
