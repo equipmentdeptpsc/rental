@@ -13,7 +13,7 @@ INSERT INTO erp.users(id,username,display_name,email,status,company_id) VALUES
  ('97000000-0000-4000-8000-000000000002','dual.other','Dual Other','dual.other@example.test','active','TENANT-EQP-DUAL-OTHER'),
  ('97000000-0000-4000-8000-000000000003','dual.noaccess','Dual No Access','dual.noaccess@example.test','active','TENANT-EQP-DUAL-TEST');
 INSERT INTO erp.user_roles(user_id,role_id)
-SELECT user_id,r.id FROM (VALUES('97000000-0000-4000-8000-000000000001'),('97000000-0000-4000-8000-000000000002')) users(user_id)
+SELECT user_id::uuid,r.id FROM (VALUES('97000000-0000-4000-8000-000000000001'),('97000000-0000-4000-8000-000000000002')) users(user_id)
 CROSS JOIN erp.app_roles r WHERE r.code='system-administrator';
 INSERT INTO erp.cost_codes(id,code,name,active) VALUES('COST-EQP-DUAL-TEST','EQDT','Dual numbering test',true);
 INSERT INTO erp.equipment_subcategories(id,company_id,category_id,name,active)

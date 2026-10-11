@@ -19,10 +19,10 @@ INSERT INTO erp.operators(id,name,status,company_id) VALUES
 ('LINEAGE-OP-A','Original Operator','Active','TENANT-LINEAGE-A'),
 ('LINEAGE-OP-A2','Replacement Operator','Active','TENANT-LINEAGE-A'),
 ('LINEAGE-OP-B','Foreign Operator','Active','TENANT-LINEAGE-B');
-INSERT INTO erp.equipment(id,asset_no,equipment_name,maintenance_type,company_id) VALUES
-('LINEAGE-EQ-A','ASSET-ORIGINAL','Original Equipment','None','TENANT-LINEAGE-A'),
-('LINEAGE-EQ-A2','ASSET-SECOND','Second Equipment','None','TENANT-LINEAGE-A'),
-('LINEAGE-EQ-B','ASSET-FOREIGN','Foreign Equipment','None','TENANT-LINEAGE-B');
+INSERT INTO erp.equipment(id,asset_no,legacy_equipment_number,equipment_name,maintenance_type,company_id) VALUES
+('LINEAGE-EQ-A','ASSET-ORIGINAL','LEGACY-ORIGINAL','Original Equipment','None','TENANT-LINEAGE-A'),
+('LINEAGE-EQ-A2','ASSET-SECOND',NULL,'Second Equipment','None','TENANT-LINEAGE-A'),
+('LINEAGE-EQ-B','ASSET-FOREIGN',NULL,'Foreign Equipment','None','TENANT-LINEAGE-B');
 INSERT INTO erp.assignments(id,equipment_id,operator_id,project_id,assigned_date,status,company_id) VALUES
 ('LINEAGE-ASG-A','LINEAGE-EQ-A','LINEAGE-OP-A','LINEAGE-PROJECT-A','2026-08-26','Active','TENANT-LINEAGE-A'),
 ('LINEAGE-ASG-A2','LINEAGE-EQ-A2','LINEAGE-OP-A2','LINEAGE-PROJECT-A','2026-08-26','Active','TENANT-LINEAGE-A'),
@@ -48,13 +48,13 @@ INSERT INTO erp.billing_statements(id,statement_no,rental_id,customer_snapshot,p
 
 INSERT INTO erp.billing_statement_lines(id,billing_statement_id,rental_equipment_line_id,equipment_id,deur_id,operator_id,work_date,description,commercial_terms_source,amount,grand_total,company_id)
 VALUES('LINEAGE-BILL-A','LINEAGE-STMT-A','LINEAGE-LINE-A','LINEAGE-EQ-A','LINEAGE-DEUR-A','LINEAGE-OP-A','2026-08-26','Canonical line','IMMUTABLE_SNAPSHOT',100,100,'TENANT-LINEAGE-A');
-SELECT pg_temp.assert_true((SELECT commercial_snapshot_id='LINEAGE-SNAP-A' AND commercial_snapshot_hash='LINEAGE-HASH-A' AND rental_number_snapshot='RNT-LINEAGE-A' AND equipment_snapshot->>'assetNo'='ASSET-ORIGINAL' AND operator_snapshot->>'name'='Original Operator' AND rental_equipment_line_snapshot->>'assignmentId'='LINEAGE-ASG-A' FROM erp.billing_statement_lines WHERE id='LINEAGE-BILL-A'),'complete snapshots captured');
+SELECT pg_temp.assert_true((SELECT commercial_snapshot_id='LINEAGE-SNAP-A' AND commercial_snapshot_hash='LINEAGE-HASH-A' AND rental_number_snapshot='RNT-LINEAGE-A' AND equipment_snapshot->>'assetNo'='ASSET-ORIGINAL' AND equipment_snapshot->>'legacyEquipmentNumber'='LEGACY-ORIGINAL' AND operator_snapshot->>'name'='Original Operator' AND rental_equipment_line_snapshot->>'assignmentId'='LINEAGE-ASG-A' FROM erp.billing_statement_lines WHERE id='LINEAGE-BILL-A'),'complete snapshots captured');
 
-UPDATE erp.equipment SET asset_no='ASSET-RENAMED',equipment_name='Renamed Equipment' WHERE id='LINEAGE-EQ-A';
+UPDATE erp.equipment SET asset_no='ASSET-RENAMED',legacy_equipment_number='LEGACY-RENAMED',equipment_name='Renamed Equipment' WHERE id='LINEAGE-EQ-A';
 UPDATE erp.operators SET name='Renamed Operator' WHERE id='LINEAGE-OP-A';
 UPDATE erp.assignments SET status='Completed',returned_date='2026-08-27' WHERE id='LINEAGE-ASG-A';
 UPDATE erp.rental_equipment_lines SET assignment_id='LINEAGE-ASG-A2',operator_id='LINEAGE-OP-A2' WHERE id='LINEAGE-LINE-A';
-SELECT pg_temp.assert_true((SELECT equipment_snapshot->>'assetNo'='ASSET-ORIGINAL' AND operator_snapshot->>'name'='Original Operator' AND rental_equipment_line_snapshot->>'assignmentId'='LINEAGE-ASG-A' FROM erp.billing_statement_lines WHERE id='LINEAGE-BILL-A'),'snapshots survive mutable master changes');
+SELECT pg_temp.assert_true((SELECT equipment_snapshot->>'assetNo'='ASSET-ORIGINAL' AND equipment_snapshot->>'legacyEquipmentNumber'='LEGACY-ORIGINAL' AND operator_snapshot->>'name'='Original Operator' AND rental_equipment_line_snapshot->>'assignmentId'='LINEAGE-ASG-A' FROM erp.billing_statement_lines WHERE id='LINEAGE-BILL-A'),'snapshots survive mutable master changes');
 
 DO $$ BEGIN
   BEGIN
