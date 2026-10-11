@@ -20,6 +20,7 @@ const requiredFeatures = [
   ["src/pages/Rental/index.tsx", "recordNavigation(`/rentals/"],
   ["src/features/rental/components/RentalListPresentation.tsx", "recordNavigation(`/rentals/"],
   ["src/integrations/supabase/readRepositories.ts", "SupabaseCollectionReadRepository"],
+  ["supabase/migrations/20261011000200_harden_collections_rental_read_permission.sql", "erp.current_user_has_permission('collections.read')"],
 ];
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 for (const commit of requiredAncestors) {

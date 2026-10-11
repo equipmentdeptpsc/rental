@@ -9,14 +9,15 @@ const state = vi.hoisted(() => ({
   localReads: vi.fn(),
   billingReads: vi.fn(),
   remoteStatus: "loaded",
-  financialPermission: false,
+  billingPermission: false,
+  collectionsPermission: false,
 }));
 
 vi.mock("@/app/composition", () => ({
   PersistenceMode: { Local: "local", Remote: "remote" },
   useApplicationDependenciesCompatibility: () => ({ configuration: { persistenceMode: state.mode } }),
 }));
-vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => permission === "billing.read" || permission === "collections.read" ? state.financialPermission : permission !== "users.manage" }) }));
+vi.mock("@/features/auth/AuthContext", () => ({ useAuth: () => ({ hasPermission: (permission: string) => permission === "billing.read" ? state.billingPermission : permission === "collections.read" ? state.collectionsPermission : permission !== "users.manage" }) }));
 vi.mock("@/features/dashboard/hooks/useDashboardViewModel", () => ({ useDashboardViewModel: (key: number) => { state.localReads(key); return model; } }));
 vi.mock("@/features/dashboard/hooks/useCanonicalDashboardViewModel", () => ({ useCanonicalDashboardViewModel: (key: number, audit: boolean, finance: boolean) => { state.remoteReads(key, audit, finance); return state.remoteStatus === "loaded" ? { status: "loaded", model: { ...model, financialAvailable: finance, activityAvailable: false }, loadedAt: new Date("2026-10-05T00:00:00Z") } : state.remoteStatus === "error" ? { status: "error", message: "Dashboard read failed" } : { status: "loading" }; } }));
 
@@ -32,7 +33,7 @@ const model = {
 };
 
 const roots: Root[] = [];
-afterEach(async () => { while (roots.length) await act(async () => roots.pop()?.unmount()); vi.clearAllMocks(); state.mode = "remote"; state.remoteStatus = "loaded"; state.financialPermission = false; });
+afterEach(async () => { while (roots.length) await act(async () => roots.pop()?.unmount()); vi.clearAllMocks(); state.mode = "remote"; state.remoteStatus = "loaded"; state.billingPermission = false; state.collectionsPermission = false; });
 
 async function render() {
   const node = document.createElement("div");
@@ -57,7 +58,8 @@ describe("dashboard mode and refresh", () => {
   });
 
   it("shows financial totals only with billing and collection read permissions", async () => {
-    state.financialPermission = true;
+    state.billingPermission = true;
+    state.collectionsPermission = true;
     const node = await render();
     expect(state.remoteReads).toHaveBeenCalledWith(0, false, true);
     expect(node.textContent).toContain("Invoiced amount & collections");
@@ -65,6 +67,18 @@ describe("dashboard mode and refresh", () => {
     expect(node.textContent).toContain("Top customers");
     expect(node.textContent).toContain("Top projects");
     expect(node.textContent).toContain("Equipment requiring attention");
+  });
+
+  it("keeps the financial projection restricted when either permission is missing", async () => {
+    state.billingPermission = true;
+    let node = await render();
+    expect(state.remoteReads).toHaveBeenCalledWith(0, false, false);
+    expect(node.textContent).not.toContain("Invoiced amount & collections");
+    state.billingPermission = false;
+    state.collectionsPermission = true;
+    node = await render();
+    expect(state.remoteReads).toHaveBeenCalledWith(0, false, false);
+    expect(node.textContent).not.toContain("Invoiced amount & collections");
   });
 
   it("retains the legacy local view model", async () => {

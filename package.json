@@ -15,7 +15,7 @@
     "validate:env:uat": "node scripts/validate-uat-build.mjs",
     "build:uat": "node scripts/validate-uat-build.mjs && tsc -b && vite build",
     "verify:uat-recovery": "node scripts/verify-uat-recovery.mjs",
-    "test:uat-recovery": "vitest run tests/canonical-dashboard-read.test.ts tests/canonical-dashboard-hook.test.ts tests/dashboard-mode-refresh.test.ts tests/dashboard-management-analytics.test.ts tests/supabase-collection-read.test.ts tests/record-row-navigation.test.ts tests/manual-deur-supersession-read-policy.test.ts tests/uat-deur-read-order-regression.test.ts tests/rental-workspace-inline-operations.test.ts tests/rental-workspace-added-equipment-ui.test.ts tests/assignment-remote-mode-boundary.test.ts tests/deur-quantity-billing.test.ts tests/dual-permission-comparison.test.ts",
+    "test:uat-recovery": "vitest run tests/canonical-dashboard-read.test.ts tests/canonical-dashboard-hook.test.ts tests/dashboard-mode-refresh.test.ts tests/dashboard-management-analytics.test.ts tests/supabase-collection-read.test.ts tests/collections-rpc-security-migration.test.ts tests/record-row-navigation.test.ts tests/manual-deur-supersession-read-policy.test.ts tests/uat-deur-read-order-regression.test.ts tests/rental-workspace-inline-operations.test.ts tests/rental-workspace-added-equipment-ui.test.ts tests/assignment-remote-mode-boundary.test.ts tests/deur-quantity-billing.test.ts tests/dual-permission-comparison.test.ts",
     "test": "vitest run",
     "verify": "npm test && npx tsc --noEmit -p tsconfig.test.json && npm run build",
     "lint": "eslint .",
