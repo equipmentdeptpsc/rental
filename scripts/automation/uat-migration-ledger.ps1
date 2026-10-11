@@ -59,7 +59,10 @@ function Get-DryRunPendingMigrationVersions([string]$DryRunLog) {
     }
   }
   if ($DryRunLog -match '(?im)(Remote database is up to date|No migrations (?:to apply|to be applied)|Database is up to date)') { return @() }
-  $versions = @([regex]::Matches($DryRunLog, '(?m)^\s*[\u2022*-]\s+(\d{14})_[A-Za-z0-9_-]+\.sql\s*$') | ForEach-Object { $_.Groups[1].Value })
+  $normalized = $DryRunLog -replace '\x1B\[[0-9;]*m', ''
+  $section = [regex]::Match($normalized, '(?is)Would push these migrations:\s*(.*?)Finished\s+supabase\s+db\s+push')
+  if (-not $section.Success) { throw 'Supabase dry-run migration section was not found.' }
+  $versions = @([regex]::Matches($section.Groups[1].Value, '(?m)^\s*[^\r\n]*?(\d{14})_[A-Za-z0-9_-]+\.sql\s*$') | ForEach-Object { $_.Groups[1].Value })
   if (-not $versions.Count) { throw 'Supabase dry-run output contained no parseable pending migrations.' }
   return $versions
 }
