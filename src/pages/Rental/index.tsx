@@ -32,6 +32,7 @@ import { canUseAnyRentalMutations, canUseCanonicalRemoteRentalCreation, canUseLe
 import { useAuth } from "@/features/auth/AuthContext";
 import FilterBar from "@/components/ui/FilterBar";
 import { LoadingState, ErrorState, EmptyDataState } from "@/components/ui/AsyncState";
+import { useRecordNavigation } from "@/shared/navigation/useRecordNavigation";
 
 type RentalView = "rentals" | "engagements" | "deur-exceptions" | "approvals";
 
@@ -42,6 +43,7 @@ const VIEWS: { id: RentalView; label: string }[] = [
 ];
 
 export default function RentalPage() {
+  const recordNavigation = useRecordNavigation();
   const dependencies = useApplicationDependenciesCompatibility();
   const { hasPermission } = useAuth();
   const { billingStatement: billingStatementRepository } = dependencies.repositories;
@@ -250,7 +252,7 @@ export default function RentalPage() {
                     });
                     const compliance = monitoredRentals.find((item) => item.rental.id === rental.id);
                     return (
-                      <tr key={rental.id} className="border-t">
+                      <tr key={rental.id} {...recordNavigation(`/rentals/${encodeURIComponent(rental.id)}/workspace`, `Open rental ${rental.rentalNumber ?? rental.id}`)} className="cursor-pointer border-t hover:bg-amber-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
                         <td className="px-4 py-3">
                           <p>{presentation.equipmentLabel}</p>
                           <p className="text-xs text-slate-500">{presentation.operatorLabel}</p>

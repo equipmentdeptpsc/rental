@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Button from "@/components/ui/Button";
+import { useRecordNavigation } from "@/shared/navigation/useRecordNavigation";
 import StatusBadge from "@/components/ui/StatusBadge";
 import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
 import RentalDeurComplianceIndicator from "@/features/rental/deur/compliance/RentalDeurComplianceIndicator";
@@ -25,8 +26,9 @@ export function RentalMobileCard({
   collectionStatus: string;
   compliance: React.ReactNode;
 }) {
+  const recordNavigation = useRecordNavigation();
   return (
-    <article className="app-card space-y-3 p-4 lg:hidden">
+    <article {...recordNavigation(`/rentals/${encodeURIComponent(rental.id)}/workspace`, `Open rental ${rental.rentalNumber ?? rental.id}`)} className="app-card cursor-pointer space-y-3 p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 lg:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold">{presentation.equipmentLabel}</p>

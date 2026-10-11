@@ -23,6 +23,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { LoadingState, ErrorState } from "@/components/ui/AsyncState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { filterCanonicalEquipment } from "@/features/equipment/services/filterCanonicalEquipment";
+import { useRecordNavigation } from "@/shared/navigation/useRecordNavigation";
 
 export default function EquipmentPage() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -59,8 +60,9 @@ function CanonicalEquipmentPage() {
   </div>;
 }
 
-function ResponsiveEquipmentTable({ items }: { items: ReturnType<typeof useCanonicalEquipmentData>["items"] }) {
-  return <div className="app-card overflow-x-auto"><table className="app-table min-w-full table-fixed"><thead><tr><th className="w-[18%] px-4 py-3 text-left">Asset No.</th><th className="w-[34%] px-4 py-3 text-left">Equipment</th><th className="w-[20%] px-4 py-3 text-left">Category</th><th className="w-[16%] px-4 py-3 text-left">Status</th><th className="w-[12%] px-4 py-3 text-right">Action</th></tr></thead><tbody>{items.map((item) => <tr className="odd:bg-slate-50/40 hover:bg-amber-50/60 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20" key={item.id}><td className="px-4 py-3 align-middle">{item.assetNo}</td><td className="px-4 py-3 align-middle">{item.equipmentName}</td><td className="px-4 py-3 align-middle">{item.category ?? "—"}</td><td className="px-4 py-3 align-middle whitespace-nowrap"><StatusBadge className={statusBadgeClass(item.statusLabel)} tone={statusBadgeTone(item.statusLabel)}>{item.statusLabel ?? "Unavailable"}</StatusBadge></td><td className="px-4 py-3 text-right align-middle"><Link aria-label={`View ${item.equipmentName}`} className="inline-flex rounded p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" to={`/equipment/${item.id}`}><ChevronRight size={16} aria-hidden="true" /></Link></td></tr>)}</tbody></table></div>;
+export function ResponsiveEquipmentTable({ items }: { items: ReturnType<typeof useCanonicalEquipmentData>["items"] }) {
+  const recordNavigation = useRecordNavigation();
+  return <div className="app-card overflow-x-auto"><table className="app-table min-w-full table-fixed"><thead><tr><th className="w-[18%] px-4 py-3 text-left">Asset No.</th><th className="w-[34%] px-4 py-3 text-left">Equipment</th><th className="w-[20%] px-4 py-3 text-left">Category</th><th className="w-[16%] px-4 py-3 text-left">Status</th><th className="w-[12%] px-4 py-3 text-right">Action</th></tr></thead><tbody>{items.map((item) => <tr {...recordNavigation(`/equipment/${encodeURIComponent(item.id)}`, `View equipment ${item.assetNo}`)} className="cursor-pointer odd:bg-slate-50/40 hover:bg-amber-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20" key={item.id}><td className="px-4 py-3 align-middle">{item.assetNo}</td><td className="px-4 py-3 align-middle">{item.equipmentName}</td><td className="px-4 py-3 align-middle">{item.category ?? "—"}</td><td className="px-4 py-3 align-middle whitespace-nowrap"><StatusBadge className={statusBadgeClass(item.statusLabel)} tone={statusBadgeTone(item.statusLabel)}>{item.statusLabel ?? "Unavailable"}</StatusBadge></td><td className="px-4 py-3 text-right align-middle"><Link aria-label={`View ${item.equipmentName}`} className="inline-flex rounded p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" to={`/equipment/${item.id}`}><ChevronRight size={16} aria-hidden="true" /></Link></td></tr>)}</tbody></table></div>;
 }
 
 function StatusCard({ label, value }: { label: string; value: number }) { return <div className="app-card relative p-4"><span aria-hidden="true" className={`absolute left-4 top-5 h-2 w-2 rounded-full ${statusIndicator(label)}`} /><p className="pl-4 text-xs text-slate-500">{label}</p><strong className="font-display mt-1 block text-2xl">{value}</strong></div>; }

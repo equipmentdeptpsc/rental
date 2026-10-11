@@ -19,6 +19,7 @@ import { presentEquipmentStatus } from "../utils/equipmentStatusPresentation";
 import type { EquipmentStatusFilter } from "../services/equipmentListFilters";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
+import { useRecordNavigation } from "@/shared/navigation/useRecordNavigation";
 
 export interface EquipmentDeploymentSummary { project?: string; operator?: string; rentalNumber?: string; assignedDate?: string; dateDeployed?: string; hasAssignment: boolean }
 
@@ -46,6 +47,7 @@ export default function EquipmentTable({
 
   const { log } =
     useEquipmentHistory();
+  const recordNavigation = useRecordNavigation();
 
   function confirmDelete(
     equipment: EquipmentRecord
@@ -120,7 +122,8 @@ export default function EquipmentTable({
           {equipment.map((item) => (
             <tr
               key={item.id}
-              className="odd:bg-slate-50/40 hover:bg-amber-50/60 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20"
+              {...recordNavigation(`/equipment/${encodeURIComponent(item.id)}`, `View equipment ${item.assetNo}`)}
+              className="cursor-pointer odd:bg-slate-50/40 hover:bg-amber-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:odd:bg-slate-800/20 dark:hover:bg-amber-950/20"
             >
 
               <td className="px-4 py-3 align-middle">

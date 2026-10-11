@@ -109,6 +109,7 @@ export function createLocalApplicationDependencies(overrides: ApplicationDepende
     customers: new LocalReadRepository(() => customerRepository.getAll()),
     projects: new LocalReadRepository(() => projectRepository.getAll()),
     billing: new LocalReadRepository(() => repositories.billingStatement.getAll()),
+    collections: new LocalReadRepository(() => []),
     deurs: new LocalReadRepository(() => repositories.deur.getAll()),
     rentalEquipmentLines: new LocalReadRepository(() => repositories.rentalEquipmentLine.getAll()),
     workDescriptions: new LocalReadRepository(() => workDescriptionRepository.getAll()),
