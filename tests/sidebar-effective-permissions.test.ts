@@ -95,6 +95,14 @@ describe("Sidebar effective-permission projection", () => {
     expect(company.className).toContain("whitespace-normal");
     expect(company.className).not.toContain("truncate");
     expect(header.querySelector("img")?.className).toContain("h-[52px] w-[104px]");
+    expect(header.className).toContain("items-center justify-center");
+    expect(company.className).toContain("whitespace-normal");
+    expect(header.querySelector("img")?.parentElement?.className).toContain("items-center");
+    expect(header.querySelector("img")?.parentElement?.className).toContain("text-center");
+    expect(header.className).toContain("min-h-[112px]");
+    expect(expanded.querySelector("aside")?.className).toContain("md:w-[216px]");
+    expect(expanded.querySelector("aside")?.className).toContain("translate-x-0");
+    expect(expanded.querySelector("nav")?.className).toContain("overflow-y-auto");
     const collapsed = await renderSidebar(user("finance"), undefined, true);
     expect(collapsed.querySelector("aside")?.className).toContain("md:w-[68px]");
     expect(collapsed.querySelector("aside > div")?.className).toContain("h-[78px]");

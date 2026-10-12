@@ -10,15 +10,16 @@ import { ApplicationDependencyProvider, createLocalApplicationDependencies, Pers
 import { repositorySuccess } from "@/core/persistence";
 import AssignmentDetails from "@/pages/Assignments/Details";
 import { SupabaseAssignmentCommandRepository } from "@/integrations/supabase/SupabaseAssignmentCommandRepository";
+import { assignmentBusinessDate } from "@/features/assignment/services/assignmentDatePolicy";
 
 const sql = readFileSync("supabase/migrations/20261011000500_pre_rental_assignment_revision.sql", "utf8");
 const assignment = { id: "a1", equipmentId: "e1", operatorId: "o1", customerId: "c1", projectId: "p1", assignedDate: "2026-10-20", expectedReturn: "2026-10-25", remarks: "Before", status: "Active" as const, rowVersion: 1 };
 const roots: Root[] = [];
-function deps(status: "Active" | "Completed" = "Active") {
+function deps(status: "Active" | "Completed" = "Active", assignedDate = assignment.assignedDate) {
   const base = createLocalApplicationDependencies();
   const page = (items: unknown[]) => ({ ...base.readRepositories.assignments, list: vi.fn(async () => repositorySuccess({ items, nextCursor: undefined })) });
   const reviseAssignment = vi.fn(async () => ({ success: true as const, disposition: "ACCEPTED" as const, serverOccurredAt: "2026-10-11T00:00:00Z", refresh: ["a1"], value: {} as never }));
-  return { reviseAssignment, value: { ...base, readRepositories: { ...base.readRepositories, assignments: page([{ ...assignment, status }]), equipment: page([{ id: "e1", assetNo: "ME-1", equipmentName: "Excavator", active: true }]), operators: page([{ id: "o1", name: "Operator A", status: "Active" }, { id: "o2", name: "Operator B", status: "Active" }]), projects: page([{ id: "p1", projectCode: "P-1", projectName: "Project A", customerId: "c1", status: "Completed" }, { id: "p2", projectCode: "P-2", projectName: "Project B", customerId: "c1", status: "Active" }, { id: "p3", projectCode: "P-3", projectName: "Other Customer", customerId: "c2", status: "Active" }, { id: "p4", projectCode: "P-4", projectName: "Deleted Project", customerId: "c1", status: "Active", deleted: true }]), customers: page([{ id: "c1", companyName: "Customer One", active: true }]) }, commandRepositories: { ...base.commandRepositories, canonicalAssignment: { createAssignment: vi.fn(), cancelAssignment: vi.fn(), reviseAssignment } }, configuration: { ...base.configuration, persistenceMode: PersistenceMode.Remote } } as ApplicationDependencies };
+  return { reviseAssignment, value: { ...base, readRepositories: { ...base.readRepositories, assignments: page([{ ...assignment, status, assignedDate }]), equipment: page([{ id: "e1", assetNo: "ME-1", equipmentName: "Excavator", active: true }]), operators: page([{ id: "o1", name: "Operator A", status: "Active" }, { id: "o2", name: "Operator B", status: "Active" }]), projects: page([{ id: "p1", projectCode: "P-1", projectName: "Project A", customerId: "c1", status: "Completed" }, { id: "p2", projectCode: "P-2", projectName: "Project B", customerId: "c1", status: "Active" }, { id: "p3", projectCode: "P-3", projectName: "Other Customer", customerId: "c2", status: "Active" }, { id: "p4", projectCode: "P-4", projectName: "Deleted Project", customerId: "c1", status: "Active", deleted: true }]), customers: page([{ id: "c1", companyName: "Customer One", active: true }]) }, commandRepositories: { ...base.commandRepositories, canonicalAssignment: { createAssignment: vi.fn(), cancelAssignment: vi.fn(), reviseAssignment } }, configuration: { ...base.configuration, persistenceMode: PersistenceMode.Remote } } as ApplicationDependencies };
 }
 async function render(dependencies: ApplicationDependencies) {
   const container = document.createElement("div");
@@ -33,6 +34,29 @@ async function render(dependencies: ApplicationDependencies) {
 afterEach(async () => { auth.permissions = new Set(["assignment.read", "assignment.update"]); while (roots.length) await act(async () => roots.pop()?.unmount()); });
 
 describe("pre-Rental Assignment revision", () => {
+  it("retains an unchanged historical start date while rejecting a newly selected past date", async () => {
+    const today = assignmentBusinessDate();
+    const historical = new Date(`${today}T00:00:00Z`); historical.setUTCDate(historical.getUTCDate() - 10);
+    const historicalDate = historical.toISOString().slice(0, 10);
+    const { value, reviseAssignment } = deps("Active", historicalDate);
+    const container = await render(value);
+    await act(async () => { [...container.querySelectorAll("button")].find((button) => button.textContent === "Edit / Revise")!.click(); });
+    const form = container.querySelector<HTMLFormElement>('form[aria-label="Revise Assignment"]')!;
+    const start = form.querySelector<HTMLInputElement>('input[type="date"]')!;
+    expect(start.value).toBe(historicalDate);
+    expect(start.min).toBe("");
+    await act(async () => { form.requestSubmit(); await Promise.resolve(); });
+    expect(reviseAssignment).toHaveBeenCalledWith(expect.objectContaining({ assignedDate: historicalDate }));
+    await act(async () => { [...container.querySelectorAll("button")].find((button) => button.textContent === "Edit / Revise")!.click(); });
+    const reopened = container.querySelector<HTMLFormElement>('form[aria-label="Revise Assignment"]')!;
+    const changed = reopened.querySelector<HTMLInputElement>('input[type="date"]')!;
+    const previous = new Date(`${today}T00:00:00Z`); previous.setUTCDate(previous.getUTCDate() - 1);
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(changed, previous.toISOString().slice(0, 10)); changed.dispatchEvent(new Event("change", { bubbles: true })); });
+    await act(async () => { reopened.requestSubmit(); await Promise.resolve(); });
+    expect(container.textContent).toContain("cannot be earlier than today (Philippine time)");
+    expect(reviseAssignment).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps tenant, permission, interval, lineage and audit enforcement in the canonical command", () => {
     for (const rule of ["current_company_id()", "'assignment.update'", "'assignment.operator.replace'", "DEPENDENCY_CONFLICT", "OPERATOR_ALREADY_ASSIGNED", "'ASSIGNMENT_REVISED'", "finish_operational_command"]) expect(sql).toContain(rule);
     expect(readFileSync("supabase/migrations/20261011000100_uat_operations_administrator_and_rental_line_assignment.sql", "utf8")).toContain("enforce_assignment_commitment_interval");

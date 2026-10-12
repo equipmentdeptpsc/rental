@@ -28,6 +28,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useCanonicalAssignmentData } from "@/features/assignment/hooks/useCanonicalAssignmentData";
 import { requestCanonicalAssignmentRefresh } from "@/features/assignment/remote/canonicalAssignmentRefresh";
 import { canStartRentalFromCanonicalAssignment, getAssignmentRuntimeCapability, REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE } from "@/features/assignment/services/assignmentRuntimeCapability";
+import { assignmentBusinessDate, assignmentDateError } from "@/features/assignment/services/assignmentDatePolicy";
 
 export default function AssignmentDetails() {
   const { configuration } = useApplicationDependenciesCompatibility();
@@ -71,9 +72,11 @@ function RemoteAssignmentDetails() {
   async function handleRevise(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canRevise || !commandRepositories.canonicalAssignment || typeof currentAssignment.rowVersion !== "number") return;
-    if (!revision.operatorId || !revisionProjects.some((item) => item.id === revision.projectId) || !revision.assignedDate || (revision.expectedReturn && revision.expectedReturn < revision.assignedDate)) {
+    if (!revision.operatorId || !revisionProjects.some((item) => item.id === revision.projectId) || !revision.assignedDate) {
       setEditMessage("Select an Operator and Project, and enter a valid date interval."); return;
     }
+    const dateError = assignmentDateError({ ...revision, originalAssignedDate: currentAssignment.assignedDate.slice(0, 10) });
+    if (dateError) { setEditMessage(dateError); return; }
     setEditBusy(true); setEditMessage(undefined);
     const commandId = crypto.randomUUID();
     const result = await commandRepositories.canonicalAssignment.reviseAssignment({ commandId, idempotencyKey: commandId, assignmentId: currentAssignment.id, expectedVersion: currentAssignment.rowVersion, ...revision });
@@ -106,10 +109,10 @@ function RemoteAssignmentDetails() {
     {!canCancel && !canRevise && <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">{REMOTE_ASSIGNMENT_MUTATION_UNAVAILABLE_MESSAGE}</p>}
     {cancelMessage && <p className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-950" role="alert">{cancelMessage}</p>}
     <div className="flex flex-wrap gap-3">{showStartRental && <Link to={`/rentals/new?assignment=${encodeURIComponent(assignment.id)}`}><Button>Start Rental</Button></Link>}{canRevise && <Button variant="secondary" onClick={beginRevision}>Edit / Revise</Button>}{canCancel && <Button variant="secondary" disabled={cancelling} onClick={handleCancel}>{cancelling ? "Cancelling…" : "Cancel Assignment"}</Button>}</div>
-    {editing && <form className="space-y-4 rounded-xl border bg-white p-5" onSubmit={(event) => void handleRevise(event)} aria-label="Revise Assignment"><h2 className="text-xl font-semibold">Revise Assignment</h2>
+    {editing && <form noValidate className="space-y-4 rounded-xl border bg-white p-5" onSubmit={(event) => void handleRevise(event)} aria-label="Revise Assignment"><h2 className="text-xl font-semibold">Revise Assignment</h2>
       <label className="block text-sm font-medium">Operator<select className="app-control mt-1 w-full" value={revision.operatorId} onChange={(event) => setRevision((value) => ({ ...value, operatorId: event.target.value }))}>{state.data.operators.filter((item) => item.id === assignment.operatorId || item.status === "Active" && !item.deleted && !state.data.assignments.some((other) => other.id !== assignment.id && other.status === "Active" && other.operatorId === item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="block text-sm font-medium">Project<select className="app-control mt-1 w-full" value={revision.projectId} onChange={(event) => setRevision((value) => ({ ...value, projectId: event.target.value }))}>{revisionProjects.map((item) => <option key={item.id} value={item.id}>{item.projectCode ? `${item.projectCode} - ` : ""}{item.name}</option>)}</select></label>
-      <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-medium">Assigned / Start Date<input required type="date" className="app-control mt-1 w-full" value={revision.assignedDate} onChange={(event) => setRevision((value) => ({ ...value, assignedDate: event.target.value }))} /></label><label className="block text-sm font-medium">Expected Return<input type="date" min={revision.assignedDate} className="app-control mt-1 w-full" value={revision.expectedReturn} onChange={(event) => setRevision((value) => ({ ...value, expectedReturn: event.target.value }))} /></label></div>
+      <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-medium">Assigned / Start Date<input required type="date" min={currentAssignment.assignedDate.slice(0, 10) < assignmentBusinessDate() ? undefined : assignmentBusinessDate()} className="app-control mt-1 w-full" value={revision.assignedDate} onChange={(event) => setRevision((value) => ({ ...value, assignedDate: event.target.value }))} /></label><label className="block text-sm font-medium">Expected Return<input type="date" min={revision.assignedDate} className="app-control mt-1 w-full" value={revision.expectedReturn} onChange={(event) => setRevision((value) => ({ ...value, expectedReturn: event.target.value }))} /></label></div>
       <label className="block text-sm font-medium">Remarks<textarea maxLength={2000} className="app-control mt-1 w-full" value={revision.remarks} onChange={(event) => setRevision((value) => ({ ...value, remarks: event.target.value }))} /></label>
       {editMessage && <p role="alert" className="text-sm text-red-700">{editMessage}</p>}
       <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel Edit</Button><Button type="submit" disabled={editBusy}>{editBusy ? "Saving…" : "Save Revision"}</Button></div>

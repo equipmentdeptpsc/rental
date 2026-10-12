@@ -96,6 +96,7 @@ function failureMessage(code: string) {
     UNAUTHENTICATED: "Your session has expired. Sign in and try again.",
     FORBIDDEN: "You do not have permission to create Assignments.",
     VALIDATION_REJECTED: "The Assignment request is incomplete or invalid.",
+    ASSIGNMENT_START_DATE_IN_PAST: "Assigned / Start Date cannot be earlier than today (Philippine time).",
     NOT_FOUND: "Referenced Assignment information is unavailable. Refresh and try again.",
     EQUIPMENT_UNAVAILABLE: "The selected Equipment is unavailable for Assignment.",
     CUSTOMER_PROJECT_MISMATCH: "Select an active Customer and one of its Projects.",
