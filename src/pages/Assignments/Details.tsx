@@ -62,6 +62,8 @@ function RemoteAssignmentDetails() {
   const capability = getAssignmentRuntimeCapability(configuration, Boolean(commandRepositories.canonicalAssignment));
   const canCancel = currentAssignment.status === "Active" && capability.canonicalCancellation && hasPermission("assignment.close");
   const canRevise = currentAssignment.status === "Active" && hasPermission("assignment.update") && Boolean(commandRepositories.canonicalAssignment?.reviseAssignment);
+  const customerId = assignment.customerId ?? project?.customerId;
+  const revisionProjects = state.data.projects.filter((item) => item.id === assignment.projectId || Boolean(customerId) && item.active && item.customerId === customerId);
   const beginRevision = () => {
     setRevision({ operatorId: currentAssignment.operatorId, projectId: currentAssignment.projectId, assignedDate: currentAssignment.assignedDate.slice(0, 10), expectedReturn: currentAssignment.expectedReturn?.slice(0, 10) ?? "", remarks: currentAssignment.remarks });
     setEditMessage(undefined); setEditing(true);
@@ -69,7 +71,7 @@ function RemoteAssignmentDetails() {
   async function handleRevise(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canRevise || !commandRepositories.canonicalAssignment || typeof currentAssignment.rowVersion !== "number") return;
-    if (!revision.operatorId || !revision.projectId || !revision.assignedDate || (revision.expectedReturn && revision.expectedReturn < revision.assignedDate)) {
+    if (!revision.operatorId || !revisionProjects.some((item) => item.id === revision.projectId) || !revision.assignedDate || (revision.expectedReturn && revision.expectedReturn < revision.assignedDate)) {
       setEditMessage("Select an Operator and Project, and enter a valid date interval."); return;
     }
     setEditBusy(true); setEditMessage(undefined);
@@ -106,7 +108,7 @@ function RemoteAssignmentDetails() {
     <div className="flex flex-wrap gap-3">{showStartRental && <Link to={`/rentals/new?assignment=${encodeURIComponent(assignment.id)}`}><Button>Start Rental</Button></Link>}{canRevise && <Button variant="secondary" onClick={beginRevision}>Edit / Revise</Button>}{canCancel && <Button variant="secondary" disabled={cancelling} onClick={handleCancel}>{cancelling ? "Cancelling…" : "Cancel Assignment"}</Button>}</div>
     {editing && <form className="space-y-4 rounded-xl border bg-white p-5" onSubmit={(event) => void handleRevise(event)} aria-label="Revise Assignment"><h2 className="text-xl font-semibold">Revise Assignment</h2>
       <label className="block text-sm font-medium">Operator<select className="app-control mt-1 w-full" value={revision.operatorId} onChange={(event) => setRevision((value) => ({ ...value, operatorId: event.target.value }))}>{state.data.operators.filter((item) => item.id === assignment.operatorId || item.status === "Active" && !item.deleted && !state.data.assignments.some((other) => other.id !== assignment.id && other.status === "Active" && other.operatorId === item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      <label className="block text-sm font-medium">Project<select className="app-control mt-1 w-full" value={revision.projectId} onChange={(event) => setRevision((value) => ({ ...value, projectId: event.target.value }))}>{state.data.projects.filter((item) => item.id === assignment.projectId || item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label className="block text-sm font-medium">Project<select className="app-control mt-1 w-full" value={revision.projectId} onChange={(event) => setRevision((value) => ({ ...value, projectId: event.target.value }))}>{revisionProjects.map((item) => <option key={item.id} value={item.id}>{item.projectCode ? `${item.projectCode} - ` : ""}{item.name}</option>)}</select></label>
       <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-medium">Assigned / Start Date<input required type="date" className="app-control mt-1 w-full" value={revision.assignedDate} onChange={(event) => setRevision((value) => ({ ...value, assignedDate: event.target.value }))} /></label><label className="block text-sm font-medium">Expected Return<input type="date" min={revision.assignedDate} className="app-control mt-1 w-full" value={revision.expectedReturn} onChange={(event) => setRevision((value) => ({ ...value, expectedReturn: event.target.value }))} /></label></div>
       <label className="block text-sm font-medium">Remarks<textarea maxLength={2000} className="app-control mt-1 w-full" value={revision.remarks} onChange={(event) => setRevision((value) => ({ ...value, remarks: event.target.value }))} /></label>
       {editMessage && <p role="alert" className="text-sm text-red-700">{editMessage}</p>}

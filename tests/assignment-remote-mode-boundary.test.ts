@@ -32,7 +32,7 @@ function remoteDependencies(input: { assignments?: unknown[]; equipment?: unknow
       assignments: repository(input.assignments ?? []),
       equipment: repository(input.equipment ?? [{ id: "canonical-equipment", assetNo: "ME-REMOTE", equipmentName: "Remote Equipment", statusId: "equipment-status-available", active: true }]),
       operators: repository([{ id: "canonical-operator", name: "Remote Operator", status: "Active" }]),
-      projects: repository([{ id: "canonical-project", projectCode: "REMOTE", name: "Remote Project", customerId: "canonical-customer", status: "Active" }]),
+      projects: repository([{ id: "canonical-project", projectCode: "REMOTE", projectName: "Remote Project", customerId: "canonical-customer", status: "Active" }]),
       customers: repository([{ id: "canonical-customer", companyName: "Remote Customer", active: true }]),
     } as ApplicationDependencies["readRepositories"],
     commandRepositories: { ...local.commandRepositories, canonicalRental: { readReferenceData: vi.fn(async () => ({ success: true, value: { costCodes: [], activityCodes: [] } })) } as unknown as ApplicationDependencies["commandRepositories"]["canonicalRental"], ...((input.assignmentRepository ?? true) ? { canonicalAssignment: { createAssignment: vi.fn() } as unknown as NonNullable<ApplicationDependencies["commandRepositories"]["canonicalAssignment"]> } : {}) },
@@ -149,6 +149,7 @@ describe("canonical Assignment remote UI boundary", () => {
       const input = [...container.querySelectorAll("input")].find((node) => node.id === labelNode.htmlFor) as HTMLInputElement;
       await act(async () => input.click());
       const choice = container.querySelector('button[role="option"]') as HTMLButtonElement;
+      if (label === "Project") expect(choice.textContent).toContain("REMOTE - Remote Project");
       await act(async () => choice.click());
     }
     await act(async () => { (container.querySelector("form") as HTMLFormElement).requestSubmit(); await Promise.resolve(); });

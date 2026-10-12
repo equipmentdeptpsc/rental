@@ -85,6 +85,22 @@ afterEach(async () => {
 });
 
 describe("Sidebar effective-permission projection", () => {
+  it("shows the full compact identity without clipping and preserves collapsed sizing", async () => {
+    const expanded = await renderSidebar(user("finance"));
+    const header = expanded.querySelector("aside > div")!;
+    expect(header.className).toContain("min-h-[112px]");
+    expect(header.textContent).toContain("Primary Structures Corporation");
+    expect(header.textContent).toContain("Equipment Department");
+    const company = [...header.querySelectorAll("div")].find((node) => node.textContent === "Primary Structures Corporation")!;
+    expect(company.className).toContain("whitespace-normal");
+    expect(company.className).not.toContain("truncate");
+    expect(header.querySelector("img")?.className).toContain("h-[52px] w-[104px]");
+    const collapsed = await renderSidebar(user("finance"), undefined, true);
+    expect(collapsed.querySelector("aside")?.className).toContain("md:w-[68px]");
+    expect(collapsed.querySelector("aside > div")?.className).toContain("h-[78px]");
+    expect(collapsed.querySelector("aside > div")?.textContent).not.toContain("Primary Structures Corporation");
+  });
+
   it("shows every authorized navigation item to the remote Catalog 2.0 System Administrator", async () => {
     const permissions = [...new Set(APP_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => item.permission)))];
     const container = await renderSidebar(user("system-administrator"), permissions);

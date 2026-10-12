@@ -68,6 +68,15 @@ function enter(input: HTMLInputElement, value: string) {
 }
 
 describe("credential Login page", () => {
+  it("keeps the enlarged corporate logo contained without changing its source", async () => {
+    const { container } = await renderLogin();
+    const logo = container.querySelector<HTMLImageElement>('img[alt="PSC Equipment logo"]')!;
+    expect(logo.getAttribute("src")).toBe("/branding/psc-equipment-logo.png");
+    expect(logo.className).toContain("h-[66px] w-[66px]");
+    expect(logo.className).toContain("object-contain");
+    expect(logo.className).toContain("shrink-0");
+  });
+
   it("keeps username readable and toggles password visibility without clearing it", async () => {
     const { container } = await renderLogin();
     const [username, password] = [...container.querySelectorAll("input")];

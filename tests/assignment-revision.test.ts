@@ -12,13 +12,13 @@ import AssignmentDetails from "@/pages/Assignments/Details";
 import { SupabaseAssignmentCommandRepository } from "@/integrations/supabase/SupabaseAssignmentCommandRepository";
 
 const sql = readFileSync("supabase/migrations/20261011000500_pre_rental_assignment_revision.sql", "utf8");
-const assignment = { id: "a1", equipmentId: "e1", operatorId: "o1", projectId: "p1", assignedDate: "2026-10-20", expectedReturn: "2026-10-25", remarks: "Before", status: "Active" as const, rowVersion: 1 };
+const assignment = { id: "a1", equipmentId: "e1", operatorId: "o1", customerId: "c1", projectId: "p1", assignedDate: "2026-10-20", expectedReturn: "2026-10-25", remarks: "Before", status: "Active" as const, rowVersion: 1 };
 const roots: Root[] = [];
 function deps(status: "Active" | "Completed" = "Active") {
   const base = createLocalApplicationDependencies();
   const page = (items: unknown[]) => ({ ...base.readRepositories.assignments, list: vi.fn(async () => repositorySuccess({ items, nextCursor: undefined })) });
   const reviseAssignment = vi.fn(async () => ({ success: true as const, disposition: "ACCEPTED" as const, serverOccurredAt: "2026-10-11T00:00:00Z", refresh: ["a1"], value: {} as never }));
-  return { reviseAssignment, value: { ...base, readRepositories: { ...base.readRepositories, assignments: page([{ ...assignment, status }]), equipment: page([{ id: "e1", assetNo: "ME-1", equipmentName: "Excavator", active: true }]), operators: page([{ id: "o1", name: "Operator A", status: "Active" }, { id: "o2", name: "Operator B", status: "Active" }]), projects: page([{ id: "p1", name: "Project A", status: "Active" }, { id: "p2", name: "Project B", status: "Active" }]) }, commandRepositories: { ...base.commandRepositories, canonicalAssignment: { createAssignment: vi.fn(), cancelAssignment: vi.fn(), reviseAssignment } }, configuration: { ...base.configuration, persistenceMode: PersistenceMode.Remote } } as ApplicationDependencies };
+  return { reviseAssignment, value: { ...base, readRepositories: { ...base.readRepositories, assignments: page([{ ...assignment, status }]), equipment: page([{ id: "e1", assetNo: "ME-1", equipmentName: "Excavator", active: true }]), operators: page([{ id: "o1", name: "Operator A", status: "Active" }, { id: "o2", name: "Operator B", status: "Active" }]), projects: page([{ id: "p1", projectCode: "P-1", projectName: "Project A", customerId: "c1", status: "Completed" }, { id: "p2", projectCode: "P-2", projectName: "Project B", customerId: "c1", status: "Active" }, { id: "p3", projectCode: "P-3", projectName: "Other Customer", customerId: "c2", status: "Active" }, { id: "p4", projectCode: "P-4", projectName: "Deleted Project", customerId: "c1", status: "Active", deleted: true }]), customers: page([{ id: "c1", companyName: "Customer One", active: true }]) }, commandRepositories: { ...base.commandRepositories, canonicalAssignment: { createAssignment: vi.fn(), cancelAssignment: vi.fn(), reviseAssignment } }, configuration: { ...base.configuration, persistenceMode: PersistenceMode.Remote } } as ApplicationDependencies };
 }
 async function render(dependencies: ApplicationDependencies) {
   const container = document.createElement("div");
@@ -43,6 +43,9 @@ describe("pre-Rental Assignment revision", () => {
     const edit = [...container.querySelectorAll("button")].find((button) => button.textContent === "Edit / Revise")!;
     await act(async () => { edit.click(); });
     expect((container.querySelector('input[type="date"]') as HTMLInputElement).value).toBe("2026-10-20");
+    const projects = [...container.querySelectorAll<HTMLSelectElement>('form[aria-label="Revise Assignment"] select')].find((select) => [...select.options].some((option) => option.value === "p1"))!;
+    expect(projects.value).toBe("p1");
+    expect([...projects.options].map((option) => [option.value, option.textContent])).toEqual([["p1", "P-1 - Project A"], ["p2", "P-2 - Project B"]]);
     await act(async () => { (container.querySelector('form[aria-label="Revise Assignment"]') as HTMLFormElement).requestSubmit(); await Promise.resolve(); });
     expect(reviseAssignment).toHaveBeenCalledWith(expect.objectContaining({ assignmentId: "a1", expectedVersion: 1, operatorId: "o1", projectId: "p1", assignedDate: "2026-10-20", remarks: "Before" }));
   });

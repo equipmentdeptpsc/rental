@@ -91,10 +91,10 @@ export function useCanonicalAssignmentData(): CanonicalAssignmentLoadState {
           const canonical = record as unknown as Record<string, unknown>;
           return { id: record.id, name: record.name, status: record.status, deleted: canonical.deletedAt !== null && canonical.deletedAt !== undefined };
         }),
-        projects: projects.value.map((record) => {
-          const canonical = record as unknown as Record<string, unknown>;
-          return { id: record.id, projectCode: text(canonical.projectCode) || undefined, name: text(canonical.name), active: canonical.active === true || canonical.status === "Active", customerId: text(canonical.customerId) || undefined };
-        }),
+        projects: projects.value.map((record) => ({
+          id: record.id, projectCode: record.projectCode || undefined, name: record.projectName,
+          active: record.status === "Active" && record.deleted !== true, customerId: record.customerId,
+        })),
         customers: customers.value.map((record) => ({ id: record.id, name: record.companyName, active: record.active !== false })),
       };
       setState({ status: data.assignments.length ? "loaded" : "empty", data });
