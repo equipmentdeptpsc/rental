@@ -39,7 +39,8 @@ if (process.argv.includes("--require-uat")) {
     throw new Error("UAT build configuration is incomplete or points outside the isolated UAT project.");
   }
   if (git("status", "--porcelain", "--untracked-files=no")) throw new Error("Refusing a UAT recovery manifest from an uncommitted source tree.");
-  const allowedUntracked = (path) => path.startsWith(".artifacts/automation/reports/") || path === "docs/uat/checkpoints/current.md";
+  const runReport = /^\.artifacts\/automation\/runs\/\d{8}T\d{9}Z-\d+-[0-9a-f]{32}\/reports\/(?:git-status|last-deployed-commit)\.txt$/;
+  const allowedUntracked = (path) => path.startsWith(".artifacts/automation/reports/") || runReport.test(path) || path === "docs/uat/checkpoints/current.md";
   if (git("ls-files", "--others", "--exclude-standard").split(/\r?\n/).filter(Boolean).some((path) => !allowedUntracked(path))) {
     throw new Error("Unreviewed untracked files are present in the UAT release checkout.");
   }

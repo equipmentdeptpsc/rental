@@ -1,9 +1,11 @@
 $ErrorActionPreference = 'Stop'
 $script:RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $script:AutomationRoot = Join-Path $script:RepositoryRoot '.artifacts\automation'
-$script:LogRoot = Join-Path $script:AutomationRoot 'logs'
-$script:ReportRoot = Join-Path $script:AutomationRoot 'reports'
-$script:ScreenshotRoot = Join-Path $script:AutomationRoot 'screenshots'
+$runId = '{0}-{1}-{2}' -f [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ'),$PID,[guid]::NewGuid().ToString('N')
+$script:RunRoot = Join-Path $script:AutomationRoot (Join-Path 'runs' $runId)
+$script:LogRoot = Join-Path $script:RunRoot 'logs'
+$script:ReportRoot = Join-Path $script:RunRoot 'reports'
+$script:ScreenshotRoot = Join-Path $script:RunRoot 'screenshots'
 $script:ExpectedBranch = 'uat-remediation-mvp-2026-08-21'
 $script:ExpectedUatProjectRef = 'jtkctarqbwmqdcewthkn'
 $script:BinRoot = Join-Path $script:RepositoryRoot 'node_modules\.bin'
