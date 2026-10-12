@@ -74,8 +74,19 @@ const candidate = {
 const manifestPath = join(dist, "uat-recovery-manifest.json");
 const verifyDeployed = process.argv.includes("--verify-deployed");
 const manifest = verifyDeployed ? JSON.parse(readFileSync(manifestPath, "utf8")) : candidate;
-if (verifyDeployed && (manifest.sourceCommit !== candidate.sourceCommit || JSON.stringify(manifest.assets) !== JSON.stringify(candidate.assets))) {
-  throw new Error("Local UAT manifest does not match the current source commit and build assets.");
+if (verifyDeployed) {
+  if (JSON.stringify(manifest.assets) !== JSON.stringify(candidate.assets)) {
+    throw new Error("Local UAT manifest does not match the current build assets.");
+  }
+  if (manifest.sourceCommit !== candidate.sourceCommit) {
+    const verifierOnlyPaths = new Set(["scripts/verify-uat-recovery.mjs", "tests/uat-recovery-nonpublic-headers.test.ts"]);
+    try { execFileSync("git", ["merge-base", "--is-ancestor", manifest.sourceCommit, "HEAD"], { cwd: root, stdio: "ignore" }); }
+    catch { throw new Error("Deployed UAT source commit is not an ancestor of this verifier checkout."); }
+    const changed = git("diff", "--name-only", manifest.sourceCommit, "HEAD").split(/\r?\n/).filter(Boolean);
+    if (git("status", "--porcelain", "--untracked-files=no") || changed.length === 0 || changed.some((path) => !verifierOnlyPaths.has(path))) {
+      throw new Error("Deployed UAT source differs by more than the committed verifier correction.");
+    }
+  }
 }
 if (!verifyDeployed) writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`PASS UAT recovery lineage and build manifest (${manifest.sourceCommit.slice(0, 8)}, ${files.length} assets)`);
@@ -88,11 +99,25 @@ if (verifyDeployed) {
   if (deployed.sourceCommit !== manifest.sourceCommit || JSON.stringify(deployed.configuration) !== JSON.stringify(manifest.configuration) || JSON.stringify(deployed.assets) !== JSON.stringify(manifest.assets)) {
     throw new Error("Deployed UAT manifest differs from this source build.");
   }
+  const headersConfig = manifest.assets.find((asset) => asset.path === "_headers");
+  if (!headersConfig || readFileSync(join(dist, "_headers"), "utf8").replaceAll("\r\n", "\n").trim() !== "/index.html\n  Cache-Control: no-cache\n\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable") {
+    throw new Error("Expected UAT static header configuration is missing or changed.");
+  }
+  const indexResponse = await fetch(`${base}/index.html`, { cache: "no-store", redirect: "manual" });
+  if (indexResponse.status !== 307 || indexResponse.headers.get("cache-control") !== "no-cache") {
+    throw new Error("Deployed UAT /index.html does not apply the configured no-cache header.");
+  }
+  let publicAssets = 0;
   for (const asset of manifest.assets) {
+    if (asset.path === "_headers") continue; // Cloudflare consumes this configuration file; it is not publicly served.
     const assetResponse = await fetch(`${base}/${asset.path}`, { cache: "no-store" });
     if (!assetResponse.ok) throw new Error(`Deployed asset unavailable: ${asset.path}`);
+    if (asset.path.startsWith("assets/") && assetResponse.headers.get("cache-control") !== "public, max-age=31536000, immutable") {
+      throw new Error(`Deployed UAT asset does not apply the configured cache header: ${asset.path}`);
+    }
     const digest = createHash("sha256").update(Buffer.from(await assetResponse.arrayBuffer())).digest("hex");
     if (digest !== asset.sha256) throw new Error(`Deployed UAT asset differs: ${asset.path}`);
+    publicAssets++;
   }
-  console.log(`PASS deployed UAT manifest and ${manifest.assets.length} asset hashes`);
+  console.log(`PASS deployed UAT manifest, _headers configuration, and ${publicAssets} public asset hashes`);
 }
