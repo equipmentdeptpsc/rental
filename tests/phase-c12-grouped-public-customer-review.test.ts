@@ -26,8 +26,10 @@ describe("grouped public Customer Review repository", () => {
     await repository.lookup("credential");
     await repository.acknowledgeItem("credential", "item-a", { commandId: "a", idempotencyKey: "a" });
     await repository.requestCorrection("credential", "item-b", "  Incorrect operating duration.  ", { commandId: "b", idempotencyKey: "b" });
-    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["get_customer_review_batch", "acknowledge_customer_review_batch_item", "request_customer_review_batch_item_correction"]);
+    await repository.acknowledgeItems("credential", ["item-a", "item-b"], { commandId: "c", idempotencyKey: "c" });
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["get_customer_review_batch", "acknowledge_customer_review_batch_item", "request_customer_review_batch_item_correction", "acknowledge_customer_review_batch_items"]);
     expect(rpc.mock.calls[2][1].command.remarks).toBe("Incorrect operating duration.");
+    expect(rpc.mock.calls[3][1].command.publicItemIds).toEqual(["item-a", "item-b"]);
     expect(JSON.stringify(rpc.mock.calls)).not.toMatch(/tenantId|companyId|deurId|revisionId|requestId|rentalId/);
   });
 });
@@ -64,7 +66,7 @@ describe("grouped public Customer Review page", () => {
     const repository: PublicCustomerReviewBatchRepository = { lookup: vi.fn().mockResolvedValue({ success: true, disposition: "COMPLETED", value: completed }), acknowledgeItem: vi.fn(), requestCorrection: vi.fn() };
     const container = await render(repository);
     expect(container.textContent).toContain("Work date: 2026-08-10"); expect(container.textContent).toContain("Work date: 2026-08-11");
-    expect(container.textContent).toContain("All pending DEURs for this Rental have been reviewed.");
+    expect(container.textContent).toContain("All pending DEURs in this review have been reviewed.");
     expect(container.textContent).not.toMatch(/Acknowledge All|Bulk/);
   });
 
@@ -78,6 +80,22 @@ describe("grouped public Customer Review page", () => {
     await act(async () => button.click());
     expect(acknowledgeItem).toHaveBeenCalledWith("opaque", "item-a", expect.any(Object)); expect(lookup).toHaveBeenCalledTimes(2);
     expect(container.textContent).toContain("Excavator B"); expect(container.textContent).toContain("Excavator C"); expect(window.location.pathname).not.toContain("completed");
+  });
+
+  it("offers server-atomic bulk acknowledgement when supported and refreshes partial state", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const after = { ...batch, actionableCount: 0, acknowledgedCount: 2, batchStatus: "COMPLETED" as const,
+      items: batch.items.map((item) => item.availableActions.length ? { ...item, reviewState: "ACKNOWLEDGED" as const, availableActions: [] } : item) };
+    const lookup = vi.fn().mockResolvedValueOnce({ success: true, disposition: "AVAILABLE", value: batch })
+      .mockResolvedValue({ success: true, disposition: "COMPLETED", value: after });
+    const acknowledgeItems = vi.fn().mockResolvedValue({ success: true, disposition: "ACCEPTED", value: after });
+    const repository: PublicCustomerReviewBatchRepository = { lookup, acknowledgeItem: vi.fn(), requestCorrection: vi.fn(), acknowledgeItems };
+    const container = await render(repository);
+    const bulk = [...container.querySelectorAll("button")].find((button) => button.textContent === "Acknowledge All Pending DEURs")!;
+    await act(async () => { bulk.click(); await Promise.resolve(); });
+    expect(acknowledgeItems).toHaveBeenCalledWith("opaque", ["item-a", "item-b"], expect.any(Object));
+    expect(lookup).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("All pending DEURs in this review have been reviewed.");
   });
 
   it("uses a line-scoped correction dialog with identifying evidence", async () => {

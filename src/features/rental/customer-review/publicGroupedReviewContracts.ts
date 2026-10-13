@@ -75,4 +75,9 @@ export interface PublicCustomerReviewBatchRepository {
     remarks: string,
     command: { commandId: string; idempotencyKey: string },
   ): Promise<PublicGroupedReviewResult<PublicCustomerReviewBatch>>;
+  acknowledgeItems?(
+    credential: string,
+    publicItemIds: string[],
+    command: { commandId: string; idempotencyKey: string },
+  ): Promise<PublicGroupedReviewResult<PublicCustomerReviewBatch>>;
 }

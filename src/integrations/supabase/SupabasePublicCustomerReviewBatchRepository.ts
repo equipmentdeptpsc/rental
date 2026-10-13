@@ -58,6 +58,10 @@ export class SupabasePublicCustomerReviewBatchRepository implements PublicCustom
       credential, publicItemId, remarks: remarks.trim(), ...command,
     });
   }
+
+  acknowledgeItems(credential: string, publicItemIds: string[], command: { commandId: string; idempotencyKey: string }) {
+    return this.call("acknowledge_customer_review_batch_items", { credential, publicItemIds, ...command });
+  }
 }
 
 export function createSupabasePublicCustomerReviewBatchRepository(configuration: {

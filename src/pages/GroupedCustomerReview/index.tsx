@@ -62,6 +62,17 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
     setCorrectionItem(undefined); setRemarks(""); setMessage("The correction request has been recorded.");
     await refresh();
   };
+  const acknowledgeAll = async () => {
+    const pendingIds = batch?.items.filter((item) => item.reviewState === "SUBMITTED_AWAITING_ACKNOWLEDGEMENT").map((item) => item.publicItemId) ?? [];
+    if (!reviewRepository?.acknowledgeItems || pendingRef.current || pendingIds.length === 0 ||
+      !window.confirm(`Acknowledge all ${pendingIds.length} pending DEURs in this review?`)) return;
+    pendingRef.current = true; setPendingItem("bulk"); setMessage("");
+    const result = await reviewRepository.acknowledgeItems(credential, pendingIds, identity());
+    pendingRef.current = false; setPendingItem(undefined);
+    if (!result.success) { setMessage("Bulk acknowledgement could not be completed. No lines were changed by this attempt."); await refresh(); return; }
+    setMessage("All selected DEUR acknowledgements have been recorded.");
+    await refresh();
+  };
 
   if (state === "loading") return <Shell><p role="status">Loading secure grouped review…</p></Shell>;
   if (state === "unavailable" || !batch) return <Shell><h1 className="text-2xl font-bold">Review unavailable</h1><p>This link is invalid, expired, superseded, or unavailable.</p></Shell>;
@@ -81,8 +92,9 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
       <Summary label="Awaiting Acknowledgement" value={batch.actionableCount}/><Summary label="In Progress" value={batch.inProgressCount}/><Summary label="Acknowledged" value={batch.acknowledgedCount}/><Summary label="Correction Requested" value={batch.correctionRequestedCount}/>
     </section>
     <p role="status" className="rounded-lg border bg-white p-4 font-medium">
-      {batch.actionableCount === 0 ? "All pending DEURs for this Rental have been reviewed." : `${reviewedCount} of ${reviewableCount} submitted DEURs reviewed · ${batch.actionableCount} remaining`}
+      {batch.actionableCount === 0 ? "All pending DEURs in this review have been reviewed." : `${reviewedCount} of ${reviewableCount} submitted DEURs reviewed · ${batch.actionableCount} remaining`}
     </p>
+    {batch.actionableCount > 1 && reviewRepository?.acknowledgeItems && <button type="button" className="min-h-12 rounded-lg bg-emerald-700 px-6 py-3 font-bold text-white disabled:opacity-50" disabled={Boolean(pendingItem)} onClick={() => void acknowledgeAll()}>Acknowledge All Pending DEURs</button>}
     <section className="space-y-8" aria-label="Equipment lines">{itemsByWorkDate.map(([workDate, items]) => <section key={workDate} className="space-y-4" aria-label={`Work date ${workDate}`}>
       <header className="flex items-baseline justify-between border-b pb-2"><h2 className="text-xl font-bold">Work date: {workDate}</h2><span className="text-sm text-slate-600">{items?.length ?? 0} equipment line{items?.length === 1 ? "" : "s"}</span></header>
       {items?.map(item => <ReviewLine key={item.publicItemId} item={item} pending={pendingItem === item.publicItemId} onAcknowledge={() => void acknowledge(item)} onCorrection={() => { setCorrectionItem(item); setRemarks(""); setMessage(""); }}/>)}</section>)}</section>
