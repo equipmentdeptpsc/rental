@@ -35,7 +35,23 @@ export interface ProjectCustomerLinkProjection {
   rowVersion: number;
 }
 
+export interface ProjectReviewRecipient { name: string; email: string }
+
+export interface ProjectReviewRecipientProjection {
+  projectId: string;
+  recipients: ProjectReviewRecipient[];
+  rowVersion: number;
+}
+
+export interface UpdateProjectReviewRecipientsCommand extends OperationalCommandMetadata {
+  projectId: string;
+  recipients: ProjectReviewRecipient[];
+  expectedVersion: number;
+}
+
 export interface ProjectCommandRepository {
   createProject(command: CreateProjectCommand): Promise<OperationalCommandResult<ProjectCreationProjection>>;
   updateProjectCustomer?(command: UpdateProjectCustomerCommand): Promise<OperationalCommandResult<ProjectCustomerLinkProjection>>;
+  readProjectReviewRecipients?(projectId: string): Promise<{ success: true; value: ProjectReviewRecipientProjection } | { success: false; message: string }>;
+  updateProjectReviewRecipients?(command: UpdateProjectReviewRecipientsCommand): Promise<OperationalCommandResult<ProjectReviewRecipientProjection>>;
 }

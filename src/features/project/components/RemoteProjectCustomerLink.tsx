@@ -9,6 +9,7 @@ import type { CustomerRecord } from "@/features/customer/types";
 import { requestCanonicalProjectRefresh } from "@/features/project/remote/canonicalProjectRefresh";
 import { canLinkProjectCustomer } from "@/features/project/services/projectRuntimeCapability";
 import type { ProjectRecord } from "@/features/project/types";
+import ProjectReviewRecipients from "@/features/project/components/ProjectReviewRecipients";
 
 type ProjectState =
   | { status: "loading" }
@@ -137,6 +138,7 @@ export default function RemoteProjectCustomerLink() {
         <div><dt className="text-xs uppercase tracking-wide text-slate-500">Customer</dt><dd className="mt-1 font-medium">{currentProject.customerId ? linkedCustomer ? `${linkedCustomer.customerCode} — ${linkedCustomer.companyName}` : customerState.status === "loading" ? "Loading canonical Customer…" : "Canonical Customer unavailable" : "Not linked"}</dd></div>
       </dl>
     </section>
+    {currentProject.customerId && <ProjectReviewRecipients projectId={currentProject.id} />}
     {message && <p className={`rounded border px-3 py-2 text-sm ${message.kind === "error" ? "border-red-300 bg-red-50 text-red-950" : "border-emerald-300 bg-emerald-50 text-emerald-950"}`} role={message.kind === "error" ? "alert" : "status"}>{message.text}</p>}
     {canLink && <form className="space-y-4 rounded-xl border bg-white p-6 shadow-sm" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
       <Select label="Customer" searchable value={selectedCustomerId} options={customerOptions} loading={customerState.status === "loading"} disabled={busy || customerState.status === "error"} helperText={customerState.status === "error" ? customerState.message : "Only active canonical Customers are available."} onChange={(event) => setSelectedCustomerId(event.target.value)} />

@@ -1,4 +1,4 @@
-import type { CreateProjectCommand, ProjectCommandRepository, ProjectCreationProjection, ProjectCustomerLinkProjection, UpdateProjectCustomerCommand } from "@/features/project/commands/contracts";
+import type { CreateProjectCommand, ProjectCommandRepository, ProjectCreationProjection, ProjectCustomerLinkProjection, ProjectReviewRecipientProjection, UpdateProjectCustomerCommand, UpdateProjectReviewRecipientsCommand } from "@/features/project/commands/contracts";
 import { isOperationalCommandResult, type OperationalCommandResult } from "@/features/rental/operations/commands/contracts";
 
 interface ProjectRpcClient {
@@ -25,6 +25,42 @@ export class SupabaseProjectCommandRepository implements ProjectCommandRepositor
     if (!isOperationalCommandResult<ProjectCustomerLinkProjection>(data) || (data.success && !isCustomerLinkProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The remote Project customer-link command returned an invalid response.", retryable: false, refreshRequired: true };
     return data;
   }
+
+  async readProjectReviewRecipients(projectId: string): Promise<{ success: true; value: ProjectReviewRecipientProjection } | { success: false; message: string }> {
+    const { data, error } = await this.client.schema("erp").rpc("read_project_customer_review_recipients", { target_project_id: projectId });
+    if (error || !isReviewRecipientProjection(data)) return { success: false, message: "Project reviewers could not be loaded. Refresh and try again." };
+    return { success: true, value: data };
+  }
+
+  async updateProjectReviewRecipients(command: UpdateProjectReviewRecipientsCommand): Promise<OperationalCommandResult<ProjectReviewRecipientProjection>> {
+    const { data, error } = await this.client.schema("erp").rpc("command_update_project_customer_review_recipients", { command });
+    if (error) return { success: false, code: "TRANSPORT_FAILURE", message: "The reviewer update could not be confirmed. Refresh before retrying.", retryable: true, refreshRequired: true };
+    const candidate = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : undefined;
+    if (candidate?.success === false && typeof candidate.code === "string") return { success: false, code: candidate.code, message: reviewRecipientFailureMessage(candidate.code), retryable: false, refreshRequired: candidate.code === "CONFLICT" };
+    if (!isOperationalCommandResult<ProjectReviewRecipientProjection>(data) || (data.success && !isReviewRecipientProjection(data.value))) return { success: false, code: "VALIDATION_REJECTED", message: "The reviewer update returned an invalid response.", retryable: false, refreshRequired: true };
+    return data;
+  }
+}
+
+function reviewRecipientFailureMessage(code: string) {
+  const messages: Record<string, string> = {
+    UNAUTHENTICATED: "Your session has expired. Sign in and try again.",
+    FORBIDDEN: "You do not have permission to update Project reviewers.",
+    VALIDATION_REJECTED: "Enter up to ten reviewers with distinct valid email addresses and names.",
+    NOT_FOUND: "The linked Project is unavailable. Refresh and try again.",
+    CONFLICT: "Project reviewers changed. Refresh before saving again.",
+    IDEMPOTENCY_MISMATCH: "This request conflicts with an earlier update. Refresh before retrying.",
+    PERSISTENCE_FAILURE: "Project reviewers could not be saved. Refresh before retrying.",
+  };
+  return messages[code] ?? "The Project reviewer update was rejected.";
+}
+
+function isReviewRecipientProjection(value: unknown): value is ProjectReviewRecipientProjection {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.projectId === "string" && Number.isInteger(row.rowVersion) && Array.isArray(row.recipients)
+    && row.recipients.every((entry: unknown) => Boolean(entry && typeof entry === "object" && !Array.isArray(entry)
+      && typeof (entry as Record<string, unknown>).name === "string" && typeof (entry as Record<string, unknown>).email === "string"));
 }
 
 function failureMessage(code: string) {
