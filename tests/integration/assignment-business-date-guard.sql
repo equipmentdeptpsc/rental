@@ -14,11 +14,11 @@ INSERT INTO erp.user_roles(user_id,role_id) SELECT '99300000-0000-4000-8000-0000
 INSERT INTO erp.user_roles(user_id,role_id) SELECT '99300000-0000-4000-8000-000000000002',id FROM erp.app_roles WHERE code='read-only-auditor';
 INSERT INTO erp.customers(id,name,active,company_id) VALUES('CUSTOMER-DATE','Date Customer',true,'TENANT-DATE-GUARD'),('CUSTOMER-DATE-OTHER','Other Customer',true,'TENANT-DATE-OTHER');
 INSERT INTO erp.projects(id,name,customer_id,active,company_id) VALUES('PROJECT-DATE','Date Project','CUSTOMER-DATE',true,'TENANT-DATE-GUARD'),('PROJECT-DATE-OTHER','Other Project','CUSTOMER-DATE-OTHER',true,'TENANT-DATE-OTHER');
-INSERT INTO erp.operators(id,name,status,company_id) VALUES('OPERATOR-DATE-A','A','Active','TENANT-DATE-GUARD'),('OPERATOR-DATE-B','B','Active','TENANT-DATE-GUARD'),('OPERATOR-DATE-C','C','Active','TENANT-DATE-GUARD');
+INSERT INTO erp.operators(id,name,status,company_id) VALUES('OPERATOR-DATE-A','A','Active','TENANT-DATE-GUARD'),('OPERATOR-DATE-B','B','Active','TENANT-DATE-GUARD'),('OPERATOR-DATE-C','C','Active','TENANT-DATE-GUARD'),('OPERATOR-DATE-D','D','Active','TENANT-DATE-GUARD');
 INSERT INTO erp.activity_codes(id,code,name,active) VALUES('ACTIVITY-DATE','ACT-DATE','Assignment Date Test',true);
 INSERT INTO erp.equipment(id,asset_no,equipment_name,status_id,maintenance_type,active,company_id)
  SELECT x.id,x.asset_no,x.id,s.id,'Engine Hours',true,'TENANT-DATE-GUARD'
- FROM (VALUES('EQUIPMENT-DATE-A','DATE-001'),('EQUIPMENT-DATE-B','DATE-002')) x(id,asset_no)
+ FROM (VALUES('EQUIPMENT-DATE-A','DATE-001'),('EQUIPMENT-DATE-B','DATE-002'),('EQUIPMENT-DATE-D','DATE-004')) x(id,asset_no)
  CROSS JOIN LATERAL (SELECT id FROM erp.equipment_statuses WHERE lower(code)='available' AND active AND deleted_at IS NULL ORDER BY sort_order,id LIMIT 1) s;
 INSERT INTO erp.equipment(id,asset_no,equipment_name,status_id,maintenance_type,active,company_id)
  SELECT 'EQUIPMENT-DATE-C','DATE-003','Historical',s.id,'Engine Hours',true,'TENANT-DATE-GUARD'
@@ -48,6 +48,8 @@ SELECT pg_temp.assert_true((SELECT pg_temp.create_assignment('date-create-return
 SELECT pg_temp.assert_true((SELECT pg_temp.create_assignment('date-create-cross','99300000-0000-4000-8000-000000000011','EQUIPMENT-DATE-A','OPERATOR-DATE-A',today,today+1,'{"customerId":"CUSTOMER-DATE-OTHER","projectId":"PROJECT-DATE-OTHER"}'::jsonb)->>'code'='CUSTOMER_PROJECT_MISMATCH' FROM pg_temp.test_dates),'cross-tenant create rejected');
 SELECT pg_temp.assert_true((SELECT pg_temp.create_assignment('date-create-today','99300000-0000-4000-8000-000000000011','EQUIPMENT-DATE-A','OPERATOR-DATE-A',today,today+1)->>'success'='true' FROM pg_temp.test_dates),'today create accepted');
 SELECT pg_temp.assert_true((SELECT pg_temp.create_assignment('date-create-future','99300000-0000-4000-8000-000000000012','EQUIPMENT-DATE-B','OPERATOR-DATE-B',today+1,today+2)->>'success'='true' FROM pg_temp.test_dates),'future create accepted');
+SELECT pg_temp.assert_true((SELECT pg_temp.create_assignment('date-create-no-activity','99300000-0000-4000-8000-000000000014','EQUIPMENT-DATE-D','OPERATOR-DATE-D',today+1,today+2,'{"activityCodeId":null}'::jsonb)->>'success'='true' FROM pg_temp.test_dates),'Activity Code omitted on otherwise valid create');
+SELECT pg_temp.assert_true((SELECT activity_code_id IS NULL FROM erp.assignments WHERE id='99300000-0000-4000-8000-000000000014'),'omitted Activity Code remains null');
 SELECT pg_temp.assert_true((SELECT count(*)=2 FROM erp.audit_log WHERE action='ASSIGNMENT_CREATED' AND aggregate_id IN('99300000-0000-4000-8000-000000000011','99300000-0000-4000-8000-000000000012')),'authorized creates audited');
 SELECT pg_temp.assert_true((SELECT pg_temp.revise_assignment('date-revise-cross',today,today+1,1,'{"projectId":"PROJECT-DATE-OTHER"}'::jsonb)->>'code'='NOT_FOUND' FROM pg_temp.test_dates),'cross-tenant revision rejected');
 SELECT pg_temp.assert_true((SELECT pg_temp.revise_assignment('date-revise-yesterday',today-1,today+1,1)->>'code'='ASSIGNMENT_START_DATE_IN_PAST' FROM pg_temp.test_dates),'changed historical date rejected');

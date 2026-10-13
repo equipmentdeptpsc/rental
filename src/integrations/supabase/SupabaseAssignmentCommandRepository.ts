@@ -54,7 +54,7 @@ export class SupabaseAssignmentCommandRepository implements AssignmentCommandRep
         code: candidate.code as Extract<OperationalCommandResult<AssignmentCreationProjection>, { success: false }>["code"],
         message: failureMessage(candidate.code),
         retryable: false,
-        refreshRequired: ["CONFLICT", "EQUIPMENT_UNAVAILABLE", "PERSISTENCE_FAILURE"].includes(candidate.code),
+        refreshRequired: ["CONFLICT", "EQUIPMENT_UNAVAILABLE", "EQUIPMENT_INTERVAL_CONFLICT", "OPERATOR_ALREADY_ASSIGNED", "PERSISTENCE_FAILURE"].includes(candidate.code),
       };
     }
     if (!isOperationalCommandResult<AssignmentCreationProjection>(data) || (data.success && !isProjection(data.value))) {

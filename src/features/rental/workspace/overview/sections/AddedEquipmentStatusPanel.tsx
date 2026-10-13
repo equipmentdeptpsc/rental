@@ -15,6 +15,7 @@ import RemoteCommercialTermsPage from "@/features/rental/remote/RemoteCommercial
 import RentalQuickActions from "@/features/rental/components/RentalQuickActions";
 import { requestCanonicalRentalRefresh } from "@/features/rental/remote/canonicalRentalRefresh";
 import type { CanonicalOperatorAssignmentConflictDetails } from "@/features/rental/remote/contracts";
+import { rentalLineMeterPolicy } from "./rentalLineMeterPolicy";
 
 interface Props {
   rental: RentalRecord;
@@ -140,9 +141,11 @@ export default function AddedEquipmentStatusPanel({ rental, lines, equipment, as
           <h3 className="font-semibold">{machine ? `${machine.assetNo} — ${machine.equipmentName}` : line.equipmentId}</h3>
           {machine?.legacyEquipmentNumber && <p>Legacy Equipment Number: {machine.legacyEquipmentNumber}</p>}
           <p className="break-all text-xs text-slate-500">Equipment ID: {line.equipmentId}</p>
+          {machine && <p>Equipment Maintenance Type: {machine.maintenanceType}</p>}
           <p>Rental dates: {line.effectiveStartDate ?? rental.dateOut} → {rental.expectedReturn ?? "Open-ended"}</p>
           <p>Assignment: {assignment ? `${assignment.status} (${assignment.assignedDate} → ${assignment.expectedReturn ?? "Open-ended"})` : line.assignmentId ? `Linked ${line.assignmentId}` : "Not linked"}</p>
           <p>Availability: {historical ? "Historical — no active commitment inferred" : `Committed to this Rental (${status})`}</p>
+          <p>DEUR meter policy: {rentalLineMeterPolicy(line, rental.status)}</p>
           <p>Operator: {operator?.name ?? (line.operatorId || "Not assigned")}</p>
           <p>Preparation: {historical ? "Historical / read-only" : blockers.length === 0 ? "Complete" : "Incomplete"}</p>
           <p>Approval request: {approval}</p>
