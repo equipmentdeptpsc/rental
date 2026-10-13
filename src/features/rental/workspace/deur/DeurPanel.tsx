@@ -31,6 +31,7 @@ import {
   import { useAuth } from "@/features/auth/AuthContext";
   import { rentalAuditRepository } from "@/features/rental/audit/rentalAuditRepository";
 import RentalLineOperationsGrid from "./RentalLineOperationsGrid";
+import { selectDailyOperationsDeur } from "./buildRentalLineOperations";
 import RemoteManualDeurAction from "./RemoteManualDeurAction";
 import RemoteManualDeurWorkspace from "./RemoteManualDeurWorkspace";
 import SubmitDeurCorrectionAction from "./SubmitDeurCorrectionAction";
@@ -44,7 +45,10 @@ import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/
     const summary =
       useDailyOperations();
 
-    const previewRecord = aggregate.activeDeur ?? aggregate.deurs.at(-1);
+    const soleLine = aggregate.rentalEquipmentLines.length === 1 ? aggregate.rentalEquipmentLines[0] : undefined;
+    const previewRecord = soleLine
+      ? selectDailyOperationsDeur(aggregate.deurs.filter((record) => !record.rentalEquipmentLineId || record.rentalEquipmentLineId === soleLine.id))
+      : aggregate.activeDeur ?? aggregate.deurs.at(-1);
     const operationalOpen = !["Returned", "Closed", "Cancelled"].includes(aggregate.rental.status);
     const timelineMode=!previewRecord?.evidenceMode||previewRecord.evidenceMode==="TIME_TIMELINE";
     const presentation=previewRecord?resolveDeurPresentation({deur:previewRecord,lines:aggregate.rentalEquipmentLines,equipment,operators}):undefined;
@@ -134,9 +138,8 @@ import { PersistenceMode, useApplicationDependenciesCompatibility } from "@/app/
 
         {previewRecord && timelineMode && (
           <CurrentActivityCard
-            logs={previewRecord.logs}
-            workDate={previewRecord.workDate}
-            evaluatedAt={evaluatedAt}
+            deur={previewRecord}
+            equipment={presentation?.equipment}
           />
         )}
 

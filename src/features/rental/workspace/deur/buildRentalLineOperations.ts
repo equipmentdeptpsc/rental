@@ -4,6 +4,7 @@ import { deriveDeurEventState } from "@/features/rental/deur/services/deriveDeur
 import { projectDigitalDeurRunningState } from "@/features/rental/deur/operator/projectDigitalDeurRunningState";
 import { calculateDeurTotals } from "@/features/rental/deur/services/calculateDeurTotals";
 import { resolveEffectiveDeurRevision } from "@/features/rental/deur/services/correction/resolveEffectiveDeurRevision";
+import { describeCanonicalCurrentActivity } from "@/features/rental/deur/services/describeCanonicalCurrentActivity";
 
 export interface RentalLineOperationState {
   line: RentalEquipmentLine;
@@ -77,7 +78,7 @@ export function buildRentalLineOperations(input: {
       : undefined;
     const canonical = deur ? calculateDeurTotals(deur.events ?? []).totals : undefined;
     const projected = projection?.valid ? projection.value : undefined;
-    const currentActivity = presentCurrentDeurActivity(state?.openPrimaryActivity, state?.shiftOpen);
+    const currentActivity = deur ? describeCanonicalCurrentActivity(deur).label : "Not started";
     const issue = !deur ? "Operator has not started a DEUR for this equipment."
       : deur.status === "Rejected" ? "DEUR was rejected and requires attention."
       : state?.openPrimaryActivity === "breakdown" ? "Equipment breakdown is active."
