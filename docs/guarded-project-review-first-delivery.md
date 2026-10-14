@@ -2,6 +2,8 @@
 
 This procedure is intentionally pinned to Supabase project `jtkctarqbwmqdcewthkn`, DEUR `DEUR-2026-000030`, Project Review batch `aac56cd2-6b52-4376-a1f9-e6e833b4a02d`, and notification IDs `339135fc-477b-4ad8-bd3c-2ad17853f9d4` and `45e60b4f-e7fc-4d27-87a9-1672e2fa1cc9`. It cannot discover or substitute other queue work.
 
+The read-only preflight RPC is introduced by forward-only migration `20261014000300_guarded_project_review_first_delivery_preflight.sql`. Versions `20261014000100` and `20261014000200` remain reserved for the already-certified Project Review multi-DEUR membership and hour-meter refuel migrations.
+
 ## Required inputs
 
 - An active System Administrator bearer session in the batch tenant with `settings.update`.

@@ -163,7 +163,7 @@ describe("canonical exact preparation and claim behavior", () => {
 });
 
 describe("guarded preflight migration contract", () => {
-  const sql = readFileSync("supabase/migrations/20261014000100_guarded_project_review_first_delivery_preflight.sql", "utf8");
+  const sql = readFileSync("supabase/migrations/20261014000300_guarded_project_review_first_delivery_preflight.sql", "utf8");
   it("is read-only, service-only, tenant/role checked, and preserves snapshots", () => {
     expect(sql).toContain("STABLE SECURITY DEFINER");
     expect(sql).toContain("auth.role()<>'service_role'");
