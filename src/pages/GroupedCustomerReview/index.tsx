@@ -28,6 +28,7 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
   const [correctionItem, setCorrectionItem] = useState<PublicCustomerReviewBatchItem>();
   const [remarks, setRemarks] = useState("");
   const [message, setMessage] = useState("");
+  const [reviewerEmail, setReviewerEmail] = useState("");
   const pendingRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -40,9 +41,15 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  const identity = () => ({ commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID() });
+  const identity = () => ({ commandId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID(),
+    ...(batch?.reviewers?.length ? { reviewerEmail } : {}) });
+  const requireReviewer = () => {
+    if (!batch?.reviewers?.length || batch.reviewers.some((reviewer) => reviewer.email === reviewerEmail)) return true;
+    setMessage("Select your name from the Project reviewers before taking action.");
+    return false;
+  };
   const acknowledge = async (item: PublicCustomerReviewBatchItem) => {
-    if (!reviewRepository || pendingRef.current || !window.confirm(`Acknowledge ${item.deurNumber ?? "this DEUR"}?`)) return;
+    if (!reviewRepository || pendingRef.current || !requireReviewer() || !window.confirm(`Acknowledge ${item.deurNumber ?? "this DEUR"}?`)) return;
     pendingRef.current = true; setPendingItem(item.publicItemId); setMessage("");
     const result = await reviewRepository.acknowledgeItem(credential, item.publicItemId, identity());
     pendingRef.current = false; setPendingItem(undefined);
@@ -52,7 +59,8 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
   };
   const submitCorrection = async () => {
     const reason = remarks.trim();
-    if (!reviewRepository || !correctionItem || pendingRef.current || reason.length < CUSTOMER_CORRECTION_REASON_MIN_LENGTH) {
+    if (!reviewRepository || !correctionItem || pendingRef.current || !requireReviewer()) return;
+    if (reason.length < CUSTOMER_CORRECTION_REASON_MIN_LENGTH) {
       setMessage(`Please provide at least ${CUSTOMER_CORRECTION_REASON_MIN_LENGTH} characters describing the correction.`); return;
     }
     pendingRef.current = true; setPendingItem(correctionItem.publicItemId); setMessage("");
@@ -64,7 +72,7 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
   };
   const acknowledgeAll = async () => {
     const pendingIds = batch?.items.filter((item) => item.reviewState === "SUBMITTED_AWAITING_ACKNOWLEDGEMENT").map((item) => item.publicItemId) ?? [];
-    if (!reviewRepository?.acknowledgeItems || pendingRef.current || pendingIds.length === 0 ||
+    if (!reviewRepository?.acknowledgeItems || pendingRef.current || pendingIds.length === 0 || !requireReviewer() ||
       !window.confirm(`Acknowledge all ${pendingIds.length} pending DEURs in this review?`)) return;
     pendingRef.current = true; setPendingItem("bulk"); setMessage("");
     const result = await reviewRepository.acknowledgeItems(credential, pendingIds, identity());
@@ -86,7 +94,7 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
     .sort(([left], [right]) => right.localeCompare(left));
   return <Shell>
     <header className="space-y-2"><p className="text-sm font-medium text-blue-700">Secure grouped customer review</p><h1 className="text-2xl font-bold">Daily Equipment Utilization Reports</h1>
-      <dl className="grid gap-2 rounded-xl border bg-white p-5 sm:grid-cols-2"><Item label="Company" value={batch.company}/><Item label="Customer" value={batch.customer}/><Item label="Project" value={batch.project}/><Item label="Rental" value={batch.rental}/><Item label="Review date" value={batch.displayDate}/><Item label="Status" value={batch.batchStatus.replaceAll("_", " ")}/></dl>
+      <dl className="grid gap-2 rounded-xl border bg-white p-5 sm:grid-cols-2"><Item label="Company" value={batch.company}/><Item label="Customer" value={batch.customer}/><Item label="Project" value={batch.project}/><Item label={batch.reviewers?.length ? "Scope" : "Rental"} value={batch.rental}/><Item label="Review date" value={batch.displayDate}/><Item label="Status" value={batch.batchStatus.replaceAll("_", " ")}/></dl>
     </header>
     <section aria-label="Review summary" className="grid gap-3 sm:grid-cols-4">
       <Summary label="Awaiting Acknowledgement" value={batch.actionableCount}/><Summary label="In Progress" value={batch.inProgressCount}/><Summary label="Acknowledged" value={batch.acknowledgedCount}/><Summary label="Correction Requested" value={batch.correctionRequestedCount}/>
@@ -94,6 +102,10 @@ export default function GroupedCustomerReviewPage({ repository }: { repository?:
     <p role="status" className="rounded-lg border bg-white p-4 font-medium">
       {batch.actionableCount === 0 ? "All pending DEURs in this review have been reviewed." : `${reviewedCount} of ${reviewableCount} submitted DEURs reviewed · ${batch.actionableCount} remaining`}
     </p>
+    {Boolean(batch.reviewers?.length) && <section className="rounded-lg border bg-white p-4"><label htmlFor="project-reviewer" className="block font-semibold">Your name (required for every review action)</label>
+      <select id="project-reviewer" className="mt-2 w-full rounded border p-3" value={reviewerEmail} onChange={(event) => setReviewerEmail(event.target.value)}>
+        <option value="">Select a Project reviewer</option>{batch.reviewers?.map((reviewer) => <option key={reviewer.email} value={reviewer.email}>{reviewer.name}</option>)}
+      </select><p className="mt-2 text-sm text-slate-600">This shared link records the name you select. It does not independently verify your identity.</p></section>}
     {batch.actionableCount > 1 && reviewRepository?.acknowledgeItems && <button type="button" className="min-h-12 rounded-lg bg-emerald-700 px-6 py-3 font-bold text-white disabled:opacity-50" disabled={Boolean(pendingItem)} onClick={() => void acknowledgeAll()}>Acknowledge All Pending DEURs</button>}
     <section className="space-y-8" aria-label="Equipment lines">{itemsByWorkDate.map(([workDate, items]) => <section key={workDate} className="space-y-4" aria-label={`Work date ${workDate}`}>
       <header className="flex items-baseline justify-between border-b pb-2"><h2 className="text-xl font-bold">Work date: {workDate}</h2><span className="text-sm text-slate-600">{items?.length ?? 0} equipment line{items?.length === 1 ? "" : "s"}</span></header>
@@ -107,7 +119,7 @@ function ReviewLine({ item, pending, onAcknowledge, onCorrection }: { item: Publ
   const intervals = buildPublicReviewIntervals(item.timeline ?? []);
   const stateLabel: Record<PublicCustomerReviewBatchItem["reviewState"], string> = { SUBMITTED_AWAITING_ACKNOWLEDGEMENT: "Awaiting acknowledgement", IN_PROGRESS: "In progress", ACKNOWLEDGED: "Acknowledged", CORRECTION_REQUESTED: "Correction requested" };
   return <article className="space-y-4 rounded-xl border bg-white p-5"><header className="flex flex-wrap justify-between gap-3"><div><h3 className="text-lg font-bold">{item.equipmentName}</h3><p className="text-sm text-slate-600">Asset {item.assetNumber} · {item.operator ?? "Operator pending"}</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">{stateLabel[item.reviewState]}</span></header>
-    <dl className="grid gap-2 sm:grid-cols-3"><Item label="DEUR / revision" value={[item.deurNumber, item.revisionLabel].filter(Boolean).join(" ") || "In progress"}/><Item label="Work date" value={item.workDate ?? "Not available"}/><Item label="Shift" value={item.shift ?? "Not available"}/><Item label="Shift start" value={formatCustomerReviewDateTime(item.shiftStart)}/><Item label="Shift end" value={formatCustomerReviewDateTime(item.shiftEnd)}/><Item label="Meter" value={item.openingMeter === undefined ? "Not applicable" : `${item.openingMeter} – ${item.closingMeter ?? "In progress"}`}/></dl>
+    <dl className="grid gap-2 sm:grid-cols-3"><Item label="Rental" value={item.rentalReference ?? "Not available"}/><Item label="DEUR / revision" value={[item.deurNumber, item.revisionLabel].filter(Boolean).join(" ") || "In progress"}/><Item label="Work date" value={item.workDate ?? "Not available"}/><Item label="Shift" value={item.shift ?? "Not available"}/><Item label="Shift start" value={formatCustomerReviewDateTime(item.shiftStart)}/><Item label="Shift end" value={formatCustomerReviewDateTime(item.shiftEnd)}/><Item label="Meter" value={item.openingMeter === undefined ? "Not applicable" : `${item.openingMeter} – ${item.closingMeter ?? "In progress"}`}/></dl>
     <div className="grid gap-2 rounded bg-slate-50 p-3 text-sm sm:grid-cols-4"><span>Operation: {item.operationMinutes ?? 0} min</span><span>Idle: {item.idleMinutes ?? 0} min</span><span>Standby: {item.standbyMinutes ?? 0} min</span><span>Breakdown: {item.breakdownMinutes ?? 0} min</span></div>
     <div><h3 className="font-semibold">Activity Timeline</h3>{intervals.length ? <ol className="mt-2 space-y-2">{intervals.map(entry => <li key={`${entry.sequence}-${entry.start}`} className="text-sm"><b>{entry.sequence}. {entry.activity}</b><br/>{formatCustomerReviewDateTime(entry.start)} – {formatCustomerReviewDateTime(entry.end)}</li>)}</ol> : <p className="text-sm text-slate-600">No completed activity intervals are available.</p>}</div>
     {item.availableActions.length > 0 && <div className="flex flex-col gap-3 sm:flex-row"><button className="min-h-12 rounded-lg bg-emerald-700 px-6 py-3 font-bold text-white disabled:opacity-50" disabled={pending} onClick={onAcknowledge}>{pending ? "Processing…" : "Acknowledge DEUR"}</button><button className="min-h-12 rounded-lg border-2 border-amber-700 px-6 py-3 font-bold text-amber-800 disabled:opacity-50" disabled={pending} onClick={onCorrection}>Request Correction</button></div>}

@@ -15,6 +15,8 @@ INSERT INTO erp.user_roles(user_id,role_id) SELECT '831c0000-0000-4000-8000-0000
 INSERT INTO erp.user_roles(user_id,role_id) SELECT '831c0000-0000-4000-8000-000000000002',id FROM erp.app_roles WHERE code='operator';
 INSERT INTO erp.customers(id,customer_code,name,company_id) VALUES ('CUST-SUBMIT-HANDOFF','SUBMIT-HANDOFF','Local customer','TEST-SUBMIT-HANDOFF');
 INSERT INTO erp.projects(id,project_code,name,customer_id,company_id) VALUES ('PRJ-SUBMIT-HANDOFF','SUBMIT-HANDOFF','Local project','CUST-SUBMIT-HANDOFF','TEST-SUBMIT-HANDOFF');
+INSERT INTO erp.project_customer_review_recipients(company_id,project_id,recipients,updated_by)
+ VALUES ('TEST-SUBMIT-HANDOFF','PRJ-SUBMIT-HANDOFF','[{"name":"Project reviewer","email":"project-reviewer@example.invalid"}]'::jsonb,'fixture');
 INSERT INTO erp.equipment(id,asset_no,equipment_name,maintenance_type,status_id,project_id,operator_id,company_id)
  SELECT 'EQP-SUBMIT-HANDOFF','SUBMIT-HANDOFF-001','Local equipment','None',id,'PRJ-SUBMIT-HANDOFF','OPR-SUBMIT-HANDOFF','TEST-SUBMIT-HANDOFF' FROM erp.equipment_statuses WHERE lower(code)='assigned' ORDER BY id LIMIT 1;
 INSERT INTO erp.equipment(id,asset_no,equipment_name,maintenance_type,status_id,project_id,operator_id,company_id)
@@ -64,6 +66,9 @@ DO $test$ BEGIN
   THEN RAISE EXCEPTION 'Submitted DEUR must appear once with review request'; END IF;
   IF (SELECT count(*) FROM erp.notification_outbox WHERE company_id='TEST-SUBMIT-HANDOFF' AND notification_type='CUSTOMER_GROUPED_REVIEW_REQUESTED')<>1
   THEN RAISE EXCEPTION 'Customer acknowledgement must be queued once'; END IF;
+  IF EXISTS(SELECT 1 FROM erp.notification_outbox WHERE company_id='TEST-SUBMIT-HANDOFF'
+    AND recipient_destination='handoff-recipient@example.invalid')
+  THEN RAISE EXCEPTION 'Legacy Rental recipient received Project review notification'; END IF;
 END $test$;
 -- A missing batch item must abort the entire Submit command, including any
 -- in-transaction review request, batch and outbox writes.

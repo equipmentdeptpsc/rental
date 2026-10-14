@@ -4,6 +4,7 @@ import OverviewTab from "./OverviewTab";
 import TimelineTab from "./TimelineTab";
 import AssignmentTab from "./AssignmentTab";
 import DeurTab from "./DeurTab";
+import CustomerReviewTab from "./CustomerReviewTab";
 import BillingTab from "./BillingTab";
 import InvoiceTab from "./InvoiceTab";
 import CollectionTab from "./CollectionTab";
@@ -24,6 +25,7 @@ export const TAB_COMPONENTS: Record<
   assignments: AssignmentTab,
 
   deur: DeurTab,
+  "customer-review": CustomerReviewTab,
 
   billing: BillingTab,
 

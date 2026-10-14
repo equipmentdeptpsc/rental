@@ -44,7 +44,7 @@ export class SupabasePublicCustomerReviewBatchRepository implements PublicCustom
     return this.call("get_customer_review_batch", { credential });
   }
 
-  acknowledgeItem(credential: string, publicItemId: string, command: { commandId: string; idempotencyKey: string }) {
+  acknowledgeItem(credential: string, publicItemId: string, command: { commandId: string; idempotencyKey: string; reviewerEmail?: string }) {
     return this.call("acknowledge_customer_review_batch_item", { credential, publicItemId, ...command });
   }
 
@@ -52,14 +52,14 @@ export class SupabasePublicCustomerReviewBatchRepository implements PublicCustom
     credential: string,
     publicItemId: string,
     remarks: string,
-    command: { commandId: string; idempotencyKey: string },
+    command: { commandId: string; idempotencyKey: string; reviewerEmail?: string },
   ) {
     return this.call("request_customer_review_batch_item_correction", {
       credential, publicItemId, remarks: remarks.trim(), ...command,
     });
   }
 
-  acknowledgeItems(credential: string, publicItemIds: string[], command: { commandId: string; idempotencyKey: string }) {
+  acknowledgeItems(credential: string, publicItemIds: string[], command: { commandId: string; idempotencyKey: string; reviewerEmail?: string }) {
     return this.call("acknowledge_customer_review_batch_items", { credential, publicItemIds, ...command });
   }
 }

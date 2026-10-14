@@ -71,6 +71,36 @@ describe("grouped Customer Review email template", () => {
 });
 
 describe("trusted grouped issuance orchestration", () => {
+  it("does not attempt a second delivery for an existing immutable Project batch", async () => {
+    const provider = new FakeEmailDeliveryProvider("success");
+    const repository: TrustedReviewIssuanceRepository = {
+      issue: async () => ({ success: true, disposition: "EXISTING" }),
+      getIntent: vi.fn(), claim: vi.fn(), claimBatch: async () => [], complete: vi.fn(),
+    };
+    const result = await new TrustedReviewIssuanceOrchestrator(repository, provider,
+      "sender@example.invalid", "https://uat.pscequipment.online").issue("grouped-customer", {});
+    expect(result.disposition).toBe("EXISTING");
+    expect(provider.evidence().callCount).toBe(0);
+  });
+  it("delivers the same Project review link to each recipient without returning it", async () => {
+    const provider = new FakeEmailDeliveryProvider("success");
+    const complete = vi.fn();
+    const repository: TrustedReviewIssuanceRepository = {
+      issue: async () => ({ success: true, disposition: "CREATED", reviewPath: "/review/customer/grouped/shared",
+        notificationIntentId: "intent-1", notificationIntentIds: ["intent-1", "intent-2"] }),
+      getIntent: async (id) => ({ id, companyId: "tenant", type: "CUSTOMER_GROUPED_REVIEW_REQUESTED",
+        recipient: { destination: `${id}@example.invalid`, displayName: id }, sourceAggregateType: "CUSTOMER_REVIEW_BATCH",
+        sourceAggregateId: "batch", templateVersion: 3, idempotencyKey: id, requiresReviewCredential: true,
+        attempt: 0, input: { ...groupedInput, reviewUrl: undefined } }),
+      claim: async () => true, claimBatch: async () => [], complete,
+    };
+    const result = await new TrustedReviewIssuanceOrchestrator(repository, provider,
+      "sender@example.invalid", "https://uat.pscequipment.online").issue("grouped-customer", {});
+    expect(result).toMatchObject({ success: true, deliveryStatus: "ProviderAccepted" });
+    expect(provider.evidence().callCount).toBe(2);
+    expect(complete).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(result)).not.toContain("/review/customer/grouped/shared");
+  });
   it("delivers once, uses the grouped path, and redacts the one-time handoff", async () => {
     const provider = new FakeEmailDeliveryProvider("success"); let issued = 0; let claimed = false;
     const repository: TrustedReviewIssuanceRepository = {

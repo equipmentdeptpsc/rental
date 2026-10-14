@@ -7,7 +7,8 @@ export interface DailyGroupedReviewDiscovery { runId:string; candidates:DailyGro
 export interface DailyGroupedReviewRepository {
  discover(command:{commandId:string;idempotencyKey:string;runAt:string;batchLimit:number}):Promise<DailyGroupedReviewDiscovery>;
  resolvePrincipal(companyId:string):Promise<{success:boolean;code?:string;principalId?:string}>;
- prepare(command:Record<string,unknown>):Promise<{success:boolean;code?:string;disposition?:string;value?:{notificationIntentId?:string}}>;
+ prepare(command:Record<string,unknown>):Promise<{success:boolean;code?:string;disposition?:string;value?:{notificationIntentId?:string;notificationIntentIds?:string[]}}>;
+ prepareProject?(command:Record<string,unknown>,reviewPath:string,encryptionKey:Buffer):Promise<{success:boolean;code?:string;disposition?:string;value?:{notificationIntentId?:string;notificationIntentIds?:string[]}}>;
  completeGroup(groupId:string,runId:string,outcome:"PREPARED"|"REPLAYED"|"FAILED"):Promise<void>;
  complete(runId:string,result:DailyGroupedReviewRunResult):Promise<void>;
 }
@@ -26,9 +27,12 @@ export class DailyGroupedCustomerReviewService {
     if(!authority.success||!authority.principalId){failed++;failureCodes.push(authority.code??"SCHEDULER_PRINCIPAL_NOT_CONFIGURED");continue;}
     const notificationId=randomUUID();const credential=generateGroupedReviewCredential();
     const envelope:GroupedReviewDeliveryEnvelope=encryptGroupedReviewDeliveryEnvelope(credential.reviewPath,notificationId,this.encryptionKey);
-    const result=await this.repository.prepare({commandId:randomUUID(),idempotencyKey:`daily:${candidate.rentalId}:${candidate.businessDate}`,rentalId:candidate.rentalId,businessDate:candidate.businessDate,principalId:authority.principalId,notificationId,credentialHash:credential.hash,...envelope});
+    const base={commandId:randomUUID(),idempotencyKey:`daily:${candidate.rentalId}:${candidate.businessDate}`,rentalId:candidate.rentalId,businessDate:candidate.businessDate,principalId:authority.principalId,credentialHash:credential.hash};
+    const result=await (this.repository.prepareProject
+      ? this.repository.prepareProject(base,credential.reviewPath,this.encryptionKey)
+      : this.repository.prepare({...base,notificationId,...envelope}));
     if(!result.success){failed++;failureCodes.push(result.code??"PREPARATION_FAILED");}
-    else if(result.disposition==="CREATED"){prepared++;outcome="PREPARED";if(result.value?.notificationIntentId)notifications++;}
+    else if(result.disposition==="CREATED"){prepared++;outcome="PREPARED";notifications+=result.value?.notificationIntentIds?.length??(result.value?.notificationIntentId?1:0);}
     else{replayed++;outcome="REPLAYED";}
    }catch{failed++;failureCodes.push("GROUP_PREPARATION_FAILED");}
    finally{await this.repository.completeGroup(candidate.groupId,discovery.runId,outcome);}

@@ -4,8 +4,9 @@ import {
   type WorkspaceTab,
 } from "../types";
 import type { WorkspaceTabBadge } from "../presentation/workspaceTabBadges";
+import { useAuth } from "@/features/auth/AuthContext";
 
-const closedAllowed = new Set<WorkspaceTab>(["overview", "timeline", "deur", "invoices", "collections"]);
+const closedAllowed = new Set<WorkspaceTab>(["overview", "timeline", "deur", "customer-review", "invoices", "collections"]);
 export default function RentalWorkspaceTabs({
   activeTab,
   onChange,
@@ -17,10 +18,13 @@ export default function RentalWorkspaceTabs({
   readOnly?: boolean;
   badges?: Partial<Record<WorkspaceTab, WorkspaceTabBadge>>;
 }) {
+  const { hasPermission } = useAuth();
+  const canMonitorReview = hasPermission("rental.read") && hasPermission("project.read") && hasPermission("deur.read");
   return (
     <div className="app-card overflow-hidden">
       <div className="flex overflow-x-auto" role="tablist" aria-label="Rental workspace sections">
         {WORKSPACE_TABS.map((tab) => {
+          if (tab.id === "customer-review" && !canMonitorReview) return null;
           const badge = badges[tab.id];
           const selected = activeTab === tab.id;
           return (

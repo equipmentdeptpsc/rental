@@ -104,4 +104,30 @@ describe("grouped public Customer Review page", () => {
     await act(async () => buttons[1].click());
     const dialog = container.querySelector('[role="dialog"]')!; expect(dialog.textContent).toContain("Excavator B"); expect(dialog.textContent).toContain("B-1"); expect(dialog.textContent).toContain("DEUR-B R1");
   });
+
+  it("requires a claimed reviewer from the Project snapshot for individual and bulk actions", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const projectBatch = { ...batch, reviewers: [
+      { name: "Project reviewer one", email: "one@example.invalid" },
+      { name: "Project reviewer two", email: "two@example.invalid" },
+    ], items: batch.items.map((item, index) => ({ ...item, rentalReference: index === 1 ? "RENT-2" : "RENT-1" })) };
+    const lookup = vi.fn().mockResolvedValue({ success: true, disposition: "AVAILABLE", value: projectBatch });
+    const acknowledgeItem = vi.fn().mockResolvedValue({ success: true, disposition: "ACCEPTED", value: projectBatch });
+    const acknowledgeItems = vi.fn().mockResolvedValue({ success: true, disposition: "ACCEPTED", value: projectBatch });
+    const repository: PublicCustomerReviewBatchRepository = { lookup, acknowledgeItem, requestCorrection: vi.fn(), acknowledgeItems };
+    const container = await render(repository);
+    const individual = [...container.querySelectorAll("button")].find(button => button.textContent === "Acknowledge DEUR")!;
+    await act(async () => individual.click());
+    expect(acknowledgeItem).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Select your name from the Project reviewers");
+    const select = container.querySelector<HTMLSelectElement>("#project-reviewer")!;
+    await act(async () => { select.value = "two@example.invalid"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+    await act(async () => individual.click());
+    expect(acknowledgeItem).toHaveBeenCalledWith("opaque", "item-a", expect.objectContaining({ reviewerEmail: "two@example.invalid" }));
+    const bulk = [...container.querySelectorAll("button")].find(button => button.textContent === "Acknowledge All Pending DEURs")!;
+    await act(async () => bulk.click());
+    expect(acknowledgeItems).toHaveBeenCalledWith("opaque", ["item-a", "item-b"], expect.objectContaining({ reviewerEmail: "two@example.invalid" }));
+    expect(container.textContent).toContain("This shared link records the name you select");
+    expect(container.textContent).toContain("RENT-2");
+  });
 });

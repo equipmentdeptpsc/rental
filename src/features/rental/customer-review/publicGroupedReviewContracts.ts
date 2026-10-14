@@ -21,6 +21,7 @@ export type PublicGroupedFailureCode =
 
 export interface PublicCustomerReviewBatchItem {
   publicItemId: string;
+  rentalReference?: string;
   equipmentName: string;
   assetNumber: string;
   operator?: string;
@@ -46,6 +47,7 @@ export interface PublicCustomerReviewBatch {
   customer: string;
   project: string;
   rental: string;
+  reviewers?: Array<{ name: string; email: string }>;
   reviewDate: string;
   businessTimezone: string;
   displayDate: string;
@@ -67,17 +69,17 @@ export interface PublicCustomerReviewBatchRepository {
   acknowledgeItem(
     credential: string,
     publicItemId: string,
-    command: { commandId: string; idempotencyKey: string },
+    command: { commandId: string; idempotencyKey: string; reviewerEmail?: string },
   ): Promise<PublicGroupedReviewResult<PublicCustomerReviewBatch>>;
   requestCorrection(
     credential: string,
     publicItemId: string,
     remarks: string,
-    command: { commandId: string; idempotencyKey: string },
+    command: { commandId: string; idempotencyKey: string; reviewerEmail?: string },
   ): Promise<PublicGroupedReviewResult<PublicCustomerReviewBatch>>;
   acknowledgeItems?(
     credential: string,
     publicItemIds: string[],
-    command: { commandId: string; idempotencyKey: string },
+    command: { commandId: string; idempotencyKey: string; reviewerEmail?: string },
   ): Promise<PublicGroupedReviewResult<PublicCustomerReviewBatch>>;
 }

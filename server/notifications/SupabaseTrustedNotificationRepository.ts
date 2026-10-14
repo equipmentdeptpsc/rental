@@ -36,15 +36,29 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
     if (kind === "grouped-customer") {
       const actor = await this.authenticated.auth.getUser();
       if (actor.error || !actor.data.user) throw new Error("Grouped review actor is unavailable.");
-      const notificationId = randomUUID();
+      const rentalId = typeof command.rentalId === "string" ? command.rentalId : "";
+      const reviewers = await this.rpc<RpcResult<{ recipients: Array<{ name: string; email: string }> }>>(
+        this.service, "read_project_review_delivery_recipients", {
+          target_rental_id: rentalId, actor_id: actor.data.user.id, scheduler: false,
+        },
+      );
+      if (!reviewers?.success || !reviewers.value?.recipients?.length) {
+        return { success: false, code: reviewers?.code ?? "PROJECT_REVIEW_RECIPIENTS_REQUIRED" };
+      }
       const credential = generateGroupedReviewCredential();
-      const envelope = encryptGroupedReviewDeliveryEnvelope(credential.reviewPath, notificationId, this.deliveryKey());
-      const result = await this.rpc<Record<string, any>>(this.service, "trusted_prepare_grouped_customer_review_delivery", {
-        command: { ...command, actorId: actor.data.user.id, notificationId, credentialHash: credential.hash, ...envelope },
+      const envelopes = reviewers.value.recipients.map((reviewer) => {
+        const notificationId = randomUUID();
+        return { recipientEmail: reviewer.email, notificationId,
+          ...encryptGroupedReviewDeliveryEnvelope(credential.reviewPath, notificationId, this.deliveryKey()) };
+      });
+      const result = await this.rpc<Record<string, any>>(this.service, "trusted_prepare_project_grouped_review_delivery", {
+        command: { ...command, actorId: actor.data.user.id, scheduler: false,
+          credentialHash: credential.hash, envelopes },
       });
       return { ...result, success: result?.success === true,
         ...(result?.disposition === "CREATED" ? { reviewPath: credential.reviewPath } : {}),
-        notificationIntentId: result?.value?.notificationIntentId };
+        notificationIntentId: result?.value?.notificationIntentIds?.[0],
+        notificationIntentIds: result?.value?.notificationIntentIds };
     }
     const name = kind === "customer" ? "trusted_issue_customer_review" : "trusted_issue_manager_review";
     const result = await this.rpc<Record<string, any>>(this.authenticated, name, { command });
@@ -85,7 +99,29 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
     return result.value;
   }
 
+  private async preparePendingProjectReviewBatches(limit: number): Promise<void> {
+    const pending = await this.rpc<RpcResult<Array<{ batchId: string; notificationIds: string[] }>>>(
+      this.service, "read_pending_project_review_batch_handoffs", { batch_size: Math.max(1, Math.min(limit, 50)) },
+    );
+    if (!pending?.success) throw new Error(`Project review handoff discovery failed (${pending?.code ?? "unknown"}).`);
+    for (const batch of pending.value ?? []) {
+      if (!batch.batchId || !Array.isArray(batch.notificationIds) || batch.notificationIds.length === 0) {
+        throw new Error("Project review handoff returned an invalid batch.");
+      }
+      const credential = generateGroupedReviewCredential();
+      const envelopes = batch.notificationIds.map((notificationId) => ({
+        notificationId,
+        ...encryptGroupedReviewDeliveryEnvelope(credential.reviewPath, notificationId, this.deliveryKey()),
+      }));
+      const prepared = await this.rpc<RpcResult<unknown>>(this.service, "prepare_project_review_batch_handoff", {
+        command: { batchId: batch.batchId, credentialHash: credential.hash, envelopes },
+      });
+      if (!prepared?.success) throw new Error(`Project review handoff preparation failed (${prepared?.code ?? "unknown"}).`);
+    }
+  }
+
   async claim(id: string, workerId: string): Promise<boolean> {
+    await this.preparePendingProjectReviewBatches(50);
     const result = await this.rpc<RpcResult<unknown>>(this.service, "claim_notification_delivery", {
       notification_id: id, worker_id: workerId,
     });
@@ -93,6 +129,7 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
   }
 
   async claimBatch(workerId: string, limit: number): Promise<ClaimedNotification[]> {
+    await this.preparePendingProjectReviewBatches(limit);
     const result = await this.rpc<RpcResult<Array<{ id: string }>>>(
       this.service, "claim_notification_delivery_batch", { worker_id: workerId, batch_size: limit },
     );

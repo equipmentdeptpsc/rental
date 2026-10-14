@@ -7,6 +7,7 @@ export type RentalWorkspaceTab =
   | "timeline"
   | "assignments"
   | "deur"
+  | "customer-review"
   | "billing"
   | "invoices"
   | "collections"
@@ -39,6 +40,10 @@ export const WORKSPACE_TABS: WorkspaceTabItem[] = [
   {
     id: "deur",
     label: "Daily Operations",
+  },
+  {
+    id: "customer-review",
+    label: "Customer Review",
   },
   {
     id: "billing",
