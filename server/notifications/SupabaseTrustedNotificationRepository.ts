@@ -14,6 +14,10 @@ import { buildInvoiceDocument, type InvoiceDocument } from "../../src/features/r
 import type { BillingStatement, BillingStatementLine } from "../../src/features/rental/billingstatement/types";
 
 type RpcResult<T> = { success: boolean; code?: string; disposition?: string; value?: T };
+export interface GuardedProjectReviewPreflightInput {
+  actorId: string; batchId: string; deurNumber: string; notificationIds: readonly string[];
+  phase: "BEFORE_PREPARATION" | "AFTER_PREPARATION";
+}
 
 export class SupabaseTrustedNotificationRepository
 implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository {
@@ -121,11 +125,26 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
   }
 
   async claim(id: string, workerId: string): Promise<boolean> {
-    await this.preparePendingProjectReviewBatches(50);
     const result = await this.rpc<RpcResult<unknown>>(this.service, "claim_notification_delivery", {
       notification_id: id, worker_id: workerId,
     });
     return result.success;
+  }
+
+  async preflightGuardedProjectReviewFirstDelivery(input: GuardedProjectReviewPreflightInput): Promise<RpcResult<unknown>> {
+    return this.rpc<RpcResult<unknown>>(this.service, "preflight_guarded_project_review_first_delivery", {
+      command: { actorId: input.actorId, batchId: input.batchId, deurNumber: input.deurNumber,
+        notificationIds: [...input.notificationIds], phase: input.phase },
+    });
+  }
+
+  async prepareExactProjectReviewBatch(batchId: string, notificationIds: readonly string[]): Promise<RpcResult<unknown>> {
+    const credential = generateGroupedReviewCredential();
+    const envelopes = notificationIds.map((notificationId) => ({ notificationId,
+      ...encryptGroupedReviewDeliveryEnvelope(credential.reviewPath, notificationId, this.deliveryKey()) }));
+    return this.rpc<RpcResult<unknown>>(this.service, "prepare_project_review_batch_handoff", {
+      command: { batchId, credentialHash: credential.hash, envelopes },
+    });
   }
 
   async claimBatch(workerId: string, limit: number): Promise<ClaimedNotification[]> {

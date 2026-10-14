@@ -24,6 +24,12 @@ export interface TrustedNotificationWorkerRepository {
   loadBillingStatementDocument?(statementId: string, companyId: string, sourceVersion: number): Promise<InvoiceDocument | undefined>;
 }
 export interface SafeProviderOutcomeLogger { log(event: Record<string, unknown>): void }
+export interface ExistingNotificationDeliveryResult {
+  claimed: number;
+  providerCalls: number;
+  status?: DeliveryStatus;
+  ambiguous: boolean;
+}
 
 export class TrustedNotificationWorker {
   constructor(
@@ -38,34 +44,49 @@ export class TrustedNotificationWorker {
 
   async runOnce(workerId = randomUUID()): Promise<{ claimed: number; providerCalls: number }> {
     const claimed = await this.repository.claimBatch(workerId, Math.max(1, Math.min(this.batchSize, 50)));
-    return this.deliverClaimed(claimed, workerId);
+    const result = await this.deliverClaimed(claimed, workerId);
+    return { claimed: result.claimed, providerCalls: result.providerCalls };
   }
 
   async runExistingNotification(id: string, workerId = randomUUID()): Promise<{ claimed: number; providerCalls: number }> {
-    if (!this.repository.claim || !this.repository.getIntent || !await this.repository.claim(id, workerId)) return { claimed: 0, providerCalls: 0 };
-    return this.deliverClaimed([await this.repository.getIntent(id)], workerId);
+    const result = await this.runExistingNotificationDetailed(id, workerId);
+    return { claimed: result.claimed, providerCalls: result.providerCalls };
   }
 
-  private async deliverClaimed(claimed: ClaimedNotification[], workerId: string): Promise<{ claimed: number; providerCalls: number }> {
+  async runExistingNotificationDetailed(id: string, workerId = randomUUID(), options: { terminalReviewFailure?: boolean } = {}): Promise<ExistingNotificationDeliveryResult> {
+    if (!this.repository.claim || !this.repository.getIntent || !await this.repository.claim(id, workerId)) {
+      return { claimed: 0, providerCalls: 0, ambiguous: false };
+    }
+    const result = await this.deliverClaimed([await this.repository.getIntent(id)], workerId, options);
+    const status = result.statuses.get(id);
+    return { claimed: result.claimed, providerCalls: result.providerCalls, ...(status ? { status } : {}), ambiguous: status === "UnknownOutcome" };
+  }
+
+  private async deliverClaimed(claimed: ClaimedNotification[], workerId: string, options: { terminalReviewFailure?: boolean } = {}): Promise<{ claimed: number; providerCalls: number; statuses: Map<string, DeliveryStatus> }> {
     let providerCalls = 0;
+    const statuses = new Map<string, DeliveryStatus>();
+    const complete = async (input: Parameters<TrustedNotificationWorkerRepository["complete"]>[0]) => {
+      await this.repository.complete(input);
+      statuses.set(input.id, input.status);
+    };
     for (const intent of claimed) {
       if (intent.type === "BILLING_STATEMENT_EMAIL") {
         const sourceVersion = Number(intent.input.sourceVersion);
         const document = Number.isSafeInteger(sourceVersion) && sourceVersion > 0
           ? await this.repository.loadBillingStatementDocument?.(intent.sourceAggregateId, intent.companyId, sourceVersion)
           : undefined;
-        if (!document) { await this.repository.complete({ id:intent.id,workerId,status:"DeadLetter",failureCategory:"Cancelled",notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
+        if (!document) { await complete({ id:intent.id,workerId,status:"DeadLetter",failureCategory:"Cancelled",notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
         const delivered = await sendBillingStatementEmail({ document, provider:this.provider, from:this.from, idempotencyKey:intent.idempotencyKey });
-        if (delivered.success) { providerCalls++; await this.repository.complete({ id:intent.id,workerId,status:"ProviderAccepted",providerName:delivered.provider,providerMessageId:delivered.providerMessageId,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
-        if (delivered.code === "PDF_GENERATION_FAILED" || delivered.code === "RECIPIENT_REQUIRED") { await this.repository.complete({ id:intent.id,workerId,status:"DeadLetter",failureCategory:delivered.code === "PDF_GENERATION_FAILED"?"TemplateFailure":"InvalidRecipient",notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
+        if (delivered.success) { providerCalls++; await complete({ id:intent.id,workerId,status:"ProviderAccepted",providerName:delivered.provider,providerMessageId:delivered.providerMessageId,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
+        if (delivered.code === "PDF_GENERATION_FAILED" || delivered.code === "RECIPIENT_REQUIRED") { await complete({ id:intent.id,workerId,status:"DeadLetter",failureCategory:delivered.code === "PDF_GENERATION_FAILED"?"TemplateFailure":"InvalidRecipient",notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied }); continue; }
         providerCalls++; const failure=delivered.delivery&&!delivered.delivery.accepted?delivered.delivery:undefined; const decision=decideNotificationFailure(failure?.category??"UnknownProviderFailure",false,intent.attempt,failure?.retryAfterSeconds);
-        await this.repository.complete({id:intent.id,workerId,status:decision.status,failureCategory:failure?.category??"UnknownProviderFailure",retryAfterSeconds:decision.delaySeconds,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied}); continue;
+        await complete({id:intent.id,workerId,status:decision.status,failureCategory:failure?.category??"UnknownProviderFailure",retryAfterSeconds:decision.delaySeconds,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied}); continue;
       }
       let reviewUrl: string | undefined;
       if (intent.requiresReviewCredential) {
         const resolution = await this.repository.resolveGroupedReviewDelivery?.(intent.id);
         if (resolution?.status === "EXPIRED" || resolution?.status === "SUPERSEDED") {
-          await this.repository.complete({ id: intent.id, workerId,
+          await complete({ id: intent.id, workerId,
             status: resolution.status === "SUPERSEDED" ? "Superseded" : "Cancelled",
             failureCategory: resolution.status === "SUPERSEDED" ? "Superseded" : "Cancelled" });
           continue;
@@ -73,7 +94,7 @@ export class TrustedNotificationWorker {
         const path = resolution?.status === "ACTIVE" ? resolution.reviewPath
           : await this.repository.getGroupedReviewPath?.(intent.id);
         if (!path) {
-          await this.repository.complete({ id: intent.id, workerId, status: "FailedCredentialLost", failureCategory: "Cancelled" });
+          await complete({ id: intent.id, workerId, status: "FailedCredentialLost", failureCategory: "Cancelled" });
           continue;
         }
         reviewUrl = new URL(path, this.publicBaseUrl).toString();
@@ -81,7 +102,7 @@ export class TrustedNotificationWorker {
       let email;
       try { email = renderNotificationTemplate(intent.type, { ...intent.input, ...(reviewUrl ? { reviewUrl } : {}) }); }
       catch {
-        await this.repository.complete({ id: intent.id, workerId, status: "DeadLetter", failureCategory: "TemplateFailure" });
+        await complete({ id: intent.id, workerId, status: "DeadLetter", failureCategory: "TemplateFailure" });
         continue;
       }
       providerCalls++;
@@ -92,25 +113,25 @@ export class TrustedNotificationWorker {
       if (result.accepted) {
         this.logger?.log({ provider: result.provider, outcomeCategory: "ProviderAccepted",
           deliveryOutcome: "KNOWN_PROVIDER_RESPONSE", retryable: false, attempt: intent.attempt });
-        await this.repository.complete({
+        await complete({
           id: intent.id, workerId, status: "ProviderAccepted",
           providerName: result.provider, providerMessageId: result.providerMessageId,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied,
         });
       } else {
         const decision = decideNotificationFailure(
-          result.category, false, intent.attempt, result.retryAfterSeconds,
+          result.category, options.terminalReviewFailure === true && Boolean(intent.requiresReviewCredential), intent.attempt, result.retryAfterSeconds,
         );
         this.logger?.log({ provider: result.provider, outcomeCategory: result.category,
           deliveryOutcome: result.diagnostic?.deliveryOutcome ?? "UNKNOWN_DELIVERY_OUTCOME",
           retryable: decision.retryable, attempt: intent.attempt,
           ...(result.diagnostic?.exceptionName ? { exceptionName: result.diagnostic.exceptionName } : {}),
           ...(result.diagnostic?.httpStatus ? { httpStatus: result.diagnostic.httpStatus } : {}) });
-        await this.repository.complete({
+        await complete({
           id: intent.id, workerId, status: decision.status,
           failureCategory: result.category, retryAfterSeconds: decision.delaySeconds,notificationType:intent.type,uatOverrideApplied:this.uatOverrideApplied,
         });
       }
     }
-    return { claimed: claimed.length, providerCalls };
+    return { claimed: claimed.length, providerCalls, statuses };
   }
 }

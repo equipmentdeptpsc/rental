@@ -21,6 +21,7 @@ import{inspectUatDeurOfflineRestartDomain,provisionUatDeurOfflineRestartDomain}f
 import{inspectUatDeurNativeRestartDomain,provisionUatDeurNativeRestartDomain}from"./uatDeurNativeRestartDomainProvisioner";
 import{advanceUatLimitedPilotBusinessDate,inspectUatLimitedOperationalPilot,inspectUatLimitedOperationalPilotIdentities,inspectUatLimitedPilotBusinessDate,inspectUatLimitedPilotDailyEligibility,inspectUatLimitedPilotDeurs,inspectUatLimitedPilotScenario1,inspectUatLimitedPilotScenarios,provisionUatLimitedOperationalPilot}from"./uatLimitedOperationalPilotProvisioner";
 import{uatAdminCorsHeaders}from"./uatAdminCors";
+import{runGuardedProjectReviewFirstDelivery}from"./guardedProjectReviewFirstDelivery";
 
 interface ScheduledController{cron:string;scheduledTime:number}
 interface ExecutionContext{waitUntil(promise:Promise<unknown>):void}
@@ -57,6 +58,11 @@ export default{
    if(request.method!=="POST")return Response.json({result:"UNAVAILABLE"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
    try{const verified=await createUatProviderAuthentication(environment).handle(request);return Response.json(verified.body,{status:verified.status,headers:{"cache-control":"no-store"}});}
    catch{return Response.json({result:"UNAVAILABLE"},{status:503,headers:{"cache-control":"no-store"}});}
+  }
+  if(path==="/api/admin/uat/preflight-project-review-first-delivery"||path==="/api/admin/uat/execute-project-review-first-delivery"){
+   if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
+   try{const phase=path.includes("/execute-")?"EXECUTE":"PREFLIGHT";const result=await runGuardedProjectReviewFirstDelivery(request,environment,phase);return Response.json(result.body,{status:result.status,headers:{"cache-control":"no-store"}});}
+   catch{return Response.json({success:false,code:"GUARDED_FIRST_DELIVERY_UNAVAILABLE"},{status:503,headers:{"cache-control":"no-store"}});}
   }
   if(path==="/api/admin/uat/run-grouped-review-certification"){
    if(request.method!=="POST")return Response.json({success:false,code:"METHOD_NOT_ALLOWED"},{status:405,headers:{allow:"POST","cache-control":"no-store"}});
