@@ -17,8 +17,9 @@ export interface GuardedDeliveryRepository {
   preflightGuardedProjectReviewFirstDelivery(input: {
     actorId: string; batchId: string; deurNumber: string; notificationIds: readonly string[];
     phase: "BEFORE_PREPARATION" | "AFTER_PREPARATION";
-  }): Promise<{ success: boolean; code?: string; disposition?: string }>;
+  }): Promise<{ success: boolean; code?: string; disposition?: string; value?: { activeEnvelopeCount?: number } }>;
   prepareExactProjectReviewBatch(batchId: string, notificationIds: readonly string[]): Promise<{ success: boolean; code?: string; disposition?: string }>;
+  validateExactProjectReviewCredentials(notificationIds: readonly string[]): Promise<boolean>;
 }
 export interface GuardedDeliveryDependencies {
   repository: GuardedDeliveryRepository;
@@ -47,6 +48,13 @@ export class GuardedProjectReviewFirstDelivery {
       notificationIds: scope.notificationIds, phase: "BEFORE_PREPARATION",
     });
     if (!before.success) return { success: false, code: before.code ?? "PREFLIGHT_REJECTED", prepared: false, dispatched: [] };
+    const existingEnvelopeCount = before.value?.activeEnvelopeCount;
+    if (existingEnvelopeCount !== 0 && existingEnvelopeCount !== 2) {
+      return { success: false, code: "DELIVERY_ENVELOPE_NOT_EXACT", prepared: false, dispatched: [] };
+    }
+    if (existingEnvelopeCount === 2 && !await this.dependencies.repository.validateExactProjectReviewCredentials(scope.notificationIds)) {
+      return { success: false, code: "CREDENTIAL_VALIDATION_FAILED", prepared: false, dispatched: [] };
+    }
     const readiness = await this.dependencies.providerReady();
     if (readiness !== "VALID") return { success: false, code: `PROVIDER_${readiness}`, prepared: false, dispatched: [] };
     if (phase === "PREFLIGHT") return { success: true, disposition: "PREFLIGHT_READY", prepared: false, dispatched: [] };
@@ -60,6 +68,9 @@ export class GuardedProjectReviewFirstDelivery {
       notificationIds: scope.notificationIds, phase: "AFTER_PREPARATION",
     });
     if (!after.success) return { success: false, code: after.code ?? "REVALIDATION_REJECTED", prepared: true, dispatched: [] };
+    if (!await this.dependencies.repository.validateExactProjectReviewCredentials(scope.notificationIds)) {
+      return { success: false, code: "CREDENTIAL_VALIDATION_FAILED", prepared: true, dispatched: [] };
+    }
 
     const dispatched: string[] = [];
     for (const notificationId of scope.notificationIds) {

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { GuardedProjectReviewFirstDelivery, GUARDED_PROJECT_REVIEW_SCOPE,
@@ -13,8 +13,10 @@ const accepted = { claimed: 1, providerCalls: 1, status: "ProviderAccepted" as c
 function dependencies(overrides: Partial<GuardedDeliveryDependencies> = {}): GuardedDeliveryDependencies {
   return {
     repository: {
-      preflightGuardedProjectReviewFirstDelivery: vi.fn(async () => ({ success: true, disposition: "READY" })),
+      preflightGuardedProjectReviewFirstDelivery: vi.fn(async input => ({ success: true, disposition: "READY",
+        value: { activeEnvelopeCount: input.phase === "BEFORE_PREPARATION" ? 0 : 2 } })),
       prepareExactProjectReviewBatch: vi.fn(async () => ({ success: true, disposition: "PREPARED" })),
+      validateExactProjectReviewCredentials: vi.fn(async () => true),
     },
     providerReady: vi.fn(async (): Promise<"VALID"> => "VALID"),
     recipientOverrideMatches: vi.fn(async () => true),
@@ -63,11 +65,42 @@ describe("guarded Project Review first delivery", () => {
     const deps = dependencies({ repository: {
       preflightGuardedProjectReviewFirstDelivery: vi.fn(async () => ({ success: false, code: "NOTIFICATION_MEMBERSHIP_MISMATCH" })),
       prepareExactProjectReviewBatch: vi.fn(),
+      validateExactProjectReviewCredentials: vi.fn(),
     } });
     await expect(new GuardedProjectReviewFirstDelivery(deps).run("actor", "EXECUTE", request)).resolves.toMatchObject({
       success: false, code: "NOTIFICATION_MEMBERSHIP_MISMATCH", prepared: false,
     });
     expect(deps.providerReady).not.toHaveBeenCalled();
+    expect(deps.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("blocks invalid stored credentials before provider readiness or preparation", async () => {
+    const prepare = vi.fn();
+    const deps = dependencies({ repository: {
+      preflightGuardedProjectReviewFirstDelivery: vi.fn(async () => ({ success: true, disposition: "READY", value: { activeEnvelopeCount: 2 } })),
+      prepareExactProjectReviewBatch: prepare,
+      validateExactProjectReviewCredentials: vi.fn(async () => false),
+    } });
+    await expect(new GuardedProjectReviewFirstDelivery(deps).run("actor", "EXECUTE", request)).resolves.toMatchObject({
+      success: false, code: "CREDENTIAL_VALIDATION_FAILED", prepared: false, dispatched: [],
+    });
+    expect(deps.providerReady).not.toHaveBeenCalled();
+    expect(prepare).not.toHaveBeenCalled();
+    expect(deps.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("stops after preparation when the stored credential cannot be revalidated", async () => {
+    const validateCredentials = vi.fn().mockResolvedValueOnce(false);
+    const deps = dependencies({ repository: {
+      preflightGuardedProjectReviewFirstDelivery: vi.fn(async input => ({ success: true, disposition: "READY",
+        value: { activeEnvelopeCount: input.phase === "BEFORE_PREPARATION" ? 0 : 2 } })),
+      prepareExactProjectReviewBatch: vi.fn(async () => ({ success: true, disposition: "PREPARED" })),
+      validateExactProjectReviewCredentials: validateCredentials,
+    } });
+    await expect(new GuardedProjectReviewFirstDelivery(deps).run("actor", "EXECUTE", request)).resolves.toMatchObject({
+      success: false, code: "CREDENTIAL_VALIDATION_FAILED", prepared: true, dispatched: [],
+    });
+    expect(validateCredentials).toHaveBeenCalledTimes(1);
     expect(deps.dispatch).not.toHaveBeenCalled();
   });
 
@@ -92,12 +125,13 @@ describe("guarded Project Review first delivery", () => {
 
   it("blocks repeated execution after an accepted message without a duplicate provider call", async () => {
     const preflight = vi.fn()
-      .mockResolvedValueOnce({ success: true, disposition: "READY" })
-      .mockResolvedValueOnce({ success: true, disposition: "READY" })
+      .mockResolvedValueOnce({ success: true, disposition: "READY", value: { activeEnvelopeCount: 0 } })
+      .mockResolvedValueOnce({ success: true, disposition: "READY", value: { activeEnvelopeCount: 2 } })
       .mockResolvedValueOnce({ success: false, code: "NOTIFICATION_NOT_ELIGIBLE" });
     const deps = dependencies({ repository: {
       preflightGuardedProjectReviewFirstDelivery: preflight,
       prepareExactProjectReviewBatch: vi.fn(async () => ({ success: true, disposition: "PREPARED" })),
+      validateExactProjectReviewCredentials: vi.fn(async () => true),
     } });
     vi.mocked(deps.dispatch).mockResolvedValueOnce(accepted).mockResolvedValueOnce({
       claimed: 1, providerCalls: 1, status: "UnknownOutcome", ambiguous: true,
@@ -175,5 +209,16 @@ describe("guarded preflight migration contract", () => {
     expect(sql).toContain("notification_delivery_attempts");
     expect(sql).not.toMatch(/^\s*(?:INSERT|UPDATE|DELETE)\b/im);
     expect(sql).not.toMatch(/GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE)/i);
+  });
+
+  it("keeps the certified UAT migrations unchanged and assigns the next unique version", () => {
+    const migrations = readdirSync("supabase/migrations").filter(name => /^\d{14}_.*\.sql$/.test(name)).sort();
+    const versions = migrations.map(name => name.slice(0, 14));
+    expect(new Set(versions).size).toBe(versions.length);
+    expect(migrations.slice(-3)).toEqual([
+      "20261014000100_project_review_multi_deur_line_membership.sql",
+      "20261014000200_deur_hour_meter_refuel_evidence.sql",
+      "20261014000300_guarded_project_review_first_delivery_preflight.sql",
+    ]);
   });
 });

@@ -131,8 +131,10 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
     return result.success;
   }
 
-  async preflightGuardedProjectReviewFirstDelivery(input: GuardedProjectReviewPreflightInput): Promise<RpcResult<unknown>> {
-    return this.rpc<RpcResult<unknown>>(this.service, "preflight_guarded_project_review_first_delivery", {
+  async preflightGuardedProjectReviewFirstDelivery(
+    input: GuardedProjectReviewPreflightInput,
+  ): Promise<RpcResult<{ activeEnvelopeCount?: number }>> {
+    return this.rpc<RpcResult<{ activeEnvelopeCount?: number }>>(this.service, "preflight_guarded_project_review_first_delivery", {
       command: { actorId: input.actorId, batchId: input.batchId, deurNumber: input.deurNumber,
         notificationIds: [...input.notificationIds], phase: input.phase },
     });
@@ -142,9 +144,20 @@ implements TrustedNotificationWorkerRepository, TrustedReviewIssuanceRepository 
     const credential = generateGroupedReviewCredential();
     const envelopes = notificationIds.map((notificationId) => ({ notificationId,
       ...encryptGroupedReviewDeliveryEnvelope(credential.reviewPath, notificationId, this.deliveryKey()) }));
+    if (envelopes.some(envelope => decryptGroupedReviewDeliveryEnvelope(envelope, envelope.notificationId, this.deliveryKey()) !== credential.reviewPath)) {
+      throw new Error("Grouped-review delivery envelope validation failed.");
+    }
     return this.rpc<RpcResult<unknown>>(this.service, "prepare_project_review_batch_handoff", {
       command: { batchId, credentialHash: credential.hash, envelopes },
     });
+  }
+
+  async validateExactProjectReviewCredentials(notificationIds: readonly string[]): Promise<boolean> {
+    try {
+      const resolutions = await Promise.all(notificationIds.map(id => this.resolveGroupedReviewDelivery(id)));
+      return resolutions.every(result => result.status === "ACTIVE")
+        && new Set(resolutions.map(result => result.status === "ACTIVE" ? result.reviewPath : undefined)).size === 1;
+    } catch { return false; }
   }
 
   async claimBatch(workerId: string, limit: number): Promise<ClaimedNotification[]> {

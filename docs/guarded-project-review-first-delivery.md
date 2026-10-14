@@ -23,7 +23,7 @@ POST the same exact input to `/api/admin/uat/execute-project-review-first-delive
 
 1. Creates one shared random review credential in memory and AES-GCM envelopes for only the two pinned notifications.
 2. Calls only `prepare_project_review_batch_handoff` for the pinned batch. The canonical RPC rotates the batch credential hash and stores the two encrypted envelopes; it preserves membership and recipient snapshots.
-3. Re-runs the read-only preflight requiring exactly two active envelopes and zero attempts.
+3. Re-runs the read-only preflight requiring exactly two active envelopes and zero attempts, then decrypts both stored envelopes and confirms they resolve to the same active Project Review credential before either notification can be claimed.
 4. Claims the first pinned notification with the canonical row-lock/lease operation, dispatches through the configured Resend adapter and UAT recipient override, and records a sanitized completion/attempt result.
 5. Proceeds to the second pinned notification only after an unambiguous provider acceptance for the first, then performs the same claim, dispatch, and persistence sequence.
 
