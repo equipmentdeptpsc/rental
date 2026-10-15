@@ -215,10 +215,24 @@ describe("guarded preflight migration contract", () => {
     const migrations = readdirSync("supabase/migrations").filter(name => /^\d{14}_.*\.sql$/.test(name)).sort();
     const versions = migrations.map(name => name.slice(0, 14));
     expect(new Set(versions).size).toBe(versions.length);
-    expect(migrations.slice(-3)).toEqual([
+    expect(migrations.slice(-4)).toEqual([
       "20261014000100_project_review_multi_deur_line_membership.sql",
       "20261014000200_deur_hour_meter_refuel_evidence.sql",
       "20261014000300_guarded_project_review_first_delivery_preflight.sql",
+      "20261014000400_guarded_project_review_first_delivery_preflight_ambiguous_id.sql",
     ]);
+  });
+
+  it("qualifies the expected notification identifier in the forward-only correction", () => {
+    const correction = readFileSync(
+      "supabase/migrations/20261014000400_guarded_project_review_first_delivery_preflight_ambiguous_id.sql",
+      "utf8",
+    );
+    expect(correction).toContain(
+      "FROM unnest(expected_ids) AS expected_notification(expected_notification_id)",
+    );
+    expect(correction).toContain("intent.id=expected_notification.expected_notification_id");
+    expect(correction).not.toContain("FROM unnest(expected_ids) id");
+    expect(correction).not.toMatch(/^\s*(?:INSERT|UPDATE|DELETE)\b/im);
   });
 });
